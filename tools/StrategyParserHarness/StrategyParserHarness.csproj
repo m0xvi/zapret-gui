@@ -1,0 +1,29 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    Консольный harness для проверки разбора .bat-стратегий БЕЗ Windows.
+    Компилирует те же файлы ядра, что и приложение (Core/StrategyParser.cs и зависимости),
+    поэтому проверяет ровно тот код, который запускает обход.
+
+    Запуск из корня репозитория:
+      dotnet run -p tools/StrategyParserHarness "/путь/к/распакованному/движку"
+  -->
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>ZapretGui</RootNamespace>
+    <AssemblyName>StrategyParserHarness</AssemblyName>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\src\ZapretGUI\Core\StrategyParser.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\AppLog.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\AppPaths.cs" />
+  </ItemGroup>
+
+</Project>

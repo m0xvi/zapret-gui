@@ -96,6 +96,27 @@ Windows-приложение там нельзя.
 
 ---
 
+## Разработка и проверки
+
+Перед первым коммитом прочитайте **[AGENTS.md](AGENTS.md)** (правила и контракты) и
+**[docs/HANDOFF.md](docs/HANDOFF.md)** (полный контекст, карта кода, факты о движке, риски).
+
+Быстрые проверки (работают и на Windows, и на Linux):
+
+```bash
+# 1. Компиляция — должна проходить без ошибок и предупреждений
+dotnet build src/ZapretGUI/ZapretGUI.csproj -c Release
+
+# 2. Проверка XAML: привязки, ключи тем, обработчики Click
+python3 tools/check_bindings.py
+
+# 3. Разбор .bat-стратегий на реальном релизе движка (без Windows)
+curl -L -o /tmp/engine.zip https://github.com/Flowseal/zapret-discord-youtube/releases/latest/download/zapret-discord-youtube-1.10.2.zip
+unzip -q /tmp/engine.zip -d /tmp && mv /tmp/zapret-discord-youtube-1.10.2 /tmp/engine
+dotnet run -p tools/StrategyParserHarness "/tmp/engine"
+# ожидается: 22 стратегии, 82–101 аргумент, «Проблем не найдено»
+```
+
 ## Структура проекта
 
 ```
@@ -111,6 +132,14 @@ src/ZapretGUI/
 ├─ ViewModels/               модели представления (MVVM)
 ├─ Views/                    страницы XAML (Обзор, Стратегии, Обновления, …)
 └─ Themes/                   Dark.xaml, Light.xaml, Controls.xaml
+
+tools/
+├─ check_bindings.py          проверка {Binding}, ключей ресурсов и обработчиков в XAML
+└─ StrategyParserHarness/     прогон парсера стратегий на реальных .bat (без Windows)
+
+docs/
+├─ HANDOFF.md                 полный контекст проекта для следующего разработчика/агента
+└─ mockup.html                интерактивный макет интерфейса
 ```
 
 ## Технические решения
