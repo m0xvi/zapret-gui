@@ -1,0 +1,48 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- ============================ СВЕТЛАЯ ТЕМА ============================ -->
+    <FontFamily x:Key="UiFont">Segoe UI Variable Text, Segoe UI</FontFamily>
+    <FontFamily x:Key="UiFontDisplay">Segoe UI Variable Display, Segoe UI</FontFamily>
+    <FontFamily x:Key="IconFont">Segoe Fluent Icons, Segoe MDL2 Assets</FontFamily>
+    <CornerRadius x:Key="CardRadius">14</CornerRadius>
+    <CornerRadius x:Key="ControlRadius">9</CornerRadius>
+
+    <SolidColorBrush x:Key="BgBrush" Color="#F4F6FB" />
+    <SolidColorBrush x:Key="SidebarBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="TitleBarBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="CardBrush" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="CardHoverBrush" Color="#EEF2F9" />
+    <SolidColorBrush x:Key="ElevatedBrush" Color="#F6F8FC" />
+    <SolidColorBrush x:Key="BorderBrush" Color="#E3E8F1" />
+    <SolidColorBrush x:Key="BorderStrongBrush" Color="#CDD5E3" />
+
+    <SolidColorBrush x:Key="TextBrush" Color="#15191F" />
+    <SolidColorBrush x:Key="TextMutedBrush" Color="#5A6474" />
+    <SolidColorBrush x:Key="TextDimBrush" Color="#8B95A6" />
+    <SolidColorBrush x:Key="TextInverseBrush" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="AccentBrush" Color="#2F6FE4" />
+    <SolidColorBrush x:Key="AccentHoverBrush" Color="#2A63CC" />
+    <SolidColorBrush x:Key="AccentPressedBrush" Color="#2456B4" />
+    <SolidColorBrush x:Key="AccentSoftBrush" Color="#E4EDFD" />
+    <SolidColorBrush x:Key="OnAccentBrush" Color="#FFFFFF" />
+
+    <SolidColorBrush x:Key="SuccessBrush" Color="#12A06B" />
+    <SolidColorBrush x:Key="SuccessSoftBrush" Color="#E1F5EC" />
+    <SolidColorBrush x:Key="WarningBrush" Color="#B9760A" />
+    <SolidColorBrush x:Key="WarningSoftBrush" Color="#FCF0DD" />
+    <SolidColorBrush x:Key="DangerBrush" Color="#D33B41" />
+    <SolidColorBrush x:Key="DangerSoftBrush" Color="#FBE7E8" />
+    <SolidColorBrush x:Key="InfoBrush" Color="#2F6FE4" />
+    <SolidColorBrush x:Key="InfoSoftBrush" Color="#E4EDFD" />
+    <SolidColorBrush x:Key="MutedBrush" Color="#7A8496" />
+
+    <SolidColorBrush x:Key="ScrollThumbBrush" Color="#C7CEDB" />
+    <SolidColorBrush x:Key="ScrollThumbHoverBrush" Color="#A9B3C4" />
+    <SolidColorBrush x:Key="SelectionBrush" Color="#DCE7FC" />
+    <SolidColorBrush x:Key="WindowControlHoverBrush" Color="#EDF1F8" />
+    <SolidColorBrush x:Key="WindowCloseHoverBrush" Color="#E1443C" />
+    <SolidColorBrush x:Key="ShadowBrush" Color="#7C8798" />
+    <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="ShadowOpacity">0.18</sys:Double>
+</ResourceDictionary>

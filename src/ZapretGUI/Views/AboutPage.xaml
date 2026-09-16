@@ -1,0 +1,105 @@
+<UserControl x:Class="ZapretGui.Views.AboutPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+        <StackPanel Margin="24,20,20,26" MaxWidth="980" HorizontalAlignment="Left">
+
+            <Grid>
+                <StackPanel Orientation="Horizontal">
+                    <Border Width="56" Height="56" CornerRadius="16" Background="{DynamicResource AccentBrush}">
+                        <TextBlock Text="&#xE72E;" FontFamily="{DynamicResource IconFont}" FontSize="26"
+                                   Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <StackPanel Margin="16,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Style="{StaticResource DisplayText}" Text="Zapret GUI" />
+                        <TextBlock Style="{StaticResource MutedText}"
+                                   Text="Удобный графический интерфейс для zapret-discord-youtube" />
+                    </StackPanel>
+                </StackPanel>
+            </Grid>
+
+            <Grid Margin="0,18,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="24" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ЧТО ДЕЛАЕТ ПРИЛОЖЕНИЕ" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Text="• Запускает и останавливает обход (winws.exe) теми же стратегиями, что и .bat-файлы сборки." />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
+                                       Text="• Устанавливает обход в службу Windows с автозапуском (аналог Install Service)." />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
+                                       Text="• Сам проверяет обновления движка на GitHub и обновляет его по нажатию, сохраняя ваши списки." />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
+                                       Text="• Управляет игровым фильтром, режимами ipset, списками и файлом hosts." />
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
+                                       Text="• Проводит диагностику конфликтов, VPN, прокси и служб." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="АВТОРЫ И ИСТОЧНИКИ" />
+                            <TextBlock Style="{StaticResource BodyText}" Text="Стратегии и движок: Flowseal/zapret-discord-youtube" FontWeight="SemiBold" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Релизы со стратегиями, списками и bin-файлами." />
+                            <Button Style="{StaticResource GhostButton}" Content="Открыть репозиторий" HorizontalAlignment="Left"
+                                    Click="OpenFlowseal_Click" />
+
+                            <TextBlock Style="{StaticResource BodyText}" Text="Утилита обхода: zapret от bol-van" FontWeight="SemiBold" Margin="0,10,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Оригинальная реализация DPI-обхода и документация параметров." />
+                            <Button Style="{StaticResource GhostButton}" Content="Открыть zapret" HorizontalAlignment="Left"
+                                    Click="OpenZapret_Click" />
+
+                            <TextBlock Style="{StaticResource BodyText}" Text="Перехват трафика: WinDivert" FontWeight="SemiBold" Margin="0,10,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Драйвер, из-за которого антивирусы иногда ругаются на сборку." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ВЕРСИИ" />
+                            <Grid>
+                                <TextBlock Style="{StaticResource MutedText}" Text="Zapret GUI" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="1.0.0" HorizontalAlignment="Right" FontWeight="SemiBold" />
+                            </Grid>
+                            <Grid Margin="0,6,0,0">
+                                <TextBlock Style="{StaticResource MutedText}" Text="Движок zapret" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding EngineVersionText}" HorizontalAlignment="Right" FontWeight="SemiBold" />
+                            </Grid>
+                            <Grid Margin="0,6,0,0">
+                                <TextBlock Style="{StaticResource MutedText}" Text="Среда" />
+                                <TextBlock Style="{StaticResource BodyText}" Text=".NET 8 · WPF" HorizontalAlignment="Right" FontWeight="SemiBold" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ЛИЦЕНЗИЯ" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Text="Zapret GUI распространяется по лицензии MIT. Движок и стратегии принадлежат их авторам." />
+                            <Button Style="{StaticResource GhostButton}" Content="Лицензия zapret-discord-youtube"
+                                    HorizontalAlignment="Left" Click="OpenLicense_Click" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ВАЖНО" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Text="Приложение не обходит блокировки само по себе — оно управляет утилитой zapret. Используйте в соответствии с законодательством вашей страны." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

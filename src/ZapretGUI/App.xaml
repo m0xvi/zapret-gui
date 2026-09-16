@@ -1,0 +1,24 @@
+<Application x:Class="ZapretGui.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:core="clr-namespace:ZapretGui.Core"
+             ShutdownMode="OnExplicitShutdown">
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- Индекс 0 — тема (заменяется на лету), индекс 1 — стили компонентов -->
+                <ResourceDictionary Source="Themes/Dark.xaml" />
+                <ResourceDictionary Source="Themes/Controls.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+
+            <core:BoolToVisibilityConverter x:Key="BoolToVis" />
+            <core:SoftSeverityBrushConverter x:Key="SoftSeverityBrush" />
+            <core:InverseBoolConverter x:Key="InverseBool" />
+            <core:StringToVisibilityConverter x:Key="StringToVis" />
+            <core:SeverityBrushConverter x:Key="SeverityBrush" />
+            <core:CountToVisibilityConverter x:Key="CountToVis" />
+            <core:BypassStateBrushConverter x:Key="BypassBrush" />
+            <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

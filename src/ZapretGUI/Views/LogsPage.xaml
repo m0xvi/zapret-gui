@@ -1,0 +1,62 @@
+<UserControl x:Class="ZapretGui.Views.LogsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <Grid Margin="24,20,20,26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <StackPanel>
+                <TextBlock Style="{StaticResource DisplayText}" Text="Журнал" />
+                <TextBlock Style="{StaticResource MutedText}"
+                           Text="Все действия приложения, вывод winws.exe, ошибки обновлений и служб" />
+            </StackPanel>
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <Button Style="{StaticResource SecondaryButton}" Content="Сохранить в файл" Command="{Binding SaveCommand}" />
+                <Button Style="{StaticResource GhostButton}" Content="Копировать" Margin="8,0,0,0" Command="{Binding CopyCommand}" />
+                <Button Style="{StaticResource GhostButton}" Content="Очистить" Margin="8,0,0,0" Command="{Binding ClearCommand}" />
+                <Button Style="{StaticResource GhostButton}" Content="Папка логов" Margin="8,0,0,0" Command="{Binding OpenFolderCommand}" />
+            </StackPanel>
+        </Grid>
+
+        <Grid Grid.Row="1" Margin="0,16,0,12">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Style="{StaticResource DimText}" Text="{Binding CountText}" VerticalAlignment="Center" Margin="2,0,16,0" />
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Отладка" IsChecked="{Binding ShowDebug, Mode=TwoWay}" />
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Инфо" Margin="12,0,0,0" IsChecked="{Binding ShowInfo, Mode=TwoWay}" />
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Предупреждения" Margin="12,0,0,0" IsChecked="{Binding ShowWarn, Mode=TwoWay}" />
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Ошибки" Margin="12,0,0,0" IsChecked="{Binding ShowError, Mode=TwoWay}" />
+            </StackPanel>
+            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Прокручивать автоматически"
+                      HorizontalAlignment="Right" IsChecked="{Binding AutoScroll, Mode=TwoWay}" />
+        </Grid>
+
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="6">
+            <ListBox x:Name="LogList" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Entries}"
+                     ItemContainerStyle="{StaticResource LogItemStyle}" Background="Transparent"
+                     ScrollViewer.VerticalScrollBarVisibility="Auto"
+                     VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="70" />
+                                <ColumnDefinition Width="86" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource MonoText}" Text="{Binding TimeText}" />
+                            <TextBlock Grid.Column="1" Text="{Binding LevelText}" FontSize="11.5" FontWeight="SemiBold"
+                                       Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}" />
+                            <TextBlock Grid.Column="2" Style="{StaticResource MonoText}" Text="{Binding Message}"
+                                       Foreground="{DynamicResource TextBrush}" />
+                        </Grid>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+    </Grid>
+</UserControl>

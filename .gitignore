@@ -1,0 +1,14 @@
+# Артефакты сборки .NET
+bin/
+obj/
+publish/
+dist/
+*.user
+*.suo
+.vs/
+.idea/
+*.nupkg
+
+# Локальные настройки
+settings.json
+logs/

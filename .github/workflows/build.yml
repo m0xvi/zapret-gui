@@ -1,0 +1,96 @@
+name: Build and Release
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Сборка Windows-приложения
+    runs-on: windows-latest
+
+    steps:
+      - name: Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Восстановление зависимостей
+        run: dotnet restore src/ZapretGUI/ZapretGUI.csproj
+
+      - name: Сборка (Release)
+        run: dotnet build src/ZapretGUI/ZapretGUI.csproj -c Release --no-restore
+
+      - name: Публикация — портативный EXE (всё в одном файле)
+        run: >
+          dotnet publish src/ZapretGUI/ZapretGUI.csproj
+          -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true
+          -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true
+          -p:DebugType=none
+          -o publish/portable
+
+      - name: Публикация — версия для .NET 8 Desktop Runtime
+        run: >
+          dotnet publish src/ZapretGUI/ZapretGUI.csproj
+          -c Release -r win-x64 --self-contained false
+          -p:DebugType=none
+          -o publish/framework-dependent
+
+      - name: Определение версии и упаковка
+        shell: pwsh
+        run: |
+          [xml]$csproj = Get-Content src/ZapretGUI/ZapretGUI.csproj
+          $version = $csproj.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if (-not $version) { $version = "1.0.0" }
+          if ($env:GITHUB_REF -like "refs/tags/v*") { $version = $env:GITHUB_REF -replace "refs/tags/v", "" }
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item publish/portable/ZapretGUI.exe "dist/ZapretGUI-$version-win-x64-portable.exe"
+          Compress-Archive -Path publish/framework-dependent/* -DestinationPath "dist/ZapretGUI-$version-win-x64-net8.zip" -Force
+
+          Write-Host "Версия: $version"
+          Get-ChildItem dist | Format-Table Name, Length
+
+      - name: Артефакты сборки
+        uses: actions/upload-artifact@v4
+        with:
+          name: ZapretGUI-${{ env.APP_VERSION }}
+          path: dist/*
+          retention-days: 30
+
+      - name: Публикация релиза (только для тегов v*)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Zapret GUI ${{ env.APP_VERSION }}
+          tag_name: ${{ github.ref_name }}
+          draft: false
+          generate_release_notes: true
+          files: |
+            dist/ZapretGUI-${{ env.APP_VERSION }}-win-x64-portable.exe
+            dist/ZapretGUI-${{ env.APP_VERSION }}-win-x64-net8.zip
+          body: |
+            ## Zapret GUI ${{ env.APP_VERSION }}
+
+            Графический интерфейс для [zapret-discord-youtube](https://github.com/Flowseal/zapret-discord-youtube).
+
+            **Что скачать:**
+            - `ZapretGUI-${{ env.APP_VERSION }}-win-x64-portable.exe` — один файл, ничего доустанавливать не нужно (Windows 10/11 x64).
+            - `ZapretGUI-${{ env.APP_VERSION }}-win-x64-net8.zip` — компактная версия, требует установленный [.NET 8 Desktop Runtime](https://dotnet.microsoft.com/download/dotnet/8.0).
+
+            Приложение само скачает актуальный движок zapret со официального репозитория при первом запуске.
+
+            Требуются права администратора (WinDivert, службы Windows, правка hosts).

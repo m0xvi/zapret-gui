@@ -1,0 +1,149 @@
+<UserControl x:Class="ZapretGui.Views.SettingsPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
+             Background="Transparent">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+        <StackPanel Margin="24,20,20,26">
+
+            <Grid>
+                <StackPanel>
+                    <TextBlock Style="{StaticResource DisplayText}" Text="Настройки" />
+                    <TextBlock Style="{StaticResource MutedText}" Text="Изменения применяются и сохраняются автоматически" />
+                </StackPanel>
+                <Button Style="{StaticResource GhostButton}" Content="Сбросить настройки" HorizontalAlignment="Right"
+                        VerticalAlignment="Top" Command="{Binding ResetSettingsCommand}" />
+            </Grid>
+
+            <Grid Margin="0,16,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="24" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+
+                <!-- Левая колонка -->
+                <StackPanel Grid.Column="0">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" />
+                            <TextBlock Style="{StaticResource DimText}"
+                                       Text="Папка со сборкой zapret (внутри должны быть bin, lists и .bat файлы стратегий)." />
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding EnginePath, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Обзор…" Margin="8,0,0,0"
+                                        Command="{Binding BrowseEnginePathCommand}" />
+                            </Grid>
+                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Style="{StaticResource GhostButton}" Content="Найти автоматически" Command="{Binding DetectEngineCommand}" />
+                                <Button Style="{StaticResource GhostButton}" Content="Проверить" Command="{Binding ValidateEngineCommand}" />
+                                <Button Style="{StaticResource GhostButton}" Content="Открыть папку" Command="{Binding OpenEngineFolderCommand}" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding EngineInfoText}" Margin="2,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ИНТЕРФЕЙС" />
+                            <Grid>
+                                <TextBlock Style="{StaticResource BodyText}" Text="Тема оформления" VerticalAlignment="Center" />
+                                <controls:SegmentedControl HorizontalAlignment="Right" Width="330"
+                                                           ItemsSource="{Binding ThemeOptions}"
+                                                           SelectedIndex="{Binding ThemeIndex, Mode=TwoWay}" />
+                            </Grid>
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Сворачивать в трей при закрытии окна"
+                                      Margin="0,14,0,0" IsChecked="{Binding CloseToTray, Mode=TwoWay}" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать свёрнутым в трей"
+                                      Margin="0,10,0,0" IsChecked="{Binding StartMinimized, Mode=TwoWay}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ПОВЕДЕНИЕ ОБХОДА" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать обход вместе с приложением"
+                                      IsChecked="{Binding AutoStartBypass, Mode=TwoWay}" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Останавливать обход при выходе"
+                                      Margin="0,10,0,0" IsChecked="{Binding StopBypassOnExit, Mode=TwoWay}" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Спрашивать подтверждение при остановке"
+                                      Margin="0,10,0,0" IsChecked="{Binding ConfirmOnStop, Mode=TwoWay}" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать консольное окно winws.exe"
+                                      Margin="0,10,0,0" IsChecked="{Binding ShowWinwsConsole, Mode=TwoWay}" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="По умолчанию консоль скрыта — обход работает в фоне, как и раньше через .bat с параметром /min." />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- Правая колонка -->
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ОБНОВЛЕНИЯ" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять движок при запуске"
+                                      IsChecked="{Binding AutoCheckEngineUpdates, Mode=TwoWay}" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включать pre-release версии"
+                                      Margin="0,10,0,0" IsChecked="{Binding IncludePrerelease, Mode=TwoWay}" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Сохранять пользовательские списки при обновлении"
+                                      Margin="0,10,0,0" IsChecked="{Binding PreserveUserDataOnUpdate, Mode=TwoWay}" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Пользовательские файлы: list-general-user.txt, list-exclude-user.txt, ipset-exclude-user.txt, режимы фильтров." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="СПИСКИ ПОЛЬЗОВАТЕЛЯ" />
+                            <TextBlock Style="{StaticResource DimText}"
+                                       Text="Домены и IP, которые нужно добавить в обход или исключить из него." />
+                            <Button Style="{StaticResource SecondaryButton}" Content="list-general-user.txt — добавить домены"
+                                    Margin="0,10,0,0" HorizontalAlignment="Stretch" Command="{Binding EditUserListCommand}" CommandParameter="general" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="list-exclude-user.txt — исключения"
+                                    Margin="0,8,0,0" HorizontalAlignment="Stretch" Command="{Binding EditUserListCommand}" CommandParameter="exclude" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="ipset-exclude-user.txt — исключения IP"
+                                    Margin="0,8,0,0" HorizontalAlignment="Stretch" Command="{Binding EditUserListCommand}" CommandParameter="ipset" />
+                            <Button Style="{StaticResource GhostButton}" Content="Открыть папку lists"
+                                    Margin="0,6,0,0" HorizontalAlignment="Left" Command="{Binding OpenListsFolderCommand}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМА И ФАЙЛЫ" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать при входе в систему (от администратора)"
+                                      IsChecked="{Binding RunAtStartup, Mode=TwoWay}" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="{Binding Status}" />
+                            <Border Style="{StaticResource Divider}" />
+                            <Button Style="{StaticResource GhostButton}" Content="settings.json" HorizontalAlignment="Left"
+                                    Command="{Binding OpenSettingsFileCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Папка журналов" HorizontalAlignment="Left"
+                                    Command="{Binding OpenLogsFolderCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Папка резервных копий" HorizontalAlignment="Left"
+                                    Command="{Binding OpenBackupFolderCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Файл hosts (блокнот)" HorizontalAlignment="Left"
+                                    Command="{Binding OpenHostsCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Репозиторий движка" HorizontalAlignment="Left"
+                                    Command="{Binding OpenRepoCommand}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="О ПУТЯХ" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding SettingsFilePath}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LogsPath}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding BackupPath}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastBackupText}" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

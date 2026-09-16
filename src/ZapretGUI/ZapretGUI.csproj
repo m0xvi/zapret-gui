@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <!-- ImplicitUsings выключены намеренно: WPF + WinForms вместе дают конфликты имён (MessageBox, Application, Timer...) -->
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+
+    <AssemblyName>ZapretGUI</AssemblyName>
+    <RootNamespace>ZapretGui</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="Exists('Assets\app.ico')">Assets\app.ico</ApplicationIcon>
+
+    <!-- Метаданные релиза (видно в свойствах exe) -->
+    <Product>Zapret GUI</Product>
+    <AssemblyTitle>Zapret GUI</AssemblyTitle>
+    <Description>Удобный графический интерфейс для zapret-discord-youtube</Description>
+    <Company>Zapret GUI community</Company>
+    <Copyright>MIT License</Copyright>
+    <Version>1.0.0</Version>
+    <FileVersion>1.0.0.0</FileVersion>
+
+    <!-- Позволяет собирать проект не только на Windows (например, в CI на Linux) -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+
+    <!-- WPF сам читает dpiAware из app.manifest, анализатор WinForms об этом предупреждает -->
+    <NoWarn>$(NoWarn);WFAC010</NoWarn>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <NeutralLanguage>ru</NeutralLanguage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Нужен для чтения вывода консольных утилит (sc.exe, netsh) в кодировке CP866 -->
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+  </ItemGroup>
+
+</Project>
