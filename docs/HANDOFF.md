@@ -416,6 +416,19 @@ GUI делает это сам: бэкап + блок между маркера�
 14. **Проверка версий.** `CompareVersions` нормализует версии (`1.9.9d` → `000001.000009.000009.d`),
     так что буквенные суффиксы и двузначные номера сравниваются корректно. Не заменяйте на
     `Version.Parse` — он падает на `1.9.9d`.
+15. **Безопасное обновление движка (v1.0.3, исправление BSOD).** Перезапись
+    `bin\WinDivert64.sys` «на лету», пока драйвер в памяти ядра, роняла Windows в BSOD.
+    Поэтому перед `CopyEngine` обязательно: `BypassController.PrepareForEngineUpdateAsync`
+    (стоп обхода → kill `winws.exe` → `WinServices.StopForEngineUpdateAsync` для
+    `zapret`/`WinDivert`/`WinDivert14` → `WaitForDriverUnloadAsync` с паузой 2 с).
+    `EngineService.DownloadAndInstallAsync` дублирует защиту внутри
+    (`PrepareFilesForUpdateAsync`), а `CopyEngine` пропускает заблокированные файлы
+    драйвера с предупреждением (`EngineUpdateResult.Warnings`) вместо падения.
+    Не удаляйте эти вызовы и не меняйте порядок «стоп → пауза → копирование».
+16. **Окна ошибок гасятся.** `App.OnDispatcherUnhandledException` показывает диалог
+    не чаще раза в 10 секунд и только для нового текста ошибки; повторы пишутся
+    в `AppLog` как предупреждения. `TaskScheduler.UnobservedTaskException` — только
+    в журнал. Не возвращайте безусловный `MessageBox` на каждую ошибку.
 
 ---
 
@@ -473,6 +486,20 @@ GUI делает это сам: бэкап + блок между маркера�
 4. Исходники переданы пользователю архивом, он загрузил их в свой GitHub-репозиторий.
    Со следующего этапа работа идёт **напрямую через git**: агент клонирует репозиторий,
    коммитит и пушит сам (см. §1 «Воркфлоу»), архивы больше не используются.
+5. **Сессия v1.0.1:** исправлена привязка `ProgressBar.Value` в `UpdatesPage.xaml`
+   (`Mode=OneWay`, публичный сеттер `Progress`), версия поднята до 1.0.1, релиз `v1.0.1` собран.
+6. **Сессия v1.0.3 (исправление BSOD при обновлении):** обновление движка «на лету»
+   роняло Windows в синий экран, т. к. `WinDivert64.sys` перезаписывался при загруженном
+   драйвере. Реализовано безопасное обновление: `PrepareForEngineUpdateAsync` в
+   `BypassController` (стоп обхода → kill `winws.exe` → стоп служб `zapret`/`WinDivert`/
+   `WinDivert14` → ожидание выгрузки драйвера), `StopForEngineUpdateAsync` +
+   `WaitForDriverUnloadAsync` + `IsFileLocked` в `WinServices`, защита в
+   `EngineService.DownloadAndInstallAsync`/`CopyEngine` (пропуск заблокированных файлов
+   драйвера с `Warnings` вместо падения). Добавлена автоустановка движка при первом
+   запуске (`UpdatesViewModel.EnsureEngineInstalledAsync`, вызывается из `App.OnStartup`).
+   Окна ошибок гасятся: `OnDispatcherUnhandledException` показывает диалог не чаще
+   раза в 10 секунд, повторы — только в `AppLog`; добавлен обработчик
+   `TaskScheduler.UnobservedTaskException`. Версия поднята до 1.0.3.
 
 **Первые шаги следующего агента:**
 1. Получить у пользователя адрес репозитория и токен доступа, склонировать проект,

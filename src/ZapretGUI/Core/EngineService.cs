@@ -51,6 +51,12 @@ namespace ZapretGui.Core
         public int UpdatedFiles { get; init; }
         public int SkippedFiles { get; init; }
         public string Version { get; init; } = "";
+
+        /// <summary>
+        /// Нефатальные предупреждения: например, файлы драйвера WinDivert были заблокированы
+        /// ядром и пропущены — их замена требует перезагрузки Windows.
+        /// </summary>
+        public List<string> Warnings { get; init; } = new();
     }
 
     public sealed class HostsCheckResult
@@ -272,8 +278,15 @@ namespace ZapretGui.Core
                 var ipsetModeBefore = GetIpsetMode(engineRoot);
                 var gameFilterBefore = GetGameFilterMode(engineRoot);
 
+                // Безопасная подготовка: останавливаем обход и выгружаем драйвер WinDivert
+                // из ядра ДО перезаписи файлов, иначе замена WinDivert64.sys «на лету» ведёт к BSOD.
+                // (Вызывающий код обычно уже вызвал BypassController.PrepareForEngineUpdateAsync —
+                // здесь дублируем защиту, чтобы метод был безопасен при любом вызове.)
+                progress?.Report(new ProgressInfo { Percent = -1, Status = "Останавливаю обход перед обновлением" });
+                await PrepareFilesForUpdateAsync(engineRoot, ct).ConfigureAwait(false);
+
                 progress?.Report(new ProgressInfo { Percent = -1, Status = "Обновление файлов" });
-                var (updated, skipped) = CopyEngine(contentRoot, engineRoot, settings.PreserveUserDataOnUpdate);
+                var (updated, skipped, warnings) = CopyEngine(contentRoot, engineRoot, settings.PreserveUserDataOnUpdate);
 
                 WriteVersion(engineRoot, release.Tag);
                 settings.EngineVersion = release.Tag;
@@ -289,13 +302,21 @@ namespace ZapretGui.Core
                 progress?.Report(new ProgressInfo { Percent = 100, Status = "Готово" });
                 AppLog.Info($"Движок обновлён до {release.Tag}: обновлено {updated} файлов, сохранено {skipped}");
 
+                var message = $"Движок обновлён до версии {release.Tag}";
+                if (warnings.Count > 0)
+                {
+                    message += ". Внимание: " + string.Join(" ", warnings);
+                    AppLog.Warn("Обновление завершено с предупреждениями: " + string.Join("; ", warnings));
+                }
+
                 return new EngineUpdateResult
                 {
                     Ok = true,
-                    Message = $"Движок обновлён до версии {release.Tag}",
+                    Message = message,
                     UpdatedFiles = updated,
                     SkippedFiles = skipped,
-                    Version = release.Tag
+                    Version = release.Tag,
+                    Warnings = warnings
                 };
             }
             catch (OperationCanceledException)
@@ -380,9 +401,43 @@ namespace ZapretGui.Core
             return extractedDirectory;
         }
 
-        private static (int Updated, int Skipped) CopyEngine(string source, string engineRoot, bool preserveUserData)
+        /// <summary>
+        /// Внутренняя защита перед перезаписью файлов: завершает winws.exe, останавливает
+        /// службы zapret/WinDivert/WinDivert14 и ждёт выгрузки драйвера из ядра Windows.
+        /// </summary>
+        private static async Task PrepareFilesForUpdateAsync(string engineRoot, CancellationToken ct)
+        {
+            try
+            {
+                if (Shell.IsProcessRunning("winws"))
+                {
+                    AppLog.Info("Завершаю winws.exe перед обновлением файлов движка…");
+                    Shell.KillProcess("winws");
+                    await Shell.WaitForAsync(() => !Shell.IsProcessRunning("winws"), 8000).ConfigureAwait(false);
+                }
+
+                await WinServices.StopForEngineUpdateAsync().ConfigureAwait(false);
+                await WinServices.WaitForDriverUnloadAsync(engineRoot).ConfigureAwait(false);
+
+                ct.ThrowIfCancellationRequested();
+            }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // Подготовка не должна ронять всё обновление: CopyEngine дополнительно
+                // пропустит заблокированные файлы с предупреждением вместо падения.
+                AppLog.Warn("Не удалось полностью подготовить файлы к обновлению: " + ex.Message);
+            }
+        }
+
+        private static (int Updated, int Skipped, List<string> Warnings) CopyEngine(
+            string source, string engineRoot, bool preserveUserData)
         {
             int updated = 0, skipped = 0;
+            var warnings = new List<string>();
             Directory.CreateDirectory(engineRoot);
 
             foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
@@ -410,11 +465,68 @@ namespace ZapretGui.Core
                 }
 
                 AppPaths.EnsureDir(Path.GetDirectoryName(destination)!);
-                File.Copy(file, destination, true);
-                updated++;
+
+                // Файлы ядерного драйвера нельзя перезаписывать «на лету»: если ядро Windows
+                // всё ещё держит WinDivert64.sys/WinDivert.dll (служба не выгрузилась),
+                // пропускаем их с предупреждением, а не падаем и тем более не провоцируем BSOD.
+                if (IsDriverFile(relative) && File.Exists(destination) && WinServices.IsFileLocked(destination))
+                {
+                    var warn = $"Файл {relative} заблокирован ядром Windows (драйвер WinDivert не выгрузился) — пропущен. " +
+                               "Перезагрузите Windows и повторите обновление для замены драйвера.";
+                    AppLog.Warn(warn);
+                    if (!warnings.Any(w => w.Contains(relative, StringComparison.OrdinalIgnoreCase)))
+                        warnings.Add(warn);
+                    skipped++;
+                    continue;
+                }
+
+                try
+                {
+                    File.Copy(file, destination, true);
+                    updated++;
+                }
+                catch (IOException ex) when (IsDriverFile(relative))
+                {
+                    var warn = $"Не удалось заменить {relative} (файл занят): {ex.Message}. " +
+                               "Перезагрузите Windows и повторите обновление.";
+                    AppLog.Warn(warn);
+                    if (!warnings.Any(w => w.Contains(relative, StringComparison.OrdinalIgnoreCase)))
+                        warnings.Add(warn);
+                    skipped++;
+                }
+                catch (IOException)
+                {
+                    // Обычный файл занят (антивирус, зависший процесс) — одна повторная попытка
+                    // после короткой паузы, затем пропуск с предупреждением вместо падения.
+                    try
+                    {
+                        Thread.Sleep(1000);
+                        File.Copy(file, destination, true);
+                        updated++;
+                    }
+                    catch (Exception retryEx)
+                    {
+                        AppLog.Warn($"Пропущен занятый файл {relative}: {retryEx.Message}");
+                        skipped++;
+                    }
+                }
+                catch (UnauthorizedAccessException ex)
+                {
+                    AppLog.Warn($"Нет доступа для записи {relative}: {ex.Message}");
+                    skipped++;
+                }
             }
 
-            return (updated, skipped);
+            return (updated, skipped, warnings);
+        }
+
+        /// <summary>Файлы ядерного драйвера WinDivert — их замена при загруженном драйвере опасна.</summary>
+        private static bool IsDriverFile(string relativePath)
+        {
+            var name = Path.GetFileName(relativePath);
+            return name.Equals("WinDivert64.sys", StringComparison.OrdinalIgnoreCase)
+                   || name.Equals("WinDivert32.sys", StringComparison.OrdinalIgnoreCase)
+                   || name.Equals("WinDivert.dll", StringComparison.OrdinalIgnoreCase);
         }
 
         private static bool IsUserFile(string relativePath)

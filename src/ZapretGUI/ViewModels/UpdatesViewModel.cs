@@ -280,6 +280,80 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        /// <summary>
+        /// Автоустановка движка при первом запуске: если bin\winws.exe отсутствует,
+        /// скачивает свежий релиз Flowseal. Возвращает true, если движок готов к работе.
+        /// </summary>
+        public async Task<bool> EnsureEngineInstalledAsync()
+        {
+            if (EngineService.IsEngineReady(Settings.EnginePath))
+                return true;
+
+            if (IsBusy)
+                return EngineService.IsEngineReady(Settings.EnginePath);
+
+            if (!Shell.IsAdmin())
+            {
+                AppLog.Warn("Движок не установлен, а для его установки нужны права администратора");
+                SetMessage("Движок не установлен. Перезапустите приложение от администратора " +
+                           "и нажмите «Скачать и установить».", "Warning");
+                return false;
+            }
+
+            AppLog.Info("Движок не найден — скачиваю актуальный релиз автоматически");
+            IsBusy = true;
+            Progress = 0;
+            Indeterminate = true;
+            Status = "Движок не найден. Скачиваю актуальную версию…";
+            _cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+
+            try
+            {
+                var release = await EngineService.GetLatestReleaseAsync(Settings.IncludePrerelease, _cts.Token);
+                if (release == null)
+                {
+                    Status = "Не удалось скачать движок";
+                    SetMessage("Не удалось получить релиз с GitHub. Проверьте соединение " +
+                               "и нажмите «Скачать и установить» вручную.", "Danger");
+                    return false;
+                }
+
+                var progress = new Progress<ProgressInfo>(ApplyProgress);
+                var result = await EngineService.DownloadAndInstallAsync(
+                    release, Settings.EnginePath, Settings, progress, _cts.Token);
+
+                Status = result.Message;
+                SetMessage(result.Message + (result.Ok
+                    ? $". Обновлено файлов: {result.UpdatedFiles}, сохранено пользовательских: {result.SkippedFiles}."
+                    : ""), result.Ok ? "Success" : "Danger");
+
+                if (result.Ok)
+                {
+                    _main.Home.ReloadFromEngine();
+                    _main.StrategiesPage.Refresh();
+                    Raise(nameof(EngineVersion));
+                }
+
+                return result.Ok;
+            }
+            catch (OperationCanceledException)
+            {
+                Status = "Установка движка отменена";
+                return false;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Автоустановка движка не удалась: " + ex.Message);
+                SetMessage("Не удалось установить движок: " + ex.Message, "Danger");
+                return false;
+            }
+            finally
+            {
+                IsBusy = false;
+                Indeterminate = false;
+            }
+        }
+
         private async Task UpdateEngineAsync()
         {
             if (!Shell.IsAdmin())
@@ -292,48 +366,73 @@ namespace ZapretGui.ViewModels
             Progress = 0;
             Indeterminate = true;
             Status = "Подготовка обновления…";
+            _cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
 
-            var release = await EngineService.GetLatestReleaseAsync(Settings.IncludePrerelease);
-            if (release == null)
+            try
             {
-                SetMessage("Не удалось получить релиз с GitHub.", "Danger");
-                IsBusy = false;
-                return;
-            }
-
-            var wasRunning = _main.Bypass.GetStatus();
-            var progress = new Progress<ProgressInfo>(info =>
-            {
-                Indeterminate = info.IsIndeterminate;
-                if (!info.IsIndeterminate) Progress = info.Percent;
-                Status = info.Status;
-            });
-
-            var result = await EngineService.DownloadAndInstallAsync(release, Settings.EnginePath, Settings, progress);
-
-            IsBusy = false;
-            Indeterminate = false;
-            Status = result.Message;
-            SetMessage(result.Message + (result.Ok
-                ? $". Обновлено файлов: {result.UpdatedFiles}, сохранено пользовательских: {result.SkippedFiles}."
-                : ""), result.Ok ? "Success" : "Danger");
-
-            _main.Home.ReloadFromEngine();
-            _main.StrategiesPage.Refresh();
-            Raise(nameof(EngineVersion));
-
-            // Если обход работал — возвращаем его к жизни с обновлённым движком
-            if (result.Ok && wasRunning.IsRunning)
-            {
-                var strategy = _main.Strategies.Find(Settings.SelectedStrategy) ?? _main.Strategies.Recommended;
-                if (strategy != null)
+                var release = await EngineService.GetLatestReleaseAsync(Settings.IncludePrerelease, _cts.Token);
+                if (release == null)
                 {
-                    Status = "Перезапускаю обход с обновлённым движком…";
-                    var restart = await _main.Bypass.StartAsync(strategy,
-                        EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
-                    SetMessage(restart.Message, restart.Ok ? "Success" : "Warning");
+                    SetMessage("Не удалось получить релиз с GitHub.", "Danger");
+                    return;
+                }
+
+                // КРИТИЧНО для стабильности Windows: перед перезаписью файлов останавливаем
+                // обход, завершаем winws.exe и выгружаем драйвер WinDivert из ядра —
+                // иначе замена WinDivert64.sys «на лету» заканчивается синим экраном (BSOD).
+                Status = "Останавливаю обход и выгружаю драйвер WinDivert…";
+                var wasRunning = await _main.Bypass.PrepareForEngineUpdateAsync(_cts.Token);
+
+                var progress = new Progress<ProgressInfo>(ApplyProgress);
+                var result = await EngineService.DownloadAndInstallAsync(
+                    release, Settings.EnginePath, Settings, progress, _cts.Token);
+
+                Status = result.Message;
+                var key = !result.Ok ? "Danger"
+                    : result.Warnings.Count > 0 ? "Warning"
+                    : "Success";
+                SetMessage(result.Message + (result.Ok
+                    ? $". Обновлено файлов: {result.UpdatedFiles}, сохранено пользовательских: {result.SkippedFiles}."
+                    : ""), key);
+
+                _main.Home.ReloadFromEngine();
+                _main.StrategiesPage.Refresh();
+                Raise(nameof(EngineVersion));
+
+                // Если обход работал — возвращаем его к жизни с обновлённым движком
+                if (result.Ok && wasRunning)
+                {
+                    var strategy = _main.Strategies.Find(Settings.SelectedStrategy) ?? _main.Strategies.Recommended;
+                    if (strategy != null)
+                    {
+                        Status = "Перезапускаю обход с обновлённым движком…";
+                        var restart = await _main.Bypass.StartAsync(strategy,
+                            EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+                        SetMessage(restart.Message, restart.Ok ? "Success" : "Warning");
+                    }
                 }
             }
+            catch (OperationCanceledException)
+            {
+                Status = "Обновление отменено";
+            }
+            catch (Exception ex)
+            {
+                Status = "Ошибка обновления движка";
+                SetMessage(ex.Message, "Danger");
+            }
+            finally
+            {
+                IsBusy = false;
+                Indeterminate = false;
+            }
+        }
+
+        private void ApplyProgress(ProgressInfo info)
+        {
+            Indeterminate = info.IsIndeterminate;
+            if (!info.IsIndeterminate) Progress = info.Percent;
+            Status = info.Status;
         }
 
         private async Task UpdateIpsetAsync()

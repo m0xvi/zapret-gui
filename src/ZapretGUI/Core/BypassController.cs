@@ -207,6 +207,72 @@ namespace ZapretGui.Core
             catch { }
         }
 
+        // ---------------------------------------------------------------- подготовка к обновлению
+
+        /// <summary>
+        /// Безопасная подготовка к перезаписи файлов движка.
+        /// Останавливает обход (службу zapret и winws.exe), завершает зависшие процессы,
+        /// останавливает службы WinDivert/WinDivert14 и ждёт выгрузки драйвера из ядра Windows.
+        /// Без этого перезапись bin\WinDivert64.sys «на лету» заканчивается BSOD.
+        /// Возвращает true, если обход работал (после обновления его стоит перезапустить).
+        /// </summary>
+        public async Task<bool> PrepareForEngineUpdateAsync(CancellationToken ct = default)
+        {
+            var wasRunning = GetStatus().IsRunning;
+            AppLog.Info("Подготовка к обновлению движка: останавливаю обход…");
+
+            try
+            {
+                // 1. Штатная остановка: служба zapret + процесс winws.exe
+                await StopAsync(ct).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("Ошибка при остановке обхода перед обновлением: " + ex.Message);
+            }
+
+            // 2. Добиваем зависшие процессы winws.exe (служба могла оставить процесс)
+            if (Shell.IsProcessRunning("winws"))
+            {
+                AppLog.Info("Завершаю зависший процесс winws.exe…");
+                Shell.KillProcess("winws");
+                await Shell.WaitForAsync(() => !Shell.IsProcessRunning("winws"), 8000).ConfigureAwait(false);
+            }
+
+            if (Shell.IsProcessRunning("winws"))
+            {
+                AppLog.Warn("Процесс winws.exe не завершился — файлы движка могут быть заблокированы");
+            }
+
+            // 3. Останавливаем службы WinDivert, чтобы ядро отпустило WinDivert64.sys
+            try
+            {
+                await WinServices.StopForEngineUpdateAsync().ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("Ошибка при остановке служб WinDivert: " + ex.Message);
+            }
+
+            // 4. Ждём выгрузки драйвера из ядра (с паузой 2 с внутри)
+            try
+            {
+                await WinServices.WaitForDriverUnloadAsync(EngineRoot).ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("Ошибка при ожидании выгрузки драйвера: " + ex.Message);
+            }
+
+            if (ct.IsCancellationRequested)
+                AppLog.Warn("Подготовка к обновлению была отменена");
+
+            AppLog.Info(wasRunning
+                ? "Обход остановлен, драйвер выгружен — можно обновлять файлы"
+                : "Обход не работал — файлы движка свободны для обновления");
+            return wasRunning;
+        }
+
         // ---------------------------------------------------------------- служба
 
         public async Task<OperationResult> InstallServiceAsync(StrategyInfo strategy, GameFilterMode gameFilter,

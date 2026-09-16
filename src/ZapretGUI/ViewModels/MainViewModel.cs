@@ -102,7 +102,7 @@ namespace ZapretGui.ViewModels
 
         public bool AdminWarningVisible => !IsAdmin;
 
-        public string AppVersion => "1.0.1";
+        public string AppVersion => "1.0.3";
 
         public string EngineVersionText
         {
