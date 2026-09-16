@@ -70,6 +70,7 @@ Windows, поэтому в отчёте пользователю честно у
 | Имя службы `zapret` и значение реестра `zapret-discord-youtube` = имя стратегии | `Core/WinServices.cs` | совместимость с оригинальным менеджером |
 | Блок `hosts` между маркерами `# ==== Zapret GUI … begin/end ====` + резервная копия | `EngineService.ApplyHosts` | безопасное обновление hosts вместо ручного копирования |
 | Сохранение пользовательских файлов при апдейте | `EngineService.CopyEngine`, `IsUserFile` | иначе пользователь потеряет свои списки |
+| Порядок обновления движка: стоп обхода → `sc stop zapret/WinDivert/WinDivert14` → пауза выгрузки драйвера → замена файлов; заблокированный `WinDivert64.sys` пропускать, а не перезаписывать | `BypassController.PrepareForEngineUpdateAsync`, `WinServices.StopForEngineUpdateAsync/WaitForDriverUnloadAsync`, `EngineService.CopyEngine` | иначе BSOD при обновлении «на лету» |
 
 ## 5. Как добавить страницу или настройку
 
