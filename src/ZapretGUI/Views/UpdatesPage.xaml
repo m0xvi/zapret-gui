@@ -71,7 +71,7 @@
                             </StackPanel>
 
                             <StackPanel Margin="0,14,0,0" Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}">
-                                <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding Progress}" Maximum="100"
+                                <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding Progress, Mode=OneWay}" Maximum="100"
                                              Visibility="{Binding Indeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
                                 <TextBlock Style="{StaticResource MutedText}" Text="{Binding Status}" Margin="0,8,0,0" />
                             </StackPanel>
