@@ -123,7 +123,7 @@ namespace ZapretGui.ViewModels
         public double Progress
         {
             get => _progress;
-            private set => Set(ref _progress, value);
+            set => Set(ref _progress, value);
         }
 
         public bool Indeterminate
