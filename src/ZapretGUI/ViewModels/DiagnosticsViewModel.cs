@@ -256,7 +256,12 @@ namespace ZapretGui.ViewModels
             private set => Set(ref _dpiSummaryKey, value);
         }
 
-        public string DpiLastCheckText { get; private set; } = "Проверка ещё не выполнялась";
+        private string _dpiLastCheckText = "Проверка ещё не выполнялась";
+        public string DpiLastCheckText
+        {
+            get => _dpiLastCheckText;
+            private set => Set(ref _dpiLastCheckText, value);
+        }
 
         public NetworkObservationSnapshot DpiObservation
         {
@@ -624,7 +629,7 @@ namespace ZapretGui.ViewModels
                 var comparison = await _main.Bypass.DiagnoseResourceAsync(comparisonTarget, ct);
                 var snapshot = await _main.Bypass.RunDpiCheckAsync(
                     string.IsNullOrWhiteSpace(DpiCustomHost) ? null : DpiCustomHost,
-                    progress, ct);
+                    progress, ct, maxTargets: 34);
                 snapshot.BypassComparison = comparison;
                 snapshot.Observation = NetworkObservationSnapshot.From(
                     snapshot.Results, comparison, snapshot.CreatedAt, snapshot.ControlResult);

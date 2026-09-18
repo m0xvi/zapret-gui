@@ -32,6 +32,11 @@ PAGE_VM = {
     "StrategiesPage": ["StrategiesViewModel"],
     "UpdatesPage": ["UpdatesViewModel"],
     "DiagnosticsPage": ["DiagnosticsViewModel"],
+    "DpiPage": ["DiagnosticsViewModel"],
+    "DeepCheckPage": ["DeepCheckViewModel"],
+    "FirstLaunchPage": ["FirstLaunchViewModel"],
+    "MonitoringPage": ["MonitoringViewModel"],
+    "UserListsPage": ["UserListsViewModel"],
     "LogsPage": ["LogsViewModel"],
     "SettingsPage": ["SettingsViewModel"],
     "AboutPage": ["MainViewModel"],
@@ -40,10 +45,13 @@ PAGE_VM = {
 
 # Типы элементов, на которые указывают {Binding} внутри DataTemplate
 ITEM_TYPES = {
-    "UpdatesPage": ["EngineConsistencyItem"],
+    "UpdatesPage": ["EngineConsistencyItem", "EngineBackupInfo"],
     "HomePage": ["ConnectionCheck", "MonitorTarget"],
     "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord"],
     "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult"],
+    "DpiPage": ["DpiTargetResult", "DpiProbeResult"],
+    "DeepCheckPage": ["DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "EngineConsistencyCheck"],
+    "MonitoringPage": ["MonitorTarget", "ResourceProbeResult"],
     "LogsPage": ["LogEntry"],
     "MainWindow": ["NavItem"],
 }
@@ -128,7 +136,8 @@ def main():
                 owner = next((prop_types.get((vm, first)) for vm in vms
                               if first in members.get(vm, set())), None)
                 if owner is None:
-                    owner = next((item for item in items if first in members.get(item, set())), None)
+                    owner = next((prop_types.get((item, first)) for item in items
+                                  if first in members.get(item, set())), None)
 
                 if owner and owner not in SKIP_SECOND and second not in members.get(owner, set()):
                     problems.append(f"{os.path.relpath(path, ROOT)}: у типа {owner} нет свойства '{second}' (в '{binding}')")

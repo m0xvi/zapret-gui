@@ -68,26 +68,20 @@
                     ToolTip="Выбрать рекомендуемую стратегию (обычно general FAKE TLS AUTO)" />
         </Grid>
 
-        <Border Grid.Row="2" Margin="0,0,0,12" Padding="12,9"
+        <Border Grid.Row="2" Margin="0,0,0,12" Padding="14,10"
                 CornerRadius="9" Background="{Binding TestSummaryKey, Converter={StaticResource SoftSeverityBrush}}"
                 Visibility="{Binding TestProgressVisible, Converter={StaticResource BoolToVis}}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                    <Grid Visibility="{Binding IsTestingAll, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding TestProgressText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding TestProgressPercentText}" HorizontalAlignment="Right"
-                                   Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
-                    </Grid>
-                    <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding TestProgressValue}" Maximum="{Binding TestProgressMaximum}"
-                                 IsIndeterminate="{Binding TestProgressIndeterminate}" Margin="0,7,0,5"
-                                 Visibility="{Binding IsTestingAll, Converter={StaticResource BoolToVis}}" />
-                    <TextBlock Style="{StaticResource MutedText}" Text="{Binding TestSummary}" />
-                </StackPanel>
-            </Grid>
+            <StackPanel>
+                <Grid Visibility="{Binding IsTestingAll, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding TestProgressText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding TestProgressPercentText}" HorizontalAlignment="Right"
+                               Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
+                </Grid>
+                <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding TestProgressValue}" Maximum="{Binding TestProgressMaximum}"
+                             IsIndeterminate="{Binding TestProgressIndeterminate}" Margin="0,7,0,5"
+                             Visibility="{Binding IsTestingAll, Converter={StaticResource BoolToVis}}" />
+                <TextBlock Style="{StaticResource MutedText}" Text="{Binding TestSummary}" TextWrapping="Wrap" />
+            </StackPanel>
         </Border>
 
         <!-- Список и детали. Блоки выстроены вертикально, чтобы страница
