@@ -982,4 +982,22 @@ CI и что требует Windows runtime.
 - CI run и его статус;
 - что осталось проверить на Windows;
 - что merge в main не выполнялся без отдельного запроса пользователя.
+
+---
+
+### Итерация 2026-09-18 (Determinate Progress, Empirical Scoring & UI Polish)
+
+1. **Замена спиннеров и плейсхолдеров на честные детерминированные индикаторы:**
+   - `MonitoringPage.xaml` / `MonitoringViewModel.cs`: Добавлен детерминированный прогресс-бар `ProgressValue` / `ProgressMaximum` с расчётом `ProgressPercentText` и текстовым статусом по проверяемым ресурсам (`1 из N: Name…`).
+   - `StrategiesPage.xaml` / `StrategiesViewModel.cs`: Заменены спиннеры `BusySpinner` в блоках генерации и проверки кандидатов на структурированные индикаторы и детерминированный прогресс-бар `CandidateEvaluationProgressValue` / `CandidateEvaluationProgressMaximum` с процентами.
+   - `BypassController.cs` / `StrategiesViewModel.cs`: В `TestStrategyAsync` добавлен `IProgress<string>? progress`, транслирующий детальный прогресс подключения по 8 контрольным ресурсам из `ConnectionTester.RunAsync`.
+   - `UpdatesPage.xaml` / `UpdatesViewModel.cs`: В панели загрузки обновления движка спиннер заменён на статусную строку с процентом `ProgressPercentText` и `ThinProgress`.
+
+2. **Эмпирическая приоритизация рекомендаций:**
+   - В `StrategyCandidateEvaluation` подтверждена формула `Score = SuccessfulRepeats * 10000 + PassedChecks * 100 + (RepeatCount == 0 ? 0 : SuccessfulRepeats * 100 / RepeatCount) + LatencyScore`, где стабильность и эмпирические результаты проверок строго превалируют над эвристиками.
+   - Добавлен 33-й тест в `tools/CoreLogicHarness/Program.cs`: `Score кандидата приоритизирует эмпирические результаты проверок`.
+
+3. **Верификация:**
+   - `python3 tools/check_bindings.py`: Проверено 16 XAML-файлов и 90 ключей ресурсов — 0 ошибок.
+   - `git diff --check`: 0 предупреждений по форматированию и пробелам.
 ```

@@ -183,12 +183,10 @@
                                 Visibility="{Binding CandidateGenerationVisible, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionText}" Text="НАБОР КАНДИДАТОВ" />
-                                <WrapPanel Visibility="{Binding IsGeneratingCandidates, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
-                                    <Border Style="{StaticResource BusySpinner}">
-                                        <TextBlock Text="…" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Style="{StaticResource MutedText}" Text="Собираю варианты…" Margin="8,2,0,0" />
-                                </WrapPanel>
+                                <Border Margin="0,0,0,6" Padding="8,6" CornerRadius="6" Background="{DynamicResource ElevatedBrush}"
+                                        Visibility="{Binding IsGeneratingCandidates, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Style="{StaticResource BodyText}" Text="Анализирую параметры и формирую набор вариантов…" FontWeight="SemiBold" />
+                                </Border>
                                 <TextBlock Style="{StaticResource MutedText}" Text="{Binding CandidateGenerationText}" TextWrapping="Wrap" />
                                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" MaxHeight="220" VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
                                     <ItemsControl ItemsSource="{Binding GeneratedCandidates}">
@@ -233,13 +231,18 @@
                                 Visibility="{Binding CandidateEvaluationVisible, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПРОВЕРКИ" />
-                                <WrapPanel Visibility="{Binding IsEvaluatingCandidates, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
-                                    <Border Style="{StaticResource BusySpinner}">
-                                        <TextBlock Text="…" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Style="{StaticResource MutedText}" Text="Проверяю варианты…" Margin="8,2,0,0" />
-                                </WrapPanel>
-                                <TextBlock Style="{StaticResource MutedText}" Text="{Binding CandidateEvaluationText}" TextWrapping="Wrap" />
+                                <Grid Visibility="{Binding CandidateEvaluationProgressVisible, Converter={StaticResource BoolToVis}}" Margin="0,0,0,4">
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding CandidateEvaluationText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding CandidateEvaluationProgressPercentText}" HorizontalAlignment="Right"
+                                               Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
+                                </Grid>
+                                <ProgressBar Style="{StaticResource ThinProgress}" Height="6" Margin="0,2,0,8"
+                                             Value="{Binding CandidateEvaluationProgressValue}"
+                                             Maximum="{Binding CandidateEvaluationProgressMaximum}"
+                                             IsIndeterminate="False"
+                                             Visibility="{Binding CandidateEvaluationProgressVisible, Converter={StaticResource BoolToVis}}" />
+                                <TextBlock Style="{StaticResource MutedText}" Text="{Binding CandidateEvaluationText}" TextWrapping="Wrap"
+                                           Visibility="{Binding CandidateEvaluationProgressVisible, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
                                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" MaxHeight="190" VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
                                     <ItemsControl ItemsSource="{Binding CandidateEvaluationView}">
                                         <ItemsControl.ItemTemplate>

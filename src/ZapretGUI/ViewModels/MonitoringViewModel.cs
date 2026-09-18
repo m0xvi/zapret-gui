@@ -19,6 +19,11 @@ namespace ZapretGui.ViewModels
         private readonly MainViewModel _main;
         private readonly DispatcherTimer _timer;
         private bool _isBusy;
+        private double _progressValue;
+        private double _progressMaximum = 1;
+        private bool _progressVisible;
+        private string _progressText = "";
+        private string _progressPercentText = "";
         private MonitorTarget? _selectedTarget;
         private ResourceDiagnosisResult? _diagnosis;
         private string _newResourceUrl = "";
@@ -105,6 +110,36 @@ namespace ZapretGui.ViewModels
                     (DiagnoseCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
+        }
+
+        public double ProgressValue
+        {
+            get => _progressValue;
+            private set => Set(ref _progressValue, value);
+        }
+
+        public double ProgressMaximum
+        {
+            get => _progressMaximum;
+            private set => Set(ref _progressMaximum, value);
+        }
+
+        public bool ProgressVisible
+        {
+            get => _progressVisible;
+            private set => Set(ref _progressVisible, value);
+        }
+
+        public string ProgressText
+        {
+            get => _progressText;
+            private set => Set(ref _progressText, value);
+        }
+
+        public string ProgressPercentText
+        {
+            get => _progressPercentText;
+            private set => Set(ref _progressPercentText, value);
         }
 
         public string NewResourceUrl
@@ -197,12 +232,24 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             Message = "Проверяю ресурсы…";
             MessageKey = "Info";
+            var enabled = Targets.Where(t => t.Enabled).ToList();
+            ProgressMaximum = Math.Max(1, enabled.Count);
+            ProgressValue = 0;
+            ProgressPercentText = "0%";
+            ProgressText = "Подготавливаю проверку ресурсов…";
+            ProgressVisible = true;
             try
             {
                 Results.Clear();
-                var enabled = Targets.Where(t => t.Enabled).ToList();
-                foreach (var target in enabled)
-                    Results.Add(await ResourceProbe.CheckAsync(target));
+                for (var i = 0; i < enabled.Count; i++)
+                {
+                    var target = enabled[i];
+                    ProgressText = $"Проверяю {i + 1} из {enabled.Count}: {target.Name}…";
+                    var probe = await ResourceProbe.CheckAsync(target);
+                    Results.Add(probe);
+                    ProgressValue = i + 1;
+                    ProgressPercentText = $"{ProgressValue / ProgressMaximum * 100:0}%";
+                }
 
                 LastCheckText = "Последняя проверка: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss");
                 var failed = Results.FirstOrDefault(r => !r.Ok);
@@ -227,6 +274,8 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
+                ProgressVisible = false;
+                ProgressText = "";
                 IsBusy = false;
             }
         }

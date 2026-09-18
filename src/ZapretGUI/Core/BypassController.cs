@@ -230,7 +230,7 @@ namespace ZapretGui.Core
         /// и затем возвращает прежнее состояние обхода. Настройки пользователя не меняются.
         /// </summary>
         public async Task<StrategyTestResult> TestStrategyAsync(StrategyInfo strategy,
-            CancellationToken ct = default)
+            CancellationToken ct = default, IProgress<string>? progress = null)
         {
             var startedAt = DateTime.UtcNow;
             if (!File.Exists(WinwsPath))
@@ -266,6 +266,7 @@ namespace ZapretGui.Core
             {
                 if (before.IsRunning)
                 {
+                    progress?.Report("Останавливаю текущий обход…");
                     var stopped = await StopAsync(ct).ConfigureAwait(false);
                     if (!stopped.Ok)
                     {
@@ -278,6 +279,7 @@ namespace ZapretGui.Core
                     }
                 }
 
+                progress?.Report($"Запускаю пробный процесс со стратегией «{strategy.Name}»…");
                 var start = await StartAsync(strategy,
                     EngineService.GetGameFilterMode(EngineRoot), false, ct, testMode: true).ConfigureAwait(false);
                 if (!start.Ok)
@@ -291,8 +293,9 @@ namespace ZapretGui.Core
                 }
 
                 // Даём winws.exe загрузить WinDivert и начать обрабатывать трафик.
+                progress?.Report("Ожидаю инициализацию WinDivert…");
                 await Task.Delay(1200, ct).ConfigureAwait(false);
-                var checks = await ConnectionTester.RunAsync(ct).ConfigureAwait(false);
+                var checks = await ConnectionTester.RunAsync(ct, progress).ConfigureAwait(false);
                 return new StrategyTestResult
                 {
                     Strategy = strategy,

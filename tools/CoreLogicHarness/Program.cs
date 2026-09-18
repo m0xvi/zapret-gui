@@ -44,6 +44,7 @@ namespace ZapretGui.CoreLogicHarness
                 ("Снимок DPI сохраняет этапы, контрольный endpoint и повторы", DpiSnapshotKeepsStages),
                 ("Контракт IsSuitable сохраняет совместимость с двухресурсным smoke", StrategySuitabilitySmokeContract),
                 ("DPI-score и классификация freeze соответствуют формуле", DpiProbeScoreAndFreezeClassification),
+                ("Score кандидата приоритизирует эмпирические результаты проверок", EmpiricalCandidateEvaluationScoreOrdering),
                 ("Диагностический отчёт сериализуется вместе с журналом восстановления", DiagnosticsReportRoundTrips)
             };
 
@@ -846,6 +847,49 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
             var successful = probes.Count - failed;
             var score = successful * 10 - failed * 20 - freezes * 100;
             Assert(score == -130, "формула DPI-score рассчитана неверно");
+        }
+
+        private static void EmpiricalCandidateEvaluationScoreOrdering()
+        {
+            var candidateA = new StrategyCandidate { Name = "Candidate A", Args = new[] { "--wf-tcp=443" } };
+            var candidateB = new StrategyCandidate { Name = "Candidate B", Args = new[] { "--wf-tcp=443", "--dpi-desync=fake" } };
+
+            var evalA = new StrategyCandidateEvaluation(candidateA);
+            evalA.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateA.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = true } }
+            }, 1, 2);
+            evalA.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateA.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = true } }
+            }, 2, 2);
+            evalA.Complete();
+
+            var evalB = new StrategyCandidateEvaluation(candidateB);
+            evalB.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateB.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = false } }
+            }, 1, 2);
+            evalB.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateB.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = false } }
+            }, 2, 2);
+            evalB.Complete();
+
+            Assert(evalA.Score > evalB.Score, "кандидат со 100% стабильностью и прохождением проверок должен иметь больший score");
+            Assert(evalA.IsStable && !evalB.IsStable, "стабильность кандидатов должна различаться");
         }
 
         private static void DiagnosticsReportRoundTrips()
