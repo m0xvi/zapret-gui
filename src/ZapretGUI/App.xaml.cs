@@ -24,6 +24,17 @@ namespace ZapretGui
         {
             base.OnStartup(e);
 
+            // Временная копия приложения выполняет замену exe после завершения
+            // основного процесса и не создаёт обычное окно.
+            if (GuiUpdateService.IsUpdaterMode(e.Args))
+            {
+                var exitCode = GuiUpdateService.RunUpdaterMode(e.Args);
+                Shutdown(exitCode);
+                return;
+            }
+
+            GuiUpdateService.RecoverInterruptedUpdate();
+
             try { Encoding.RegisterProvider(CodePagesEncodingProvider.Instance); } catch { }
 
             DispatcherUnhandledException += OnDispatcherUnhandledException;
@@ -56,7 +67,9 @@ namespace ZapretGui
             _viewModel = new MainViewModel(settings);
             var window = new MainWindow(_viewModel);
 
-            if (settings.StartMinimized)
+            // Первый запуск всегда открывается явно. До согласия пользователя не
+            // скачиваем движок, не запускаем тесты и не меняем службу или сеть.
+            if (settings.FirstLaunchWizardCompleted && settings.StartMinimized)
             {
                 window.ShowInTaskbar = false;
                 window.WindowState = WindowState.Minimized;
@@ -68,22 +81,42 @@ namespace ZapretGui
                 window.Show();
             }
 
-            // При первом запуске движка ещё нет — ставим его автоматически,
-            // затем (если включено в настройках) тихо проверяем обновления.
             var viewModel = _viewModel;
             _ = Task.Run(async () =>
             {
                 try
                 {
-                    await Task.Delay(2500);
+                    await Task.Delay(settings.FirstLaunchWizardCompleted ? 2500 : 250);
 
-                    // EnsureEngineInstalledAsync трогает UI-коллекции, поэтому выполняем
-                    // его на UI-потоке, а через Unwrap() дожидаемся именно bool-результата
-                    // (без Unwrap await вернул бы Task<bool> вместо bool).
-                    var installed = await window.Dispatcher.InvokeAsync(
-                        () => viewModel.Updates.EnsureEngineInstalledAsync()).Task.Unwrap();
-                    if (installed && settings.AutoCheckEngineUpdates)
+                    if (!settings.FirstLaunchWizardCompleted)
+                    {
+                        await window.Dispatcher.InvokeAsync(() =>
+                        {
+                            viewModel.FirstLaunch.RefreshStrategyList();
+                            viewModel.Navigate("first-run");
+                        });
+                        return;
+                    }
+
+                    // В безопасном режиме даже установка движка выполняется только
+                    // по кнопке пользователя на странице «Обновления».
+                    var installed = EngineService.IsEngineReady(settings.EnginePath);
+                    if (!installed && !settings.SafeMode)
+                    {
+                        installed = await window.Dispatcher.InvokeAsync(
+                            () => viewModel.Updates.EnsureEngineInstalledAsync()).Task.Unwrap();
+                    }
+
+                    if (installed && settings.AutoCheckEngineUpdates && !settings.SafeMode)
                         await window.Dispatcher.InvokeAsync(async () => await viewModel.Updates.CheckAsync());
+
+                    // Автоматическая проверка GUI только сообщает о новой версии:
+                    // скачивание и перезапуск всегда требуют отдельного подтверждения.
+                    if (settings.AutoCheckGuiUpdates && !settings.SafeMode)
+                        await window.Dispatcher.InvokeAsync(async () => await viewModel.Updates.CheckGuiUpdateAsync(true));
+
+                    // Первоначальные проверки выполняются только из мастера или
+                    // вручную. Фоновые сетевые тесты здесь намеренно не запускаются.
                 }
                 catch (Exception ex)
                 {

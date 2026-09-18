@@ -1,14 +1,25 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace ZapretGui.Core
 {
     /// <summary>Описание стратегии обхода (один .bat файл из папки движка).</summary>
-    public sealed class StrategyInfo
+    public enum StrategyTestState { NotTested, Testing, Passed, Failed }
+
+    public sealed class StrategyInfo : INotifyPropertyChanged
     {
+        private StrategyTestState _testState;
+        private string _testStatusText = "не проверено";
+        private string _testStatusKey = "Muted";
+        private StrategyTestResult? _testResult;
+
+        public event PropertyChangedEventHandler? PropertyChanged;
+
         public string Name { get; set; } = "";
         public string FileName { get; set; } = "";
         public string FullPath { get; set; } = "";
@@ -37,6 +48,71 @@ namespace ZapretGui.Core
                 return text.Length > 400 ? text.Substring(0, 400) + " …" : text;
             }
         }
+
+        public StrategyTestState TestState
+        {
+            get => _testState;
+            private set
+            {
+                if (_testState == value) return;
+                _testState = value;
+                Raise();
+                Raise(nameof(IsTesting));
+            }
+        }
+
+        public bool IsTesting => TestState == StrategyTestState.Testing;
+        public string TestStatusText
+        {
+            get => _testStatusText;
+            private set
+            {
+                if (_testStatusText == value) return;
+                _testStatusText = value;
+                Raise();
+            }
+        }
+
+        public string TestStatusKey
+        {
+            get => _testStatusKey;
+            private set
+            {
+                if (_testStatusKey == value) return;
+                _testStatusKey = value;
+                Raise();
+            }
+        }
+
+        public StrategyTestResult? TestResult => _testResult;
+
+        public void SetTestStarted()
+        {
+            _testResult = null;
+            TestState = StrategyTestState.Testing;
+            TestStatusText = "проверяю…";
+            TestStatusKey = "Warning";
+            Raise(nameof(TestResult));
+        }
+
+        public void RefreshTheme()
+        {
+            Raise(nameof(TestStatusKey));
+        }
+
+        public void SetTestResult(StrategyTestResult result)
+        {
+            _testResult = result;
+            TestState = result.IsSuitable ? StrategyTestState.Passed : StrategyTestState.Failed;
+            TestStatusText = result.Started
+                ? $"{result.PassedCount}/{result.Checks.Count} · {result.ElapsedText}"
+                : "не запустилась";
+            TestStatusKey = result.IsSuitable ? "Success" : result.Started && result.PassedCount > 0 ? "Warning" : "Danger";
+            Raise(nameof(TestResult));
+        }
+
+        private void Raise([CallerMemberName] string? propertyName = null)
+            => PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 
     /// <summary>

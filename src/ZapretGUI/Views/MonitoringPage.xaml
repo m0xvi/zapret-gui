@@ -1,0 +1,131 @@
+<UserControl x:Class="ZapretGui.Views.MonitoringPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                  PanningMode="VerticalOnly" Padding="0,0,4,0">
+    <Grid Margin="24,20,20,26">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                <TextBlock Style="{StaticResource DisplayText}" Text="Мониторинг" />
+                <TextBlock Style="{StaticResource MutedText}"
+                           Text="Проверяет ресурсы в фоне и объясняет, что именно не работает: провайдер, сервер или стратегия" />
+            </StackPanel>
+            <WrapPanel Grid.Column="1" MaxWidth="340" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <Button Style="{StaticResource PrimaryButton}" Content="Проверить сейчас" Command="{Binding CheckAllCommand}"
+                        ToolTip="Проверить все включённые ресурсы без остановки обхода" />
+                <Button Style="{StaticResource SecondaryButton}" Content="Определить причину" Margin="8,0,0,0"
+                        Command="{Binding DiagnoseCommand}"
+                        ToolTip="Сравнить ресурс без обхода и с текущей стратегией. Обход будет кратко перезапущен." />
+            </WrapPanel>
+        </Grid>
+
+        <StackPanel Grid.Row="1" Margin="0,16,0,12">
+            <Border CornerRadius="10" Padding="14,11"
+                    Background="{Binding MessageKey, Converter={StaticResource SoftSeverityBrush}}"
+                    Visibility="{Binding MessageVisible, Converter={StaticResource BoolToVis}}">
+                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message}" TextWrapping="Wrap" />
+            </Border>
+            <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
+                    Background="{Binding DiagnosisKey, Converter={StaticResource SoftSeverityBrush}}"
+                    Visibility="{Binding DiagnosisVisible, Converter={StaticResource BoolToVis}}">
+                <TextBlock Style="{StaticResource BodyText}" Text="{Binding DiagnosisText}" TextWrapping="Wrap" />
+            </Border>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2">
+            <Border Style="{StaticResource Card}" Padding="8">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <WrapPanel Orientation="Horizontal" Margin="8,4,8,12">
+                        <TextBlock Style="{StaticResource SectionText}" Text="РЕСУРСЫ" VerticalAlignment="Center" />
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding LastCheckText}" Margin="14,0,0,0" VerticalAlignment="Center" />
+                    </WrapPanel>
+                    <ListBox Grid.Row="1" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Targets}"
+                             SelectedItem="{Binding SelectedTarget, Mode=TwoWay}" Background="Transparent"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="8,7">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}" VerticalAlignment="Top"
+                                              ToolTip="Включить ресурс в фоновую проверку" />
+                                    <StackPanel Grid.Column="1" Margin="10,0,8,0">
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Name}" FontWeight="SemiBold" />
+                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Удалить" Padding="8,5"
+                                            Command="{Binding DataContext.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                            CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                                            ToolTip="Убрать пользовательский ресурс из мониторинга" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Grid>
+            </Border>
+
+            <StackPanel>
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="ДОБАВИТЬ РЕСУРС" />
+                        <TextBlock Style="{StaticResource MutedText}"
+                                   Text="URL, название и тип ресурса вводятся в отдельном окне, чтобы пустые поля не занимали место." TextWrapping="Wrap" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Добавить ресурс в мониторинг" Margin="0,10,0,0"
+                                Command="{Binding AddResourceCommand}"
+                                ToolTip="Добавить ресурс в список фоновой проверки" />
+                        <Button Style="{StaticResource GhostButton}" Content="Добавить выбранный домен в обход" Margin="0,8,0,0"
+                                Command="{Binding AddToBypassListCommand}"
+                                ToolTip="Добавить домен в lists\list-general-user.txt. После этого перезапустите обход." />
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                   Text="Сначала ресурс проверяется напрямую и с обходом. Автоматически добавлять домены без подтверждения приложение не будет — это защищает от ложных срабатываний." TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="ПОСЛЕДНИЕ РЕЗУЛЬТАТЫ" />
+                        <ItemsControl ItemsSource="{Binding Results}">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource InnerCard}" Margin="0,5,0,0">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel>
+                                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Target.Name}" FontWeight="SemiBold" />
+                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" TextWrapping="Wrap" />
+                                            </StackPanel>
+                                            <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding StatusText}"
+                                                       Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+        </StackPanel>
+    </Grid>
+    </ScrollViewer>
+</UserControl>

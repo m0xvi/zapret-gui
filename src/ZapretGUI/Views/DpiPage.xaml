@@ -1,0 +1,151 @@
+<UserControl x:Class="ZapretGui.Views.DpiPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                  PanningMode="VerticalOnly" Padding="0,0,4,0">
+        <StackPanel Margin="24,20,20,26">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Margin="0,0,12,0">
+                    <TextBlock Style="{StaticResource DisplayText}" Text="Проверка DPI" />
+                    <TextBlock Style="{StaticResource MutedText}"
+                               Text="Отдельная сетевая проверка: DNS, TCP, TLS 1.2 и TLS 1.3 на тестовых endpoint-ах." />
+                </StackPanel>
+                <WrapPanel Grid.Column="1" MaxWidth="360" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <Button Style="{StaticResource GhostButton}" Content="Отменить проверку"
+                            Command="{Binding CancelDpiCommand}"
+                            Visibility="{Binding DpiProgressVisible, Converter={StaticResource BoolToVis}}" />
+                    <Button Style="{StaticResource GhostButton}" Content="Экспорт JSON" Margin="8,0,0,0"
+                            Command="{Binding ExportReportCommand}" />
+                    <Button Style="{StaticResource GhostButton}" Content="Экспорт ZIP" Margin="8,0,0,0"
+                            Command="{Binding ExportArchiveCommand}" />
+                </WrapPanel>
+            </Grid>
+
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="КАК ПРОХОДИТ ПРОВЕРКА" />
+                    <TextBlock Style="{StaticResource BodyText}" Text="Проверяются доступность и характер ответа, а не провайдер пользователя." TextWrapping="Wrap" />
+                    <ItemsControl Margin="0,12,0,0">
+                        <ItemsControl.Items>
+                            <TextBlock Style="{StaticResource MutedText}" Text="1. Загружается набор endpoint-ов или используется ваш адрес." Margin="0,3,0,0" />
+                            <TextBlock Style="{StaticResource MutedText}" Text="2. Для каждого узла выполняются DNS и TCP-проверки." Margin="0,3,0,0" />
+                            <TextBlock Style="{StaticResource MutedText}" Text="3. Выполняются HTTPS-пробы с буфером 64 КБ по TLS 1.2 и TLS 1.3." Margin="0,3,0,0" />
+                            <TextBlock Style="{StaticResource MutedText}" Text="4. Результаты сравниваются с контрольным endpoint-ом и текущим обходом." Margin="0,3,0,0" />
+                        </ItemsControl.Items>
+                    </ItemsControl>
+                    <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0"
+                               Text="Проверка может временно перезапустить текущий обход. Службы и настройки Windows не устанавливаются и не меняются." TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
+
+                <Border Style="{StaticResource Card}" Margin="0,16,0,0"
+                        Background="{Binding DpiSummaryKey, Converter={StaticResource SoftSeverityBrush}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="ХОД И РЕЗУЛЬТАТ ПРОВЕРКИ" />
+                        <TextBlock Style="{StaticResource DimText}"
+                                   Text="DNS, TCP и HTTPS-пробы по смыслу DPI checkers из test zapret.ps1: случайный буфер 64 КБ, HTTP/1.1, TLS 1.2/1.3 и сравнение с текущим обходом. DPI-suite запускается без активного обхода, ipset временно переводится в режим any, затем исходные обход и ipset восстанавливаются. Результат показывает возможный паттерн блокировки, но не определяет вашего провайдера. Провайдеры ниже — только инфраструктура тестовых endpoint-ов." TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource DimText}" Text="Пользовательский HTTPS-узел (необязательно)" Margin="0,12,0,0" />
+                        <TextBox Style="{StaticResource InputBox}" Margin="0,6,0,0"
+                                 Text="{Binding DpiCustomHost, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Необязательно: один собственный HTTPS-хост для проверки вместо набора узлов" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Запустить DPI-проверку" Margin="0,8,0,0"
+                                Command="{Binding RunDpiCommand}" />
+                        <WrapPanel Margin="0,10,0,0" Visibility="{Binding DpiProgressVisible, Converter={StaticResource BoolToVis}}">
+                            <Border Style="{StaticResource BusySpinner}">
+                                <TextBlock Text="…" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <TextBlock Style="{StaticResource MutedText}" Text="DPI-проверка выполняется…" Margin="8,2,0,0" />
+                        </WrapPanel>
+                        <Grid Margin="0,10,0,0" Visibility="{Binding DpiProgressVisible, Converter={StaticResource BoolToVis}}">
+                            <ProgressBar Style="{StaticResource ThinProgress}" Height="7"
+                                         Value="{Binding DpiProgressValue, Mode=OneWay}"
+                                         Maximum="{Binding DpiProgressMaximum, Mode=OneWay}"
+                                         IsIndeterminate="{Binding DpiProgressIndeterminate, Mode=OneWay}" />
+                        </Grid>
+                        <Grid Margin="0,6,0,0" Visibility="{Binding DpiProgressVisible, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiProgressText}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding DpiProgressPercentText}" HorizontalAlignment="Right"
+                                       Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
+                        </Grid>
+                        <TextBlock Style="{StaticResource MutedText}" Text="{Binding DpiSummary}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource DimText}" Text="Признаки для автоконструктора: " Margin="0,6,0,0" />
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiObservationText}" TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiLastCheckText}" Margin="0,4,0,0" />
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiSuiteSourceText}" Margin="0,3,0,0" />
+                        <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0"
+                                Visibility="{Binding DpiControlVisible, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="КОНТРОЛЬНЫЙ ENDPOINT" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiControlResult.DisplayName}" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiControlAttemptText}" />
+                                <ItemsControl ItemsSource="{Binding DpiControlResult.Probes}" Margin="0,4,0,0">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <WrapPanel Orientation="Horizontal">
+                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding TestName}" />
+                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Status}" Margin="6,0,0,0" />
+                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" Margin="6,0,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Details}" />
+                                            </WrapPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0"
+                                Visibility="{Binding DpiComparisonVisible, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="ПРЯМОЕ СОЕДИНЕНИЕ И ОБХОД" />
+                                <TextBlock Style="{StaticResource MutedText}" Text="{Binding DpiBypassComparison.Summary}" TextWrapping="Wrap" />
+                                <WrapPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                    <TextBlock Style="{StaticResource DimText}" Text="Уровень: " />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiBypassComparison.Level}" />
+                                    <TextBlock Style="{StaticResource DimText}" Text=" · уверенность: " />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiBypassComparison.Confidence}" />
+                                </WrapPanel>
+                                <TextBlock Style="{StaticResource DimText}" Text="Прямое подключение:" Margin="0,5,0,0" FontWeight="SemiBold" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiBypassComparison.Direct.Details}" TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource DimText}" Text="С обходом:" Margin="0,3,0,0" FontWeight="SemiBold" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiBypassComparison.WithBypass.Details}" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
+                        <ItemsControl ItemsSource="{Binding DpiResults}" Margin="0,8,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource InnerCard}" Margin="0,3,0,0" Padding="8">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                                            <ItemsControl ItemsSource="{Binding Probes}">
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Grid Margin="0,3,0,0">
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border Style="{StaticResource Dot}" Width="7" Height="7"
+                                                                    Background="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
+                                                            <StackPanel Grid.Column="1" Margin="7,0,0,0">
+                                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding TestName}" />
+                                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Details}" />
+                                                            </StackPanel>
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </Border>
+
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

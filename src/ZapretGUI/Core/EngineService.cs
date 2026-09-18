@@ -10,6 +10,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,6 +21,8 @@ namespace ZapretGui.Core
         public string Name { get; set; } = "";
         public long Size { get; set; }
         public string DownloadUrl { get; set; } = "";
+        /// <summary>SHA-256 от GitHub API, например sha256:abc123…</summary>
+        public string Digest { get; set; } = "";
         public string SizeText => Size <= 0 ? "" : (Size / 1024.0 / 1024.0).ToString("0.0") + " МБ";
     }
 
@@ -51,6 +54,12 @@ namespace ZapretGui.Core
         public int UpdatedFiles { get; init; }
         public int SkippedFiles { get; init; }
         public string Version { get; init; } = "";
+        public string PreviousVersion { get; init; } = "";
+        public bool IntegrityVerified { get; init; }
+        public bool BackupCreated { get; init; }
+        public int BackupFileCount { get; init; }
+        public string BackupRoot { get; init; } = "";
+        public bool FilesRestoredAfterFailure { get; init; }
 
         /// <summary>
         /// Нефатальные предупреждения: например, файлы драйвера WinDivert были заблокированы
@@ -66,6 +75,32 @@ namespace ZapretGui.Core
         public bool NeedsUpdate { get; init; }
         public string TempFile { get; init; } = "";
         public int LineCount { get; init; }
+    }
+
+    /// <summary>Сведения о сохранённой версии файлов движка для ручного отката.</summary>
+    public sealed class EngineBackupInfo
+    {
+        public string BackupRoot { get; set; } = "";
+        public string EngineRoot { get; set; } = "";
+        public DateTime CreatedAtUtc { get; set; }
+        public string PreviousVersion { get; set; } = "";
+        public string InstalledVersion { get; set; } = "";
+        public bool HadVersionMarker { get; set; }
+        public string PreviousMarker { get; set; } = "";
+        public List<string> ExistingFiles { get; set; } = new();
+        public List<string> NewFiles { get; set; } = new();
+
+        public string CreatedAtText => CreatedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
+        public string DisplayText => $"{PreviousVersion} → {InstalledVersion} · {CreatedAtText}";
+    }
+
+    public sealed class EngineRollbackResult
+    {
+        public bool Ok { get; init; }
+        public string Message { get; init; } = "";
+        public int RestoredFiles { get; init; }
+        public int RemovedNewFiles { get; init; }
+        public string RestoredVersion { get; init; } = "";
     }
 
     /// <summary>
@@ -85,7 +120,18 @@ namespace ZapretGui.Core
         public static string IpsetUrl => RawBase + "ipset-service.txt";
         public static string HostsUrl => RawBase + "hosts";
 
+        private sealed class EngineFileBackup
+        {
+            public string BackupRoot { get; init; } = "";
+            public List<string> ExistingFiles { get; } = new();
+            public List<string> NewFiles { get; } = new();
+        }
+
         private static readonly HttpClient Http = CreateClient();
+        private static readonly JsonSerializerOptions BackupJsonOptions = new()
+        {
+            WriteIndented = true
+        };
 
         private static HttpClient CreateClient()
         {
@@ -176,7 +222,8 @@ namespace ZapretGui.Core
                             {
                                 Name = GetString(asset, "name"),
                                 Size = asset.TryGetProperty("size", out var size) ? size.GetInt64() : 0,
-                                DownloadUrl = GetString(asset, "browser_download_url")
+                                DownloadUrl = GetString(asset, "browser_download_url"),
+                                Digest = GetString(asset, "digest")
                             });
                         }
                     }
@@ -265,16 +312,24 @@ namespace ZapretGui.Core
 
             var tempArchive = Path.Combine(AppPaths.TempDir, asset.Name);
             var tempExtract = Path.Combine(AppPaths.TempDir, "extract-" + Guid.NewGuid().ToString("N"));
+            EngineFileBackup? backup = null;
+            var previousVersion = ReadVersion(engineRoot);
+            var versionMarker = AppPaths.VersionMarker(engineRoot);
+            var hadVersionMarker = File.Exists(versionMarker);
+            var previousMarker = hadVersionMarker ? File.ReadAllText(versionMarker) : "";
 
             try
             {
                 progress?.Report(new ProgressInfo { Percent = 0, Status = "Скачивание " + asset.Name });
                 await DownloadFileAsync(asset.DownloadUrl, tempArchive, asset.Size, progress, ct).ConfigureAwait(false);
+                var integrityVerified = await VerifyArchiveDigestAsync(asset, tempArchive, progress, ct)
+                    .ConfigureAwait(false);
 
                 progress?.Report(new ProgressInfo { Percent = -1, Status = "Распаковка архива" });
                 ExtractArchive(tempArchive, tempExtract);
 
                 var contentRoot = ResolveContentRoot(tempExtract);
+                backup = CreateEngineBackup(contentRoot, engineRoot, settings.PreserveUserDataOnUpdate);
                 var ipsetModeBefore = GetIpsetMode(engineRoot);
                 var gameFilterBefore = GetGameFilterMode(engineRoot);
 
@@ -287,10 +342,18 @@ namespace ZapretGui.Core
 
                 progress?.Report(new ProgressInfo { Percent = -1, Status = "Обновление файлов" });
                 var (updated, skipped, warnings) = CopyEngine(contentRoot, engineRoot, settings.PreserveUserDataOnUpdate);
+                if (!IsEngineReady(engineRoot))
+                    throw new InvalidDataException("После обновления не найдены обязательные файлы winws.exe или WinDivert64.sys");
 
                 WriteVersion(engineRoot, release.Tag);
                 settings.EngineVersion = release.Tag;
                 SettingsStore.Save(settings);
+                if (backup != null)
+                {
+                    SaveBackupManifest(backup, engineRoot, previousVersion, release.Tag,
+                        hadVersionMarker, previousMarker);
+                    PruneEngineBackups();
+                }
 
                 StrategyParser.EnsureUserLists(engineRoot);
 
@@ -316,23 +379,293 @@ namespace ZapretGui.Core
                     UpdatedFiles = updated,
                     SkippedFiles = skipped,
                     Version = release.Tag,
+                    PreviousVersion = previousVersion,
+                    IntegrityVerified = integrityVerified,
+                    BackupCreated = backup != null,
+                    BackupFileCount = backup?.ExistingFiles.Count ?? 0,
+                    BackupRoot = backup?.BackupRoot ?? "",
                     Warnings = warnings
                 };
             }
             catch (OperationCanceledException)
             {
-                return new EngineUpdateResult { Ok = false, Message = "Загрузка отменена" };
+                var restored = RestoreEngineBackup(backup, engineRoot, versionMarker, hadVersionMarker, previousMarker);
+                settings.EngineVersion = previousVersion;
+                SettingsStore.Save(settings);
+                return new EngineUpdateResult
+                {
+                    Ok = false,
+                    Message = restored ? "Загрузка отменена. Предыдущие файлы движка восстановлены." : "Загрузка отменена; восстановить предыдущие файлы не удалось.",
+                    PreviousVersion = previousVersion,
+                    FilesRestoredAfterFailure = restored
+                };
             }
             catch (Exception ex)
             {
+                var restored = RestoreEngineBackup(backup, engineRoot, versionMarker, hadVersionMarker, previousMarker);
+                settings.EngineVersion = previousVersion;
+                SettingsStore.Save(settings);
                 AppLog.Error("Ошибка обновления движка: " + ex.Message);
-                return new EngineUpdateResult { Ok = false, Message = "Ошибка обновления: " + ex.Message };
+                return new EngineUpdateResult
+                {
+                    Ok = false,
+                    Message = restored
+                        ? "Ошибка обновления: " + ex.Message + ". Предыдущие файлы движка восстановлены."
+                        : "Ошибка обновления: " + ex.Message + ". Восстановить предыдущие файлы не удалось.",
+                    PreviousVersion = previousVersion,
+                    FilesRestoredAfterFailure = restored
+                };
             }
             finally
             {
                 TryDelete(tempArchive);
                 TryDeleteDirectory(tempExtract);
             }
+        }
+
+        private static EngineFileBackup CreateEngineBackup(string source, string engineRoot, bool preserveUserData)
+        {
+            var backup = new EngineFileBackup
+            {
+                BackupRoot = Path.Combine(AppPaths.BackupDir, "engine-update-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + "-" + Guid.NewGuid().ToString("N"))
+            };
+            var ipsetMode = GetIpsetMode(engineRoot);
+
+            foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
+            {
+                var relative = Path.GetRelativePath(source, file);
+                var destination = Path.Combine(engineRoot, relative);
+                if (preserveUserData && IsUserFile(relative) && File.Exists(destination)) continue;
+                if (relative.Replace('/', '\\').Equals("lists\\ipset-all.txt", StringComparison.OrdinalIgnoreCase) &&
+                    ipsetMode != IpsetMode.Loaded) continue;
+
+                if (File.Exists(destination))
+                {
+                    var saved = Path.Combine(backup.BackupRoot, relative);
+                    AppPaths.EnsureDir(Path.GetDirectoryName(saved)!);
+                    File.Copy(destination, saved, true);
+                    backup.ExistingFiles.Add(relative);
+                }
+                else
+                {
+                    backup.NewFiles.Add(relative);
+                }
+            }
+
+            return backup;
+        }
+
+        private static bool RestoreEngineBackup(EngineFileBackup? backup, string engineRoot,
+            string versionMarker, bool hadVersionMarker, string previousMarker)
+        {
+            if (backup == null) return true;
+            var ok = true;
+            try
+            {
+                foreach (var relative in backup.ExistingFiles)
+                {
+                    var saved = Path.Combine(backup.BackupRoot, relative);
+                    var destination = Path.Combine(engineRoot, relative);
+                    if (!File.Exists(saved)) { ok = false; continue; }
+                    AppPaths.EnsureDir(Path.GetDirectoryName(destination)!);
+                    File.Copy(saved, destination, true);
+                }
+
+                foreach (var relative in backup.NewFiles)
+                {
+                    var destination = Path.Combine(engineRoot, relative);
+                    if (File.Exists(destination)) File.Delete(destination);
+                }
+
+                if (hadVersionMarker) File.WriteAllText(versionMarker, previousMarker);
+                else TryDelete(versionMarker);
+            }
+            catch (Exception ex)
+            {
+                ok = false;
+                AppLog.Error("Не удалось откатить обновление движка: " + ex.Message);
+            }
+            finally
+            {
+                if (ok) TryDeleteDirectory(backup.BackupRoot);
+                else AppLog.Warn("Резервная копия не удалена: " + backup.BackupRoot);
+            }
+            return ok;
+        }
+
+        private static void SaveBackupManifest(EngineFileBackup backup, string engineRoot,
+            string previousVersion, string installedVersion, bool hadVersionMarker, string previousMarker)
+        {
+            var info = new EngineBackupInfo
+            {
+                BackupRoot = backup.BackupRoot,
+                EngineRoot = engineRoot,
+                CreatedAtUtc = DateTime.UtcNow,
+                PreviousVersion = previousVersion,
+                InstalledVersion = installedVersion,
+                HadVersionMarker = hadVersionMarker,
+                PreviousMarker = previousMarker,
+                ExistingFiles = backup.ExistingFiles.ToList(),
+                NewFiles = backup.NewFiles.ToList()
+            };
+            AppPaths.EnsureDir(backup.BackupRoot);
+            File.WriteAllText(Path.Combine(backup.BackupRoot, "manifest.json"),
+                JsonSerializer.Serialize(info, BackupJsonOptions));
+        }
+
+        public static List<EngineBackupInfo> GetAvailableBackups(string engineRoot)
+        {
+            var result = new List<EngineBackupInfo>();
+            try
+            {
+                if (!Directory.Exists(AppPaths.BackupDir)) return result;
+                foreach (var directory in Directory.GetDirectories(AppPaths.BackupDir, "engine-update-*"))
+                {
+                    var manifest = Path.Combine(directory, "manifest.json");
+                    if (!File.Exists(manifest)) continue;
+                    var info = JsonSerializer.Deserialize<EngineBackupInfo>(File.ReadAllText(manifest), BackupJsonOptions);
+                    if (info == null || !string.Equals(info.EngineRoot, engineRoot, StringComparison.OrdinalIgnoreCase)) continue;
+                    info.BackupRoot = directory;
+                    result.Add(info);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("Не удалось прочитать резервные копии движка: " + ex.Message);
+            }
+            return result.OrderByDescending(info => info.CreatedAtUtc).ToList();
+        }
+
+        /// <summary>Удаляет только самые старые копии обновлений, оставляя три последние.</summary>
+        private static void PruneEngineBackups()
+        {
+            try
+            {
+                var directories = new List<(string Directory, EngineBackupInfo Info)>();
+                if (Directory.Exists(AppPaths.BackupDir))
+                {
+                    foreach (var directory in Directory.GetDirectories(AppPaths.BackupDir, "engine-update-*"))
+                    {
+                        var info = TryReadBackupManifest(directory);
+                        if (info != null) directories.Add((directory, info));
+                    }
+                }
+
+                foreach (var item in directories.OrderByDescending(item => item.Info.CreatedAtUtc).Skip(3))
+                    TryDeleteDirectory(item.Directory);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("Не удалось ограничить число резервных копий движка: " + ex.Message);
+            }
+        }
+
+        private static EngineBackupInfo? TryReadBackupManifest(string directory)
+        {
+            try
+            {
+                var path = Path.Combine(directory, "manifest.json");
+                if (!File.Exists(path)) return null;
+                var info = JsonSerializer.Deserialize<EngineBackupInfo>(File.ReadAllText(path), BackupJsonOptions);
+                if (info != null) info.BackupRoot = directory;
+                return info;
+            }
+            catch { return null; }
+        }
+
+        /// <summary>
+        /// Возвращает движок к состоянию до выбранного обновления. Пользовательские файлы,
+        /// которых не было в резервной копии, не удаляются и не перезаписываются.
+        /// </summary>
+        public static EngineRollbackResult RollbackEngine(EngineBackupInfo backup, string engineRoot)
+        {
+            try
+            {
+                if (backup == null || string.IsNullOrWhiteSpace(backup.BackupRoot) ||
+                    !Directory.Exists(backup.BackupRoot))
+                    return new EngineRollbackResult { Message = "Резервная копия движка не найдена" };
+                if (!string.IsNullOrWhiteSpace(backup.EngineRoot) &&
+                    !string.Equals(backup.EngineRoot, engineRoot, StringComparison.OrdinalIgnoreCase))
+                    return new EngineRollbackResult { Message = "Резервная копия относится к другой папке движка" };
+
+                var restoredFiles = 0;
+                var removedNewFiles = 0;
+                foreach (var relative in backup.ExistingFiles)
+                {
+                    var saved = SafeBackupPath(backup.BackupRoot, relative);
+                    var destination = SafeBackupPath(engineRoot, relative);
+                    if (!File.Exists(saved))
+                        return new EngineRollbackResult { Message = "В резервной копии отсутствует файл " + relative };
+                    AppPaths.EnsureDir(Path.GetDirectoryName(destination)!);
+                    File.Copy(saved, destination, true);
+                    restoredFiles++;
+                }
+
+                foreach (var relative in backup.NewFiles)
+                {
+                    var destination = SafeBackupPath(engineRoot, relative);
+                    if (File.Exists(destination))
+                    {
+                        File.Delete(destination);
+                        removedNewFiles++;
+                    }
+                }
+
+                var marker = AppPaths.VersionMarker(engineRoot);
+                if (backup.HadVersionMarker) File.WriteAllText(marker, backup.PreviousMarker);
+                else TryDelete(marker);
+
+                AppLog.Info($"Выполнен ручной откат движка с {backup.InstalledVersion} к {backup.PreviousVersion}");
+                return new EngineRollbackResult
+                {
+                    Ok = true,
+                    Message = string.IsNullOrWhiteSpace(backup.PreviousVersion)
+                        ? "Движок возвращён к предыдущему состоянию"
+                        : $"Движок возвращён к версии {backup.PreviousVersion}",
+                    RestoredFiles = restoredFiles,
+                    RemovedNewFiles = removedNewFiles,
+                    RestoredVersion = backup.PreviousVersion
+                };
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Не удалось выполнить ручной откат движка: " + ex.Message);
+                return new EngineRollbackResult { Message = "Не удалось выполнить откат: " + ex.Message };
+            }
+        }
+
+        private static string SafeBackupPath(string root, string relative)
+        {
+            var fullRoot = Path.GetFullPath(root).TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar;
+            var full = Path.GetFullPath(Path.Combine(root, relative));
+            if (!full.StartsWith(fullRoot, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("Некорректный путь в резервной копии: " + relative);
+            return full;
+        }
+
+        private static async Task<bool> VerifyArchiveDigestAsync(ReleaseAsset asset, string archivePath,
+            IProgress<ProgressInfo>? progress, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(asset.Digest))
+            {
+                progress?.Report(new ProgressInfo { Percent = -1, Status = "GitHub не предоставил SHA-256 — установка отменена" });
+                throw new InvalidDataException("GitHub не предоставил SHA-256 для архива; установка отменена");
+            }
+
+            var expected = asset.Digest.Trim();
+            var separator = expected.IndexOf(':');
+            if (separator >= 0) expected = expected[(separator + 1)..];
+            expected = expected.Trim().ToLowerInvariant();
+            if (expected.Length != 64 || expected.Any(c => !Uri.IsHexDigit(c)))
+                throw new InvalidDataException("GitHub вернул некорректный SHA-256 архива");
+
+            progress?.Report(new ProgressInfo { Percent = -1, Status = "Проверяю SHA-256 архива" });
+            await using var stream = File.OpenRead(archivePath);
+            var actual = Convert.ToHexString(await SHA256.HashDataAsync(stream, ct).ConfigureAwait(false))
+                .ToLowerInvariant();
+            if (!string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase))
+                throw new InvalidDataException("SHA-256 архива не совпадает с GitHub; установка отменена");
+            return true;
         }
 
         private static async Task DownloadFileAsync(string url, string destination, long expectedSize,
@@ -364,6 +697,9 @@ namespace ZapretGui.Core
                     });
                 }
             }
+
+            if (expectedSize > 0 && received != expectedSize)
+                throw new InvalidDataException($"Размер архива не совпадает: получено {received}, ожидалось {expectedSize} байт");
         }
 
         public static void ExtractArchive(string archivePath, string targetDirectory)
@@ -436,88 +772,15 @@ namespace ZapretGui.Core
         private static (int Updated, int Skipped, List<string> Warnings) CopyEngine(
             string source, string engineRoot, bool preserveUserData)
         {
-            int updated = 0, skipped = 0;
-            var warnings = new List<string>();
-            Directory.CreateDirectory(engineRoot);
-
-            foreach (var file in Directory.GetFiles(source, "*", SearchOption.AllDirectories))
-            {
-                var relative = Path.GetRelativePath(source, file);
-                var destination = Path.Combine(engineRoot, relative);
-
-                if (preserveUserData && IsUserFile(relative) && File.Exists(destination))
-                {
-                    skipped++;
-                    continue;
-                }
-
-                if (relative.Equals("lists\\ipset-all.txt", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Основной список сохраняем как .backup, если пользователь в режиме none/any
-                    var mode = GetIpsetMode(engineRoot);
-                    var backup = Path.Combine(engineRoot, "lists", "ipset-all.txt.backup");
-                    if (mode != IpsetMode.Loaded)
-                    {
-                        TryCopy(file, backup);
-                        skipped++;
-                        continue;
-                    }
-                }
-
-                AppPaths.EnsureDir(Path.GetDirectoryName(destination)!);
-
-                // Файлы ядерного драйвера нельзя перезаписывать «на лету»: если ядро Windows
-                // всё ещё держит WinDivert64.sys/WinDivert.dll (служба не выгрузилась),
-                // пропускаем их с предупреждением, а не падаем и тем более не провоцируем BSOD.
-                if (IsDriverFile(relative) && File.Exists(destination) && WinServices.IsFileLocked(destination))
-                {
-                    var warn = $"Файл {relative} заблокирован ядром Windows (драйвер WinDivert не выгрузился) — пропущен. " +
-                               "Перезагрузите Windows и повторите обновление для замены драйвера.";
-                    AppLog.Warn(warn);
-                    if (!warnings.Any(w => w.Contains(relative, StringComparison.OrdinalIgnoreCase)))
-                        warnings.Add(warn);
-                    skipped++;
-                    continue;
-                }
-
-                try
-                {
-                    File.Copy(file, destination, true);
-                    updated++;
-                }
-                catch (IOException ex) when (IsDriverFile(relative))
-                {
-                    var warn = $"Не удалось заменить {relative} (файл занят): {ex.Message}. " +
-                               "Перезагрузите Windows и повторите обновление.";
-                    AppLog.Warn(warn);
-                    if (!warnings.Any(w => w.Contains(relative, StringComparison.OrdinalIgnoreCase)))
-                        warnings.Add(warn);
-                    skipped++;
-                }
-                catch (IOException)
-                {
-                    // Обычный файл занят (антивирус, зависший процесс) — одна повторная попытка
-                    // после короткой паузы, затем пропуск с предупреждением вместо падения.
-                    try
-                    {
-                        Thread.Sleep(1000);
-                        File.Copy(file, destination, true);
-                        updated++;
-                    }
-                    catch (Exception retryEx)
-                    {
-                        AppLog.Warn($"Пропущен занятый файл {relative}: {retryEx.Message}");
-                        skipped++;
-                    }
-                }
-                catch (UnauthorizedAccessException ex)
-                {
-                    AppLog.Warn($"Нет доступа для записи {relative}: {ex.Message}");
-                    skipped++;
-                }
-            }
-
-            return (updated, skipped, warnings);
+            var result = EngineFileUpdater.Copy(
+                source,
+                engineRoot,
+                preserveUserData,
+                IsUserFile,
+                IsDriverFile,
+                () => GetIpsetMode(engineRoot),
+                WinServices.IsFileLocked);
+            return (result.UpdatedFiles, result.SkippedFiles, result.Warnings);
         }
 
         /// <summary>Файлы ядерного драйвера WinDivert — их замена при загруженном драйвере опасна.</summary>
@@ -637,11 +900,40 @@ namespace ZapretGui.Core
             }
         }
 
-        /// <summary>Применяет скачанный hosts: делает копию, удаляет старый блок zapret и добавляет новый.</summary>
-        public static (bool Ok, string Message) ApplyHosts(string downloadedFile)
+        /// <summary>
+        /// Безопасно объединяет пользовательский hosts с блоком приложения.
+        /// Открытая чистая функция позволяет проверить сохранение пользовательских строк
+        /// без записи реального системного файла.
+        /// </summary>
+        public static List<string> MergeHosts(IReadOnlyList<string> current, IReadOnlyList<string> downloaded)
         {
             const string begin = "# ==== Zapret GUI (Flowseal/zapret-discord-youtube) begin ====";
             const string end = "# ==== Zapret GUI (Flowseal/zapret-discord-youtube) end ====";
+            var newLines = downloaded.Where(line => !string.IsNullOrWhiteSpace(line)).ToList();
+            var newLineSet = new HashSet<string>(newLines.Select(line => line.Trim()), StringComparer.OrdinalIgnoreCase);
+            var result = new List<string>();
+            var insideBlock = false;
+
+            foreach (var line in current)
+            {
+                var trimmed = line.Trim();
+                if (trimmed.Equals(begin, StringComparison.OrdinalIgnoreCase)) { insideBlock = true; continue; }
+                if (trimmed.Equals(end, StringComparison.OrdinalIgnoreCase)) { insideBlock = false; continue; }
+                if (insideBlock || newLineSet.Contains(trimmed)) continue;
+                result.Add(line);
+            }
+
+            while (result.Count > 0 && string.IsNullOrWhiteSpace(result[^1])) result.RemoveAt(result.Count - 1);
+            result.Add("");
+            result.Add(begin);
+            result.AddRange(newLines);
+            result.Add(end);
+            return result;
+        }
+
+        /// <summary>Применяет скачанный hosts: делает копию, удаляет старый блок zapret и добавляет новый.</summary>
+        public static (bool Ok, string Message) ApplyHosts(string downloadedFile)
+        {
 
             try
             {
@@ -656,29 +948,7 @@ namespace ZapretGui.Core
                 var backup = Path.Combine(AppPaths.BackupDir, $"hosts-{DateTime.Now:yyyyMMdd-HHmmss}.bak");
                 File.WriteAllLines(backup, current, new UTF8Encoding(false));
 
-                var result = new List<string>();
-                var insideBlock = false;
-                var newLineSet = new HashSet<string>(newLines.Select(l => l.Trim()), StringComparer.OrdinalIgnoreCase);
-
-                foreach (var line in current)
-                {
-                    var trimmed = line.Trim();
-                    if (trimmed.Equals(begin, StringComparison.OrdinalIgnoreCase)) { insideBlock = true; continue; }
-                    if (trimmed.Equals(end, StringComparison.OrdinalIgnoreCase)) { insideBlock = false; continue; }
-                    if (insideBlock) continue;
-
-                    // Убираем строки, которые дублировали бы содержимое из репозитория
-                    if (newLineSet.Contains(trimmed)) continue;
-
-                    result.Add(line);
-                }
-
-                while (result.Count > 0 && result[^1].Trim().Length == 0) result.RemoveAt(result.Count - 1);
-
-                result.Add("");
-                result.Add(begin);
-                result.AddRange(newLines);
-                result.Add(end);
+                var result = MergeHosts(current, newLines);
 
                 File.WriteAllLines(SystemHostsPath, result, new UTF8Encoding(false));
                 AppLog.Info($"Файл hosts обновлён, копия сохранена: {backup}");

@@ -17,6 +17,10 @@
             <core:StringToVisibilityConverter x:Key="StringToVis" />
             <core:SeverityBrushConverter x:Key="SeverityBrush" />
             <core:CountToVisibilityConverter x:Key="CountToVis" />
+            <core:WizardStepBrushConverter x:Key="WizardStepBrush" />
+            <core:WizardStepOpacityConverter x:Key="WizardStepOpacity" />
+            <core:ZoomedViewportConverter x:Key="ZoomedViewport" />
+            <core:ProgressScaleConverter x:Key="ProgressScale" />
             <core:BypassStateBrushConverter x:Key="BypassBrush" />
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         </ResourceDictionary>

@@ -21,19 +21,37 @@ namespace ZapretGui.ViewModels
         private bool _batAutoUpdate;
         private string _latestVersion = "";
         private bool _connectionBusy;
+        private double _connectionProgressValue;
+        private double _connectionProgressMaximum = 1;
+        private bool _connectionProgressIndeterminate = true;
+        private string _connectionProgressPercentText = "";
+        private string _connectionProgressText = "";
         private int _suppressWrites;
+        private string _legacyWarning = "";
+        private DateTime _lastLegacyCheck = DateTime.MinValue;
+        private LegacyInstallInfo? _legacyCache;
+        private string _newConnectionAddress = "";
 
         public HomeViewModel(MainViewModel main)
         {
             _main = main;
+            MonitorTargetStore.EnsureDefaults(main.Settings);
+            SettingsStore.Save(main.Settings);
+            foreach (var target in main.Settings.MonitorTargets.Where(t => !t.IsGame))
+                ConnectionTargets.Add(target);
 
             StartCommand = new AsyncRelayCommand(StartAsync, () => !IsRunning && HasStrategy && !IsBusy);
             StopCommand = new AsyncRelayCommand(StopAsync, () => IsRunning && !IsBusy);
-            InstallServiceCommand = new AsyncRelayCommand(InstallServiceAsync, () => HasStrategy && !IsBusy);
+            ToggleBypassCommand = new AsyncRelayCommand(ToggleAsync, () => HasStrategy && !IsBusy);
+            ResolveLegacyCommand = new AsyncRelayCommand(ResolveLegacyFromBannerAsync, () => !IsBusy);
+            InstallServiceCommand = new AsyncRelayCommand(InstallServiceAsync, () => (HasStrategy || ServiceInstalled) && !IsBusy);
             RemoveServiceCommand = new AsyncRelayCommand(RemoveServiceAsync, () => ServiceInstalled && !IsBusy);
             TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync, () => !ConnectionBusy);
+            AddConnectionTargetCommand = new RelayCommand(AddConnectionTarget);
+            RemoveConnectionTargetCommand = new RelayCommand(RemoveConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             CheckUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
             OpenDiagnosticsCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
+            OpenFirstLaunchCommand = new RelayCommand(() => _main.Navigate("first-run"));
             OpenStrategiesCommand = new RelayCommand(() => _main.Navigate("strategies"));
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RestartAsAdminCommand = new RelayCommand(() => _main.RestartAsAdminCommand.Execute(null));
@@ -46,12 +64,22 @@ namespace ZapretGui.ViewModels
 
         public ObservableCollection<string> StrategyNames { get; } = new();
         public ObservableCollection<ConnectionCheck> ConnectionChecks { get; } = new();
+        public ObservableCollection<MonitorTarget> ConnectionTargets { get; } = new();
+
+        public string NewConnectionAddress
+        {
+            get => _newConnectionAddress;
+            set => Set(ref _newConnectionAddress, value);
+        }
 
         public string[] GameFilterOptions { get; } = { "Выключен", "TCP + UDP", "Только TCP", "Только UDP" };
         public string[] IpsetOptions { get; } = { "Списки (loaded)", "Отключён (none)", "Все IP (any)" };
 
         public bool IsRunning => _status.IsRunning;
         public bool ServiceInstalled => _status.ServiceState != ServiceState.NotInstalled;
+        public string InstallServiceButtonText => ServiceInstalled
+            ? "Служба уже установлена, удалить?"
+            : "Установить в службу";
         public bool HasStrategy => Store.Items.Count > 0;
         public string StatusText => _status.StateText;
         public string StatusKey => _status.State switch
@@ -73,6 +101,11 @@ namespace ZapretGui.ViewModels
         public string StrategyText => string.IsNullOrEmpty(_status.StrategyName)
             ? (HasStrategy ? "Стратегия не выбрана" : "Движок ещё не установлен")
             : "Стратегия: " + _status.StrategyName;
+
+        public string ReadinessText => _main.ReadinessText;
+        public string ReadinessDetails => _main.ReadinessDetails;
+        public string ReadinessKey => _main.ReadinessKey;
+        public bool ReadinessActionVisible => !_main.ReadinessIsReady || !_main.Settings.FirstLaunchWizardCompleted;
 
         public string UptimeText => _status.UptimeText;
         public string PidText => _status.Pid.HasValue ? "PID " + _status.Pid.Value : "—";
@@ -114,6 +147,11 @@ namespace ZapretGui.ViewModels
 
         public string EnginePathText => Settings.EnginePath;
 
+        /// <summary>Предупреждение о конфликте со старым запретом (баннер под статусом).</summary>
+        public string LegacyWarningText => _legacyWarning;
+
+        public bool LegacyWarningVisible => !string.IsNullOrWhiteSpace(_legacyWarning);
+
         public bool IsBusy
         {
             get => _isBusy;
@@ -130,6 +168,36 @@ namespace ZapretGui.ViewModels
             {
                 if (Set(ref _connectionBusy, value)) RaiseCommands();
             }
+        }
+
+        public double ConnectionProgressValue
+        {
+            get => _connectionProgressValue;
+            private set => Set(ref _connectionProgressValue, value);
+        }
+
+        public double ConnectionProgressMaximum
+        {
+            get => _connectionProgressMaximum;
+            private set => Set(ref _connectionProgressMaximum, value);
+        }
+
+        public bool ConnectionProgressIndeterminate
+        {
+            get => _connectionProgressIndeterminate;
+            private set => Set(ref _connectionProgressIndeterminate, value);
+        }
+
+        public string ConnectionProgressPercentText
+        {
+            get => _connectionProgressPercentText;
+            private set => Set(ref _connectionProgressPercentText, value);
+        }
+
+        public string ConnectionProgressText
+        {
+            get => _connectionProgressText;
+            private set => Set(ref _connectionProgressText, value);
         }
 
         public string Message
@@ -232,11 +300,16 @@ namespace ZapretGui.ViewModels
 
         public ICommand StartCommand { get; }
         public ICommand StopCommand { get; }
+        public ICommand ToggleBypassCommand { get; }
+        public ICommand ResolveLegacyCommand { get; }
         public ICommand InstallServiceCommand { get; }
         public ICommand RemoveServiceCommand { get; }
         public ICommand TestConnectionCommand { get; }
+        public ICommand AddConnectionTargetCommand { get; }
+        public ICommand RemoveConnectionTargetCommand { get; }
         public ICommand CheckUpdatesCommand { get; }
         public ICommand OpenDiagnosticsCommand { get; }
+        public ICommand OpenFirstLaunchCommand { get; }
         public ICommand OpenStrategiesCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
@@ -291,6 +364,7 @@ namespace ZapretGui.ViewModels
             _status = Bypass.GetStatus();
             Raise(nameof(IsRunning));
             Raise(nameof(ServiceInstalled));
+            Raise(nameof(InstallServiceButtonText));
             Raise(nameof(StatusText));
             Raise(nameof(StatusKey));
             Raise(nameof(BypassStateKey));
@@ -299,7 +373,12 @@ namespace ZapretGui.ViewModels
             Raise(nameof(UptimeText));
             Raise(nameof(PidText));
             Raise(nameof(ServiceText));
+            Raise(nameof(ReadinessText));
+            Raise(nameof(ReadinessDetails));
+            Raise(nameof(ReadinessKey));
+            Raise(nameof(ReadinessActionVisible));
             Raise(nameof(UpdateAvailable));
+            RefreshLegacyWarning();
             RaiseCommands();
         }
 
@@ -307,6 +386,8 @@ namespace ZapretGui.ViewModels
         {
             (StartCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (StopCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ToggleBypassCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ResolveLegacyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (RemoveServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (TestConnectionCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
@@ -320,9 +401,158 @@ namespace ZapretGui.ViewModels
             return strategy;
         }
 
+        /// <summary>
+        /// Проверяет конфликт со старым запретом перед запуском: показывает диалог
+        /// и выполняет выбранное действие. Возвращает стратегию для запуска или null (прервать).
+        /// </summary>
+        private async Task<StrategyInfo?> ResolveLegacyAsync()
+        {
+            if (!Settings.LegacyZapretDismissed)
+            {
+                LegacyInstallInfo info;
+                try
+                {
+                    info = LegacyZapret.Detect(Settings);
+                }
+                catch
+                {
+                    return Current();
+                }
+
+                if (info.HasConflict)
+                {
+                    // Диалог — как MessageBox: ViewModel спрашивает, действия — ниже.
+                    var dialog = new Views.LegacyZapretDialog(info);
+                    var owner = System.Windows.Application.Current.MainWindow;
+                    if (owner != null) dialog.Owner = owner;
+
+                    var accepted = dialog.ShowDialog() == true;
+                    var choice = accepted ? dialog.Choice : LegacyChoice.Later;
+                    if (dialog.DontAskChecked) choice = LegacyChoice.DontAsk;
+
+                    InvalidateLegacyCache();
+                    switch (choice)
+                    {
+                        case LegacyChoice.TakeOver:
+                            IsBusy = true;
+                            try
+                            {
+                                ShowInfo("Останавливаю старый запрет…");
+                                await LegacyZapret.StopLegacyAsync(info);
+                            }
+                            finally
+                            {
+                                IsBusy = false;
+                            }
+                            break;
+
+                        case LegacyChoice.ImportAndTakeOver:
+                            IsBusy = true;
+                            try
+                            {
+                                ShowInfo("Копирую настройки старого запрета…");
+                                var (ok, message, strategyName) = LegacyZapret.ImportUserData(
+                                    info.ForeignRoot, Settings.EnginePath, info.StrategyName);
+                                if (ok && !string.IsNullOrEmpty(strategyName))
+                                {
+                                    var imported = Store.Find(strategyName);
+                                    if (imported != null)
+                                    {
+                                        Settings.SelectedStrategy = imported.Name;
+                                        SettingsStore.Save(Settings);
+                                        ReloadFromEngine();
+                                    }
+                                }
+                                ShowInfo(message);
+                                await LegacyZapret.StopLegacyAsync(info);
+                            }
+                            finally
+                            {
+                                IsBusy = false;
+                            }
+                            break;
+
+                        case LegacyChoice.StopOnly:
+                            IsBusy = true;
+                            try
+                            {
+                                ShowInfo("Выключаю старый запрет…");
+                                var stopped = await LegacyZapret.StopLegacyAsync(info);
+                                ShowInfo(stopped.Message);
+                            }
+                            finally
+                            {
+                                IsBusy = false;
+                            }
+                            break;
+
+                        case LegacyChoice.DontAsk:
+                            Settings.LegacyZapretDismissed = true;
+                            SettingsStore.Save(Settings);
+                            return null;
+
+                        default:
+                            return null; // Later / окно закрыто — запуск прерываем
+                    }
+                    RefreshStatus();
+                }
+            }
+            return Current();
+        }
+
+        private void RefreshLegacyWarning()
+        {
+            // Детект не чаще раза в 30 секунд (там опрос служб и процессов)
+            if ((DateTime.Now - _lastLegacyCheck).TotalSeconds < 30 && _legacyCache != null)
+            {
+                ApplyLegacyCache();
+                return;
+            }
+            _lastLegacyCheck = DateTime.Now;
+            try
+            {
+                _legacyCache = Settings.LegacyZapretDismissed ? null : LegacyZapret.Detect(Settings);
+            }
+            catch
+            {
+                _legacyCache = null;
+            }
+            ApplyLegacyCache();
+        }
+
+        private void ApplyLegacyCache()
+        {
+            var conflict = _legacyCache is { HasConflict: true };
+            _legacyWarning = conflict
+                ? "В фоне работает старый запрет из другой папки — он конфликтует с этим приложением."
+                : "";
+            Raise(nameof(LegacyWarningText));
+            Raise(nameof(LegacyWarningVisible));
+        }
+
+        private void InvalidateLegacyCache()
+        {
+            _lastLegacyCheck = DateTime.MinValue;
+            _legacyCache = null;
+        }
+
+        private async Task ToggleAsync()
+        {
+            if (IsRunning) await StopAsync();
+            else await StartAsync();
+        }
+
+        private async Task ResolveLegacyFromBannerAsync()
+        {
+            var strategy = await ResolveLegacyAsync();
+            if (strategy == null) return;
+            // Конфликт решён выбором пользователя — запускаем обход через GUI
+            await StartAsync();
+        }
+
         private async Task StartAsync()
         {
-            var strategy = Current();
+            var strategy = await ResolveLegacyAsync();
             if (strategy == null) return;
 
             if (!Shell.IsAdmin())
@@ -330,6 +560,9 @@ namespace ZapretGui.ViewModels
                 ShowError("Для запуска обхода нужны права администратора. Нажмите «Перезапустить от админа».");
                 return;
             }
+
+            if (!Confirm("Запуск обхода", $"Будет запущен winws.exe со стратегией «{strategy.Name}». Это изменит обработку сетевого трафика и может потребовать WinDivert. Запустить вручную сейчас?"))
+                return;
 
             IsBusy = true;
             ShowInfo("Запускаю обход…");
@@ -379,7 +612,13 @@ namespace ZapretGui.ViewModels
 
         private async Task InstallServiceAsync()
         {
-            var strategy = Current();
+            if (ServiceInstalled)
+            {
+                await RemoveServiceAsync();
+                return;
+            }
+
+            var strategy = await ResolveLegacyAsync();
             if (strategy == null) return;
 
             if (!Shell.IsAdmin())
@@ -387,6 +626,9 @@ namespace ZapretGui.ViewModels
                 ShowError("Для установки службы нужны права администратора.");
                 return;
             }
+
+            if (!Confirm("Установка службы", $"Будет создана и запущена служба zapret со стратегией «{strategy.Name}». Это изменит системную службу, WinDivert и TCP timestamps. Продолжить?"))
+                return;
 
             IsBusy = true;
             ShowInfo("Устанавливаю службу zapret…");
@@ -404,6 +646,9 @@ namespace ZapretGui.ViewModels
 
         private async Task RemoveServiceAsync()
         {
+            if (!Confirm("Удаление службы", "Будут остановлены обход и служба zapret, а также удалены связанные службы WinDivert. Продолжить?"))
+                return;
+
             IsBusy = true;
             ShowInfo("Удаляю службы zapret и WinDivert…");
             try
@@ -418,13 +663,52 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        private void UpdateConnectionProgress(string text)
+        {
+            if (text.StartsWith("CONNECTION_TOTAL:", StringComparison.Ordinal))
+            {
+                if (int.TryParse(text.Substring("CONNECTION_TOTAL:".Length), out var total))
+                {
+                    ConnectionProgressMaximum = Math.Max(1, total);
+                    ConnectionProgressValue = 0;
+                    ConnectionProgressIndeterminate = false;
+                    ConnectionProgressPercentText = "0%";
+                }
+                ConnectionProgressText = "Подготовлены контрольные ресурсы";
+                return;
+            }
+
+            if (text.StartsWith("CONNECTION_PROGRESS:", StringComparison.Ordinal))
+            {
+                var parts = text.Substring("CONNECTION_PROGRESS:".Length).Split(" — ", 2);
+                var numbers = parts[0].Split('/');
+                if (numbers.Length == 2 && int.TryParse(numbers[0], out var current) && int.TryParse(numbers[1], out var total))
+                {
+                    ConnectionProgressValue = current;
+                    ConnectionProgressMaximum = Math.Max(1, total);
+                    ConnectionProgressIndeterminate = false;
+                    ConnectionProgressPercentText = $"{ConnectionProgressValue / ConnectionProgressMaximum * 100:0}%";
+                }
+                ConnectionProgressText = parts.Length > 1 ? "Завершён: " + parts[1] : "Проверка завершена";
+                return;
+            }
+
+            ConnectionProgressText = text;
+        }
+
         private async Task TestConnectionAsync()
         {
             ConnectionBusy = true;
+            ConnectionProgressValue = 0;
+            ConnectionProgressMaximum = 1;
+            ConnectionProgressIndeterminate = true;
+            ConnectionProgressPercentText = "";
+            ConnectionProgressText = "Подготавливаю проверку…";
             ConnectionChecks.Clear();
             try
             {
-                var results = await ConnectionTester.RunAsync();
+                var results = await ConnectionTester.RunAsync(ConnectionTargets, default,
+                    new Progress<string>(UpdateConnectionProgress));
                 foreach (var check in results) ConnectionChecks.Add(check);
 
                 var failed = results.Count(r => !r.Ok);
@@ -436,6 +720,42 @@ namespace ZapretGui.ViewModels
             {
                 ConnectionBusy = false;
             }
+        }
+
+        private void AddConnectionTarget()
+        {
+            var dialog = new Views.InputDialog(
+                "Добавить адрес",
+                "Введите URL или домен для проверки соединения:")
+            {
+                Owner = System.Windows.Application.Current?.MainWindow
+            };
+            if (dialog.ShowDialog() != true) return;
+            NewConnectionAddress = dialog.Value;
+
+            if (!MonitorTarget.TryCreate(NewConnectionAddress, null, out var target, out var error) || target == null)
+            {
+                ShowWarning(error);
+                return;
+            }
+            if (ConnectionTargets.Any(t => t.Host.Equals(target.Host, StringComparison.OrdinalIgnoreCase)))
+            {
+                ShowWarning("Этот адрес уже есть в проверке соединения");
+                return;
+            }
+            Settings.MonitorTargets.Add(target);
+            ConnectionTargets.Add(target);
+            SettingsStore.Save(Settings);
+            NewConnectionAddress = "";
+            ShowSuccess("Адрес добавлен в проверку соединения");
+        }
+
+        private void RemoveConnectionTarget(object? parameter)
+        {
+            if (parameter is not MonitorTarget target || target.IsBuiltIn) return;
+            Settings.MonitorTargets.Remove(target);
+            ConnectionTargets.Remove(target);
+            SettingsStore.Save(Settings);
         }
 
         private async Task<string> SafeLatestAsync()
@@ -459,6 +779,16 @@ namespace ZapretGui.ViewModels
         public void ShowWarning(string message) => SetMessage(message, "Warning");
         public void ShowError(string message) => SetMessage(message, "Danger");
         public void ShowSuccess(string message) => SetMessage(message, "Success");
+
+        public void RefreshTheme()
+        {
+            var checks = ConnectionChecks.ToList();
+            ConnectionChecks.Clear();
+            foreach (var check in checks) ConnectionChecks.Add(check);
+            Raise(nameof(MessageKey));
+            Raise(nameof(StatusKey));
+            Raise(nameof(BypassStateKey));
+        }
 
         private void SetMessage(string message, string key)
         {

@@ -14,6 +14,12 @@ namespace ZapretGui.Core
         public LogLevel Level { get; init; }
         public string Message { get; init; } = "";
 
+        /// <summary>
+        /// Источник записи: пусто — приложение, <see cref="AppLog.BypassCategory"/> — обход и службы
+        /// (winws.exe, zapret, WinDivert). Используется фильтром «Источник» на странице «Журнал».
+        /// </summary>
+        public string Category { get; init; } = "";
+
         public string TimeText => Time.ToString("HH:mm:ss", CultureInfo.InvariantCulture);
         public string LevelText => Level switch
         {
@@ -30,12 +36,18 @@ namespace ZapretGui.Core
             LogLevel.Warn => "Warning",
             _ => "Danger"
         };
-        public override string ToString() => $"[{Time:HH:mm:ss}] [{LevelText}] {Message}";
+        public string SourceText => Category;
+        public override string ToString() => Category.Length > 0
+            ? $"[{Time:HH:mm:ss}] [{LevelText}] [{Category}] {Message}"
+            : $"[{Time:HH:mm:ss}] [{LevelText}] {Message}";
     }
 
     /// <summary>Простой журнал: пишет в файл и рассылает события в UI.</summary>
     public static class AppLog
     {
+        /// <summary>Категория записей о работе обхода и служб (для фильтра в журнале).</summary>
+        public const string BypassCategory = "Обход";
+
         private static readonly object Gate = new();
         private static readonly List<LogEntry> Buffer = new();
         private const int MaxBuffer = 2000;
@@ -56,9 +68,18 @@ namespace ZapretGui.Core
 
         public static void Error(string message, Exception ex) => Write(LogLevel.Error, message + ": " + ex.Message);
 
-        private static void Write(LogLevel level, string message)
+        /// <summary>Записи о работе обхода и служб — попадают в фильтр «Обход и служба».</summary>
+        public static void SvcDebug(string message) => Write(LogLevel.Debug, message, BypassCategory);
+        public static void SvcInfo(string message) => Write(LogLevel.Info, message, BypassCategory);
+        public static void SvcWarn(string message) => Write(LogLevel.Warn, message, BypassCategory);
+        public static void SvcError(string message) => Write(LogLevel.Error, message, BypassCategory);
+
+        public static void SvcError(string message, Exception ex)
+            => Write(LogLevel.Error, message + ": " + ex.Message, BypassCategory);
+
+        private static void Write(LogLevel level, string message, string category = "")
         {
-            var entry = new LogEntry { Level = level, Message = message };
+            var entry = new LogEntry { Level = level, Message = message, Category = category };
             lock (Gate)
             {
                 Buffer.Add(entry);

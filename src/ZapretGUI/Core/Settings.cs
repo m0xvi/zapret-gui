@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -19,6 +20,9 @@ namespace ZapretGui.Core
         public string EnginePath { get; set; } = AppPaths.DefaultEngine;
 
         public ThemeMode Theme { get; set; } = ThemeMode.System;
+
+        /// <summary>Масштаб интерфейса в процентах (80–140).</summary>
+        public int InterfaceZoomPercent { get; set; } = 100;
 
         /// <summary>Сворачивать в трей при закрытии окна.</summary>
         public bool CloseToTray { get; set; }
@@ -50,8 +54,11 @@ namespace ZapretGui.Core
         /// <summary>Запускать приложение при входе в систему (через планировщик задач).</summary>
         public bool RunAtStartup { get; set; }
 
-        /// <summary>Последняя выбранная в GUI стратегия (имя .bat файла без расширения).</summary>
+        /// <summary>Последняя выбранная в GUI стратегия (имя .bat или сохранённого кандидата).</summary>
         public string SelectedStrategy { get; set; } = "";
+
+        /// <summary>Предыдущая стратегия для ручного отката после назначения кандидата.</summary>
+        public string PreviousSelectedStrategy { get; set; } = "";
 
         /// <summary>Версия движка, установленная GUI (для проверки обновлений).</summary>
         public string EngineVersion { get; set; } = "";
@@ -59,11 +66,50 @@ namespace ZapretGui.Core
         /// <summary>Запускать автоматическую проверку обновлений самого GUI.</summary>
         public bool AutoCheckGuiUpdates { get; set; } = true;
 
-        /// <summary>Адрес нашего репозитория для обновлений GUI (пусто — проверка выключена).</summary>
-        public string GuiRepo { get; set; } = "";
+        /// <summary>Адрес репозитория для безопасного обновления GUI.</summary>
+        public string GuiRepo { get; set; } = GuiUpdateService.DefaultRepository;
 
         /// <summary>Выбранный канал движка.</summary>
         public bool UseGameFilterOnStart { get; set; }
+
+        /// <summary>Пользователь попросил больше не спрашивать про найденный старый запуск запрета.</summary>
+        public bool LegacyZapretDismissed { get; set; }
+
+        /// <summary>Проверить все стратегии при первом запуске после установки движка.</summary>
+        public bool AutoTestStrategiesOnFirstLaunch { get; set; } = true;
+
+        /// <summary>Запустить диагностику перед автоматическим подбором стратегии.</summary>
+        public bool AutoDiagnoseOnFirstLaunch { get; set; } = true;
+
+        /// <summary>Флаг завершения мастера первого запуска.</summary>
+        public bool FirstLaunchWizardCompleted { get; set; }
+
+        /// <summary>Безопасный режим: не выполнять автоматический запуск обхода и сетевые действия.</summary>
+        public bool SafeMode { get; set; }
+
+        /// <summary>Флаг завершения одноразовой проверки стратегий.</summary>
+        public bool StrategyTestsCompleted { get; set; }
+
+        /// <summary>Флаг завершения одноразовой диагностики.</summary>
+        public bool FirstLaunchDiagnosticsCompleted { get; set; }
+
+        /// <summary>Включить фоновую проверку избранных ресурсов.</summary>
+        public bool ResourceMonitoringEnabled { get; set; }
+
+        /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.</summary>
+        public bool AutoRecoverStrategy { get; set; } = true;
+
+        /// <summary>Показывать уведомления мониторинга через значок в трее.</summary>
+        public bool MonitorNotificationsEnabled { get; set; } = true;
+
+        /// <summary>Интервал фоновой проверки в минутах.</summary>
+        public int ResourceMonitoringIntervalMinutes { get; set; } = 15;
+
+        /// <summary>Ресурсы пользователя для фонового контроля.</summary>
+        public List<MonitorTarget> MonitorTargets { get; set; } = new();
+
+        /// <summary>Необязательный контекст провайдера для будущего подбора стратегий.</summary>
+        public ProviderContext ProviderContext { get; set; } = new();
     }
 
     /// <summary>Загрузка/сохранение settings.json.</summary>
@@ -87,6 +133,9 @@ namespace ZapretGui.Core
                     if (loaded != null)
                     {
                         if (string.IsNullOrWhiteSpace(loaded.EnginePath)) loaded.EnginePath = AppPaths.DefaultEngine;
+                        if (string.IsNullOrWhiteSpace(loaded.GuiRepo)) loaded.GuiRepo = GuiUpdateService.DefaultRepository;
+                        loaded.MonitorTargets ??= new List<MonitorTarget>();
+                        loaded.ProviderContext ??= new ProviderContext();
                         return loaded;
                     }
                 }

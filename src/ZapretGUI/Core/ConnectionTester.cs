@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,22 +23,64 @@ namespace ZapretGui.Core
     /// <summary>Быстрая проверка доступности ресурсов (TCP-подключение + HTTPS-запрос).</summary>
     public static class ConnectionTester
     {
-        public static async Task<List<ConnectionCheck>> RunAsync(CancellationToken ct = default)
-        {
-            var targets = new (string Title, string Host, string Url)[]
+        public static Task<List<ConnectionCheck>> RunAsync(CancellationToken ct = default)
+            => RunAsync(new[]
             {
-                ("YouTube", "www.youtube.com", "https://www.youtube.com/generate_204"),
-                ("Discord", "discord.com", "https://discord.com/api/v9/gateway"),
-                ("GitHub (обновления)", "raw.githubusercontent.com", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
-            };
+                // Набор шире прежних трёх ресурсов и ближе к standard mode
+                // из Flowseal test zapret.ps1: несколько независимых CDN/доменов.
+                MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"),
+                MonitorTarget.CreateBuiltIn("Discord CDN", "https://cdn.discordapp.com"),
+                MonitorTarget.CreateBuiltIn("Discord Gateway", "https://gateway.discord.gg"),
+                MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"),
+                MonitorTarget.CreateBuiltIn("YouTube image", "https://i.ytimg.com"),
+                MonitorTarget.CreateBuiltIn("Google", "https://www.google.com"),
+                MonitorTarget.CreateBuiltIn("Cloudflare", "https://www.cloudflare.com"),
+                MonitorTarget.CreateBuiltIn("GitHub (обновления)", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
+            }, ct);
 
-            var results = new List<ConnectionCheck>();
-            foreach (var target in targets)
+        public static Task<List<ConnectionCheck>> RunAsync(CancellationToken ct,
+            IProgress<string>? progress)
+            => RunAsync(new[]
             {
-                ct.ThrowIfCancellationRequested();
-                results.Add(await CheckAsync(target.Title, target.Host, target.Url, ct).ConfigureAwait(false));
-            }
-            return results;
+                MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"),
+                MonitorTarget.CreateBuiltIn("Discord CDN", "https://cdn.discordapp.com"),
+                MonitorTarget.CreateBuiltIn("Discord Gateway", "https://gateway.discord.gg"),
+                MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"),
+                MonitorTarget.CreateBuiltIn("YouTube image", "https://i.ytimg.com"),
+                MonitorTarget.CreateBuiltIn("Google", "https://www.google.com"),
+                MonitorTarget.CreateBuiltIn("Cloudflare", "https://www.cloudflare.com"),
+                MonitorTarget.CreateBuiltIn("GitHub (обновления)", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
+            }, ct, progress);
+
+        public static async Task<List<ConnectionCheck>> RunAsync(IEnumerable<MonitorTarget> targets,
+            CancellationToken ct = default, IProgress<string>? progress = null)
+        {
+            var list = targets.Where(t => t.Enabled).ToList();
+            ct.ThrowIfCancellationRequested();
+            progress?.Report($"CONNECTION_TOTAL:{list.Count}");
+            var completed = 0;
+            // Проверки независимы: параллельный запуск сокращает время проверки нескольких адресов.
+            var checks = await Task.WhenAll(list.Select(async target =>
+            {
+                var result = await CheckAsync(target, ct).ConfigureAwait(false);
+                var number = Interlocked.Increment(ref completed);
+                progress?.Report($"CONNECTION_PROGRESS:{number}/{Math.Max(1, list.Count)} — {target.Name}");
+                return result;
+            })).ConfigureAwait(false);
+            return checks.ToList();
+        }
+
+        private static async Task<ConnectionCheck> CheckAsync(MonitorTarget target, CancellationToken ct)
+        {
+            var probe = await ResourceProbe.CheckAsync(target, ct).ConfigureAwait(false);
+            return new ConnectionCheck
+            {
+                Title = target.Name,
+                Host = target.Host,
+                Ok = probe.Ok,
+                Milliseconds = probe.Milliseconds,
+                Details = probe.Details
+            };
         }
 
         private static async Task<ConnectionCheck> CheckAsync(string title, string host, string url, CancellationToken ct)

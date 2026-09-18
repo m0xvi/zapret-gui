@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Security.Principal;
+using System.Runtime.Versioning;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -92,6 +93,65 @@ namespace ZapretGui.Core
             }
         }
 
+        /// <summary>
+        /// Запуск процесса с перехватом консольного вывода (для winws.exe в скрытом режиме).
+        /// Строки stdout/stderr приходят в <paramref name="onLine"/> (isError отличает поток);
+        /// вызов идёт с фонового потока — обработчик должен быть потокобезопасным.
+        /// Возвращённый процесс обязан жить, пока нужен перехват: вызов CancelCapture + Dispose,
+        /// когда процесс завершён. Сам процесс при Dispose НЕ завершается.
+        /// </summary>
+        public static Process? StartWithCapture(string fileName, IEnumerable<string> args,
+            Action<string, bool> onLine, string? workDir = null)
+        {
+            var psi = new ProcessStartInfo
+            {
+                FileName = fileName,
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                WorkingDirectory = workDir ?? Path.GetDirectoryName(fileName) ?? Environment.CurrentDirectory
+            };
+            foreach (var a in args) psi.ArgumentList.Add(a);
+
+            try
+            {
+                var process = new Process { StartInfo = psi, EnableRaisingEvents = true };
+                process.OutputDataReceived += (_, e) =>
+                {
+                    if (e.Data != null)
+                    {
+                        try { onLine(e.Data, false); } catch { }
+                    }
+                };
+                process.ErrorDataReceived += (_, e) =>
+                {
+                    if (e.Data != null)
+                    {
+                        try { onLine(e.Data, true); } catch { }
+                    }
+                };
+                if (!process.Start()) { process.Dispose(); return null; }
+                process.BeginOutputReadLine();
+                process.BeginErrorReadLine();
+                return process;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error($"Не удалось запустить {fileName}: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>Останавливает перехват вывода и освобождает объект процесса (сам процесс не трогает).</summary>
+        public static void CancelCapture(Process? process)
+        {
+            if (process == null) return;
+            try { process.CancelOutputRead(); } catch { }
+            try { process.CancelErrorRead(); } catch { }
+            try { process.Dispose(); } catch { }
+        }
+
         public static void OpenUrl(string url)
         {
             try { Process.Start(new ProcessStartInfo(url) { UseShellExecute = true }); }
@@ -127,6 +187,7 @@ namespace ZapretGui.Core
             catch (Exception ex) { AppLog.Error("Не удалось открыть файл: " + ex.Message); }
         }
 
+        [SupportedOSPlatform("windows")]
         public static bool IsAdmin()
         {
             try

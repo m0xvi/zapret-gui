@@ -2,6 +2,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text.Json;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Microsoft.Win32;
 using ZapretGui.Core;
@@ -13,20 +17,23 @@ namespace ZapretGui.ViewModels
         private readonly MainViewModel _main;
         private string _enginePath;
         private int _themeIndex;
+        private string _providerName = "";
+        private string _providerAsn = "";
+        private int _providerConfidenceIndex;
         private string _status = "Изменения сохраняются автоматически";
+        private bool _isProviderLookupBusy;
 
         public SettingsViewModel(MainViewModel main)
         {
             _main = main;
             _enginePath = main.Settings.EnginePath;
             _themeIndex = (int)main.Settings.Theme;
+            SyncProviderDraft();
             LastBackupText = GetBackupText();
 
             BrowseEnginePathCommand = new RelayCommand(BrowseEnginePath);
             DetectEngineCommand = new RelayCommand(DetectEngine);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
-            OpenListsFolderCommand = new RelayCommand(() => Shell.OpenFolder(Path.Combine(Settings.EnginePath, "lists")));
-            EditUserListCommand = new RelayCommand(param => EditUserList(param as string ?? ""));
             OpenSettingsFileCommand = new RelayCommand(() => Shell.OpenInNotepad(AppPaths.SettingsFile));
             OpenLogsFolderCommand = new RelayCommand(() => Shell.OpenFolder(AppPaths.LogDir));
             OpenBackupFolderCommand = new RelayCommand(() => Shell.OpenFolder(AppPaths.BackupDir));
@@ -34,9 +41,55 @@ namespace ZapretGui.ViewModels
             ValidateEngineCommand = new RelayCommand(ValidateEngine);
             OpenRepoCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl));
             OpenHostsCommand = new RelayCommand(() => Shell.OpenInNotepad(EngineService.SystemHostsPath));
+            SaveProviderContextCommand = new RelayCommand(SaveProviderContext);
+            ClearProviderContextCommand = new RelayCommand(ClearProviderContext);
+            LookupProviderCommand = new AsyncRelayCommand(LookupProviderAsync, () => !IsProviderLookupBusy);
         }
 
         public AppSettings Settings => _main.Settings;
+
+        private ProviderContext Provider => Settings.ProviderContext ??= new ProviderContext();
+
+        public string ProviderName
+        {
+            get => _providerName;
+            set => Set(ref _providerName, value ?? "");
+        }
+
+        public string ProviderAsn
+        {
+            get => _providerAsn;
+            set => Set(ref _providerAsn, value ?? "");
+        }
+
+        public string[] ProviderConfidenceOptions { get; } = { "Не указана", "Низкая", "Средняя", "Высокая" };
+
+        public int ProviderConfidenceIndex
+        {
+            get => _providerConfidenceIndex;
+            set => Set(ref _providerConfidenceIndex, Math.Clamp(value, 0, 3));
+        }
+
+        public string ProviderSourceText => Provider.SourceText;
+        public string ProviderCheckedAtText => Provider.CheckedAt.HasValue
+            ? "Проверено: " + Provider.CheckedAt.Value.ToLocalTime().ToString("dd.MM.yyyy HH:mm")
+            : "Время проверки не указано";
+        public string ProviderContextText => Provider.DisplayText;
+        public bool HasProviderContext => Provider.IsKnown;
+
+        public bool IsProviderLookupBusy
+        {
+            get => _isProviderLookupBusy;
+            private set
+            {
+                if (Set(ref _isProviderLookupBusy, value))
+                    (LookupProviderCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        public ICommand SaveProviderContextCommand { get; }
+        public ICommand ClearProviderContextCommand { get; }
+        public ICommand LookupProviderCommand { get; }
 
         public string[] ThemeOptions { get; } = { "Как в системе", "Тёмная", "Светлая" };
 
@@ -70,6 +123,19 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        public int ZoomPercent
+        {
+            get => Math.Clamp(Settings.InterfaceZoomPercent, 80, 140);
+            set
+            {
+                Settings.InterfaceZoomPercent = Math.Clamp(value, 80, 140);
+                SettingsStore.Save(Settings);
+                _main.Notify(nameof(MainViewModel.InterfaceZoom));
+                Raise(nameof(ZoomPercent));
+                Status = "Масштаб интерфейса: " + Settings.InterfaceZoomPercent + "%";
+            }
+        }
+
         public int ThemeIndex
         {
             get => _themeIndex;
@@ -99,7 +165,23 @@ namespace ZapretGui.ViewModels
         public bool AutoStartBypass
         {
             get => Settings.AutoStartBypass;
-            set { Settings.AutoStartBypass = value; OnSettingChanged(); }
+            set
+            {
+                Settings.AutoStartBypass = Settings.SafeMode ? false : value;
+                OnSettingChanged();
+            }
+        }
+
+        public bool SafeMode
+        {
+            get => Settings.SafeMode;
+            set
+            {
+                Settings.SafeMode = value;
+                if (value) Settings.AutoStartBypass = false;
+                OnSettingChanged();
+                _main.RefreshReadiness();
+            }
         }
 
         public bool StopBypassOnExit
@@ -144,6 +226,42 @@ namespace ZapretGui.ViewModels
             set { Settings.UseGameFilterOnStart = value; OnSettingChanged(); }
         }
 
+        public bool AutoTestStrategiesOnFirstLaunch
+        {
+            get => Settings.AutoTestStrategiesOnFirstLaunch;
+            set { Settings.AutoTestStrategiesOnFirstLaunch = value; OnSettingChanged(); }
+        }
+
+        public bool AutoDiagnoseOnFirstLaunch
+        {
+            get => Settings.AutoDiagnoseOnFirstLaunch;
+            set { Settings.AutoDiagnoseOnFirstLaunch = value; OnSettingChanged(); }
+        }
+
+        public bool ResourceMonitoringEnabled
+        {
+            get => _main.Monitoring.ResourceMonitoringEnabled;
+            set => _main.Monitoring.ResourceMonitoringEnabled = value;
+        }
+
+        public bool AutoRecoverStrategy
+        {
+            get => _main.Monitoring.AutoRecoverStrategy;
+            set => _main.Monitoring.AutoRecoverStrategy = value;
+        }
+
+        public bool MonitorNotificationsEnabled
+        {
+            get => Settings.MonitorNotificationsEnabled;
+            set { Settings.MonitorNotificationsEnabled = value; OnSettingChanged(); }
+        }
+
+        public int MonitoringIntervalMinutes
+        {
+            get => _main.Monitoring.MonitoringIntervalMinutes;
+            set => _main.Monitoring.MonitoringIntervalMinutes = value;
+        }
+
         /// <summary>Автозапуск приложения: планировщик задач (нужны права администратора).</summary>
         public bool RunAtStartup
         {
@@ -171,8 +289,6 @@ namespace ZapretGui.ViewModels
         public ICommand BrowseEnginePathCommand { get; }
         public ICommand DetectEngineCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
-        public ICommand OpenListsFolderCommand { get; }
-        public ICommand EditUserListCommand { get; }
         public ICommand OpenSettingsFileCommand { get; }
         public ICommand OpenLogsFolderCommand { get; }
         public ICommand OpenBackupFolderCommand { get; }
@@ -186,7 +302,10 @@ namespace ZapretGui.ViewModels
             _enginePath = Settings.EnginePath;
             Raise(nameof(EnginePath));
             _themeIndex = (int)Settings.Theme;
+            SyncProviderDraft();
             Raise(nameof(ThemeIndex));
+            Raise(nameof(ZoomPercent));
+            RaiseProviderContext();
             Raise(nameof(EngineInfoText));
             Raise(nameof(EngineReady));
         }
@@ -198,6 +317,7 @@ namespace ZapretGui.ViewModels
             Raise(nameof(CloseToTray));
             Raise(nameof(StartMinimized));
             Raise(nameof(AutoStartBypass));
+            Raise(nameof(SafeMode));
             Raise(nameof(StopBypassOnExit));
             Raise(nameof(ShowWinwsConsole));
             Raise(nameof(AutoCheckEngineUpdates));
@@ -205,7 +325,142 @@ namespace ZapretGui.ViewModels
             Raise(nameof(PreserveUserDataOnUpdate));
             Raise(nameof(ConfirmOnStop));
             Raise(nameof(UseGameFilterOnStart));
+            Raise(nameof(AutoTestStrategiesOnFirstLaunch));
+            Raise(nameof(AutoDiagnoseOnFirstLaunch));
+            Raise(nameof(ResourceMonitoringEnabled));
+            Raise(nameof(AutoRecoverStrategy));
+            Raise(nameof(MonitorNotificationsEnabled));
+            Raise(nameof(MonitoringIntervalMinutes));
             Raise(nameof(RunAtStartup));
+            Raise(nameof(ProviderName));
+            Raise(nameof(ProviderAsn));
+            Raise(nameof(ProviderConfidenceIndex));
+            Raise(nameof(ProviderSourceText));
+            Raise(nameof(ProviderCheckedAtText));
+            Raise(nameof(ProviderContextText));
+            Raise(nameof(HasProviderContext));
+        }
+
+        private void SaveProviderContext()
+        {
+            var name = _providerName.Trim();
+            var asn = _providerAsn.Trim();
+            if (name.Length > 120)
+            {
+                Status = "Название провайдера слишком длинное";
+                return;
+            }
+
+            if (asn.Length > 0 && !Regex.IsMatch(asn, @"^(?:AS)?\d{1,10}$", RegexOptions.IgnoreCase))
+            {
+                Status = "ASN должен иметь вид AS12345 или 12345";
+                return;
+            }
+
+            if (asn.Length > 0 && !asn.StartsWith("AS", StringComparison.OrdinalIgnoreCase))
+                asn = "AS" + asn;
+
+            var known = name.Length > 0 || asn.Length > 0;
+            Settings.ProviderContext = new ProviderContext
+            {
+                Name = name,
+                Asn = asn.ToUpperInvariant(),
+                Source = known ? ProviderContextSource.UserInput : ProviderContextSource.Unknown,
+                CheckedAt = known ? DateTime.UtcNow : null,
+                Confidence = known ? ProviderConfidenceValue(_providerConfidenceIndex) : 0
+            };
+            SyncProviderDraft();
+            SettingsStore.Save(Settings);
+            Status = known ? "Контекст провайдера сохранён" : "Провайдерский контекст очищен";
+            RaiseProviderContext();
+        }
+
+        private async Task LookupProviderAsync()
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Разрешить запрос к внешнему сервису ipapi.co? Сервис увидит ваш внешний IP и может определить ASN/организацию. Полученные данные будут сохранены с пометкой «внешний источник».",
+                "Определение провайдера через внешний сервис", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+            if (answer != System.Windows.MessageBoxResult.Yes) return;
+
+            IsProviderLookupBusy = true;
+            Status = "Запрашиваю ASN через внешний сервис…";
+            try
+            {
+                using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(12) };
+                client.DefaultRequestHeaders.UserAgent.ParseAdd("ZapretGUI/1.2");
+                using var response = await client.GetAsync("https://ipapi.co/json/").ConfigureAwait(true);
+                response.EnsureSuccessStatusCode();
+                using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync().ConfigureAwait(true));
+                var root = document.RootElement;
+                var name = ReadJsonString(root, "org");
+                if (string.IsNullOrWhiteSpace(name)) name = ReadJsonString(root, "isp");
+                var asn = ReadJsonString(root, "asn").ToUpperInvariant();
+                if (!string.IsNullOrWhiteSpace(asn) && !asn.StartsWith("AS", StringComparison.OrdinalIgnoreCase))
+                    asn = "AS" + asn;
+
+                if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(asn))
+                {
+                    Status = "Внешний сервис не вернул ASN или название организации";
+                    return;
+                }
+
+                Settings.ProviderContext = new ProviderContext
+                {
+                    Name = name.Trim(),
+                    Asn = asn.Trim(),
+                    Source = ProviderContextSource.ExternalService,
+                    CheckedAt = DateTime.UtcNow,
+                    Confidence = 70
+                };
+                SyncProviderDraft();
+                SettingsStore.Save(Settings);
+                Status = "Провайдерский контекст получен из внешнего источника и сохранён";
+                RaiseProviderContext();
+            }
+            catch (Exception ex)
+            {
+                Status = "Не удалось получить провайдерский контекст: " + ex.Message;
+            }
+            finally
+            {
+                IsProviderLookupBusy = false;
+            }
+        }
+
+        private static string ReadJsonString(JsonElement root, string property)
+            => root.TryGetProperty(property, out var value) && value.ValueKind == JsonValueKind.String
+                ? value.GetString() ?? ""
+                : "";
+
+        private void ClearProviderContext()
+        {
+            Settings.ProviderContext = new ProviderContext();
+            SyncProviderDraft();
+            SettingsStore.Save(Settings);
+            Status = "Провайдерский контекст очищен";
+            RaiseProviderContext();
+        }
+
+        private void SyncProviderDraft()
+        {
+            var context = Provider;
+            _providerName = context.Name;
+            _providerAsn = context.Asn;
+            _providerConfidenceIndex = context.Confidence switch { >= 90 => 3, >= 60 => 2, > 0 => 1, _ => 0 };
+        }
+
+        private static int ProviderConfidenceValue(int index)
+            => index switch { 3 => 95, 2 => 70, 1 => 35, _ => 0 };
+
+        private void RaiseProviderContext()
+        {
+            Raise(nameof(ProviderName));
+            Raise(nameof(ProviderAsn));
+            Raise(nameof(ProviderConfidenceIndex));
+            Raise(nameof(ProviderSourceText));
+            Raise(nameof(ProviderCheckedAtText));
+            Raise(nameof(ProviderContextText));
+            Raise(nameof(HasProviderContext));
         }
 
         private void BrowseEnginePath()
@@ -271,19 +526,6 @@ namespace ZapretGui.ViewModels
             Status = "Готовый движок не найден — скачайте его на странице «Обновления»";
         }
 
-        private void EditUserList(string which)
-        {
-            var file = which switch
-            {
-                "exclude" => "list-exclude-user.txt",
-                "ipset" => "ipset-exclude-user.txt",
-                _ => "list-general-user.txt"
-            };
-            var path = Path.Combine(Settings.EnginePath, "lists", file);
-            Shell.OpenInNotepad(path);
-            Status = "Изменения в списках применяются после перезапуска обхода";
-        }
-
         private void ValidateEngine()
         {
             if (EngineService.IsEngineReady(Settings.EnginePath))
@@ -309,17 +551,32 @@ namespace ZapretGui.ViewModels
             var fresh = new AppSettings();
             _main.Settings.EnginePath = fresh.EnginePath;
             _main.Settings.Theme = fresh.Theme;
+            _main.Settings.InterfaceZoomPercent = 100;
             _main.Settings.CloseToTray = false;
             _main.Settings.StartMinimized = false;
             _main.Settings.AutoStartBypass = false;
+            _main.Settings.SafeMode = false;
+            _main.Settings.FirstLaunchWizardCompleted = false;
             _main.Settings.StopBypassOnExit = false;
             _main.Settings.ShowWinwsConsole = false;
             _main.Settings.AutoCheckEngineUpdates = true;
             _main.Settings.IncludePrerelease = false;
             _main.Settings.PreserveUserDataOnUpdate = true;
             _main.Settings.ConfirmOnStop = false;
+            _main.Settings.AutoTestStrategiesOnFirstLaunch = true;
+            _main.Settings.AutoDiagnoseOnFirstLaunch = true;
+            _main.Settings.StrategyTestsCompleted = false;
+            _main.Settings.FirstLaunchDiagnosticsCompleted = false;
+            _main.Settings.PreviousSelectedStrategy = "";
+            _main.Settings.ResourceMonitoringEnabled = false;
+            _main.Settings.AutoRecoverStrategy = true;
+            _main.Settings.MonitorNotificationsEnabled = true;
+            _main.Settings.ResourceMonitoringIntervalMinutes = 15;
+            _main.Settings.MonitorTargets.Clear();
+            _main.Settings.ProviderContext = new ProviderContext();
 
             SettingsStore.Save(_main.Settings);
+            _main.Monitoring.Reload();
             Reload();
             ThemeService.Apply(_main.Settings.Theme);
             Status = "Настройки сброшены";

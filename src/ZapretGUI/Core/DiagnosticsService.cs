@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
@@ -9,33 +10,7 @@ using Microsoft.Win32;
 
 namespace ZapretGui.Core
 {
-    public enum DiagStatus { Ok, Warning, Error, Info }
-
-    public sealed class DiagnosticItem
-    {
-        public string Title { get; init; } = "";
-        public string Details { get; init; } = "";
-        public string FixHint { get; init; } = "";
-        public DiagStatus Status { get; init; }
-
-        public string Icon => Status switch
-        {
-            DiagStatus.Ok => "✓",
-            DiagStatus.Warning => "!",
-            DiagStatus.Error => "✕",
-            _ => "i"
-        };
-
-        public string SeverityKey => Status switch
-        {
-            DiagStatus.Ok => "Success",
-            DiagStatus.Warning => "Warning",
-            DiagStatus.Error => "Danger",
-            _ => "Info"
-        };
-    }
-
-    /// <summary>Проверки из service.bat -&gt; Run Diagnostics, переписанные на C#.</summary>
+    /// <summary>Проверки из service.bat -&gt; Run Diagnostics, переписанные на C#, плюс автоисправления.</summary>
     public static class DiagnosticsService
     {
         public static async Task<List<DiagnosticItem>> RunAsync(AppSettings settings, IProgress<string>? progress = null,
@@ -43,8 +18,14 @@ namespace ZapretGui.Core
         {
             var items = new List<DiagnosticItem>();
             var engineRoot = settings.EnginePath;
+            const int stepCount = 14;
+            var stepNumber = 0;
 
-            void Step(string text) => progress?.Report(text);
+            void Step(string text)
+            {
+                stepNumber++;
+                progress?.Report($"DIAGNOSTICS_PROGRESS:{stepNumber}/{stepCount} — {text}");
+            }
 
             // 1. Права администратора
             Step("Проверка прав администратора");
@@ -54,7 +35,9 @@ namespace ZapretGui.Core
                 Title = "Права администратора",
                 Status = isAdmin ? DiagStatus.Ok : DiagStatus.Error,
                 Details = isAdmin ? "Приложение запущено от имени администратора" : "Нет прав администратора",
-                FixHint = isAdmin ? "" : "Закройте приложение и запустите exe от имени администратора (или перезапустите через кнопку в шапке)"
+                FixHint = isAdmin ? "" : "Без прав администратора не работают службы, WinDivert и правка hosts",
+                FixId = isAdmin ? "" : "admin",
+                FixLabel = "Перезапустить от админа"
             });
 
             // 2. Файлы движка
@@ -70,7 +53,9 @@ namespace ZapretGui.Core
                 Details = haveBin
                     ? $"winws.exe, WinDivert64.sys и WinDivert.dll на месте ({engineRoot})"
                     : "Не найдены winws.exe / WinDivert64.sys / WinDivert.dll",
-                FixHint = haveBin ? "" : "Скачайте движок на странице «Обновления» или укажите верную папку в настройках"
+                FixHint = haveBin ? "" : "Скачайте движок из официального репозитория одной кнопкой",
+                FixId = haveBin ? "" : "engine",
+                FixLabel = "Скачать движок"
             });
 
             // 3. Кириллица и спецсимволы в пути
@@ -81,7 +66,9 @@ namespace ZapretGui.Core
                 Title = "Путь к движку без спецсимволов",
                 Status = badPath ? DiagStatus.Warning : DiagStatus.Ok,
                 Details = engineRoot,
-                FixHint = badPath ? "В пути есть кириллица или спецсимволы — перенесите движок в C:\\Zapret или %LOCALAPPDATA%\\ZapretGUI\\engine" : ""
+                FixHint = badPath ? "Кириллица в пути ломает часть стратегий и скриптов" : "",
+                FixId = badPath ? "movengine" : "",
+                FixLabel = "Перенести движок"
             });
 
             // 4. OneDrive в пути
@@ -92,37 +79,40 @@ namespace ZapretGui.Core
                 Title = "Опасные папки (OneDrive)",
                 Status = oneDriveIssue ? DiagStatus.Warning : DiagStatus.Ok,
                 Details = oneDriveIssue ? "Папка движка синхронизируется OneDrive" : "Путь не пересекается с OneDrive",
-                FixHint = oneDriveIssue ? "Синхронизация может блокировать WinDivert64.sys. Перенесите папку движка" : ""
+                FixHint = oneDriveIssue ? "Синхронизация может блокировать WinDivert64.sys" : "",
+                FixId = oneDriveIssue ? "movengine" : "",
+                FixLabel = "Перенести движок"
             });
 
-            // 5. BFE
-            Step("Проверка службы Base Filtering Engine");
-            var bfe = WinServices.Query("BFE");
+            // 5. BFE и остаточные WinDivert: один read-only снимок сохраняется для мастера.
+            Step("Проверка служб BFE и WinDivert");
+            var serviceHealth = ServiceHealthCache.Capture();
+            var bfe = serviceHealth.Bfe;
             items.Add(new DiagnosticItem
             {
                 Title = "Служба BFE (Base Filtering Engine)",
                 Status = bfe == ServiceState.Running ? DiagStatus.Ok : DiagStatus.Error,
                 Details = "Состояние: " + bfe,
-                FixHint = bfe == ServiceState.Running ? "" : "Запустите: sc start BFE (или через services.msc)"
+                FixHint = bfe == ServiceState.Running ? "" : "BFE нужна драйверу WinDivert для перехвата трафика",
+                FixId = bfe == ServiceState.Running ? "" : "bfe",
+                FixLabel = "Запустить BFE"
             });
 
             // 6. TCP timestamps
             Step("Проверка TCP timestamps");
-            var tcp = Shell.Run("netsh", new[] { "interface", "tcp", "show", "global" }, 10000).All;
-            var timestampsOk = false;
-            foreach (var line in tcp.Split('\n'))
-            {
-                if (line.IndexOf("timestamps", StringComparison.OrdinalIgnoreCase) < 0) continue;
-                timestampsOk = line.IndexOf("enabled", StringComparison.OrdinalIgnoreCase) >= 0
-                               && line.IndexOf("disabled", StringComparison.OrdinalIgnoreCase) < 0;
-                break;
-            }
+            var tcpState = WinServices.GetTcpTimestampsState();
             items.Add(new DiagnosticItem
             {
                 Title = "TCP timestamps включены",
-                Status = timestampsOk ? DiagStatus.Ok : DiagStatus.Warning,
-                Details = "Нужны для части стратегий обхода",
-                FixHint = timestampsOk ? "" : "Включите командой: netsh interface tcp set global timestamps=enabled"
+                Status = tcpState.Enabled ? DiagStatus.Ok : DiagStatus.Warning,
+                Details = tcpState.Details.Length > 0
+                    ? tcpState.Details
+                    : "Нужны для части стратегий обхода",
+                FixHint = tcpState.Enabled
+                    ? ""
+                    : "Windows оставила TCP timestamps выключенными — повторите включение и проверьте результат",
+                FixId = tcpState.Enabled ? "" : "timestamps",
+                FixLabel = "Включить"
             });
 
             // 7. Прокси
@@ -133,7 +123,9 @@ namespace ZapretGui.Core
                 Title = "Системный прокси",
                 Status = proxyEnabled ? DiagStatus.Warning : DiagStatus.Ok,
                 Details = proxyEnabled ? "В системе включён прокси-сервер" : "Прокси не используется",
-                FixHint = proxyEnabled ? "Прокси может конфликтовать с обходом. Отключите его, если сайты не открываются" : ""
+                FixHint = proxyEnabled ? "Прокси может конфликтовать с обходом. Отключите его, если сайты не открываются" : "",
+                FixId = proxyEnabled ? "proxy" : "",
+                FixLabel = "Отключить прокси"
             });
 
             // 8. VPN-адаптеры
@@ -146,7 +138,7 @@ namespace ZapretGui.Core
                 Title = "VPN-адаптеры",
                 Status = vpn.Count > 0 ? DiagStatus.Warning : DiagStatus.Ok,
                 Details = vpn.Count > 0 ? "Активны: " + string.Join(", ", vpn) : "Активных VPN-адаптеров нет",
-                FixHint = vpn.Count > 0 ? "VPN меняет маршрутизацию и часто ломает zapret. Отключите VPN для проверки" : ""
+                FixHint = vpn.Count > 0 ? "VPN меняет маршрутизацию и часто ломает zapret. Отключите VPN для проверки (вручную — отключать чужое подключение автоматически опасно)" : ""
             });
 
             // 9. Конфликтующие службы
@@ -170,7 +162,9 @@ namespace ZapretGui.Core
                 Title = "Конфликтующие службы",
                 Status = conflicts.Count > 0 ? DiagStatus.Warning : DiagStatus.Ok,
                 Details = conflicts.Count > 0 ? "Найдены: " + string.Join(", ", conflicts) : "Конфликтов не найдено",
-                FixHint = conflicts.Count > 0 ? "Эти службы перехватывают трафик. При проблемах отключите их для теста" : ""
+                FixHint = conflicts.Count > 0 ? "Эти службы перехватывают трафик. Кнопка остановит их для теста" : "",
+                FixId = conflicts.Count > 0 ? "conflicts" : "",
+                FixLabel = "Остановить службы"
             });
 
             // 10. Другие обходы
@@ -193,20 +187,29 @@ namespace ZapretGui.Core
                     : "Посторонних обходов не найдено",
                 FixHint = others.Count > 0 || foreignWinws.Count > 0
                     ? "Одновременно должен работать только один обход — иначе WinDivert конфликтует"
-                    : ""
+                    : "",
+                FixId = others.Count > 0 || foreignWinws.Count > 0 ? "others" : "",
+                FixLabel = "Остановить чужие обходы"
             });
 
             // 11. WinDivert службы
             Step("Проверка остаточных служб WinDivert");
-            var divertServices = new[] { "WinDivert", "WinDivert14" }
-                .Where(s => WinServices.Query(s) != ServiceState.NotInstalled)
+            var divertServices = new[]
+                {
+                    (Name: WinServices.WinDivertService, State: serviceHealth.WinDivert),
+                    (Name: WinServices.WinDivert14Service, State: serviceHealth.WinDivert14)
+                }
+                .Where(s => s.State != ServiceState.NotInstalled)
+                .Select(s => s.Name + " (" + ServiceHealthSnapshot.FormatState(s.State) + ")")
                 .ToList();
             items.Add(new DiagnosticItem
             {
                 Title = "Остаточные службы WinDivert",
                 Status = divertServices.Count > 0 ? DiagStatus.Warning : DiagStatus.Ok,
                 Details = divertServices.Count > 0 ? "Найдены: " + string.Join(", ", divertServices) : "Остатков нет",
-                FixHint = divertServices.Count > 0 ? "Нажмите «Полностью удалить службы» — они мешают новому запуску" : ""
+                FixHint = divertServices.Count > 0 ? "Остатки мешают новому запуску — удаляются одной кнопкой" : "",
+                FixId = divertServices.Count > 0 ? "divert" : "",
+                FixLabel = "Удалить остатки"
             });
 
             // 12. Служба zapret
@@ -221,8 +224,10 @@ namespace ZapretGui.Core
                     ? "Служба не установлена (обход запускается вручную)"
                     : $"Состояние: {zapretState}" + (strategyName.Length > 0 ? $", стратегия: {strategyName}" : ""),
                 FixHint = zapretState == ServiceState.StopPending
-                    ? "Служба зависла в STOP_PENDING — обычно из-за конфликта с другим обходом. Запустите «Полностью удалить службы»"
-                    : ""
+                    ? "Служба зависла в STOP_PENDING — обычно из-за конфликта с другим обходом"
+                    : "",
+                FixId = zapretState == ServiceState.StopPending ? "zapretstuck" : "",
+                FixLabel = "Удалить службы"
             });
 
             // 13. hosts
@@ -236,7 +241,9 @@ namespace ZapretGui.Core
                 Details = hostsHasGithub
                     ? "Строки GitHub добавлены в hosts"
                     : "Строки из репозитория в hosts не найдены",
-                FixHint = hostsHasGithub ? "" : "Обновите hosts на странице «Обновления» — это помогает работе веб-версии Telegram и голосового чата Discord"
+                FixHint = hostsHasGithub ? "" : "Помогает работе веб-версии Telegram и голосового чата Discord",
+                FixId = hostsHasGithub ? "" : "hosts",
+                FixLabel = "Обновить hosts"
             });
 
             // 14. Кэш Discord
@@ -247,10 +254,252 @@ namespace ZapretGui.Core
                 Title = "Кэш Discord",
                 Status = cacheSize > 300L * 1024 * 1024 ? DiagStatus.Warning : DiagStatus.Ok,
                 Details = cacheSize > 0 ? $"{cacheSize / 1024.0 / 1024.0:0.0} МБ" : "Кэш не найден",
-                FixHint = cacheSize > 300L * 1024 * 1024 ? "Большой кэш может мешать подключению — очистите его кнопкой ниже" : ""
+                FixHint = cacheSize > 300L * 1024 * 1024 ? "Большой кэш может мешать подключению" : "",
+                FixId = cacheSize > 300L * 1024 * 1024 ? "cache" : "",
+                FixLabel = "Очистить кэш"
             });
 
             return items;
+        }
+
+        // ---------------------------------------------------------------- автоисправления
+
+        /// <summary>Включает автозапуск и запускает службу BFE (нужна драйверу WinDivert).</summary>
+        public static (bool Ok, string Message) FixBfe()
+        {
+            try
+            {
+                if (!Shell.IsAdmin())
+                    return (false, "Нужны права администратора");
+
+                var state = WinServices.Query("BFE");
+                if (state == ServiceState.Running)
+                    return (true, "Служба BFE уже запущена");
+                if (state == ServiceState.NotInstalled)
+                    return (false, "Служба BFE не найдена в Windows");
+
+                var config = Shell.Run("sc.exe", new[] { "config", "BFE", "start=", "auto" }, 20000);
+                if (!config.Ok)
+                    return (false, "Не удалось включить автозапуск BFE: " + FormatShellError(config));
+
+                var start = WinServices.Start("BFE");
+                var running = Shell.WaitForAsync(
+                    () => WinServices.Query("BFE") == ServiceState.Running, 15000)
+                    .GetAwaiter().GetResult();
+
+                AppLog.Info("Служба BFE: " + (running ? "запущена" : "не запустилась"));
+                if (running)
+                    return (true, "Служба BFE запущена");
+
+                var stateAfter = WinServices.Query("BFE");
+                var detail = start.All.Length > 0 ? FormatShellError(start) : "нет ответа от sc.exe";
+                return (false, $"BFE не запустилась (состояние: {stateAfter}). {detail}. Откройте services.msc и проверьте зависимости службы.");
+            }
+            catch (Exception ex)
+            {
+                return (false, "Ошибка запуска BFE: " + ex.Message);
+            }
+        }
+
+        private static string FormatShellError(ShellResult result)
+        {
+            var output = result.All.Replace(Environment.NewLine, " ").Trim();
+            return output.Length > 500 ? output.Substring(0, 500) : output;
+        }
+
+        /// <summary>Отключает системный прокси (реестр + уведомление системы).</summary>
+        public static (bool Ok, string Message) DisableProxy()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.OpenSubKey(
+                    @"Software\Microsoft\Windows\CurrentVersion\Internet Settings", true);
+                if (key == null) return (false, "Не найден раздел реестра с настройками прокси");
+
+                key.SetValue("ProxyEnable", 0, RegistryValueKind.DWord);
+                RefreshInternetSettings();
+
+                AppLog.Info("Системный прокси отключён через приложение");
+                return (true, "Системный прокси отключён");
+            }
+            catch (Exception ex)
+            {
+                return (false, "Не удалось отключить прокси: " + ex.Message);
+            }
+        }
+
+        /// <summary>Останавливает службы, перехватывающие трафик (Adguard, Killer и т. п.).</summary>
+        public static (bool Ok, string Message) StopConflictingServices()
+        {
+            try
+            {
+                var output = Shell.Run("sc.exe",
+                    new[] { "query", "type=", "service", "state=", "all" }, 20000).All;
+
+                var markers = new[] { "AdguardSvc", "Adguard", "Killer", "Intel Connectivity", "Check Point", "SmartByte" };
+                var stopped = new List<string>();
+
+                // Вывод sc query — блоки «SERVICE_NAME: …» с пустыми строками между ними
+                foreach (var block in output.Split(new[] { "\r\n\r\n", "\n\n" }, StringSplitOptions.RemoveEmptyEntries))
+                {
+                    if (!markers.Any(m => block.IndexOf(m, StringComparison.OrdinalIgnoreCase) >= 0)) continue;
+                    if (block.IndexOf("RUNNING", StringComparison.OrdinalIgnoreCase) < 0) continue;
+
+                    var nameLine = block.Split('\n')
+                        .Select(l => l.Trim())
+                        .FirstOrDefault(l => l.StartsWith("SERVICE_NAME", StringComparison.OrdinalIgnoreCase));
+                    if (nameLine == null) continue;
+
+                    var colon = nameLine.IndexOf(':');
+                    if (colon < 0) continue;
+                    var serviceName = nameLine.Substring(colon + 1).Trim();
+                    if (serviceName.Length == 0) continue;
+
+                    var result = WinServices.Stop(serviceName);
+                    if (result.Ok) stopped.Add(serviceName);
+                }
+
+                if (stopped.Count == 0)
+                    return (false, "Запущенных конфликтующих служб не найдено (возможно, они уже остановлены)");
+
+                AppLog.Info("Остановлены конфликтующие службы: " + string.Join(", ", stopped));
+                return (true, "Остановлены службы: " + string.Join(", ", stopped));
+            }
+            catch (Exception ex)
+            {
+                return (false, "Не удалось остановить службы: " + ex.Message);
+            }
+        }
+
+        /// <summary>Завершает чужие обходы DPI (goodbyedpi и др.) и чужие winws.exe.</summary>
+        public static (bool Ok, string Message) StopForeignBypass(string engineRoot)
+        {
+            try
+            {
+                var stopped = new List<string>();
+                foreach (var name in new[] { "goodbyedpi", "GoodbyeDPI", "dpitunnel", "TgWsProxy", "tg-ws-proxy", "byedpi" })
+                {
+                    if (!Shell.IsProcessRunning(name)) continue;
+                    Shell.KillProcess(name);
+                    stopped.Add(name);
+                }
+
+                var ownBin = Path.Combine(engineRoot, "bin");
+                var killedWinws = 0;
+                foreach (var (pid, path) in LegacyZapret.GetWinwsProcesses())
+                {
+                    var dir = Path.GetDirectoryName(path) ?? "";
+                    if (dir.Equals(ownBin, StringComparison.OrdinalIgnoreCase)) continue;
+                    try
+                    {
+                        using var process = System.Diagnostics.Process.GetProcessById(pid);
+                        process.Kill(true);
+                        killedWinws++;
+                    }
+                    catch { }
+                }
+                if (killedWinws > 0) stopped.Add($"winws.exe (чужих: {killedWinws})");
+
+                if (stopped.Count == 0)
+                    return (false, "Чужие обходы не найдены (возможно, уже завершены)");
+
+                AppLog.Info("Завершены чужие обходы: " + string.Join(", ", stopped));
+                return (true, "Завершены: " + string.Join(", ", stopped));
+            }
+            catch (Exception ex)
+            {
+                return (false, "Не удалось завершить чужие обходы: " + ex.Message);
+            }
+        }
+
+        /// <summary>Удаляет остаточные службы WinDivert/WinDivert14 (когда обход остановлен).</summary>
+        public static (bool Ok, string Message) RemoveDivertLeftovers()
+        {
+            try
+            {
+                if (Shell.IsProcessRunning("winws") ||
+                    WinServices.Query(WinServices.ZapretService) == ServiceState.Running)
+                    return (false, "Сначала остановите обход — драйвер сейчас используется");
+
+                var removed = new List<string>();
+                foreach (var name in new[] { WinServices.WinDivertService, WinServices.WinDivert14Service })
+                {
+                    if (!WinServices.Exists(name)) continue;
+                    WinServices.Delete(name);
+                    removed.Add(name);
+                }
+
+                if (removed.Count == 0)
+                    return (false, "Остаточных служб не найдено");
+
+                AppLog.Info("Удалены остаточные службы: " + string.Join(", ", removed));
+                return (true, "Удалены службы: " + string.Join(", ", removed));
+            }
+            catch (Exception ex)
+            {
+                return (false, "Не удалось удалить службы: " + ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Переносит движок в безопасную папку без кириллицы и OneDrive.
+        /// Старая папка остаётся на месте (удалите вручную, когда убедитесь, что всё работает).
+        /// </summary>
+        public static (bool Ok, string Message) MoveEngineToSafePath(AppSettings settings)
+        {
+            try
+            {
+                if (Shell.IsProcessRunning("winws") ||
+                    WinServices.Query(WinServices.ZapretService) == ServiceState.Running)
+                    return (false, "Сначала остановите обход — файлы движка сейчас заняты");
+
+                var current = settings.EnginePath;
+                var target = AppPaths.DefaultEngine;
+                if (Regex.IsMatch(target, @"[^\x00-\x7F]") || target.Contains("OneDrive", StringComparison.OrdinalIgnoreCase))
+                    target = @"C:\ZapretGUI-engine";
+                if (string.Equals(target, current, StringComparison.OrdinalIgnoreCase))
+                    target = @"C:\ZapretGUI-engine";
+
+                if (Directory.Exists(target) && Directory.GetFileSystemEntries(target).Length > 0)
+                    return (false, $"Папка {target} уже существует и не пуста — перенесите движок вручную");
+
+                AppLog.Info($"Переношу движок: {current} → {target}");
+                CopyDirectory(current, target);
+
+                if (!EngineService.IsEngineReady(target))
+                    return (false, "Копирование завершилось, но winws.exe в новой папке не найден");
+
+                settings.EnginePath = target;
+                SettingsStore.Save(settings);
+
+                AppLog.Info("Движок перенесён, путь обновлён в настройках");
+                return (true, $"Движок перенесён в {target}. Старая папка оставлена — удалите её вручную.");
+            }
+            catch (Exception ex)
+            {
+                return (false, "Не удалось перенести движок: " + ex.Message);
+            }
+        }
+
+        /// <summary>Сброс сетевых настроек (как в README репозитория).</summary>
+        public static List<string> ResetNetwork()
+        {
+            var report = new List<string>();
+            var commands = new[]
+            {
+                "netsh winsock reset",
+                "netsh int ip reset all",
+                "netsh winhttp reset proxy",
+                "ipconfig /flushdns"
+            };
+
+            foreach (var command in commands)
+            {
+                var result = Shell.RunCmd(command);
+                report.Add($"{command} → {(result.Ok ? "готово" : "ошибка")}");
+            }
+            report.Add("Требуется перезагрузка компьютера");
+            return report;
         }
 
         private static bool IsProxyEnabled()
@@ -295,25 +544,26 @@ namespace ZapretGui.Core
             return result;
         }
 
-        /// <summary>Сброс сетевых настроек (как в README репозитория).</summary>
-        public static List<string> ResetNetwork()
+        private static void CopyDirectory(string source, string target)
         {
-            var report = new List<string>();
-            var commands = new[]
-            {
-                "netsh winsock reset",
-                "netsh int ip reset all",
-                "netsh winhttp reset proxy",
-                "ipconfig /flushdns"
-            };
-
-            foreach (var command in commands)
-            {
-                var result = Shell.RunCmd(command);
-                report.Add($"{command} → {(result.Ok ? "готово" : "ошибка")}");
-            }
-            report.Add("Требуется перезагрузка компьютера");
-            return report;
+            Directory.CreateDirectory(target);
+            foreach (var file in Directory.GetFiles(source))
+                File.Copy(file, Path.Combine(target, Path.GetFileName(file)), true);
+            foreach (var dir in Directory.GetDirectories(source))
+                CopyDirectory(dir, Path.Combine(target, Path.GetFileName(dir)));
         }
+
+        private static void RefreshInternetSettings()
+        {
+            try
+            {
+                InternetSetOption(IntPtr.Zero, 39, IntPtr.Zero, 0); // SETTINGS_CHANGED
+                InternetSetOption(IntPtr.Zero, 37, IntPtr.Zero, 0); // REFRESH
+            }
+            catch { }
+        }
+
+        [DllImport("wininet.dll", SetLastError = true)]
+        private static extern bool InternetSetOption(IntPtr hInternet, int dwOption, IntPtr lpBuffer, int dwBufferLength);
     }
 }

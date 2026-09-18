@@ -1,0 +1,193 @@
+name: Windows integration (opt-in)
+
+on:
+  workflow_dispatch:
+    inputs:
+      run_read_only_checks:
+        description: "Запустить только read-only проверки BFE и WinDivert"
+        required: true
+        default: false
+        type: boolean
+      services:
+        description: "Список служб через запятую: BFE, WinDivert, WinDivert14"
+        required: false
+        default: "BFE,WinDivert,WinDivert14"
+        type: string
+      run_controller_checks:
+        description: "Запустить controller-проверку на безопасном тестовом процессе, без настоящего winws и служб"
+        required: true
+        default: false
+        type: boolean
+      run_controller_failure_check:
+        description: "Проверить восстановление состояния после неудачного запуска"
+        required: true
+        default: false
+        type: boolean
+      run_real_service_checks:
+        description: "Остановить и снова запустить выбранные реальные службы Windows; только вручную и с подтверждением"
+        required: true
+        default: false
+        type: boolean
+      real_services:
+        description: "Реальные службы через запятую: WinDivert, WinDivert14, zapret или BFE"
+        required: false
+        default: "WinDivert,WinDivert14"
+        type: string
+      real_services_runner:
+        description: "Исполнитель: windows-latest или метка выделенного self-hosted runner"
+        required: true
+        default: "windows-latest"
+        type: string
+      real_service_confirmation:
+        description: "Введите RUN-REAL-SERVICE-CHECKS для разрешения изменения реальных служб"
+        required: false
+        default: ""
+        type: string
+      allow_critical_service_changes:
+        description: "Разрешить отдельный опасный тест BFE (может временно нарушить сеть runner)"
+        required: true
+        default: false
+        type: boolean
+      run_real_driver_lock_check:
+        description: "Загрузить реальный WinDivert-драйвер и проверить блокировку WinDivert64.sys"
+        required: true
+        default: false
+        type: boolean
+      real_driver_service:
+        description: "Драйверная служба: WinDivert или WinDivert14"
+        required: false
+        default: "WinDivert"
+        type: string
+      real_driver_path:
+        description: "Полный путь к существующему bin\\WinDivert64.sys на выбранном runner"
+        required: false
+        default: ""
+        type: string
+      real_driver_confirmation:
+        description: "Введите RUN-REAL-DRIVER-LOCK-CHECKS для разрешения загрузки драйвера"
+        required: false
+        default: ""
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-services:
+    name: Read-only службы Windows
+    if: inputs.run_read_only_checks == true
+    runs-on: windows-latest
+    steps:
+      - name: Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Восстановление зависимостей
+        run: dotnet restore tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj
+
+      - name: Запуск read-only проверки служб
+        env:
+          ZAPRET_GUI_RUN_WINDOWS_INTEGRATION: '1'
+          ZAPRET_GUI_INTEGRATION_SERVICES: ${{ inputs.services }}
+        run: dotnet run --project tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj -c Release --no-restore -- --run
+
+  real-service-lifecycle:
+    name: Реальные службы Windows (явный opt-in)
+    if: inputs.run_real_service_checks == true
+    runs-on: ${{ inputs.real_services_runner }}
+    timeout-minutes: 15
+    # Если для environment настроено approval, он становится вторым ручным шлюзом.
+    environment:
+      name: real-windows-services
+    steps:
+      - name: Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Восстановление зависимостей
+        run: dotnet restore tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj
+
+      - name: Запуск lifecycle-проверки реальных служб
+        env:
+          ZAPRET_GUI_RUN_REAL_SERVICE_INTEGRATION: '1'
+          ZAPRET_GUI_REAL_SERVICES: ${{ inputs.real_services }}
+          ZAPRET_GUI_REAL_SERVICE_CONFIRMATION: ${{ inputs.real_service_confirmation }}
+          ZAPRET_GUI_ALLOW_CRITICAL_SERVICE: ${{ inputs.allow_critical_service_changes && '1' || '0' }}
+        run: dotnet run --project tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj -c Release --no-restore -- --run-real-services
+
+  real-driver-lock:
+    name: Реальная блокировка WinDivert64.sys (явный opt-in)
+    if: inputs.run_real_driver_lock_check == true
+    runs-on: ${{ inputs.real_services_runner }}
+    timeout-minutes: 15
+    environment:
+      name: real-windows-services
+    steps:
+      - name: Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Восстановление зависимостей
+        run: dotnet restore tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj
+
+      - name: Проверка реальной блокировки драйвера
+        env:
+          ZAPRET_GUI_RUN_REAL_DRIVER_LOCK: '1'
+          ZAPRET_GUI_REAL_DRIVER_SERVICE: ${{ inputs.real_driver_service }}
+          ZAPRET_GUI_REAL_DRIVER_PATH: ${{ inputs.real_driver_path }}
+          ZAPRET_GUI_REAL_DRIVER_CONFIRMATION: ${{ inputs.real_driver_confirmation }}
+        run: dotnet run --project tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj -c Release --no-restore -- --run-real-driver-lock
+
+  controller-integration:
+    name: Controller на тестовом процессе
+    if: inputs.run_controller_checks == true
+    runs-on: windows-latest
+    steps:
+      - name: Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Восстановление зависимостей
+        run: dotnet restore tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj
+
+      - name: Запуск controller-проверки
+        env:
+          ZAPRET_GUI_RUN_CONTROLLER_INTEGRATION: '1'
+        run: dotnet run --project tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj -c Release --no-restore -- --run-controller
+
+  controller-failure-recovery:
+    name: Восстановление после ошибки controller
+    if: inputs.run_controller_failure_check == true
+    runs-on: windows-latest
+    steps:
+      - name: Клонирование репозитория
+        uses: actions/checkout@v4
+
+      - name: Установка .NET 8 SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Восстановление зависимостей
+        run: dotnet restore tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj
+
+      - name: Запуск failure recovery проверки
+        env:
+          ZAPRET_GUI_RUN_CONTROLLER_FAILURE: '1'
+        run: dotnet run --project tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj -c Release --no-restore -- --run-controller-failure

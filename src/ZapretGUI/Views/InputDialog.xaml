@@ -1,0 +1,25 @@
+<Window x:Class="ZapretGui.Views.InputDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Добавить запись" SizeToContent="WidthAndHeight"
+        WindowStartupLocation="CenterOwner" ResizeMode="NoResize"
+        MinWidth="460" MaxWidth="680"
+        Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}"
+        FontFamily="{DynamicResource UiFont}">
+    <StackPanel Margin="24,20,24,20">
+        <TextBlock x:Name="PromptText" Style="{StaticResource TitleText}" TextWrapping="Wrap" />
+        <TextBox x:Name="ValueBox" Style="{StaticResource InputBox}" Margin="0,12,0,0"
+                 MinWidth="410" />
+        <TextBlock x:Name="SecondaryPromptText" Style="{StaticResource DimText}" Margin="0,10,0,0"
+                   TextWrapping="Wrap" Visibility="Collapsed" />
+        <TextBox x:Name="SecondaryValueBox" Style="{StaticResource InputBox}" Margin="0,6,0,0"
+                 Visibility="Collapsed" />
+        <CheckBox x:Name="CheckBoxInput" Style="{StaticResource SwitchCheckBox}" Margin="0,10,0,0"
+                  Visibility="Collapsed" />
+        <WrapPanel HorizontalAlignment="Right" Margin="0,18,0,0">
+            <Button Style="{StaticResource GhostButton}" Content="Отмена" Click="Cancel_Click" />
+            <Button Style="{StaticResource PrimaryButton}" Content="Добавить" Margin="8,0,0,0"
+                    Click="Accept_Click" IsDefault="True" />
+        </WrapPanel>
+    </StackPanel>
+</Window>
