@@ -283,6 +283,7 @@ namespace ZapretGui.Core
             var payload = new byte[PayloadBytes];
             System.Security.Cryptography.RandomNumberGenerator.Fill(payload);
             var results = new DpiTargetResult[selected.Count];
+            var completedTargets = 0;
             using var gate = new SemaphoreSlim(MaxParallel, MaxParallel);
             var tasks = selected.Select(async (entry, index) =>
             {
@@ -291,7 +292,8 @@ namespace ZapretGui.Core
                 {
                     progress?.Report($"Проверяю DPI: {index + 1} из {selected.Count} — {entry.Provider}");
                     results[index] = await CheckTargetWithRetriesAsync(entry, false, progress, ct, payload).ConfigureAwait(false);
-                    progress?.Report($"DPI_PROGRESS:{index + 1}/{progressTotal} — завершён {entry.Provider}");
+                    var completed = Interlocked.Increment(ref completedTargets);
+                    progress?.Report($"DPI_PROGRESS:{completed}/{progressTotal} — завершён {entry.Provider}");
                 }
                 finally
                 {

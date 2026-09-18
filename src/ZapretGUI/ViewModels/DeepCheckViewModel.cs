@@ -237,6 +237,17 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
+            var diagnostics = System.Text.RegularExpressions.Regex.Match(
+                text, @"DIAGNOSTICS_PROGRESS:(\d+)/(\d+)\s*(?:—\s*)?(.*)");
+            if (diagnostics.Success)
+            {
+                var current = int.Parse(diagnostics.Groups[1].Value);
+                var total = Math.Max(1, int.Parse(diagnostics.Groups[2].Value));
+                SetProgress(10 + 18d * current / total,
+                    diagnostics.Groups[3].Value.Length > 0 ? diagnostics.Groups[3].Value : "Проверяю системные условия");
+                return;
+            }
+
             var connection = System.Text.RegularExpressions.Regex.Match(
                 text, @"CONNECTION_PROGRESS:(\d+)/(\d+)\s*(?:—\s*)?(.*)");
             if (connection.Success)
@@ -285,7 +296,7 @@ namespace ZapretGui.ViewModels
                 return;
             }
             var answer = System.Windows.MessageBox.Show(
-                "Глубокая проверка последовательно проверит Windows, движок, DNS, TCP, HTTPS, DPI, найденные стратегии и до трёх новых комбинаций автоконструктора. Новые комбинации запускаются только во временном тестовом режиме, текущий обход после каждой пробы восстанавливается. Системные настройки автоматически изменяться не будут; только стратегия с подтверждённым успешным результатом может быть выбрана основной. Продолжить?",
+                "Глубокая проверка последовательно проверит Windows, движок, DNS, TCP, HTTPS, DPI-suite и до трёх лидирующих стратегий под DPI, а также до трёх новых комбинаций автоконструктора. Временные стратегии запускаются только для теста, текущий обход после каждой пробы восстанавливается. Системные настройки автоматически изменяться не будут; рекомендация не становится активной без отдельного подтверждения. Продолжить?",
                 "Подтверждение глубокой проверки", System.Windows.MessageBoxButton.YesNo,
                 System.Windows.MessageBoxImage.Warning);
             if (answer != System.Windows.MessageBoxResult.Yes) return;
