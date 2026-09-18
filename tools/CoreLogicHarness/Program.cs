@@ -851,8 +851,8 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
 
         private static void EmpiricalCandidateEvaluationScoreOrdering()
         {
-            var candidateA = new StrategyCandidate { Name = "Candidate A", Args = new[] { "--wf-tcp=443" } };
-            var candidateB = new StrategyCandidate { Name = "Candidate B", Args = new[] { "--wf-tcp=443", "--dpi-desync=fake" } };
+            var candidateA = new StrategyCandidate { Name = "Candidate A", Args = new List<string> { "--wf-tcp=443" } };
+            var candidateB = new StrategyCandidate { Name = "Candidate B", Args = new List<string> { "--wf-tcp=443", "--dpi-desync=fake" } };
 
             var evalA = new StrategyCandidateEvaluation(candidateA);
             evalA.AddResult(new StrategyTestResult
