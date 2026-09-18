@@ -296,7 +296,7 @@ namespace ZapretGui.ViewModels
                 return;
             }
             var answer = System.Windows.MessageBox.Show(
-                "Глубокая проверка последовательно проверит Windows, движок, DNS, TCP, HTTPS, DPI-suite и до трёх лидирующих стратегий под DPI, а также до трёх новых комбинаций автоконструктора. Временные стратегии запускаются только для теста, текущий обход после каждой пробы восстанавливается. Системные настройки автоматически изменяться не будут; рекомендация не становится активной без отдельного подтверждения. Продолжить?",
+                "Глубокая проверка последовательно проверит Windows, движок, DNS, TCP, HTTPS, DPI-suite под всеми запустившимися стратегиями, а также до трёх новых комбинаций автоконструктора. Временные стратегии запускаются только для теста, текущий обход после каждой пробы восстанавливается. Системные настройки автоматически изменяться не будут; рекомендация не становится активной без отдельного подтверждения. Продолжить?",
                 "Подтверждение глубокой проверки", System.Windows.MessageBoxButton.YesNo,
                 System.Windows.MessageBoxImage.Warning);
             if (answer != System.Windows.MessageBoxResult.Yes) return;
@@ -700,14 +700,12 @@ namespace ZapretGui.ViewModels
                 .Where(result => result.Started && result.IsSuitable)
                 .OrderByDescending(result => result.PassedCount)
                 .ThenBy(result => result.Checks.Where(check => check.Ok).Sum(check => check.Milliseconds))
-                .Take(3)
                 .ToList() ?? new List<StrategyTestResult>();
             if (strategies.Count == 0)
             {
                 strategies = batch?.Results
                     .Where(result => result.Started)
                     .OrderByDescending(result => result.PassedCount)
-                    .Take(3)
                     .ToList() ?? new List<StrategyTestResult>();
             }
 
