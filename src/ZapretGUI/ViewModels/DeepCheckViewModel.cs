@@ -326,7 +326,10 @@ namespace ZapretGui.ViewModels
             ProgressPercentText = "0%";
             ProgressIndeterminate = false;
             AutomaticActionText = "Системные исправления не выполняются автоматически.";
-            _cts = new CancellationTokenSource(TimeSpan.FromMinutes(15));
+            // Полный Flowseal-подобный DPI matrix запускается под каждой рабочей
+            // стратегией и может занимать десятки минут. Это именно общий safety
+            // timeout, а не тайм-аут отдельной пробы.
+            _cts = new CancellationTokenSource(TimeSpan.FromMinutes(30));
             var ct = _cts.Token;
 
             try
