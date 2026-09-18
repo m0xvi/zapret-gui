@@ -3,27 +3,30 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
-    <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
         <StackPanel Margin="24,20,20,26">
 
             <Grid>
-                <StackPanel>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
                     <TextBlock Style="{StaticResource DisplayText}" Text="Настройки" />
                     <TextBlock Style="{StaticResource MutedText}" Text="Изменения применяются и сохраняются автоматически" />
                 </StackPanel>
-                <Button Style="{StaticResource GhostButton}" Content="Сбросить настройки" HorizontalAlignment="Right"
-                        VerticalAlignment="Top" Command="{Binding ResetSettingsCommand}" />
+                <WrapPanel Grid.Column="1" MaxWidth="220" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <Button Style="{StaticResource GhostButton}" Content="Сбросить настройки"
+                            Command="{Binding ResetSettingsCommand}"
+                            ToolTip="Вернуть все настройки приложения к значениям по умолчанию" />
+                </WrapPanel>
             </Grid>
 
-            <Grid Margin="0,16,0,0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="24" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
+            <StackPanel Margin="0,16,0,0">
 
-                <!-- Левая колонка -->
-                <StackPanel Grid.Column="0">
+                <!-- Основные блоки настроек идут последовательно, чтобы страница
+                     оставалась доступной на узком окне и при системном DPI. -->
+                <StackPanel>
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" />
@@ -34,16 +37,84 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBox Style="{StaticResource InputBox}" Text="{Binding EnginePath, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding EnginePath, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Папка со сборкой zapret: внутри должны быть bin, lists и .bat файлы" />
                                 <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Обзор…" Margin="8,0,0,0"
-                                        Command="{Binding BrowseEnginePathCommand}" />
+                                        Command="{Binding BrowseEnginePathCommand}"
+                                        ToolTip="Выбрать папку с движком" />
                             </Grid>
-                            <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <Button Style="{StaticResource GhostButton}" Content="Найти автоматически" Command="{Binding DetectEngineCommand}" />
-                                <Button Style="{StaticResource GhostButton}" Content="Проверить" Command="{Binding ValidateEngineCommand}" />
-                                <Button Style="{StaticResource GhostButton}" Content="Открыть папку" Command="{Binding OpenEngineFolderCommand}" />
-                            </StackPanel>
+                            <WrapPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                <Button Style="{StaticResource GhostButton}" Content="Найти автоматически" Command="{Binding DetectEngineCommand}"
+                                        ToolTip="Найти уже распакованную сборку рядом с приложением или в загрузках" />
+                                <Button Style="{StaticResource GhostButton}" Content="Проверить" Command="{Binding ValidateEngineCommand}"
+                                        ToolTip="Проверить, что в папке есть winws.exe и WinDivert64.sys" />
+                                <Button Style="{StaticResource GhostButton}" Content="Открыть папку" Command="{Binding OpenEngineFolderCommand}"
+                                        ToolTip="Открыть папку движка в проводнике" />
+                            </WrapPanel>
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding EngineInfoText}" Margin="2,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="КОНТЕКСТ ПРОВАЙДЕРА" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Укажите провайдера вручную, если хотите использовать его как признак будущего автоконструктора. Нажмите «Сохранить», чтобы зафиксировать время проверки. Endpoint из DPI-suite не считается вашим провайдером." TextWrapping="Wrap" />
+                            <Grid Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,8,0">
+                                    <TextBlock Style="{StaticResource DimText}" Text="Имя провайдера" />
+                                    <TextBox Style="{StaticResource InputBox}" Margin="0,5,0,0"
+                                             Text="{Binding ProviderName, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Название интернет-провайдера пользователя; можно оставить пустым" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                                    <TextBlock Style="{StaticResource DimText}" Text="ASN провайдера" />
+                                    <TextBox Style="{StaticResource InputBox}" Margin="0,5,0,0"
+                                             Text="{Binding ProviderAsn, UpdateSourceTrigger=PropertyChanged}"
+                                             ToolTip="Необязательный ASN провайдера, например AS12345" />
+                                </StackPanel>
+                            </Grid>
+                            <Grid Margin="0,12,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="220" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Margin="0,0,12,0">
+                                    <TextBlock Style="{StaticResource DimText}" Text="Источник данных" />
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding ProviderSourceText}" Margin="0,3,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="1">
+                                    <TextBlock Style="{StaticResource DimText}" Text="Уверенность в данных" />
+                                    <ComboBox Style="{StaticResource AppComboBox}" Margin="0,5,0,0"
+                                              ItemsSource="{Binding ProviderConfidenceOptions}"
+                                              SelectedIndex="{Binding ProviderConfidenceIndex, Mode=TwoWay}"
+                                              ToolTip="Насколько вы уверены в указанном провайдере" />
+                                </StackPanel>
+                            </Grid>
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding ProviderCheckedAtText}" Margin="0,10,0,0" TextWrapping="Wrap" />
+                            <WrapPanel Margin="0,10,0,0">
+                                <Button Style="{StaticResource SecondaryButton}" Content="Сохранить"
+                                        Command="{Binding SaveProviderContextCommand}"
+                                        ToolTip="Зафиксировать провайдера, источник, уверенность и время проверки" />
+                                <Button Style="{StaticResource GhostButton}" Content="Определить через внешний сервис" Margin="8,0,0,0"
+                                        Command="{Binding LookupProviderCommand}"
+                                        ToolTip="После отдельного подтверждения запросить ASN и организацию через ipapi.co" />
+                                <Button Style="{StaticResource GhostButton}" Content="Очистить данные" Margin="8,0,0,0"
+                                        Command="{Binding ClearProviderContextCommand}"
+                                        ToolTip="Очистить имя, ASN, источник, уверенность и время проверки" />
+                            </WrapPanel>
+                            <WrapPanel Margin="0,10,0,0" Visibility="{Binding IsProviderLookupBusy, Converter={StaticResource BoolToVis}}">
+                                <Border Style="{StaticResource BusySpinner}">
+                                    <TextBlock Text="…" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Style="{StaticResource MutedText}" Text="Запрашиваю данные провайдера…" Margin="8,2,0,0" />
+                            </WrapPanel>
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0">
+                                <TextBlock Style="{StaticResource MutedText}" Text="{Binding ProviderContextText}" TextWrapping="Wrap" />
+                            </Border>
                         </StackPanel>
                     </Border>
 
@@ -51,15 +122,35 @@
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ИНТЕРФЕЙС" />
                             <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
                                 <TextBlock Style="{StaticResource BodyText}" Text="Тема оформления" VerticalAlignment="Center" />
-                                <controls:SegmentedControl HorizontalAlignment="Right" Width="330"
+                                <controls:SegmentedControl Grid.Column="1" HorizontalAlignment="Right" Width="220" MinWidth="160" MaxWidth="330"
                                                            ItemsSource="{Binding ThemeOptions}"
-                                                           SelectedIndex="{Binding ThemeIndex, Mode=TwoWay}" />
+                                                           SelectedIndex="{Binding ThemeIndex, Mode=TwoWay}"
+                                                           ToolTip="Тёмная, светлая тема или как в системе (переключается на лету)" />
+                            </Grid>
+                            <Grid Margin="0,14,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource BodyText}" Text="Масштаб интерфейса" VerticalAlignment="Center" />
+                                <Slider Grid.Column="1" HorizontalAlignment="Stretch" MinWidth="80" Minimum="80" Maximum="140"
+                                        TickFrequency="10" IsSnapToTickEnabled="True"
+                                        Value="{Binding ZoomPercent, Mode=TwoWay}" ToolTip="Масштаб от 80 до 140 процентов" />
+                                <TextBlock Grid.Column="2" Style="{StaticResource DimText}" Text="{Binding ZoomPercent, StringFormat={}{0}%}"
+                                           Width="45" Margin="8,0,0,0" VerticalAlignment="Center" />
                             </Grid>
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Сворачивать в трей при закрытии окна"
-                                      Margin="0,14,0,0" IsChecked="{Binding CloseToTray, Mode=TwoWay}" />
+                                      Margin="0,14,0,0" IsChecked="{Binding CloseToTray, Mode=TwoWay}"
+                                      ToolTip="При закрытии окна приложение остаётся в трее, обход продолжает работать" />
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать свёрнутым в трей"
-                                      Margin="0,10,0,0" IsChecked="{Binding StartMinimized, Mode=TwoWay}" />
+                                      Margin="0,10,0,0" IsChecked="{Binding StartMinimized, Mode=TwoWay}"
+                                      ToolTip="Запускаться сразу свёрнутым в трей" />
                         </StackPanel>
                     </Border>
 
@@ -67,83 +158,101 @@
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ПОВЕДЕНИЕ ОБХОДА" />
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать обход вместе с приложением"
-                                      IsChecked="{Binding AutoStartBypass, Mode=TwoWay}" />
+                                      IsChecked="{Binding AutoStartBypass, Mode=TwoWay}"
+                                      ToolTip="Запускать обход с выбранной стратегией сразу при старте приложения" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Безопасный режим"
+                                      Margin="0,10,0,0" IsChecked="{Binding SafeMode, Mode=TwoWay}"
+                                      ToolTip="Не запускать обход автоматически и не выполнять автоматическую установку службы или сетевые изменения. Диагностика остаётся доступной." />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,5,0,0"
+                                       Text="В безопасном режиме приложение наблюдает и диагностирует систему; служба, hosts, proxy, TCP timestamps, reset network и WinDivert изменяются только вручную после объяснения и подтверждения." TextWrapping="Wrap" />
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Останавливать обход при выходе"
-                                      Margin="0,10,0,0" IsChecked="{Binding StopBypassOnExit, Mode=TwoWay}" />
+                                      Margin="0,10,0,0" IsChecked="{Binding StopBypassOnExit, Mode=TwoWay}"
+                                      ToolTip="Останавливать обход при выходе из приложения" />
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Спрашивать подтверждение при остановке"
-                                      Margin="0,10,0,0" IsChecked="{Binding ConfirmOnStop, Mode=TwoWay}" />
+                                      Margin="0,10,0,0" IsChecked="{Binding ConfirmOnStop, Mode=TwoWay}"
+                                      ToolTip="Показывать подтверждение при остановке обхода круглой кнопкой" />
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать консольное окно winws.exe"
-                                      Margin="0,10,0,0" IsChecked="{Binding ShowWinwsConsole, Mode=TwoWay}" />
+                                      Margin="0,10,0,0" IsChecked="{Binding ShowWinwsConsole, Mode=TwoWay}"
+                                      ToolTip="Показывать чёрное окно консоли winws.exe (в скрытом режиме его вывод пишется в журнал на странице «Журнал»)" />
                             <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
                                        Text="По умолчанию консоль скрыта — обход работает в фоне, как и раньше через .bat с параметром /min." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="АВТОПОДБОР СТРАТЕГИИ" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять все стратегии при первом запуске"
+                                      IsChecked="{Binding AutoTestStrategiesOnFirstLaunch, Mode=TwoWay}"
+                                      ToolTip="Один раз последовательно запустить стратегии и проверить YouTube, Discord и GitHub" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать диагностику перед автоподбором"
+                                      Margin="0,10,0,0" IsChecked="{Binding AutoDiagnoseOnFirstLaunch, Mode=TwoWay}"
+                                      ToolTip="Перед проверкой стратегий проверить BFE, TCP timestamps, WinDivert и сетевые конфликты" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Проверка выполняется только один раз после установки движка. Повторить её можно вручную на странице «Стратегии»." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ФОНОВЫЙ МОНИТОРИНГ" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять ресурсы в фоне"
+                                      IsChecked="{Binding ResourceMonitoringEnabled, Mode=TwoWay}"
+                                      ToolTip="Проверять избранные сайты даже когда окно свёрнуто в трей" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать уведомления в трее"
+                                      Margin="0,10,0,0" IsChecked="{Binding MonitorNotificationsEnabled, Mode=TwoWay}"
+                                      ToolTip="Показывать результат фоновой диагностики через существующий значок в трее" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Интервал проверки (минуты)" />
+                            <Slider Minimum="5" Maximum="120" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding MonitoringIntervalMinutes, Mode=TwoWay}" ToolTip="От 5 до 120 минут" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding MonitoringIntervalMinutes, StringFormat={}{0} мин}" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Приложение уже поддерживает запуск при входе в Windows и работу в трее. Мониторинг не добавляет домены автоматически без подтверждения пользователя." TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
 
                 <!-- Правая колонка -->
-                <StackPanel Grid.Column="2">
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ОБНОВЛЕНИЯ" />
-                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять движок при запуске"
-                                      IsChecked="{Binding AutoCheckEngineUpdates, Mode=TwoWay}" />
-                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включать pre-release версии"
-                                      Margin="0,10,0,0" IsChecked="{Binding IncludePrerelease, Mode=TwoWay}" />
-                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Сохранять пользовательские списки при обновлении"
-                                      Margin="0,10,0,0" IsChecked="{Binding PreserveUserDataOnUpdate, Mode=TwoWay}" />
-                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
-                                       Text="Пользовательские файлы: list-general-user.txt, list-exclude-user.txt, ipset-exclude-user.txt, режимы фильтров." />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="СПИСКИ ПОЛЬЗОВАТЕЛЯ" />
-                            <TextBlock Style="{StaticResource DimText}"
-                                       Text="Домены и IP, которые нужно добавить в обход или исключить из него." />
-                            <Button Style="{StaticResource SecondaryButton}" Content="list-general-user.txt — добавить домены"
-                                    Margin="0,10,0,0" HorizontalAlignment="Stretch" Command="{Binding EditUserListCommand}" CommandParameter="general" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="list-exclude-user.txt — исключения"
-                                    Margin="0,8,0,0" HorizontalAlignment="Stretch" Command="{Binding EditUserListCommand}" CommandParameter="exclude" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="ipset-exclude-user.txt — исключения IP"
-                                    Margin="0,8,0,0" HorizontalAlignment="Stretch" Command="{Binding EditUserListCommand}" CommandParameter="ipset" />
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть папку lists"
-                                    Margin="0,6,0,0" HorizontalAlignment="Left" Command="{Binding OpenListsFolderCommand}" />
-                        </StackPanel>
-                    </Border>
-
+                <StackPanel>
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМА И ФАЙЛЫ" />
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать при входе в систему (от администратора)"
-                                      IsChecked="{Binding RunAtStartup, Mode=TwoWay}" />
+                                      IsChecked="{Binding RunAtStartup, Mode=TwoWay}"
+                                      ToolTip="Автозапуск приложения при входе в систему через планировщик задач (с правами администратора)" />
                             <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
                                        Text="{Binding Status}" />
                             <Border Style="{StaticResource Divider}" />
                             <Button Style="{StaticResource GhostButton}" Content="settings.json" HorizontalAlignment="Left"
-                                    Command="{Binding OpenSettingsFileCommand}" />
+                                    Command="{Binding OpenSettingsFileCommand}"
+                                    ToolTip="Открыть файл настроек в блокноте" />
                             <Button Style="{StaticResource GhostButton}" Content="Папка журналов" HorizontalAlignment="Left"
-                                    Command="{Binding OpenLogsFolderCommand}" />
+                                    Command="{Binding OpenLogsFolderCommand}"
+                                    ToolTip="Открыть папку с файлами журнала" />
                             <Button Style="{StaticResource GhostButton}" Content="Папка резервных копий" HorizontalAlignment="Left"
-                                    Command="{Binding OpenBackupFolderCommand}" />
+                                    Command="{Binding OpenBackupFolderCommand}"
+                                    ToolTip="Открыть папку с резервными копиями hosts" />
                             <Button Style="{StaticResource GhostButton}" Content="Файл hosts (блокнот)" HorizontalAlignment="Left"
-                                    Command="{Binding OpenHostsCommand}" />
+                                    Command="{Binding OpenHostsCommand}"
+                                    ToolTip="Открыть системный файл hosts в блокноте" />
                             <Button Style="{StaticResource GhostButton}" Content="Репозиторий движка" HorizontalAlignment="Left"
-                                    Command="{Binding OpenRepoCommand}" />
+                                    Command="{Binding OpenRepoCommand}"
+                                    ToolTip="Открыть репозиторий Flowseal/zapret-discord-youtube в браузере" />
                         </StackPanel>
                     </Border>
 
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="О ПУТЯХ" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding SettingsFilePath}" TextTrimming="CharacterEllipsis" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LogsPath}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding BackupPath}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding SettingsFilePath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SettingsFilePath}" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LogsPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LogsPath}" Margin="0,4,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding BackupPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding BackupPath}" Margin="0,4,0,0" />
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding LastBackupText}" Margin="0,8,0,0" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
-            </Grid>
+            </StackPanel>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

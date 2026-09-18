@@ -15,6 +15,8 @@ namespace ZapretGui.ViewModels
         private bool _showInfo = true;
         private bool _showWarn = true;
         private bool _showError = true;
+        private bool _showApp = true;
+        private bool _showBypass = true;
 
         public LogsViewModel()
         {
@@ -43,6 +45,12 @@ namespace ZapretGui.ViewModels
         public bool ShowWarn { get => _showWarn; set { if (Set(ref _showWarn, value)) Reload(); } }
         public bool ShowError { get => _showError; set { if (Set(ref _showError, value)) Reload(); } }
 
+        /// <summary>Показывать записи самого приложения (обновления, интерфейс, диагностика).</summary>
+        public bool ShowApp { get => _showApp; set { if (Set(ref _showApp, value)) Reload(); } }
+
+        /// <summary>Показывать записи обхода и служб (winws.exe, zapret, WinDivert).</summary>
+        public bool ShowBypass { get => _showBypass; set { if (Set(ref _showBypass, value)) Reload(); } }
+
         public string CountText => $"Записей: {Entries.Count}";
 
         public ICommand ClearCommand { get; }
@@ -64,14 +72,28 @@ namespace ZapretGui.ViewModels
             });
         }
 
-        private bool Accepts(LogEntry entry) => entry.Level switch
+        private bool Accepts(LogEntry entry)
         {
-            LogLevel.Debug => ShowDebug,
-            LogLevel.Info => ShowInfo,
-            LogLevel.Warn => ShowWarn,
-            LogLevel.Error => ShowError,
-            _ => true
-        };
+            var levelOk = entry.Level switch
+            {
+                LogLevel.Debug => ShowDebug,
+                LogLevel.Info => ShowInfo,
+                LogLevel.Warn => ShowWarn,
+                LogLevel.Error => ShowError,
+                _ => true
+            };
+            if (!levelOk) return false;
+
+            // Пустая категория — приложение, иначе (сейчас только «Обход») — обход и службы
+            return string.IsNullOrEmpty(entry.Category) ? ShowApp : ShowBypass;
+        }
+
+        public void RefreshTheme()
+        {
+            var entries = Entries.ToList();
+            Entries.Clear();
+            foreach (var entry in entries) Entries.Add(entry);
+        }
 
         private void Reload()
         {

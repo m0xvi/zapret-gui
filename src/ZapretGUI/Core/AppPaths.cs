@@ -16,7 +16,15 @@ namespace ZapretGui.Core
         public static string LogDir => EnsureDir(Path.Combine(AppData, "logs"));
         public static string LogFile => Path.Combine(LogDir, "zapretgui.log");
         public static string BackupDir => EnsureDir(Path.Combine(AppData, "backups"));
+        public static string GuiBackupDir => EnsureDir(Path.Combine(AppData, "gui-backups"));
+        public static string GuiUpdatePlanFile => Path.Combine(AppData, "gui-update-plan.json");
         public static string CacheDir => EnsureDir(Path.Combine(AppData, "cache"));
+        public static string CandidatesDir => EnsureDir(Path.Combine(AppData, "candidates"));
+        public static string StrategyEvaluationHistoryFile => Path.Combine(AppData, "strategy-evaluation-history.json");
+        public static string DpiSuiteCacheFile => Path.Combine(AppData, "dpi-suite-cache.json");
+        public static string ServiceHealthCacheFile => Path.Combine(AppData, "service-health-cache.json");
+        public static string RecoveryJournalFile => Path.Combine(AppData, "recovery-history.json");
+        public static string DeepCheckReportsDir => EnsureDir(Path.Combine(AppData, "deep-check-reports"));
         public static string TempDir => EnsureDir(Path.Combine(Path.GetTempPath(), AppName));
 
         /// <summary>Папка с движком zapret по умолчанию: %LOCALAPPDATA%\ZapretGUI\engine</summary>

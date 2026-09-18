@@ -1,9 +1,17 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.IO;
+using System.IO.Compression;
+using System.Text;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
+using Microsoft.Win32;
 using ZapretGui.Core;
 
 namespace ZapretGui.ViewModels
@@ -12,24 +20,86 @@ namespace ZapretGui.ViewModels
     {
         private readonly MainViewModel _main;
         private bool _isRunning;
+        private double _progressValue;
+        private double _progressMaximum = 14;
+        private bool _progressIndeterminate = true;
+        private string _progressPercentText = "";
         private string _progressText = "";
         private string _summary = "Диагностика ещё не запускалась";
         private string _summaryKey = "Muted";
         private string _message = "";
         private string _messageKey = "Info";
+        private string _lastSavedText = "Результаты ещё не сохранялись";
+        private bool _isDpiRunning;
+        private double _dpiProgressValue;
+        private double _dpiProgressMaximum = 1;
+        private bool _dpiProgressIndeterminate = true;
+        private string _dpiProgressPercentText = "";
+        private string _dpiProgressText = "";
+        private string _dpiSummary = "Проверка DPI ещё не запускалась";
+        private string _dpiSummaryKey = "Muted";
+        private string _dpiCustomHost = "";
+        private NetworkObservationSnapshot _dpiObservation = new();
+        private ResourceDiagnosisResult? _dpiBypassComparison;
+        private DpiTargetResult? _dpiControlResult;
+        private string _dpiSuiteSource = "";
+        private DateTime? _dpiSuiteLoadedAt;
+        private CancellationTokenSource? _dpiCts;
 
         public DiagnosticsViewModel(MainViewModel main)
         {
             _main = main;
 
-            RunCommand = new AsyncRelayCommand(RunAsync, () => !IsRunning);
+            RunCommand = new AsyncRelayCommand(RunAsync, () => !IsRunning && !IsDpiRunning);
+            FixItemCommand = new AsyncRelayCommand(FixItemAsync, _ => !IsRunning && !IsDpiRunning);
             ClearDiscordCacheCommand = new RelayCommand(ClearDiscordCache);
             ResetNetworkCommand = new RelayCommand(ResetNetwork);
-            RemoveServicesCommand = new AsyncRelayCommand(RemoveServicesAsync, () => !IsRunning);
+            RemoveServicesCommand = new AsyncRelayCommand(RemoveServicesAsync, () => !IsRunning && !IsDpiRunning);
+            RecoverBypassCommand = new AsyncRelayCommand(RecoverBypassAsync, () => !IsRunning && !IsDpiRunning);
             OpenHostsCommand = new RelayCommand(() => Shell.OpenInNotepad(EngineService.SystemHostsPath));
             OpenSystemNetworkCommand = new RelayCommand(() => Shell.OpenUrl("ms-settings:network"));
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
-            FixTimestampsCommand = new RelayCommand(FixTimestamps);
+            FixTimestampsCommand = new AsyncRelayCommand(FixTimestampsAsync, () => !IsRunning && !IsDpiRunning);
+            RunDpiCommand = new AsyncRelayCommand(RunDpiAsync, () => !IsRunning && !IsDpiRunning);
+            CancelDpiCommand = new RelayCommand(CancelDpi, () => IsDpiRunning);
+            OpenDpiCommand = new RelayCommand(() => _main.Navigate("dpi"));
+            ExportReportCommand = new RelayCommand(ExportReport,
+                () => HasResults || DpiResults.Count > 0 ||
+                     DiagnosticsHistoryStore.LoadLastDiagnostics() != null ||
+                     DiagnosticsHistoryStore.LoadLastDpiCheck() != null);
+            ExportArchiveCommand = new RelayCommand(ExportArchive,
+                () => HasResults || DpiResults.Count > 0 ||
+                     DiagnosticsHistoryStore.LoadLastDiagnostics() != null ||
+                     DiagnosticsHistoryStore.LoadLastDpiCheck() != null);
+
+            var saved = DiagnosticsHistoryStore.LoadLastDiagnostics();
+            if (saved != null)
+            {
+                foreach (var item in saved.Items) Items.Add(item);
+                Summary = saved.Summary;
+                SummaryKey = GetSummaryKey(saved.Items);
+                LastSavedText = "Сохранено ранее · устарело: " + saved.CreatedAt.ToString("dd.MM.yyyy HH:mm");
+            }
+
+            var savedDpi = DiagnosticsHistoryStore.LoadLastDpiCheck();
+            if (savedDpi != null)
+            {
+                foreach (var result in savedDpi.Results) DpiResults.Add(result);
+                DpiControlResult = savedDpi.ControlResult;
+                _dpiSuiteSource = savedDpi.SuiteSource;
+                _dpiSuiteLoadedAt = savedDpi.SuiteLoadedAt;
+                DpiSummary = savedDpi.ErrorMessage.Length > 0 ? savedDpi.ErrorMessage : savedDpi.Summary;
+                DpiSummaryKey = savedDpi.ErrorMessage.Length > 0
+                    ? "Danger"
+                    : savedDpi.Results.Concat(savedDpi.ControlResult == null
+                        ? Array.Empty<DpiTargetResult>() : new[] { savedDpi.ControlResult })
+                        .Any(r => r.HasSuspiciousProbe) ? "Warning" : "Success";
+                DpiBypassComparison = savedDpi.BypassComparison;
+                DpiObservation = savedDpi.Observation;
+                DpiLastCheckText = "Сохранено ранее · устарело: " + savedDpi.CreatedAt.ToString("dd.MM.yyyy HH:mm");
+            }
+            (ExportReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (ExportArchiveCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         public AppSettings Settings => _main.Settings;
@@ -45,12 +115,41 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(ProgressVisible));
                     (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (RunDpiCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelDpiCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (FixTimestampsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (RecoverBypassCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (FixItemCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (RemoveServicesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
 
         public bool ProgressVisible => IsRunning;
+
+        public double ProgressValue
+        {
+            get => _progressValue;
+            private set => Set(ref _progressValue, value);
+        }
+
+        public double ProgressMaximum
+        {
+            get => _progressMaximum;
+            private set => Set(ref _progressMaximum, value);
+        }
+
+        public bool ProgressIndeterminate
+        {
+            get => _progressIndeterminate;
+            private set => Set(ref _progressIndeterminate, value);
+        }
+
+        public string ProgressPercentText
+        {
+            get => _progressPercentText;
+            private set => Set(ref _progressPercentText, value);
+        }
 
         public string ProgressText
         {
@@ -89,45 +188,632 @@ namespace ZapretGui.ViewModels
 
         public bool HasResults => Items.Count > 0;
 
+        public string LastSavedText
+        {
+            get => _lastSavedText;
+            private set => Set(ref _lastSavedText, value);
+        }
+
+        public ObservableCollection<DpiTargetResult> DpiResults { get; } = new();
+
+        public bool IsDpiRunning
+        {
+            get => _isDpiRunning;
+            private set
+            {
+                if (Set(ref _isDpiRunning, value))
+                {
+                    Raise(nameof(DpiProgressVisible));
+                    (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (RunDpiCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelDpiCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (FixTimestampsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (RecoverBypassCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public bool DpiProgressVisible => IsDpiRunning;
+        public double DpiProgressValue
+        {
+            get => _dpiProgressValue;
+            private set => Set(ref _dpiProgressValue, value);
+        }
+
+        public double DpiProgressMaximum
+        {
+            get => _dpiProgressMaximum;
+            private set => Set(ref _dpiProgressMaximum, value);
+        }
+
+        public bool DpiProgressIndeterminate
+        {
+            get => _dpiProgressIndeterminate;
+            private set => Set(ref _dpiProgressIndeterminate, value);
+        }
+
+        public string DpiProgressText
+        {
+            get => _dpiProgressText;
+            private set => Set(ref _dpiProgressText, value);
+        }
+
+        public string DpiProgressPercentText
+        {
+            get => _dpiProgressPercentText;
+            private set => Set(ref _dpiProgressPercentText, value);
+        }
+
+        public string DpiSummary
+        {
+            get => _dpiSummary;
+            private set => Set(ref _dpiSummary, value);
+        }
+
+        public string DpiSummaryKey
+        {
+            get => _dpiSummaryKey;
+            private set => Set(ref _dpiSummaryKey, value);
+        }
+
+        public string DpiLastCheckText { get; private set; } = "Проверка ещё не выполнялась";
+
+        public NetworkObservationSnapshot DpiObservation
+        {
+            get => _dpiObservation;
+            private set
+            {
+                if (Set(ref _dpiObservation, value)) Raise(nameof(DpiObservationText));
+            }
+        }
+
+        public string DpiObservationText => string.IsNullOrWhiteSpace(DpiObservation.Summary)
+            ? "Сетевые признаки пока не сохранены"
+            : DpiObservation.Summary + $" · средняя задержка: {DpiObservation.AverageLatencyMs} мс";
+
+        public ResourceDiagnosisResult? DpiBypassComparison
+        {
+            get => _dpiBypassComparison;
+            private set
+            {
+                if (Set(ref _dpiBypassComparison, value)) Raise(nameof(DpiComparisonVisible));
+            }
+        }
+
+        public bool DpiComparisonVisible => DpiBypassComparison != null;
+
+        public DpiTargetResult? DpiControlResult
+        {
+            get => _dpiControlResult;
+            private set
+            {
+                if (Set(ref _dpiControlResult, value)) Raise(nameof(DpiControlVisible));
+            }
+        }
+
+        public bool DpiControlVisible => DpiControlResult != null;
+        public string DpiControlAttemptText => DpiControlResult == null
+            ? ""
+            : "Попыток: " + DpiControlResult.AttemptCount;
+        public string DpiSuiteSourceText => string.IsNullOrWhiteSpace(_dpiSuiteSource)
+            ? "Источник набора не указан"
+            : _dpiSuiteSource + (_dpiSuiteLoadedAt.HasValue
+                ? " · загружен: " + _dpiSuiteLoadedAt.Value.ToString("dd.MM.yyyy HH:mm")
+                : "");
+
+        public string DpiCustomHost
+        {
+            get => _dpiCustomHost;
+            set => Set(ref _dpiCustomHost, value);
+        }
+
         public ICommand RunCommand { get; }
+        public ICommand RunDpiCommand { get; }
+        public ICommand CancelDpiCommand { get; }
+        public ICommand OpenDpiCommand { get; }
+        public ICommand FixItemCommand { get; }
         public ICommand ClearDiscordCacheCommand { get; }
         public ICommand ResetNetworkCommand { get; }
         public ICommand RemoveServicesCommand { get; }
+        public ICommand RecoverBypassCommand { get; }
         public ICommand OpenHostsCommand { get; }
         public ICommand OpenSystemNetworkCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand FixTimestampsCommand { get; }
+        public ICommand ExportReportCommand { get; }
+        public ICommand ExportArchiveCommand { get; }
 
         public async Task RunAsync()
         {
             IsRunning = true;
+            ProgressValue = 0;
+            ProgressMaximum = 14;
+            ProgressIndeterminate = false;
+            ProgressPercentText = "0%";
             Items.Clear();
             Message = "";
             Summary = "Идёт проверка…";
             SummaryKey = "Warning";
 
-            var progress = new Progress<string>(text => ProgressText = text + "…");
-            var items = await DiagnosticsService.RunAsync(Settings, progress);
+            try
+            {
+                var progress = new Progress<string>(UpdateProgress);
+                var items = await DiagnosticsService.RunAsync(Settings, progress);
 
-            foreach (var item in items) Items.Add(item);
-            Raise(nameof(HasResults));
+                foreach (var item in items) Items.Add(item);
+                Raise(nameof(HasResults));
+                (ExportReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (ExportArchiveCommand as RelayCommand)?.RaiseCanExecuteChanged();
 
-            var errors = items.Count(i => i.Status == DiagStatus.Error);
-            var warnings = items.Count(i => i.Status == DiagStatus.Warning);
+                var errors = items.Count(i => i.Status == DiagStatus.Error);
+                var warnings = items.Count(i => i.Status == DiagStatus.Warning);
 
-            Summary = errors > 0
-                ? $"Найдено критичных проблем: {errors}, предупреждений: {warnings}"
-                : warnings > 0
-                    ? $"Критичных проблем нет, предупреждений: {warnings}"
-                    : "Проблем не найдено — всё в порядке";
-            SummaryKey = errors > 0 ? "Danger" : warnings > 0 ? "Warning" : "Success";
+                Summary = errors > 0
+                    ? $"Найдено критичных проблем: {errors}, предупреждений: {warnings}"
+                    : warnings > 0
+                        ? $"Критичных проблем нет, предупреждений: {warnings}"
+                        : "Проблем не найдено — всё в порядке";
+                SummaryKey = errors > 0 ? "Danger" : warnings > 0 ? "Warning" : "Success";
+                DiagnosticsHistoryStore.SaveDiagnostics(items, Summary);
+                LastSavedText = "Актуально · сохранено: " + DateTime.Now.ToString("dd.MM.yyyy HH:mm");
+            }
+            catch (Exception ex)
+            {
+                SetMessage("Ошибка диагностики: " + ex.Message, "Danger");
+            }
+            finally
+            {
+                ProgressText = "";
+                IsRunning = false;
+            }
+        }
 
-            ProgressText = "";
-            IsRunning = false;
+        private void ExportReport()
+        {
+            try
+            {
+                var dialog = new SaveFileDialog
+                {
+                    Title = "Экспорт диагностического отчёта",
+                    Filter = "JSON-отчёт (*.json)|*.json",
+                    FileName = "zapret-gui-diagnostics-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json",
+                    AddExtension = true,
+                    DefaultExt = ".json"
+                };
+                if (dialog.ShowDialog() != true) return;
+
+                File.WriteAllText(dialog.FileName, SerializeReport(BuildExportReport()), new UTF8Encoding(false));
+                Message = "Отчёт сохранён: " + dialog.FileName;
+                MessageKey = "Success";
+            }
+            catch (Exception ex)
+            {
+                Message = "Не удалось экспортировать отчёт: " + ex.Message;
+                MessageKey = "Danger";
+            }
+        }
+
+        private void ExportArchive()
+        {
+            try
+            {
+                var dialog = new SaveFileDialog
+                {
+                    Title = "Экспорт диагностического архива",
+                    Filter = "Архив диагностики (*.zip)|*.zip",
+                    FileName = "zapret-gui-diagnostics-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".zip",
+                    AddExtension = true,
+                    DefaultExt = ".zip"
+                };
+                if (dialog.ShowDialog() != true) return;
+
+                var reportJson = SerializeReport(BuildExportReport());
+                var logText = string.Join(Environment.NewLine, ReadSafeLogTail());
+                using var file = File.Create(dialog.FileName);
+                using var archive = new ZipArchive(file, ZipArchiveMode.Create);
+                AddArchiveText(archive, "diagnostics.json", reportJson);
+                AddArchiveText(archive, "application.log", logText);
+                AddArchiveText(archive, "README.txt",
+                    "Архив Zapret GUI содержит диагностический JSON и обезличенный хвост журнала.\n" +
+                    "Секреты, токены и содержимое settings.json в архив не включаются.\n");
+
+                Message = "Диагностический архив сохранён: " + dialog.FileName;
+                MessageKey = "Success";
+            }
+            catch (Exception ex)
+            {
+                Message = "Не удалось экспортировать архив: " + ex.Message;
+                MessageKey = "Danger";
+            }
+        }
+
+        private DiagnosticsExportReport BuildExportReport()
+        {
+            var savedDiagnostics = DiagnosticsHistoryStore.LoadLastDiagnostics();
+            var savedDpi = DiagnosticsHistoryStore.LoadLastDpiCheck();
+            return new DiagnosticsExportReport
+            {
+                GeneratedAtUtc = DateTime.UtcNow,
+                Application = new DiagnosticsExportApplication
+                {
+                    Version = _main.AppVersion,
+                    EngineVersion = _main.EngineVersionText,
+                    EnginePath = Settings.EnginePath,
+                    SelectedStrategy = Settings.SelectedStrategy,
+                    IsAdmin = _main.IsAdmin,
+                    SafeMode = Settings.SafeMode,
+                    FirstLaunchWizardCompleted = Settings.FirstLaunchWizardCompleted,
+                    Provider = new ProviderContext
+                    {
+                        Name = Settings.ProviderContext?.Name ?? "",
+                        Asn = Settings.ProviderContext?.Asn ?? "",
+                        Source = Settings.ProviderContext?.Source ?? ProviderContextSource.Unknown,
+                        CheckedAt = Settings.ProviderContext?.CheckedAt,
+                        Confidence = Settings.ProviderContext?.Confidence ?? 0
+                    }
+                },
+                Readiness = new DiagnosticsExportReadiness
+                {
+                    Status = _main.ReadinessText,
+                    Details = _main.ReadinessDetails,
+                    Key = _main.ReadinessKey
+                },
+                CurrentDiagnostics = Items.Count == 0 ? null : new DiagnosticsSnapshot
+                {
+                    CreatedAt = DateTime.Now,
+                    Summary = Summary,
+                    Items = Items.ToList()
+                },
+                LastSavedDiagnostics = savedDiagnostics,
+                CurrentDpi = DpiResults.Count == 0 ? null : CreateDpiExport(
+                    new DpiCheckSnapshot
+                    {
+                        CreatedAt = DateTime.Now,
+                        TargetsTotal = DpiResults.Count,
+                        TargetsTested = DpiResults.Count,
+                        Summary = DpiSummary,
+                        Observation = DpiObservation,
+                        Results = DpiResults.ToList(),
+                        ControlResult = DpiControlResult,
+                        BypassComparison = DpiBypassComparison,
+                        SuiteSource = "текущая проверка"
+                    }),
+                LastSavedDpi = savedDpi == null ? null : CreateDpiExport(savedDpi),
+                StrategyHistory = StrategyEvaluationHistoryStore.Load().Take(100).ToList(),
+                RecoveryHistory = RecoveryJournalStore.Load().Take(20).ToList(),
+                LogTail = ReadSafeLogTail()
+            };
+        }
+
+        private static string SerializeReport(DiagnosticsExportReport report)
+        {
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,
+                IncludeFields = false,
+                Converters = { new JsonStringEnumConverter() }
+            };
+            return JsonSerializer.Serialize(report, options);
+        }
+
+        private static void AddArchiveText(ZipArchive archive, string name, string content)
+        {
+            var entry = archive.CreateEntry(name, CompressionLevel.Optimal);
+            using var writer = new StreamWriter(entry.Open(), new UTF8Encoding(false));
+            writer.Write(content);
+        }
+
+        private static DiagnosticsExportDpi CreateDpiExport(DpiCheckSnapshot snapshot)
+            => new()
+            {
+                CreatedAt = snapshot.CreatedAt,
+                TargetsTotal = snapshot.TargetsTotal,
+                TargetsTested = snapshot.TargetsTested,
+                Summary = snapshot.Summary,
+                ErrorMessage = snapshot.ErrorMessage,
+                SuiteSource = snapshot.SuiteSource,
+                SuiteLoadedAt = snapshot.SuiteLoadedAt,
+                Observation = snapshot.Observation,
+                Results = snapshot.Results.ToList(),
+                ControlResult = snapshot.ControlResult,
+                BypassComparison = snapshot.BypassComparison == null ? null : new DiagnosticsExportComparison
+                {
+                    Kind = snapshot.BypassComparison.Kind,
+                    Level = snapshot.BypassComparison.Level,
+                    Confidence = snapshot.BypassComparison.Confidence,
+                    Summary = snapshot.BypassComparison.Summary
+                }
+            };
+
+        private static List<string> ReadSafeLogTail()
+        {
+            try
+            {
+                if (!File.Exists(AppPaths.LogFile)) return new List<string>();
+                return File.ReadLines(AppPaths.LogFile)
+                    .TakeLast(200)
+                    .Select(line => Regex.Replace(line,
+                        @"(?i)(password|passwd|token|secret|api[_-]?key)=\S+", "$1=<скрыто>"))
+                    .ToList();
+            }
+            catch
+            {
+                return new List<string>();
+            }
+        }
+
+        private void UpdateProgress(string text)
+        {
+            var match = Regex.Match(text, @"DIAGNOSTICS_PROGRESS:(\d+)/(\d+)\s*(?:—\s*)?(.*)");
+            if (match.Success)
+            {
+                ProgressValue = Math.Min(
+                    Math.Max(0, int.Parse(match.Groups[1].Value)),
+                    Math.Max(1, int.Parse(match.Groups[2].Value)));
+                ProgressMaximum = Math.Max(1, int.Parse(match.Groups[2].Value));
+                ProgressIndeterminate = false;
+                ProgressPercentText = $"{ProgressValue / ProgressMaximum * 100:0}%";
+                ProgressText = match.Groups[3].Value + "…";
+                return;
+            }
+            ProgressText = text + "…";
+        }
+
+        private void UpdateDpiProgress(string text)
+        {
+            var total = Regex.Match(text, @"DPI_TOTAL:(\d+)");
+            if (total.Success)
+            {
+                DpiProgressMaximum = Math.Max(1, int.Parse(total.Groups[1].Value));
+                DpiProgressValue = 0;
+                DpiProgressIndeterminate = false;
+                DpiProgressPercentText = "0%";
+                DpiProgressText = "Подготовлены endpoint-ы для проверки";
+                return;
+            }
+
+            var completed = Regex.Match(text, @"DPI_PROGRESS:(\d+)/(\d+)\s*(?:—\s*)?(.*)");
+            if (completed.Success)
+            {
+                DpiProgressValue = Math.Min(
+                    Math.Max(0, int.Parse(completed.Groups[1].Value)),
+                    Math.Max(1, int.Parse(completed.Groups[2].Value)));
+                DpiProgressMaximum = Math.Max(1, int.Parse(completed.Groups[2].Value));
+                DpiProgressIndeterminate = false;
+                DpiProgressPercentText = $"{DpiProgressValue / DpiProgressMaximum * 100:0}%";
+                DpiProgressText = completed.Groups[3].Value.Length > 0
+                    ? completed.Groups[3].Value + "…"
+                    : "Проверка endpoint-ов…";
+                return;
+            }
+
+            DpiProgressText = text + "…";
+            var fallback = Regex.Match(text, @"(\d+)\s+из\s+(\d+)");
+            if (!fallback.Success) return;
+            DpiProgressValue = Math.Max(DpiProgressValue, int.Parse(fallback.Groups[1].Value));
+            DpiProgressMaximum = Math.Max(1, int.Parse(fallback.Groups[2].Value));
+            DpiProgressIndeterminate = false;
+            DpiProgressPercentText = $"{DpiProgressValue / DpiProgressMaximum * 100:0}%";
+        }
+
+        private async Task RunDpiAsync()
+        {
+            if (IsRunning || IsDpiRunning) return;
+            var confirm = System.Windows.MessageBox.Show(
+                "Проверка DPI выполняет сетевые пробы и для сравнения может временно остановить и снова запустить текущий обход. Системная служба не устанавливается, но сетевой трафик на время теста изменится. Продолжить?",
+                "Подтверждение проверки DPI", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+            if (confirm != System.Windows.MessageBoxResult.Yes) return;
+            _dpiCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
+            var ct = _dpiCts.Token;
+            IsDpiRunning = true;
+            DpiProgressValue = 0;
+            DpiProgressMaximum = 1;
+            DpiProgressIndeterminate = true;
+            DpiProgressPercentText = "";
+            DpiProgressText = "Подготавливаю набор DPI-проверки… Предыдущий результат сохраняется до завершения новой проверки.";
+            DpiSummaryKey = "Warning";
+            try
+            {
+                var progress = new Progress<string>(UpdateDpiProgress);
+                DpiProgressText = "Сравниваю прямое соединение с текущим обходом…";
+                var comparisonTarget = MonitorTarget.CreateBuiltIn("DPI comparison", "https://www.youtube.com/generate_204");
+                if (!string.IsNullOrWhiteSpace(DpiCustomHost) &&
+                    MonitorTarget.TryCreate(DpiCustomHost, null, out var customTarget, out _) && customTarget != null)
+                    comparisonTarget = customTarget;
+                var comparison = await _main.Bypass.DiagnoseResourceAsync(comparisonTarget, ct);
+                var snapshot = await _main.Bypass.RunDpiCheckAsync(
+                    string.IsNullOrWhiteSpace(DpiCustomHost) ? null : DpiCustomHost,
+                    progress, ct);
+                snapshot.BypassComparison = comparison;
+                snapshot.Observation = NetworkObservationSnapshot.From(
+                    snapshot.Results, comparison, snapshot.CreatedAt, snapshot.ControlResult);
+                DpiBypassComparison = comparison;
+                DpiControlResult = snapshot.ControlResult;
+                _dpiSuiteSource = snapshot.SuiteSource;
+                _dpiSuiteLoadedAt = snapshot.SuiteLoadedAt;
+                Raise(nameof(DpiSuiteSourceText));
+                DpiObservation = snapshot.Observation;
+                DpiResults.Clear();
+                foreach (var result in snapshot.Results) DpiResults.Add(result);
+                (ExportReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (ExportArchiveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                DpiSummary = snapshot.ErrorMessage.Length > 0 ? snapshot.ErrorMessage : snapshot.Summary;
+                DpiSummaryKey = snapshot.ErrorMessage.Length > 0
+                    ? "Danger"
+                    : snapshot.Results.Any(r => r.HasSuspiciousProbe) ? "Warning" : "Success";
+                DpiLastCheckText = "Актуально · проверено: " + snapshot.CreatedAt.ToString("dd.MM.yyyy HH:mm");
+                Raise(nameof(DpiLastCheckText));
+                DiagnosticsHistoryStore.SaveDpiCheck(snapshot);
+            }
+            catch (OperationCanceledException)
+            {
+                DpiSummary = "Проверка DPI отменена. Состояние обхода восстановлено.";
+                DpiSummaryKey = "Info";
+                DpiProgressText = "Отмена завершена";
+            }
+            catch (Exception ex)
+            {
+                DpiSummary = "Ошибка DPI-проверки: " + ex.Message;
+                DpiSummaryKey = "Danger";
+            }
+            finally
+            {
+                _dpiCts?.Dispose();
+                _dpiCts = null;
+                DpiProgressText = "";
+                IsDpiRunning = false;
+            }
+        }
+
+        private void CancelDpi()
+        {
+            if (!IsDpiRunning) return;
+            DpiProgressText = "Отменяю проверку и восстанавливаю состояние обхода…";
+            _dpiCts?.Cancel();
+        }
+
+        private async Task RecoverBypassAsync()
+        {
+            var confirm = System.Windows.MessageBox.Show(
+                "Остановить текущий обход, проверить службы и timestamps, а затем выполнить диагностику?",
+                "Восстановление обхода", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+            if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+            IsRunning = true;
+            ProgressText = "Останавливаю обход для восстановления…";
+            try
+            {
+                var stopped = await _main.Bypass.StopAsync();
+                var timestamps = WinServices.EnsureTcpTimestamps();
+                _main.Home.RefreshStatus();
+                SetMessage(stopped.Ok && timestamps.Ok
+                    ? "Обход остановлен, TCP timestamps включены. Запускаю повторную диагностику."
+                    : $"Восстановление завершено с предупреждением: {stopped.Message}; {timestamps.Message}",
+                    stopped.Ok && timestamps.Ok ? "Success" : "Warning");
+            }
+            catch (Exception ex)
+            {
+                SetMessage("Не удалось восстановить обход: " + ex.Message, "Danger");
+            }
+            finally
+            {
+                ProgressText = "";
+                IsRunning = false;
+            }
+
+            await RunAsync();
+        }
+
+        /// <summary>Автоисправление отдельного пункта (кнопка «Исправить» в строке).</summary>
+        private async Task FixItemAsync(object? parameter)
+        {
+            if (parameter is not DiagnosticItem item || !item.HasAutoFix) return;
+            var confirm = System.Windows.MessageBox.Show(
+                $"Исправление «{item.Title}» может изменить службу, hosts, WinDivert, файлы движка или другие системные настройки. Диагностика останется доступна без этого действия. Выполнить вручную сейчас?",
+                "Подтверждение исправления", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+            if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+            IsRunning = true;
+            ProgressText = "Исправляю: " + item.Title;
+            try
+            {
+                var (ok, message) = item.FixId switch
+                {
+                    "admin" => FixAdmin(),
+                    "engine" => await FixEngineAsync(),
+                    "movengine" => FixMoveEngine(),
+                    "bfe" => DiagnosticsService.FixBfe(),
+                    "timestamps" => FixTimestampsResult(),
+                    "proxy" => DiagnosticsService.DisableProxy(),
+                    "conflicts" => DiagnosticsService.StopConflictingServices(),
+                    "others" => DiagnosticsService.StopForeignBypass(Settings.EnginePath),
+                    "divert" => DiagnosticsService.RemoveDivertLeftovers(),
+                    "zapretstuck" => await FixZapretStuckAsync(),
+                    "hosts" => await FixHostsAsync(),
+                    "cache" => EngineService.ClearDiscordCache(),
+                    _ => (false, "Неизвестное исправление: " + item.FixId)
+                };
+                SetMessage(message, ok ? "Success" : "Warning");
+                AppLog.Info($"Автоисправление «{item.Title}»: {message}");
+            }
+            finally
+            {
+                ProgressText = "";
+                IsRunning = false;
+            }
+
+            // Перепроверяем, чтобы пункт обновил статус (сообщение сохраняем)
+            var savedMessage = Message;
+            var savedKey = MessageKey;
+            await RunAsync();
+            SetMessage(savedMessage, savedKey);
+        }
+
+        private static (bool Ok, string Message) FixAdmin()
+        {
+            if (Shell.RestartElevated())
+            {
+                System.Windows.Application.Current.Shutdown();
+                return (true, "Перезапускаю от администратора…");
+            }
+            return (false, "Не удалось запросить права администратора");
+        }
+
+        private async Task<(bool Ok, string Message)> FixEngineAsync()
+        {
+            if (!Shell.IsAdmin())
+                return (false, "Для установки движка нужны права администратора");
+            var installed = await _main.Updates.EnsureEngineInstalledAsync();
+            if (installed)
+            {
+                _main.Home.ReloadFromEngine();
+                _main.StrategiesPage.Refresh();
+                return (true, "Движок установлен");
+            }
+            return (false, "Не удалось скачать движок — смотрите страницу «Обновления»");
+        }
+
+        private (bool Ok, string Message) FixMoveEngine()
+        {
+            var (ok, message) = DiagnosticsService.MoveEngineToSafePath(Settings);
+            if (ok)
+            {
+                _main.Home.ReloadFromEngine();
+                _main.StrategiesPage.Refresh();
+                _main.SettingsPage.Reload();
+            }
+            return (ok, message);
+        }
+
+        private static (bool Ok, string Message) FixTimestampsResult()
+            => WinServices.EnsureTcpTimestamps();
+
+        private async Task<(bool Ok, string Message)> FixZapretStuckAsync()
+        {
+            var result = await _main.Bypass.RemoveServiceAsync();
+            _main.Home.RefreshStatus();
+            return (result.Ok, result.Message);
+        }
+
+        private async Task<(bool Ok, string Message)> FixHostsAsync()
+        {
+            var check = await EngineService.CheckHostsAsync();
+            if (!check.Ok) return (false, check.Message);
+            if (!check.NeedsUpdate) return (true, "Файл hosts уже актуален");
+            return EngineService.ApplyHosts(check.TempFile);
         }
 
         private void ClearDiscordCache()
         {
+            var confirm = System.Windows.MessageBox.Show(
+                "Будут удалены локальные файлы кэша Discord. Сам Discord лучше закрыть заранее. Продолжить?",
+                "Очистка кэша Discord", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Question);
+            if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
             var (ok, message) = EngineService.ClearDiscordCache();
             SetMessage(message, ok ? "Success" : "Warning");
         }
@@ -147,6 +833,12 @@ namespace ZapretGui.ViewModels
 
         private async Task RemoveServicesAsync()
         {
+            var confirm = System.Windows.MessageBox.Show(
+                "Будут остановлены и удалены служба zapret и связанные службы WinDivert. Это системное действие требует администратора. Продолжить?",
+                "Подтверждение удаления служб", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+            if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
             IsRunning = true;
             ProgressText = "Удаляю службы zapret и WinDivert…";
             try
@@ -163,10 +855,46 @@ namespace ZapretGui.ViewModels
             }
         }
 
-        private void FixTimestamps()
+        private async Task FixTimestampsAsync()
         {
-            WinServices.EnsureTcpTimestamps();
-            SetMessage("TCP timestamps включены (если были выключены).", "Success");
+            var confirm = System.Windows.MessageBox.Show(
+                "Будет изменён глобальный параметр TCP timestamps через netsh. Это влияет на сетевой стек Windows и требует администратора. Выполнить?",
+                "Подтверждение изменения TCP timestamps", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+            if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+            IsRunning = true;
+            try
+            {
+                var (ok, message) = WinServices.EnsureTcpTimestamps();
+                SetMessage(message, ok ? "Success" : "Warning");
+            }
+            finally
+            {
+                IsRunning = false;
+            }
+            await RunAsync();
+        }
+
+        public void RefreshTheme()
+        {
+            var savedItems = Items.ToList();
+            Items.Clear();
+            foreach (var item in savedItems) Items.Add(item);
+            var savedDpi = DpiResults.ToList();
+            DpiResults.Clear();
+            foreach (var result in savedDpi) DpiResults.Add(result);
+            Raise(nameof(SummaryKey));
+            Raise(nameof(MessageKey));
+            Raise(nameof(LastSavedText));
+            Raise(nameof(DpiSummaryKey));
+        }
+
+        private static string GetSummaryKey(IEnumerable<DiagnosticItem> items)
+        {
+            var list = items.ToList();
+            return list.Any(i => i.Status == DiagStatus.Error) ? "Danger"
+                : list.Any(i => i.Status == DiagStatus.Warning) ? "Warning" : "Success";
         }
 
         private void SetMessage(string message, string key)

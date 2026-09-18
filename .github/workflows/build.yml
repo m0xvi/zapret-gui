@@ -26,10 +26,32 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Восстановление зависимостей
-        run: dotnet restore src/ZapretGUI/ZapretGUI.csproj
+        run: |
+          dotnet restore src/ZapretGUI/ZapretGUI.csproj
+          dotnet restore tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj
 
       - name: Сборка (Release)
         run: dotnet build src/ZapretGUI/ZapretGUI.csproj -c Release --no-restore
+
+      - name: Статический анализ и предупреждения компилятора
+        run: >
+          dotnet build src/ZapretGUI/ZapretGUI.csproj
+          -c Release --no-restore
+          -p:RunAnalyzersDuringBuild=true
+          -p:EnableNETAnalyzers=true
+          -p:AnalysisLevel=latest
+          -p:TreatWarningsAsErrors=true
+
+      - name: Компиляция opt-in Windows harness
+        run: dotnet build tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj -c Release --no-restore
+
+      - name: Controller smoke на изолированном тестовом процессе
+        env:
+          ZAPRET_GUI_RUN_CONTROLLER_INTEGRATION: '1'
+        run: dotnet run --project tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj -c Release --no-restore -- --run-controller
+
+      - name: Smoke-проверки чистой логики
+        run: dotnet run --project tools/CoreLogicHarness/CoreLogicHarness.csproj -c Release
 
       - name: Публикация — портативный EXE (всё в одном файле)
         run: >

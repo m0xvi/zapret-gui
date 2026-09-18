@@ -8,7 +8,8 @@ check_bindings.py — статическая проверка XAML проект�
 
 Что проверяется:
   1. {Binding Path} — существует ли свойство в соответствующей ViewModel
-     (с учётом свойств элементов DataTemplate: StrategyInfo, ConnectionCheck,
+     (с учётом свойств элементов DataTemplate: StrategyInfo, StrategyCandidate,
+      StrategyCandidateEvaluation, SavedStrategyCandidate, ConnectionCheck,
       DiagnosticItem, LogEntry, NavItem).
   2. Второй сегмент пути (Some.Property) — существует ли свойство у типа-владельца.
   3. {StaticResource X} / {DynamicResource X} — объявлен ли ключ в Themes/ или App.xaml.
@@ -39,9 +40,10 @@ PAGE_VM = {
 
 # Типы элементов, на которые указывают {Binding} внутри DataTemplate
 ITEM_TYPES = {
-    "HomePage": ["ConnectionCheck"],
-    "StrategiesPage": ["StrategyInfo"],
-    "DiagnosticsPage": ["DiagnosticItem"],
+    "UpdatesPage": ["EngineConsistencyItem"],
+    "HomePage": ["ConnectionCheck", "MonitorTarget"],
+    "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord"],
+    "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult"],
     "LogsPage": ["LogEntry"],
     "MainWindow": ["NavItem"],
 }
@@ -102,10 +104,15 @@ def main():
         items = ITEM_TYPES.get(base, [])
 
         if vms:
-            for match in re.finditer(r"\{Binding\s+([^},]+)", text):
-                binding = match.group(1).strip()
+            for match in re.finditer(r"\{Binding\s+([^}]+)\}", text):
+                full = match.group(1)
+                # Привязки через RelativeSource/ElementName/Source указывают не на ViewModel —
+                # компилятор XAML их тоже не проверяет, пропускаем во избежание ложных срабатываний
+                if "RelativeSource" in full or "ElementName" in full or "Source=" in full:
+                    continue
+                binding = full.split(",")[0].strip()
                 first = binding.split(".")[0].split(",")[0].strip()
-                if not first or first in ("RelativeSource", "ElementName", "Source"):
+                if not first:
                     continue
 
                 known = any(first in members.get(vm, set()) for vm in vms) or \

@@ -2,6 +2,8 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                  PanningMode="VerticalOnly" Padding="0,0,4,0">
     <Grid Margin="24,20,20,26">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -10,22 +12,49 @@
         </Grid.RowDefinitions>
 
         <Grid>
-            <StackPanel>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Margin="0,0,12,0">
                 <TextBlock Style="{StaticResource DisplayText}" Text="Диагностика" />
                 <TextBlock Style="{StaticResource MutedText}"
                            Text="Проверка типичных причин, из-за которых обход не работает (аналог Run Diagnostics из service.bat)" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Button Style="{StaticResource PrimaryButton}" Content="Запустить проверку" Command="{Binding RunCommand}" />
-            </StackPanel>
+            <WrapPanel Grid.Column="1" MaxWidth="440" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <Button Style="{StaticResource PrimaryButton}" Content="Запустить диагностику" Command="{Binding RunCommand}"
+                        ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
+                <Button Style="{StaticResource SecondaryButton}" Content="Открыть проверку DPI" Margin="8,0,0,0"
+                        Command="{Binding OpenDpiCommand}"
+                        ToolTip="Перейти к отдельной проверке DNS, TCP и TLS" />
+                <Button Style="{StaticResource GhostButton}" Content="Экспорт JSON" Margin="8,0,0,0"
+                        Command="{Binding ExportReportCommand}"
+                        ToolTip="Сохранить полный диагностический отчёт без секретов и без сетевых запросов" />
+                <Button Style="{StaticResource GhostButton}" Content="Экспорт ZIP" Margin="8,0,0,0"
+                        Command="{Binding ExportArchiveCommand}"
+                        ToolTip="Сохранить ZIP с отдельными файлами diagnostics.json, application.log и памяткой" />
+            </WrapPanel>
         </Grid>
 
         <StackPanel Grid.Row="1" Margin="0,16,0,12">
             <Border CornerRadius="10" Padding="14,11" Background="{Binding SummaryKey, Converter={StaticResource SoftSeverityBrush}}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Summary}" FontWeight="SemiBold" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Summary}" FontWeight="SemiBold" />
+                        <TextBlock Grid.Column="1" Style="{StaticResource BodyText}" Text="{Binding ProgressPercentText}"
+                                   Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
+                                   Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
+                    </Grid>
+                    <TextBlock Style="{StaticResource DimText}" Text="{Binding LastSavedText}" Margin="0,4,0,0" />
                     <TextBlock Style="{StaticResource DimText}" Text="{Binding ProgressText}"
                                Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
+                    <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding ProgressValue}" Maximum="{Binding ProgressMaximum}"
+                                 IsIndeterminate="{Binding ProgressIndeterminate}" Height="7" Margin="0,8,0,0"
+                                 Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
             </Border>
 
@@ -36,14 +65,8 @@
             </Border>
         </StackPanel>
 
-        <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="20" />
-                <ColumnDefinition Width="330" />
-            </Grid.ColumnDefinitions>
-
-            <Border Grid.Column="0" Style="{StaticResource Card}" Padding="8">
+        <StackPanel Grid.Row="2">
+            <Border Style="{StaticResource Card}" Padding="8">
                 <ListBox Style="{StaticResource PlainListBox}" ItemsSource="{Binding Items}"
                          ScrollViewer.VerticalScrollBarVisibility="Auto" Background="Transparent">
                     <ListBox.ItemTemplate>
@@ -65,6 +88,12 @@
                                     <TextBlock Style="{StaticResource DimText}" Text="{Binding FixHint}" Margin="0,4,0,0"
                                                Foreground="{DynamicResource WarningBrush}"
                                                Visibility="{Binding FixHint, Converter={StaticResource StringToVis}}" />
+                                    <Button Style="{StaticResource SecondaryButton}" Content="{Binding FixLabel}"
+                                            HorizontalAlignment="Left" Margin="0,8,0,0" Padding="14,6"
+                                            Visibility="{Binding HasAutoFix, Converter={StaticResource BoolToVis}}"
+                                            Command="{Binding DataContext.FixItemCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                            CommandParameter="{Binding}"
+                                            ToolTip="Приложение выполнит исправление само, без ручных команд" />
                                 </StackPanel>
                             </Grid>
                         </DataTemplate>
@@ -72,17 +101,22 @@
                 </ListBox>
             </Border>
 
-            <StackPanel Grid.Column="2">
+            <StackPanel>
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource SectionText}" Text="ИСПРАВЛЕНИЯ В ОДИН КЛИК" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="Полностью удалить службы"
+                        <Button Style="{StaticResource SecondaryButton}" Content="Восстановить обход"
+                                Command="{Binding RecoverBypassCommand}" HorizontalAlignment="Stretch"
+                                ToolTip="Остановить зависший обход, проверить timestamps и повторно запустить диагностику" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Полностью удалить службы" Margin="0,8,0,0"
                                 Command="{Binding RemoveServicesCommand}" HorizontalAlignment="Stretch"
                                 ToolTip="Удаляет службу zapret, останавливает winws.exe и убирает службы WinDivert" />
                         <Button Style="{StaticResource SecondaryButton}" Content="Включить TCP timestamps" Margin="0,8,0,0"
-                                Command="{Binding FixTimestampsCommand}" />
+                                Command="{Binding FixTimestampsCommand}"
+                                ToolTip="Выполнить netsh interface tcp set global timestamps=enabled (нужно части стратегий)" />
                         <Button Style="{StaticResource SecondaryButton}" Content="Очистить кэш Discord" Margin="0,8,0,0"
-                                Command="{Binding ClearDiscordCacheCommand}" />
+                                Command="{Binding ClearDiscordCacheCommand}"
+                                ToolTip="Удалить файлы кэша Discord (сам Discord нужно закрыть)" />
                         <Button Style="{StaticResource DangerButton}" Content="Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
                                 Command="{Binding ResetNetworkCommand}"
                                 ToolTip="netsh winsock reset, netsh int ip reset all, netsh winhttp reset proxy, ipconfig /flushdns" />
@@ -93,11 +127,14 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource SectionText}" Text="ФАЙЛЫ И ПАПКИ" />
                         <Button Style="{StaticResource GhostButton}" Content="Открыть hosts в блокноте"
-                                HorizontalAlignment="Left" Command="{Binding OpenHostsCommand}" />
+                                HorizontalAlignment="Left" Command="{Binding OpenHostsCommand}"
+                                ToolTip="Открыть системный файл hosts в блокноте" />
                         <Button Style="{StaticResource GhostButton}" Content="Открыть папку движка"
-                                HorizontalAlignment="Left" Command="{Binding OpenEngineFolderCommand}" />
+                                HorizontalAlignment="Left" Command="{Binding OpenEngineFolderCommand}"
+                                ToolTip="Открыть папку движка в проводнике" />
                         <Button Style="{StaticResource GhostButton}" Content="Параметры сети Windows"
-                                HorizontalAlignment="Left" Command="{Binding OpenSystemNetworkCommand}" />
+                                HorizontalAlignment="Left" Command="{Binding OpenSystemNetworkCommand}"
+                                ToolTip="Открыть параметры сети Windows" />
                     </StackPanel>
                 </Border>
 
@@ -115,6 +152,7 @@
                     </StackPanel>
                 </Border>
             </StackPanel>
-        </Grid>
+        </StackPanel>
     </Grid>
+    </ScrollViewer>
 </UserControl>

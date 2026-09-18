@@ -21,8 +21,8 @@
     <Description>Удобный графический интерфейс для zapret-discord-youtube</Description>
     <Company>Zapret GUI community</Company>
     <Copyright>MIT License</Copyright>
-    <Version>1.0.3</Version>
-    <FileVersion>1.0.3.0</FileVersion>
+    <Version>1.2.0</Version>
+    <FileVersion>1.2.0.0</FileVersion>
 
     <!-- Позволяет собирать проект не только на Windows (например, в CI на Linux) -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>

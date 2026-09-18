@@ -10,30 +10,51 @@
         </Grid.RowDefinitions>
 
         <Grid>
-            <StackPanel>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Margin="0,0,12,0">
                 <TextBlock Style="{StaticResource DisplayText}" Text="Журнал" />
                 <TextBlock Style="{StaticResource MutedText}"
-                           Text="Все действия приложения, вывод winws.exe, ошибки обновлений и служб" />
+                           Text="Все действия приложения и работа сетевой службы (фильтры — по уровню и источнику)" />
             </StackPanel>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Button Style="{StaticResource SecondaryButton}" Content="Сохранить в файл" Command="{Binding SaveCommand}" />
-                <Button Style="{StaticResource GhostButton}" Content="Копировать" Margin="8,0,0,0" Command="{Binding CopyCommand}" />
-                <Button Style="{StaticResource GhostButton}" Content="Очистить" Margin="8,0,0,0" Command="{Binding ClearCommand}" />
-                <Button Style="{StaticResource GhostButton}" Content="Папка логов" Margin="8,0,0,0" Command="{Binding OpenFolderCommand}" />
+            <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <WrapPanel HorizontalAlignment="Right">
+                    <Button Style="{StaticResource SecondaryButton}" Content="Сохранить в файл" Command="{Binding SaveCommand}"
+                            ToolTip="Сохранить видимые записи в текстовый файл (с учётом фильтров)" />
+                    <Button Style="{StaticResource GhostButton}" Content="Копировать" Margin="8,0,0,0" Command="{Binding CopyCommand}"
+                            ToolTip="Скопировать видимые записи в буфер обмена" />
+                </WrapPanel>
+                <WrapPanel HorizontalAlignment="Right" Margin="0,8,0,0">
+                    <Button Style="{StaticResource GhostButton}" Content="Очистить" Command="{Binding ClearCommand}"
+                            ToolTip="Очистить журнал в приложении и файл zapretgui.log" />
+                    <Button Style="{StaticResource GhostButton}" Content="Папка логов" Margin="8,0,0,0" Command="{Binding OpenFolderCommand}"
+                            ToolTip="Открыть папку с файлами журнала" />
+                </WrapPanel>
             </StackPanel>
         </Grid>
 
-        <Grid Grid.Row="1" Margin="0,16,0,12">
-            <StackPanel Orientation="Horizontal">
+        <StackPanel Grid.Row="1" Margin="0,16,0,12">
+            <WrapPanel Orientation="Horizontal">
                 <TextBlock Style="{StaticResource DimText}" Text="{Binding CountText}" VerticalAlignment="Center" Margin="2,0,16,0" />
-                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Отладка" IsChecked="{Binding ShowDebug, Mode=TwoWay}" />
-                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Инфо" Margin="12,0,0,0" IsChecked="{Binding ShowInfo, Mode=TwoWay}" />
-                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Предупреждения" Margin="12,0,0,0" IsChecked="{Binding ShowWarn, Mode=TwoWay}" />
-                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Ошибки" Margin="12,0,0,0" IsChecked="{Binding ShowError, Mode=TwoWay}" />
-            </StackPanel>
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Отладка" IsChecked="{Binding ShowDebug, Mode=TwoWay}"
+                          ToolTip="Подробные записи: живой вывод winws.exe, технические детали. Выключите, чтобы журнал стал короче" />
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Инфо" Margin="12,0,0,0" IsChecked="{Binding ShowInfo, Mode=TwoWay}"
+                          ToolTip="Обычные события: запуски, обновления, проверки" />
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Предупреждения" Margin="12,0,0,0" IsChecked="{Binding ShowWarn, Mode=TwoWay}"
+                          ToolTip="Нефатальные проблемы, на которые стоит обратить внимание" />
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Ошибки" Margin="12,0,0,0" IsChecked="{Binding ShowError, Mode=TwoWay}"
+                          ToolTip="Ошибки работы приложения и служб" />
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Приложение" Margin="24,0,0,0" IsChecked="{Binding ShowApp, Mode=TwoWay}"
+                          ToolTip="Записи самого приложения: обновления, интерфейс, диагностика" />
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Обход и служба" Margin="12,0,0,0" IsChecked="{Binding ShowBypass, Mode=TwoWay}"
+                          ToolTip="Работа сетевой службы: запуск и остановка winws.exe, служба zapret, драйвер WinDivert, живой вывод winws" />
+            </WrapPanel>
             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Прокручивать автоматически"
-                      HorizontalAlignment="Right" IsChecked="{Binding AutoScroll, Mode=TwoWay}" />
-        </Grid>
+                      HorizontalAlignment="Left" Margin="2,10,0,0" IsChecked="{Binding AutoScroll, Mode=TwoWay}"
+                      ToolTip="Автоматически листать журнал вниз при появлении новых записей" />
+        </StackPanel>
 
         <Border Grid.Row="2" Style="{StaticResource Card}" Padding="6">
             <ListBox x:Name="LogList" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Entries}"
@@ -46,12 +67,15 @@
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="70" />
                                 <ColumnDefinition Width="86" />
+                                <ColumnDefinition Width="64" />
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Style="{StaticResource MonoText}" Text="{Binding TimeText}" />
                             <TextBlock Grid.Column="1" Text="{Binding LevelText}" FontSize="11.5" FontWeight="SemiBold"
                                        Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}" />
-                            <TextBlock Grid.Column="2" Style="{StaticResource MonoText}" Text="{Binding Message}"
+                            <TextBlock Grid.Column="2" Text="{Binding SourceText}" FontSize="11.5"
+                                       Foreground="{DynamicResource TextDimBrush}" />
+                            <TextBlock Grid.Column="3" Style="{StaticResource MonoText}" Text="{Binding Message}"
                                        Foreground="{DynamicResource TextBrush}" />
                         </Grid>
                     </DataTemplate>

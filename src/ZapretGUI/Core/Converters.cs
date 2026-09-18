@@ -73,6 +73,64 @@ namespace ZapretGui.Core
             => Binding.DoNothing;
     }
 
+    /// <summary>Переводит значение прогресса в долю ширины индикатора.</summary>
+    public sealed class ProgressScaleConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var current = value is double d ? d : value is int i ? i : 0;
+            var maximum = 100d;
+            if (parameter is double p && p > 0) maximum = p;
+            return Math.Clamp(current / maximum, 0d, 1d);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
+    }
+
+    /// <summary>Подсвечивает карточку шага мастера, если её номер совпадает с текущим.</summary>
+    public sealed class WizardStepBrushConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var current = value is int number ? number : -1;
+            var step = int.TryParse(parameter?.ToString(), out var parsed) ? parsed : -2;
+            var resource = current == step ? "AccentSoftBrush" : "ElevatedBrush";
+            return Application.Current?.TryFindResource(resource) as Brush ?? Brushes.Transparent;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
+    }
+
+    /// <summary>Делает неактивные шаги мастера менее контрастными.</summary>
+    public sealed class WizardStepOpacityConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var current = value is int number ? number : -1;
+            var step = int.TryParse(parameter?.ToString(), out var parsed) ? parsed : -2;
+            return current == step ? 1d : 0.62d;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
+    }
+
+    /// <summary>Возвращает размер до масштабирования так, чтобы содержимое заняло ровно ширину окна.</summary>
+    public sealed class ZoomedViewportConverter : IMultiValueConverter
+    {
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            var viewport = values.Length > 0 && values[0] is double width ? width : 0d;
+            var zoom = values.Length > 1 && values[1] is double scale ? scale : 1d;
+            return viewport > 0 && zoom > 0 ? viewport / zoom : viewport;
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+            => Array.Empty<object>();
+    }
+
     /// <summary>Число 0 → Collapsed, иначе Visible (для счётчиков).</summary>
     public sealed class CountToVisibilityConverter : IValueConverter
     {

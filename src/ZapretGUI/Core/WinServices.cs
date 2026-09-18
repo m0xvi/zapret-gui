@@ -1,5 +1,8 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
+using System.Runtime.Versioning;
+using System.Text.RegularExpressions;
 using Microsoft.Win32;
 
 namespace ZapretGui.Core
@@ -17,33 +20,64 @@ namespace ZapretGui.Core
         public static ServiceState Query(string name)
         {
             var result = Shell.Run("sc.exe", new[] { "query", name }, 15000);
-            var text = result.All;
+            return ParseServiceState(result.All, result.ExitCode);
+        }
+
+        /// <summary>Разбирает вывод sc.exe независимо от языка Windows.</summary>
+        public static ServiceState ParseServiceState(string text, int exitCode = 0)
+        {
+            text ??= "";
             if (text.Contains("1060") || text.Contains("не существует", StringComparison.OrdinalIgnoreCase))
                 return ServiceState.NotInstalled;
-            if (!text.Contains("STATE", StringComparison.OrdinalIgnoreCase))
-                return result.ExitCode == 0 ? ServiceState.Unknown : ServiceState.NotInstalled;
-
+            // Числовой код состояния стабилен даже на русской Windows, где текст
+            // STATE/STOPPED может быть локализован или изменён формат вывода sc.exe.
             foreach (var line in text.Split('\n'))
             {
-                var trimmed = line.Trim();
-                if (!trimmed.StartsWith("STATE", StringComparison.OrdinalIgnoreCase)) continue;
-                var value = trimmed.Substring(trimmed.IndexOf(':') + 1).Trim();
-                var parts = value.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length < 2) continue;
-                return parts[1].ToUpperInvariant() switch
+                if (line.IndexOf("STATE", StringComparison.OrdinalIgnoreCase) < 0 &&
+                    line.IndexOf("СОСТОЯ", StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+
+                var match = Regex.Match(line, @":\s*(\d+)");
+                if (!match.Success || !int.TryParse(match.Groups[1].Value, out var code)) continue;
+                return code switch
                 {
-                    "RUNNING" => ServiceState.Running,
-                    "STOPPED" => ServiceState.Stopped,
-                    "START_PENDING" => ServiceState.StartPending,
-                    "STOP_PENDING" => ServiceState.StopPending,
-                    "PAUSED" => ServiceState.Paused,
+                    1 => ServiceState.Stopped,
+                    2 => ServiceState.StartPending,
+                    3 => ServiceState.StopPending,
+                    4 => ServiceState.Running,
+                    7 => ServiceState.Paused,
                     _ => ServiceState.Unknown
                 };
             }
-            return ServiceState.Unknown;
+
+            // Резервный разбор англоязычного вывода, если числового поля нет.
+            if (text.Contains("RUNNING", StringComparison.OrdinalIgnoreCase)) return ServiceState.Running;
+            if (text.Contains("STOPPED", StringComparison.OrdinalIgnoreCase)) return ServiceState.Stopped;
+            if (text.Contains("START_PENDING", StringComparison.OrdinalIgnoreCase)) return ServiceState.StartPending;
+            if (text.Contains("STOP_PENDING", StringComparison.OrdinalIgnoreCase)) return ServiceState.StopPending;
+            return exitCode == 0 ? ServiceState.Unknown : ServiceState.NotInstalled;
         }
 
         public static bool Exists(string name) => Query(name) != ServiceState.NotInstalled;
+
+        /// <summary>Командная строка службы (BINARY_PATH_NAME из «sc qc») — нужна, чтобы найти чужой движок.</summary>
+        public static string GetImagePath(string name)
+        {
+            try
+            {
+                var result = Shell.Run("sc.exe", new[] { "qc", name }, 15000);
+                foreach (var line in result.All.Split('\n'))
+                {
+                    var trimmed = line.Trim();
+                    if (!trimmed.StartsWith("BINARY_PATH_NAME", StringComparison.OrdinalIgnoreCase)) continue;
+                    var colon = trimmed.IndexOf(':');
+                    if (colon < 0) continue;
+                    return trimmed.Substring(colon + 1).Trim();
+                }
+            }
+            catch { }
+            return "";
+        }
 
         public static ShellResult Create(string name, string imagePath, string displayName, string description)
         {
@@ -82,6 +116,7 @@ namespace ZapretGui.Core
         }
 
         /// <summary>Имя стратегии, установленной в службу (как в service.bat через reg add).</summary>
+        [SupportedOSPlatform("windows")]
         public static string GetInstalledStrategyName()
         {
             try
@@ -92,6 +127,7 @@ namespace ZapretGui.Core
             catch { return ""; }
         }
 
+        [SupportedOSPlatform("windows")]
         public static void SetInstalledStrategyName(string name)
         {
             try
@@ -101,7 +137,7 @@ namespace ZapretGui.Core
             }
             catch (Exception ex)
             {
-                AppLog.Warn("Не удалось записать имя стратегии в реестр: " + ex.Message);
+                AppLog.SvcWarn("Не удалось записать имя стратегии в реестр: " + ex.Message);
             }
         }
 
@@ -111,7 +147,15 @@ namespace ZapretGui.Core
         /// чтобы драйвер WinDivert выгрузился из ядра Windows до перезаписи WinDivert64.sys.
         /// Перезапись .sys-файла «на лету» приводит к BSOD — вызывать обязательно перед CopyEngine.
         /// </summary>
-        public static async System.Threading.Tasks.Task<List<string>> StopForEngineUpdateAsync()
+        public static System.Threading.Tasks.Task<List<string>> StopForEngineUpdateAsync()
+            => StopForEngineUpdateAsync(Query, Stop);
+
+        /// <summary>
+        /// Тестируемая форма безопасной остановки: в production получает Query/Stop,
+        /// а smoke-тест может передать изолированный симулятор без обращения к Windows.
+        /// </summary>
+        public static async System.Threading.Tasks.Task<List<string>> StopForEngineUpdateAsync(
+            Func<string, ServiceState> query, Func<string, ShellResult> stop)
         {
             var report = new List<string>();
 
@@ -119,7 +163,7 @@ namespace ZapretGui.Core
             {
                 try
                 {
-                    var state = Query(name);
+                    var state = query(name);
                     if (state == ServiceState.NotInstalled)
                     {
                         report.Add($"Служба {name} не установлена");
@@ -132,32 +176,32 @@ namespace ZapretGui.Core
                         continue;
                     }
 
-                    AppLog.Info($"Останавливаю службу {name} перед обновлением движка…");
+                    AppLog.SvcInfo($"Останавливаю службу {name} перед обновлением движка…");
                     if (state != ServiceState.StopPending)
-                        Stop(name); // при StopPending служба уже останавливается — только ждём
+                        stop(name); // при StopPending служба уже останавливается — только ждём
 
                     var stopped = await Shell.WaitForAsync(
                         () =>
                         {
-                            var current = Query(name);
+                            var current = query(name);
                             return current is ServiceState.Stopped or ServiceState.NotInstalled;
                         },
                         15000).ConfigureAwait(false);
 
                     if (stopped)
                     {
-                        AppLog.Info($"Служба {name} остановлена");
+                        AppLog.SvcInfo($"Служба {name} остановлена");
                         report.Add($"Служба {name} остановлена");
                     }
                     else
                     {
-                        AppLog.Warn($"Служба {name} не остановилась за 15 секунд — файлы драйвера могут быть заблокированы");
+                        AppLog.SvcWarn($"Служба {name} не остановилась за 15 секунд — файлы драйвера могут быть заблокированы");
                         report.Add($"Служба {name} не остановилась (файлы драйвера пропустим при замене)");
                     }
                 }
                 catch (Exception ex)
                 {
-                    AppLog.Warn($"Не удалось остановить службу {name}: {ex.Message}");
+                    AppLog.SvcWarn($"Не удалось остановить службу {name}: {ex.Message}");
                     report.Add($"Служба {name}: ошибка остановки ({ex.Message})");
                 }
             }
@@ -201,13 +245,13 @@ namespace ZapretGui.Core
             var released = !IsFileLocked(sys) && !IsFileLocked(dll);
             if (released)
             {
-                AppLog.Info(waited > 0
+                AppLog.SvcInfo(waited > 0
                     ? $"Драйвер WinDivert выгружен из ядра (ждали {waited / 1000.0:0.0} с)"
                     : "Драйвер WinDivert не держит файлы — можно обновлять");
             }
             else
             {
-                AppLog.Warn("Файлы WinDivert всё ещё заблокированы — при обновлении они будут пропущены, " +
+                AppLog.SvcWarn("Файлы WinDivert всё ещё заблокированы — при обновлении они будут пропущены, " +
                             "перезагрузите Windows и повторите обновление");
             }
 
@@ -268,27 +312,68 @@ namespace ZapretGui.Core
             return report;
         }
 
-        /// <summary>TCP timestamps нужны для корректной работы некоторых стратегий (tcp_enable в service.bat).</summary>
-        public static void EnsureTcpTimestamps()
+        /// <summary>Возвращает фактическое состояние TCP timestamps, включая локализованный вывод netsh.</summary>
+        public static (bool Enabled, bool Known, string Details) GetTcpTimestampsState()
         {
             try
             {
-                var show = Shell.Run("netsh", new[] { "interface", "tcp", "show", "global" }, 10000);
-                if (show.All.Contains("timestamps", StringComparison.OrdinalIgnoreCase) &&
-                    show.All.Contains("enabled", StringComparison.OrdinalIgnoreCase))
-                {
-                    // «disallowed» тоже содержит "enabled"-подобный текст, поэтому уточняем
-                    var ok = show.All.IndexOf("timestamps", StringComparison.OrdinalIgnoreCase);
-                    var line = show.All.Substring(ok, Math.Min(80, show.All.Length - ok));
-                    if (line.Contains("enabled", StringComparison.OrdinalIgnoreCase) &&
-                        !line.Contains("disabled", StringComparison.OrdinalIgnoreCase))
-                        return;
-                }
-                Shell.Run("netsh", new[] { "interface", "tcp", "set", "global", "timestamps=enabled" }, 10000);
+                var result = Shell.Run("netsh", new[] { "interface", "tcp", "show", "global" }, 10000);
+                var line = result.All.Split('\n')
+                    .FirstOrDefault(l => l.Contains("timestamp", StringComparison.OrdinalIgnoreCase) ||
+                                         l.Contains("1323", StringComparison.OrdinalIgnoreCase) ||
+                                         l.Contains("врем", StringComparison.OrdinalIgnoreCase) ||
+                                         l.Contains("метк", StringComparison.OrdinalIgnoreCase) ||
+                                         l.Contains("отметк", StringComparison.OrdinalIgnoreCase));
+                if (line == null)
+                    return (false, false, result.Ok ? "Windows не вернула строку состояния timestamps" : result.All);
+
+                var normalized = line.ToLowerInvariant();
+                if (normalized.Contains("disabled") || normalized.Contains("отключ") || normalized.Contains("выключ"))
+                    return (false, true, line.Trim());
+                if (normalized.Contains("enabled") || normalized.Contains("включ") || normalized.Contains("разреш"))
+                    return (true, true, line.Trim());
+
+                return (false, false, line.Trim());
             }
             catch (Exception ex)
             {
-                AppLog.Warn("Не удалось включить TCP timestamps: " + ex.Message);
+                return (false, false, ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Включает TCP timestamps и проверяет результат повторной командой netsh.
+        /// Старый вариант показывал «команда выполнена», даже если Windows оставила
+        /// настройку выключенной.
+        /// </summary>
+        public static (bool Ok, string Message) EnsureTcpTimestamps()
+        {
+            var before = GetTcpTimestampsState();
+            if (before.Enabled)
+                return (true, "TCP timestamps уже включены");
+
+            try
+            {
+                var command = Shell.Run("netsh", new[]
+                    { "interface", "tcp", "set", "global", "timestamps=enabled" }, 10000);
+                var after = GetTcpTimestampsState();
+                if (after.Enabled)
+                {
+                    AppLog.SvcInfo("TCP timestamps включены");
+                    return (true, "TCP timestamps включены");
+                }
+
+                var details = after.Details.Length > 0 ? after.Details : command.All;
+                var reason = command.Ok
+                    ? "Windows не подтвердила изменение настройки"
+                    : "netsh вернул ошибку: " + command.All;
+                AppLog.SvcWarn("TCP timestamps не включены: " + reason);
+                return (false, $"TCP timestamps не включены: {reason} ({details})");
+            }
+            catch (Exception ex)
+            {
+                AppLog.SvcWarn("Не удалось включить TCP timestamps: " + ex.Message);
+                return (false, "Ошибка включения TCP timestamps: " + ex.Message);
             }
         }
     }

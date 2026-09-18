@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+    <RootNamespace>ZapretGui.WindowsIntegrationHarness</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\ZapretGUI\Core\AppLog.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\AppPaths.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\BypassArgumentBuilder.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\BypassController.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\ConnectionTester.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticModels.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticsExportReport.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticsHistory.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\EngineConsistency.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\EngineFileUpdater.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\GuiUpdateService.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\EngineService.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\LegacyZapret.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\NetworkObservationSnapshot.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\Readiness.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\RecoveryJournal.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\ResourceMonitoring.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\ServiceHealthCache.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\Settings.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\Shell.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\StrategyCandidateStore.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\StrategyConstruction.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\StrategyEvaluationHistory.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\StrategyParser.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\StrategyTesting.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\WinServices.cs" />
+  </ItemGroup>
+</Project>

@@ -2,11 +2,13 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        Title="Zapret GUI" Height="740" Width="1150" MinHeight="620" MinWidth="980"
+        Title="Zapret GUI" Height="740" Width="1150" MinHeight="560" MinWidth="820"
         WindowStartupLocation="CenterScreen" Background="{DynamicResource BgBrush}"
+        Foreground="{DynamicResource TextBrush}"
         WindowStyle="None" ResizeMode="CanResize" ShowInTaskbar="True"
         TextOptions.TextFormattingMode="Ideal" UseLayoutRounding="True" SnapsToDevicePixels="True"
-        StateChanged="Window_StateChanged">
+        StateChanged="Window_StateChanged"
+        AutomationProperties.Name="Главное окно Zapret GUI">
 
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="46" ResizeBorderThickness="6" GlassFrameThickness="0"
@@ -28,40 +30,57 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <StackPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
+            <WrapPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
                 <Border Width="24" Height="24" CornerRadius="7" Background="{DynamicResource AccentBrush}">
                     <TextBlock Text="&#xE72E;" FontFamily="{DynamicResource IconFont}" FontSize="12"
-                               Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                               Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
                 <TextBlock Text="Zapret GUI" Margin="10,0,0,0" FontSize="13" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                 <Border Style="{StaticResource Badge}" Margin="12,0,0,0">
-                    <StackPanel Orientation="Horizontal">
+                    <WrapPanel Orientation="Horizontal">
                         <Border Style="{StaticResource Dot}"
                                 Background="{Binding Home.BypassStateKey, Converter={StaticResource SeverityBrush}}" />
                         <TextBlock Text="{Binding Home.StatusText}" Margin="7,0,0,0" FontSize="11.5"
-                                   Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
-                    </StackPanel>
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"
+                                   ToolTip="{Binding Home.StatusText}" VerticalAlignment="Center" />
+                    </WrapPanel>
                 </Border>
-            </StackPanel>
+                <Border Style="{StaticResource Badge}" Margin="8,0,0,0"
+                        Background="{Binding ReadinessKey, Converter={StaticResource SoftSeverityBrush}}"
+                        ToolTip="{Binding ReadinessDetails}">
+                    <WrapPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource Dot}"
+                                Background="{Binding ReadinessKey, Converter={StaticResource SeverityBrush}}" />
+                        <TextBlock Text="{Binding ReadinessText}" Margin="7,0,0,0" FontSize="11"
+                                   Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                    </WrapPanel>
+                </Border>
+            </WrapPanel>
 
-            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
+            <WrapPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
                 <Button Style="{StaticResource IconButton}" Content="&#xE793;"
-                        Command="{Binding ToggleThemeCommand}" ToolTip="Переключить тему (системная → тёмная → светлая)" />
+                        Command="{Binding ToggleThemeCommand}" ToolTip="Переключить тему (системная → тёмная → светлая)"
+                        AutomationProperties.Name="Переключить тему" />
                 <Button Style="{StaticResource IconButton}" Content="&#xE946;"
-                        Command="{Binding OpenEngineFolderCommand}" ToolTip="Открыть папку движка" />
-                <Button Style="{StaticResource TitleBarButton}" Content="&#xE921;" Click="Minimize_Click" ToolTip="Свернуть" />
+                        Command="{Binding OpenEngineFolderCommand}" ToolTip="Открыть папку движка"
+                        AutomationProperties.Name="Открыть папку движка" />
+                <Button Style="{StaticResource TitleBarButton}" Content="&#xE921;" Click="Minimize_Click"
+                        ToolTip="Свернуть" AutomationProperties.Name="Свернуть окно" />
                 <Button x:Name="MaximizeButton" Style="{StaticResource TitleBarButton}" Content="&#xE922;"
-                        Click="Maximize_Click" ToolTip="Развернуть" />
-                <Button Style="{StaticResource TitleBarCloseButton}" Content="&#xE8BB;" Click="Close_Click" ToolTip="Закрыть" />
-            </StackPanel>
+                        Click="Maximize_Click" ToolTip="Развернуть" AutomationProperties.Name="Развернуть или восстановить окно" />
+                <Button Style="{StaticResource TitleBarCloseButton}" Content="&#xE8BB;" Click="Close_Click"
+                        ToolTip="Закрыть" AutomationProperties.Name="Закрыть окно" />
+            </WrapPanel>
         </Grid>
 
         <!-- ======================= ОСНОВНАЯ ОБЛАСТЬ ======================= -->
+        <!-- Масштабируется только рабочая область страницы. Навигация остаётся
+             закреплённой слева, поэтому она не может уйти за горизонтальный край. -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="238" />
+                <ColumnDefinition Width="210" MinWidth="190" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
 
@@ -74,6 +93,8 @@
                     </Grid.RowDefinitions>
 
                     <ListBox x:Name="NavList" Style="{StaticResource PlainListBox}" Margin="0,12,0,0"
+                             KeyboardNavigation.TabNavigation="Local"
+                             AutomationProperties.Name="Разделы приложения"
                              ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav, Mode=TwoWay}"
                              ItemContainerStyle="{StaticResource NavItemStyle}">
                         <ListBox.ItemTemplate>
@@ -102,27 +123,55 @@
                                            TextTrimming="CharacterEllipsis" ToolTip="{Binding Home.EnginePathText}" />
                             </StackPanel>
                         </Border>
-                        <TextBlock Style="{StaticResource DimText}" Text="Zapret GUI 1.0.0 · лицензия MIT"
+                        <TextBlock Style="{StaticResource DimText}" Text="Zapret GUI 1.2.0 · лицензия MIT"
                                    HorizontalAlignment="Center" />
                     </StackPanel>
                 </Grid>
             </Border>
 
-            <ContentControl x:Name="PageHost" Grid.Column="1" />
+            <ScrollViewer x:Name="PageScroll" Grid.Column="1"
+                          HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
+                          PanningMode="VerticalOnly" Background="Transparent" Focusable="False" CanContentScroll="False">
+                <Grid>
+                    <Grid.Width>
+                        <MultiBinding Converter="{StaticResource ZoomedViewport}">
+                            <Binding Path="ViewportWidth" ElementName="PageScroll" />
+                            <Binding Path="InterfaceZoom" />
+                        </MultiBinding>
+                    </Grid.Width>
+                    <Grid.MinHeight>
+                        <MultiBinding Converter="{StaticResource ZoomedViewport}">
+                            <Binding Path="ViewportHeight" ElementName="PageScroll" />
+                            <Binding Path="InterfaceZoom" />
+                        </MultiBinding>
+                    </Grid.MinHeight>
+                    <Grid.LayoutTransform>
+                        <ScaleTransform ScaleX="{Binding InterfaceZoom}" ScaleY="{Binding InterfaceZoom}" />
+                    </Grid.LayoutTransform>
+                    <ContentControl x:Name="PageHost" />
+                </Grid>
+            </ScrollViewer>
         </Grid>
 
         <!-- ======================= ПРЕДУПРЕЖДЕНИЕ О ПРАВАХ ======================= -->
         <Border Grid.Row="2" Background="{DynamicResource WarningSoftBrush}" Padding="16,10"
                 Visibility="{Binding AdminWarningVisible, Converter={StaticResource BoolToVis}}">
             <Grid>
-                <StackPanel Orientation="Horizontal">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <WrapPanel Grid.Column="0" Orientation="Horizontal" Margin="0,0,12,0">
                     <TextBlock Text="&#xE7BA;" FontFamily="{DynamicResource IconFont}"
-                               Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Center" />
-                    <TextBlock Margin="10,0,0,0" VerticalAlignment="Center" FontSize="12.5"
-                               Foreground="{DynamicResource TextBrush}"
-                               Text="Приложение запущено без прав администратора — запуск обхода, установка службы и обновление движка будут недоступны." />
-                </StackPanel>
-                <Button Style="{StaticResource SecondaryButton}" Content="Перезапустить от администратора"
+                               Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Top" />
+                    <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
+                        <TextBlock FontSize="12.5" Foreground="{DynamicResource TextBrush}"
+                                   Text="{Binding AdminWarningText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                        <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}"
+                                   Text="{Binding AdminWarningDetails}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </WrapPanel>
+                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Перезапустить от администратора"
                         HorizontalAlignment="Right" Command="{Binding RestartAsAdminCommand}" Padding="14,7" />
             </Grid>
         </Border>

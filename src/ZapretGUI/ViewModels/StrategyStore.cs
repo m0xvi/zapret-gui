@@ -27,8 +27,10 @@ namespace ZapretGui.ViewModels
         public void Refresh()
         {
             var loaded = StrategyParser.LoadAll(_settings.EnginePath);
+            var saved = StrategyCandidateStore.Load();
             Items.Clear();
             foreach (var strategy in loaded) Items.Add(strategy);
+            foreach (var candidate in saved) Items.Add(candidate.ToStrategyInfo());
             Raise(nameof(Items));
             AppLog.Debug($"Найдено стратегий: {Items.Count}");
         }
