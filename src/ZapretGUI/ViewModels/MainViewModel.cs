@@ -64,6 +64,8 @@ namespace ZapretGui.ViewModels
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
             RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
+            NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
+            NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
 
             Strategies.Refresh();
             Home.ReloadFromEngine();
@@ -157,9 +159,69 @@ namespace ZapretGui.ViewModels
 
         public string StatusPillKey => Home.StatusKey;
 
+        public string ActiveStrategySummaryText
+        {
+            get
+            {
+                var running = Home.RunningStrategyName;
+                if (Home.IsRunning && !string.IsNullOrWhiteSpace(running))
+                    return running;
+                if (!string.IsNullOrWhiteSpace(Settings.SelectedStrategy))
+                    return Settings.SelectedStrategy;
+                return Strategies.Recommended?.Name ?? "не выбрана";
+            }
+        }
+
+        public string ActiveStrategyKey => Home.IsRunning ? "Success" : "Info";
+
+        public string ActiveStrategyTooltipText => Home.IsRunning
+            ? $"Активная запущенная стратегия: «{ActiveStrategySummaryText}»\nНажмите для перехода к выбору стратегий"
+            : $"Выбранная стратегия (обход выключен): «{ActiveStrategySummaryText}»\nНажмите для перехода к выбору стратегий";
+
+        public string MonitoringSummaryText
+        {
+            get
+            {
+                if (Monitoring.Results.Count > 0)
+                {
+                    var ok = Monitoring.Results.Count(r => r.Ok);
+                    var total = Monitoring.Results.Count;
+                    return $"Узлы: {ok}/{total} OK";
+                }
+                var targets = Monitoring.Targets.Count(t => t.Enabled);
+                return targets > 0 ? $"Узлы: {targets} в списке" : "Узлы: выкл";
+            }
+        }
+
+        public string MonitoringSummaryKey
+        {
+            get
+            {
+                if (Monitoring.Results.Count == 0) return "Info";
+                var ok = Monitoring.Results.Count(r => r.Ok);
+                var total = Monitoring.Results.Count;
+                if (ok == total) return "Success";
+                if (ok > 0) return "Warning";
+                return "Danger";
+            }
+        }
+
+        public string MonitoringSummaryTooltip
+        {
+            get
+            {
+                if (Monitoring.Results.Count == 0)
+                    return "Мониторинг ключевых ресурсов (YouTube, Discord и др.). Нажмите для перехода к экспресс-проверке.";
+                var details = string.Join("\n", Monitoring.Results.Select(r => $"• {r.Target.Name}: {(r.Ok ? $"доступен ({r.Milliseconds} мс)" : "недоступен")}"));
+                return $"Результаты проверки ресурсов:\n{details}\n\nНажмите для перехода к мониторингу.";
+            }
+        }
+
         public ICommand ToggleThemeCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
+        public ICommand NavigateStrategiesCommand { get; }
+        public ICommand NavigateMonitoringCommand { get; }
 
         /// <summary>Публичное уведомление об изменении свойства (для подстраниц).</summary>
         public void Notify(string propertyName) => Raise(propertyName);
@@ -176,6 +238,12 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ReadinessKey));
             Raise(nameof(ReadinessDetails));
             Raise(nameof(ReadinessIsReady));
+            Raise(nameof(ActiveStrategySummaryText));
+            Raise(nameof(ActiveStrategyKey));
+            Raise(nameof(ActiveStrategyTooltipText));
+            Raise(nameof(MonitoringSummaryText));
+            Raise(nameof(MonitoringSummaryKey));
+            Raise(nameof(MonitoringSummaryTooltip));
         }
 
         public void Navigate(string key)
@@ -253,6 +321,12 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(ReadinessKey));
                 Raise(nameof(ReadinessDetails));
                 Raise(nameof(ReadinessIsReady));
+                Raise(nameof(ActiveStrategySummaryText));
+                Raise(nameof(ActiveStrategyKey));
+                Raise(nameof(ActiveStrategyTooltipText));
+                Raise(nameof(MonitoringSummaryText));
+                Raise(nameof(MonitoringSummaryKey));
+                Raise(nameof(MonitoringSummaryTooltip));
             }
             catch (Exception ex)
             {

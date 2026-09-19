@@ -76,6 +76,8 @@ namespace ZapretGui.ViewModels
         public string[] IpsetOptions { get; } = { "Списки (loaded)", "Отключён (none)", "Все IP (any)" };
 
         public bool IsRunning => _status.IsRunning;
+        public BypassStatus CurrentStatus => _status;
+        public string RunningStrategyName => _status.StrategyName;
         public bool ServiceInstalled => _status.ServiceState != ServiceState.NotInstalled;
         public string InstallServiceButtonText => ServiceInstalled
             ? "Служба уже установлена, удалить?"

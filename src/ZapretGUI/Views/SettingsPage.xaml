@@ -127,7 +127,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Style="{StaticResource BodyText}" Text="Тема оформления" VerticalAlignment="Center" />
-                                <controls:SegmentedControl Grid.Column="1" HorizontalAlignment="Right" Width="220" MinWidth="160" MaxWidth="330"
+                                <controls:SegmentedControl Grid.Column="1" HorizontalAlignment="Right" MinWidth="280"
                                                            ItemsSource="{Binding ThemeOptions}"
                                                            SelectedIndex="{Binding ThemeIndex, Mode=TwoWay}"
                                                            ToolTip="Тёмная, светлая тема или как в системе (переключается на лету)" />
