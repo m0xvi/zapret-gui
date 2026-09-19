@@ -45,7 +45,9 @@
                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding ProgressPercentText}" HorizontalAlignment="Right"
                                    Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                     </Grid>
-                    <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding ProgressValue}" Maximum="{Binding ProgressMaximum}"
+                    <ProgressBar Style="{StaticResource ThinProgress}"
+                                 Value="{Binding ProgressValue, Mode=OneWay}"
+                                 Maximum="{Binding ProgressMaximum, Mode=OneWay}"
                                  IsIndeterminate="False" Margin="0,8,0,0" />
                 </StackPanel>
             </Border>

@@ -213,8 +213,11 @@
                                                    Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                                     </Grid>
                                     <TextBlock Style="{StaticResource MutedText}" Text="{Binding ConnectionProgressText}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
-                                    <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding ConnectionProgressValue}" Maximum="{Binding ConnectionProgressMaximum}"
-                                                 IsIndeterminate="{Binding ConnectionProgressIndeterminate}" Margin="0,8,0,0" />
+                                    <ProgressBar Style="{StaticResource ThinProgress}"
+                                                 Value="{Binding ConnectionProgressValue, Mode=OneWay}"
+                                                 Maximum="{Binding ConnectionProgressMaximum, Mode=OneWay}"
+                                                 IsIndeterminate="{Binding ConnectionProgressIndeterminate, Mode=OneWay}"
+                                                 Margin="0,8,0,0" />
                                 </StackPanel>
                             </Border>
                             <Button Style="{StaticResource SecondaryButton}" Content="Добавить адрес для проверки"

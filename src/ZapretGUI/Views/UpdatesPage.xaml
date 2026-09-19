@@ -127,8 +127,9 @@
                                                Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
                                                Visibility="{Binding Indeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
                                 </Grid>
-                                <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding Progress, Mode=OneWay}" Maximum="100"
-                                             IsIndeterminate="{Binding Indeterminate}" Margin="0,8,0,0" />
+                                <ProgressBar Style="{StaticResource ThinProgress}"
+                                             Value="{Binding Progress, Mode=OneWay}" Maximum="100"
+                                             IsIndeterminate="{Binding Indeterminate, Mode=OneWay}" Margin="0,8,0,0" />
                             </StackPanel>
                             <TextBlock Style="{StaticResource MutedText}" Text="{Binding Status}" Margin="0,12,0,0"
                                        Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />

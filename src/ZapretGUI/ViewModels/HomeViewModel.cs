@@ -173,31 +173,31 @@ namespace ZapretGui.ViewModels
         public double ConnectionProgressValue
         {
             get => _connectionProgressValue;
-            private set => Set(ref _connectionProgressValue, value);
+            set => Set(ref _connectionProgressValue, value);
         }
 
         public double ConnectionProgressMaximum
         {
             get => _connectionProgressMaximum;
-            private set => Set(ref _connectionProgressMaximum, value);
+            set => Set(ref _connectionProgressMaximum, value);
         }
 
         public bool ConnectionProgressIndeterminate
         {
             get => _connectionProgressIndeterminate;
-            private set => Set(ref _connectionProgressIndeterminate, value);
+            set => Set(ref _connectionProgressIndeterminate, value);
         }
 
         public string ConnectionProgressPercentText
         {
             get => _connectionProgressPercentText;
-            private set => Set(ref _connectionProgressPercentText, value);
+            set => Set(ref _connectionProgressPercentText, value);
         }
 
         public string ConnectionProgressText
         {
             get => _connectionProgressText;
-            private set => Set(ref _connectionProgressText, value);
+            set => Set(ref _connectionProgressText, value);
         }
 
         public string Message

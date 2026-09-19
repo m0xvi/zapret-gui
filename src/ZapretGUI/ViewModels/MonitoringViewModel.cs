@@ -115,31 +115,31 @@ namespace ZapretGui.ViewModels
         public double ProgressValue
         {
             get => _progressValue;
-            private set => Set(ref _progressValue, value);
+            set => Set(ref _progressValue, value);
         }
 
         public double ProgressMaximum
         {
             get => _progressMaximum;
-            private set => Set(ref _progressMaximum, value);
+            set => Set(ref _progressMaximum, value);
         }
 
         public bool ProgressVisible
         {
             get => _progressVisible;
-            private set => Set(ref _progressVisible, value);
+            set => Set(ref _progressVisible, value);
         }
 
         public string ProgressText
         {
             get => _progressText;
-            private set => Set(ref _progressText, value);
+            set => Set(ref _progressText, value);
         }
 
         public string ProgressPercentText
         {
             get => _progressPercentText;
-            private set => Set(ref _progressPercentText, value);
+            set => Set(ref _progressPercentText, value);
         }
 
         public string NewResourceUrl

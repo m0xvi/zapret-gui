@@ -278,25 +278,25 @@ namespace ZapretGui.ViewModels
         public double CandidateEvaluationProgressValue
         {
             get => _candidateEvaluationProgressValue;
-            private set => Set(ref _candidateEvaluationProgressValue, value);
+            set => Set(ref _candidateEvaluationProgressValue, value);
         }
 
         public double CandidateEvaluationProgressMaximum
         {
             get => _candidateEvaluationProgressMaximum;
-            private set => Set(ref _candidateEvaluationProgressMaximum, value);
+            set => Set(ref _candidateEvaluationProgressMaximum, value);
         }
 
         public string CandidateEvaluationProgressPercentText
         {
             get => _candidateEvaluationProgressPercentText;
-            private set => Set(ref _candidateEvaluationProgressPercentText, value);
+            set => Set(ref _candidateEvaluationProgressPercentText, value);
         }
 
         public bool CandidateEvaluationProgressVisible
         {
             get => _candidateEvaluationProgressVisible;
-            private set => Set(ref _candidateEvaluationProgressVisible, value);
+            set => Set(ref _candidateEvaluationProgressVisible, value);
         }
 
         public bool CandidateEvaluationVisible => IsEvaluatingCandidates || CandidateEvaluations.Count > 0;
@@ -355,31 +355,31 @@ namespace ZapretGui.ViewModels
         public string TestProgressText
         {
             get => _testProgressText;
-            private set => Set(ref _testProgressText, value);
+            set => Set(ref _testProgressText, value);
         }
 
         public double TestProgressValue
         {
             get => _testProgressValue;
-            private set => Set(ref _testProgressValue, value);
+            set => Set(ref _testProgressValue, value);
         }
 
         public double TestProgressMaximum
         {
             get => _testProgressMaximum;
-            private set => Set(ref _testProgressMaximum, value);
+            set => Set(ref _testProgressMaximum, value);
         }
 
         public bool TestProgressIndeterminate
         {
             get => _testProgressIndeterminate;
-            private set => Set(ref _testProgressIndeterminate, value);
+            set => Set(ref _testProgressIndeterminate, value);
         }
 
         public string TestProgressPercentText
         {
             get => _testProgressPercentText;
-            private set => Set(ref _testProgressPercentText, value);
+            set => Set(ref _testProgressPercentText, value);
         }
 
         public string TestSummary

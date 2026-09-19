@@ -997,7 +997,14 @@ CI и что требует Windows runtime.
    - В `StrategyCandidateEvaluation` подтверждена формула `Score = SuccessfulRepeats * 10000 + PassedChecks * 100 + (RepeatCount == 0 ? 0 : SuccessfulRepeats * 100 / RepeatCount) + LatencyScore`, где стабильность и эмпирические результаты проверок строго превалируют над эвристиками.
    - Добавлен 33-й тест в `tools/CoreLogicHarness/Program.cs`: `Score кандидата приоритизирует эмпирические результаты проверок`.
 
-3. **Верификация:**
+3. **Исправление ошибки двухсторонней привязки ProgressBar (v1.2.2):**
+   - В WPF `ProgressBar.Value` (наследуемый от `RangeBase.ValueProperty`) имеет `BindsTwoWayByDefault = true`.
+   - На всех страницах (`HomePage.xaml`, `DeepCheckPage.xaml`, `DiagnosticsPage.xaml`, `DpiPage.xaml`, `FirstLaunchPage.xaml`, `MonitoringPage.xaml`, `StrategiesPage.xaml`, `UpdatesPage.xaml`) ко всем привязкам `ProgressBar.Value`, `Maximum`, `IsIndeterminate` явно добавлен `Mode=OneWay`.
+   - Во всех ViewModels (`HomeViewModel`, `DeepCheckViewModel`, `DiagnosticsViewModel`, `FirstLaunchViewModel`, `MonitoringViewModel`, `StrategiesViewModel`, `UpdatesViewModel`) сеттеры прогресс-свойств сделаны открытыми (`public set => Set(ref ...)`), исключая исключения `InvalidOperationException` при запуске.
+   - В `tools/check_bindings.py` добавлен статический валидатор, требующий `Mode=OneWay` для всех привязок `ProgressBar`.
+   - Версия приложения обновлена до `1.2.2` в `ZapretGUI.csproj` и динамически выведена в `MainWindow.xaml`.
+
+4. **Верификация:**
    - `python3 tools/check_bindings.py`: Проверено 16 XAML-файлов и 90 ключей ресурсов — 0 ошибок.
    - `git diff --check`: 0 предупреждений по форматированию и пробелам.
 ```

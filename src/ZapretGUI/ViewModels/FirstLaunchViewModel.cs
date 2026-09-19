@@ -195,9 +195,21 @@ namespace ZapretGui.ViewModels
 
         public bool StrategyProgressVisible => _main.StrategiesPage.IsTestingAll;
         public string StrategyProgressText => _main.StrategiesPage.TestProgressText;
-        public double StrategyProgressValue => _main.StrategiesPage.TestProgressValue;
-        public double StrategyProgressMaximum => _main.StrategiesPage.TestProgressMaximum;
-        public bool StrategyProgressIndeterminate => _main.StrategiesPage.TestProgressIndeterminate;
+        public double StrategyProgressValue
+        {
+            get => _main.StrategiesPage.TestProgressValue;
+            set => _main.StrategiesPage.TestProgressValue = value;
+        }
+        public double StrategyProgressMaximum
+        {
+            get => _main.StrategiesPage.TestProgressMaximum;
+            set => _main.StrategiesPage.TestProgressMaximum = value;
+        }
+        public bool StrategyProgressIndeterminate
+        {
+            get => _main.StrategiesPage.TestProgressIndeterminate;
+            set => _main.StrategiesPage.TestProgressIndeterminate = value;
+        }
         public string StrategyProgressPercentText => _main.StrategiesPage.TestProgressPercentText;
 
         public string TrialStatusText => _trialCompleted

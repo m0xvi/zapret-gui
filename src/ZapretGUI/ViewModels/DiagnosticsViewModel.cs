@@ -130,31 +130,31 @@ namespace ZapretGui.ViewModels
         public double ProgressValue
         {
             get => _progressValue;
-            private set => Set(ref _progressValue, value);
+            set => Set(ref _progressValue, value);
         }
 
         public double ProgressMaximum
         {
             get => _progressMaximum;
-            private set => Set(ref _progressMaximum, value);
+            set => Set(ref _progressMaximum, value);
         }
 
         public bool ProgressIndeterminate
         {
             get => _progressIndeterminate;
-            private set => Set(ref _progressIndeterminate, value);
+            set => Set(ref _progressIndeterminate, value);
         }
 
         public string ProgressPercentText
         {
             get => _progressPercentText;
-            private set => Set(ref _progressPercentText, value);
+            set => Set(ref _progressPercentText, value);
         }
 
         public string ProgressText
         {
             get => _progressText;
-            private set => Set(ref _progressText, value);
+            set => Set(ref _progressText, value);
         }
 
         public string Summary
@@ -217,31 +217,31 @@ namespace ZapretGui.ViewModels
         public double DpiProgressValue
         {
             get => _dpiProgressValue;
-            private set => Set(ref _dpiProgressValue, value);
+            set => Set(ref _dpiProgressValue, value);
         }
 
         public double DpiProgressMaximum
         {
             get => _dpiProgressMaximum;
-            private set => Set(ref _dpiProgressMaximum, value);
+            set => Set(ref _dpiProgressMaximum, value);
         }
 
         public bool DpiProgressIndeterminate
         {
             get => _dpiProgressIndeterminate;
-            private set => Set(ref _dpiProgressIndeterminate, value);
+            set => Set(ref _dpiProgressIndeterminate, value);
         }
 
         public string DpiProgressText
         {
             get => _dpiProgressText;
-            private set => Set(ref _dpiProgressText, value);
+            set => Set(ref _dpiProgressText, value);
         }
 
         public string DpiProgressPercentText
         {
             get => _dpiProgressPercentText;
-            private set => Set(ref _dpiProgressPercentText, value);
+            set => Set(ref _dpiProgressPercentText, value);
         }
 
         public string DpiSummary

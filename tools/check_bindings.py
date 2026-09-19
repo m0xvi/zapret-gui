@@ -147,6 +147,20 @@ def main():
             if key not in keys:
                 problems.append(f"{os.path.relpath(path, ROOT)}: ключ ресурса '{key}' не объявлен в Themes/ или App.xaml")
 
+        # Проверка ProgressBar: в WPF RangeBase.ValueProperty (ProgressBar.Value, Maximum, Minimum)
+        # по умолчанию регистрируется с BindsTwoWayByDefault=true. Если не указан Mode=OneWay,
+        # WPF выбросит InvalidOperationException для read-only свойств в рантайме.
+        for pb_match in re.finditer(r"<ProgressBar\b([^>]+?)(?:/>|>)", text, re.DOTALL):
+            pb_attrs = pb_match.group(1)
+            for attr in ("Value", "Maximum", "Minimum"):
+                attr_match = re.search(rf'\b{attr}\s*=\s*"\{{Binding\s+([^}}]+)\}}"', pb_attrs)
+                if attr_match:
+                    binding_expr = attr_match.group(1)
+                    if "Mode=OneWay" not in binding_expr:
+                        problems.append(
+                            f"{os.path.relpath(path, ROOT)}: ProgressBar.{attr} по умолчанию привязывается TwoWay; добавьте Mode=OneWay в '{{Binding {binding_expr}}}'"
+                        )
+
         code_behind = path + ".cs"
         if os.path.exists(code_behind):
             code_text = read(code_behind)

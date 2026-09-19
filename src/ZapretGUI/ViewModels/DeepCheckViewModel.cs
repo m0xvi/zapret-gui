@@ -79,25 +79,25 @@ namespace ZapretGui.ViewModels
         public double ProgressValue
         {
             get => _progressValue;
-            private set => Set(ref _progressValue, Math.Clamp(value, 0, 100));
+            set => Set(ref _progressValue, Math.Clamp(value, 0, 100));
         }
 
         public bool ProgressIndeterminate
         {
             get => _progressIndeterminate;
-            private set => Set(ref _progressIndeterminate, value);
+            set => Set(ref _progressIndeterminate, value);
         }
 
         public string ProgressPercentText
         {
             get => _progressPercentText;
-            private set => Set(ref _progressPercentText, value);
+            set => Set(ref _progressPercentText, value);
         }
 
         public string ProgressText
         {
             get => _progressText;
-            private set => Set(ref _progressText, value);
+            set => Set(ref _progressText, value);
         }
 
         public string Summary

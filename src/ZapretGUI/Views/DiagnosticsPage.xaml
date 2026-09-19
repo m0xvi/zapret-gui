@@ -52,8 +52,11 @@
                     <TextBlock Style="{StaticResource DimText}" Text="{Binding LastSavedText}" Margin="0,4,0,0" />
                     <TextBlock Style="{StaticResource DimText}" Text="{Binding ProgressText}"
                                Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
-                    <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding ProgressValue}" Maximum="{Binding ProgressMaximum}"
-                                 IsIndeterminate="{Binding ProgressIndeterminate}" Height="7" Margin="0,8,0,0"
+                    <ProgressBar Style="{StaticResource ThinProgress}"
+                                 Value="{Binding ProgressValue, Mode=OneWay}"
+                                 Maximum="{Binding ProgressMaximum, Mode=OneWay}"
+                                 IsIndeterminate="{Binding ProgressIndeterminate, Mode=OneWay}"
+                                 Height="7" Margin="0,8,0,0"
                                  Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
             </Border>

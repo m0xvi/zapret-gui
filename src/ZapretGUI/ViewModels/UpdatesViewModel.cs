@@ -203,7 +203,7 @@ namespace ZapretGui.ViewModels
         public bool Indeterminate
         {
             get => _indeterminate;
-            private set
+            set
             {
                 if (Set(ref _indeterminate, value))
                     Raise(nameof(ProgressPercentText));

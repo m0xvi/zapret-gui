@@ -227,9 +227,10 @@
                                                    Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                                     </Grid>
                                     <TextBlock Style="{StaticResource MutedText}" Text="{Binding StrategyProgressText}" Margin="0,3,0,0" />
-                                    <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding StrategyProgressValue}"
-                                                 Maximum="{Binding StrategyProgressMaximum}"
-                                                 IsIndeterminate="{Binding StrategyProgressIndeterminate}" Margin="0,8,0,0" />
+                                    <ProgressBar Style="{StaticResource ThinProgress}"
+                                                 Value="{Binding StrategyProgressValue, Mode=OneWay}"
+                                                 Maximum="{Binding StrategyProgressMaximum, Mode=OneWay}"
+                                                 IsIndeterminate="{Binding StrategyProgressIndeterminate, Mode=OneWay}" Margin="0,8,0,0" />
                                 </StackPanel>
                             </Grid>
                         </Border>

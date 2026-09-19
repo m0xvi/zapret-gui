@@ -77,8 +77,10 @@
                     <TextBlock Style="{StaticResource BodyText}" Text="{Binding TestProgressPercentText}" HorizontalAlignment="Right"
                                Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                 </Grid>
-                <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding TestProgressValue}" Maximum="{Binding TestProgressMaximum}"
-                             IsIndeterminate="{Binding TestProgressIndeterminate}" Margin="0,7,0,5"
+                <ProgressBar Style="{StaticResource ThinProgress}"
+                             Value="{Binding TestProgressValue, Mode=OneWay}"
+                             Maximum="{Binding TestProgressMaximum, Mode=OneWay}"
+                             IsIndeterminate="{Binding TestProgressIndeterminate, Mode=OneWay}" Margin="0,7,0,5"
                              Visibility="{Binding IsTestingAll, Converter={StaticResource BoolToVis}}" />
                 <TextBlock Style="{StaticResource MutedText}" Text="{Binding TestSummary}" TextWrapping="Wrap" />
             </StackPanel>
@@ -237,8 +239,8 @@
                                                Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                                 </Grid>
                                 <ProgressBar Style="{StaticResource ThinProgress}" Height="6" Margin="0,2,0,8"
-                                             Value="{Binding CandidateEvaluationProgressValue}"
-                                             Maximum="{Binding CandidateEvaluationProgressMaximum}"
+                                             Value="{Binding CandidateEvaluationProgressValue, Mode=OneWay}"
+                                             Maximum="{Binding CandidateEvaluationProgressMaximum, Mode=OneWay}"
                                              IsIndeterminate="False"
                                              Visibility="{Binding CandidateEvaluationProgressVisible, Converter={StaticResource BoolToVis}}" />
                                 <TextBlock Style="{StaticResource MutedText}" Text="{Binding CandidateEvaluationText}" TextWrapping="Wrap"
