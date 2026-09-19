@@ -63,6 +63,11 @@ namespace ZapretGui.ViewModels
             RunDpiCommand = new AsyncRelayCommand(RunDpiAsync, () => !IsRunning && !IsDpiRunning);
             CancelDpiCommand = new RelayCommand(CancelDpi, () => IsDpiRunning);
             OpenDpiCommand = new RelayCommand(() => _main.Navigate("dpi"));
+            SelectExpressTabCommand = new RelayCommand(() => SelectedSubTab = 0);
+            SelectDpiTabCommand = new RelayCommand(() => SelectedSubTab = 1);
+            SelectDeepCheckTabCommand = new RelayCommand(() => SelectedSubTab = 2);
+            SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 3);
+            SelectResultsTabCommand = new RelayCommand(() => SelectedSubTab = 4);
             ExportReportCommand = new RelayCommand(ExportReport,
                 () => HasResults || DpiResults.Count > 0 ||
                      DiagnosticsHistoryStore.LoadLastDiagnostics() != null ||
@@ -105,6 +110,59 @@ namespace ZapretGui.ViewModels
         public AppSettings Settings => _main.Settings;
 
         public ObservableCollection<DiagnosticItem> Items { get; } = new();
+
+        private int _selectedSubTab;
+
+        public int SelectedSubTab
+        {
+            get => _selectedSubTab;
+            set
+            {
+                if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 4)))
+                {
+                    Raise(nameof(IsExpressTabSelected));
+                    Raise(nameof(IsDpiTabSelected));
+                    Raise(nameof(IsDeepCheckTabSelected));
+                    Raise(nameof(IsSystemTabSelected));
+                    Raise(nameof(IsResultsTabSelected));
+                }
+            }
+        }
+
+        public bool IsExpressTabSelected
+        {
+            get => _selectedSubTab == 0;
+            set { if (value) SelectedSubTab = 0; }
+        }
+
+        public bool IsDpiTabSelected
+        {
+            get => _selectedSubTab == 1;
+            set { if (value) SelectedSubTab = 1; }
+        }
+
+        public bool IsDeepCheckTabSelected
+        {
+            get => _selectedSubTab == 2;
+            set { if (value) SelectedSubTab = 2; }
+        }
+
+        public bool IsSystemTabSelected
+        {
+            get => _selectedSubTab == 3;
+            set { if (value) SelectedSubTab = 3; }
+        }
+
+        public bool IsResultsTabSelected
+        {
+            get => _selectedSubTab == 4;
+            set { if (value) SelectedSubTab = 4; }
+        }
+
+        public MonitoringViewModel Monitoring => _main.Monitoring;
+        public DeepCheckViewModel DeepCheck => _main.DeepCheck;
+        public HomeViewModel Home => _main.Home;
+        public MainViewModel Main => _main;
 
         public bool IsRunning
         {
@@ -316,6 +374,11 @@ namespace ZapretGui.ViewModels
         public ICommand RunDpiCommand { get; }
         public ICommand CancelDpiCommand { get; }
         public ICommand OpenDpiCommand { get; }
+        public ICommand SelectExpressTabCommand { get; }
+        public ICommand SelectDpiTabCommand { get; }
+        public ICommand SelectDeepCheckTabCommand { get; }
+        public ICommand SelectSystemTabCommand { get; }
+        public ICommand SelectResultsTabCommand { get; }
         public ICommand FixItemCommand { get; }
         public ICommand ClearDiscordCacheCommand { get; }
         public ICommand ResetNetworkCommand { get; }

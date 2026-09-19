@@ -85,6 +85,7 @@ namespace ZapretGui.ViewModels
                 () => IsEvaluatingCandidates);
             ExportCandidateReportCommand = new RelayCommand(ExportCandidateReport,
                 () => CandidateEvaluations.Count > 0 || EvaluationHistory.Count > 0);
+            ClearHistoryCommand = new RelayCommand(ClearHistory, () => EvaluationHistory.Count > 0);
             SaveCandidateCommand = new RelayCommand(SaveCandidate, () => CandidatePreview != null);
             RunSavedCandidateCommand = new AsyncRelayCommand(RunSavedCandidateAsync,
                 () => CandidatePreview != null && IsCandidatePreviewSaved && !IsBusy && !IsTestingAll && !IsGeneratingCandidates && !IsEvaluatingCandidates);
@@ -301,11 +302,15 @@ namespace ZapretGui.ViewModels
 
         public bool CandidateEvaluationVisible => IsEvaluatingCandidates || CandidateEvaluations.Count > 0;
         public bool EvaluationHistoryVisible => EvaluationHistory.Count > 0;
+        public string EvaluationHistoryCountText => EvaluationHistory.Count > 0
+            ? $"Сохранено проверок: {EvaluationHistory.Count}"
+            : "История проверок пуста";
         public bool SavedCandidatesVisible => SavedCandidates.Count > 0;
 
         public ICommand EvaluateCandidatesCommand { get; }
         public ICommand CancelCandidateEvaluationCommand { get; }
         public ICommand ExportCandidateReportCommand { get; }
+        public ICommand ClearHistoryCommand { get; }
 
         public bool IsSelectedDefault => Selected != null &&
             Selected.Name.Equals(Settings.SelectedStrategy, StringComparison.OrdinalIgnoreCase);
@@ -651,13 +656,54 @@ namespace ZapretGui.ViewModels
 
         private void AppendHistory(StrategyEvaluationHistoryRecord record)
         {
+            if (record == null) return;
             if (!StrategyEvaluationHistoryStore.TryAppend(record)) return;
-            _evaluationHistory.Insert(0, record);
-            while (_evaluationHistory.Count > 200) _evaluationHistory.RemoveAt(_evaluationHistory.Count - 1);
-            EvaluationHistory.Insert(0, record);
-            while (EvaluationHistory.Count > 50) EvaluationHistory.RemoveAt(EvaluationHistory.Count - 1);
+
+            lock (_evaluationHistory)
+            {
+                _evaluationHistory.Insert(0, record);
+                while (_evaluationHistory.Count > 200) _evaluationHistory.RemoveAt(_evaluationHistory.Count - 1);
+            }
+
+            void UpdateUi()
+            {
+                EvaluationHistory.Insert(0, record);
+                while (EvaluationHistory.Count > 50) EvaluationHistory.RemoveAt(EvaluationHistory.Count - 1);
+                Raise(nameof(EvaluationHistoryVisible));
+                Raise(nameof(EvaluationHistoryCountText));
+                (ExportCandidateReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (ClearHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(new Action(UpdateUi));
+            }
+            else
+            {
+                UpdateUi();
+            }
+        }
+
+        private void ClearHistory()
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Очистить сохранённую историю проверок стратегий?",
+                "Очистка истории", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+            if (answer != System.Windows.MessageBoxResult.Yes) return;
+
+            StrategyEvaluationHistoryStore.Clear();
+            lock (_evaluationHistory)
+            {
+                _evaluationHistory.Clear();
+            }
+            EvaluationHistory.Clear();
             Raise(nameof(EvaluationHistoryVisible));
+            Raise(nameof(EvaluationHistoryCountText));
+            (ClearHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ExportCandidateReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            Message = "История проверок стратегий очищена";
         }
 
         private void CancelCandidateEvaluation()

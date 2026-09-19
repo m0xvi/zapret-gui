@@ -195,6 +195,18 @@
 
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="МАСТЕР НАСТРОЙКИ" />
+                            <TextBlock Style="{StaticResource DimText}"
+                                       Text="Пошаговый мастер проверки прав, установки движка, диагностики и выбора первой стратегии." TextWrapping="Wrap" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Запустить мастер первого запуска заново"
+                                    Margin="0,10,0,0" HorizontalAlignment="Left"
+                                    Command="{Binding RerunFirstLaunchWizardCommand}"
+                                    ToolTip="Открыть пошаговый мастер настройки" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ФОНОВЫЙ МОНИТОРИНГ" />
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять ресурсы в фоне"
                                       IsChecked="{Binding ResourceMonitoringEnabled, Mode=TwoWay}"

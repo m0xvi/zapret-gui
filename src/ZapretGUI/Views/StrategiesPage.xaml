@@ -281,9 +281,26 @@
                         <Border Style="{StaticResource InnerCard}" Margin="0,8,0,0"
                                 Visibility="{Binding EvaluationHistoryVisible, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="ИСТОРИЯ ПОДБОРА" />
-                                <TextBlock Style="{StaticResource MutedText}"
-                                           Text="История хранится только в профиле пользователя и используется как осторожная эвристика для последующего порядка проверки." TextWrapping="Wrap" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource SectionText}" Text="ИСТОРИЯ ПРОВЕРОК И ПОДБОРА" />
+                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding EvaluationHistoryCountText}" Margin="0,2,0,0" />
+                                    </StackPanel>
+                                    <WrapPanel Grid.Column="1" Orientation="Horizontal">
+                                        <Button Style="{StaticResource GhostButton}" Content="Очистить историю" Padding="10,5"
+                                                Command="{Binding ClearHistoryCommand}"
+                                                ToolTip="Удалить сохранённую историю проверок стратегий" />
+                                        <Button Style="{StaticResource GhostButton}" Content="Экспорт JSON" Padding="10,5" Margin="6,0,0,0"
+                                                Command="{Binding ExportCandidateReportCommand}"
+                                                ToolTip="Экспортировать JSON-отчёт со всеми проверенными кандидатами" />
+                                    </WrapPanel>
+                                </Grid>
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
+                                           Text="История проверок сохраняется локально в профиле пользователя и отражает реальные измеренные результаты." TextWrapping="Wrap" />
                                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
                                     <ItemsControl ItemsSource="{Binding EvaluationHistory}">
                                         <ItemsControl.ItemTemplate>

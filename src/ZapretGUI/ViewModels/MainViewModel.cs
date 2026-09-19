@@ -46,20 +46,16 @@ namespace ZapretGui.ViewModels
             {
                 new() { Key = "group-main", Title = "ОСНОВНОЕ", IsSectionHeader = true },
                 new() { Key = "home", Title = "Обзор", Icon = "\uE80F", Hint = "Состояние обхода" },
-                new() { Key = "first-run", Title = "Первый запуск", Icon = "\uE748", Hint = "Мастер настройки" },
-                new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор обхода" },
-                new() { Key = "group-checks", Title = "ПРОВЕРКИ И НАБЛЮДЕНИЕ", IsSectionHeader = true },
-                new() { Key = "monitoring", Title = "Мониторинг", Icon = "\uE701", Hint = "Ресурсы и провайдер" },
-                new() { Key = "diagnostics", Title = "Диагностика", Icon = "\uE90F", Hint = "Проверка проблем" },
-                new() { Key = "deep-check", Title = "Глубокая проверка", Icon = "\uE9CE", Hint = "Полный профиль сети" },
-                new() { Key = "dpi", Title = "Проверка DPI", Icon = "\uE71C", Hint = "DNS, TCP и TLS" },
-                new() { Key = "logs", Title = "Журнал", Icon = "\uE7C3", Hint = "События приложения" },
-                new() { Key = "group-data", Title = "ПОЛЬЗОВАТЕЛЬСКИЕ ДАННЫЕ", IsSectionHeader = true },
-                new() { Key = "user-lists", Title = "Списки пользователя", Icon = "\uE8FD", Hint = "Домены и IP" },
+                new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
+                new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
+                new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check и результаты" },
+                new() { Key = "group-data", Title = "СПИСКИ И ФИЛЬТРЫ", IsSectionHeader = true },
+                new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
                 new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
-                new() { Key = "updates", Title = "Обновления", Icon = "\uE895", Hint = "Движок и списки" },
-                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Путь, тема, автозапуск" },
-                new() { Key = "about", Title = "О программе", Icon = "\uE946", Hint = "Авторы и лицензии" }
+                new() { Key = "updates", Title = "Обновления", Icon = "\uE895", Hint = "Движок, hosts, ipset и GUI" },
+                new() { Key = "logs", Title = "Журнал", Icon = "\uE7C3", Hint = "События и отладка" },
+                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация приложения" },
+                new() { Key = "about", Title = "О программе", Icon = "\uE946", Hint = "Версия и лицензия" }
             };
             _selectedNav = NavItems[1];
 
@@ -184,12 +180,28 @@ namespace ZapretGui.ViewModels
 
         public void Navigate(string key)
         {
+            if (key is "monitoring" or "dpi" or "deep-check" or "results")
+            {
+                var tab = key switch
+                {
+                    "monitoring" => 0,
+                    "dpi" => 1,
+                    "deep-check" => 2,
+                    "results" => 4,
+                    _ => 0
+                };
+                Diagnostics.SelectedSubTab = tab;
+                key = "diagnostics";
+            }
+
             foreach (var item in NavItems)
             {
                 if (item.Key != key) continue;
                 SelectedNav = item;
                 return;
             }
+
+            NavChanged?.Invoke(key);
         }
 
         /// <summary>Оставлено для совместимости со старым вызывающим кодом; мастер управляется вручную.</summary>
