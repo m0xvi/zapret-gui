@@ -293,6 +293,18 @@ namespace ZapretGui.ViewModels
             RaiseServiceHealth();
         }
 
+        public void Reset()
+        {
+            CurrentStep = 0;
+            _trialCompleted = false;
+            _isSafeModeChoice = true;
+            _selectedStrategyName = _main.Settings.SelectedStrategy;
+            RefreshStrategyList();
+            SetStatus("", "Info");
+            RaiseStepVisibility();
+            RaiseCommands();
+        }
+
         public void RefreshStrategyList()
         {
             var names = _main.Strategies.Items.Select(item => item.Name).ToList();
