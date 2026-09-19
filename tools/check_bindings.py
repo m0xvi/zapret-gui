@@ -32,6 +32,11 @@ PAGE_VM = {
     "StrategiesPage": ["StrategiesViewModel"],
     "UpdatesPage": ["UpdatesViewModel"],
     "DiagnosticsPage": ["DiagnosticsViewModel"],
+    "DpiPage": ["DiagnosticsViewModel"],
+    "DeepCheckPage": ["DeepCheckViewModel"],
+    "FirstLaunchPage": ["FirstLaunchViewModel"],
+    "MonitoringPage": ["MonitoringViewModel"],
+    "UserListsPage": ["UserListsViewModel"],
     "LogsPage": ["LogsViewModel"],
     "SettingsPage": ["SettingsViewModel"],
     "AboutPage": ["MainViewModel"],
@@ -40,10 +45,13 @@ PAGE_VM = {
 
 # Типы элементов, на которые указывают {Binding} внутри DataTemplate
 ITEM_TYPES = {
-    "UpdatesPage": ["EngineConsistencyItem"],
+    "UpdatesPage": ["EngineConsistencyItem", "EngineBackupInfo"],
     "HomePage": ["ConnectionCheck", "MonitorTarget"],
     "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord"],
-    "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult"],
+    "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult", "MonitorTarget", "ResourceProbeResult", "DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation"],
+    "DpiPage": ["DpiTargetResult", "DpiProbeResult"],
+    "DeepCheckPage": ["DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "EngineConsistencyCheck"],
+    "MonitoringPage": ["MonitorTarget", "ResourceProbeResult"],
     "LogsPage": ["LogEntry"],
     "MainWindow": ["NavItem"],
 }
@@ -128,7 +136,8 @@ def main():
                 owner = next((prop_types.get((vm, first)) for vm in vms
                               if first in members.get(vm, set())), None)
                 if owner is None:
-                    owner = next((item for item in items if first in members.get(item, set())), None)
+                    owner = next((prop_types.get((item, first)) for item in items
+                                  if first in members.get(item, set())), None)
 
                 if owner and owner not in SKIP_SECOND and second not in members.get(owner, set()):
                     problems.append(f"{os.path.relpath(path, ROOT)}: у типа {owner} нет свойства '{second}' (в '{binding}')")
@@ -137,6 +146,20 @@ def main():
             key = match.group(1)
             if key not in keys:
                 problems.append(f"{os.path.relpath(path, ROOT)}: ключ ресурса '{key}' не объявлен в Themes/ или App.xaml")
+
+        # Проверка ProgressBar: в WPF RangeBase.ValueProperty (ProgressBar.Value, Maximum, Minimum)
+        # по умолчанию регистрируется с BindsTwoWayByDefault=true. Если не указан Mode=OneWay,
+        # WPF выбросит InvalidOperationException для read-only свойств в рантайме.
+        for pb_match in re.finditer(r"<ProgressBar\b([^>]+?)(?:/>|>)", text, re.DOTALL):
+            pb_attrs = pb_match.group(1)
+            for attr in ("Value", "Maximum", "Minimum"):
+                attr_match = re.search(rf'\b{attr}\s*=\s*"\{{Binding\s+([^}}]+)\}}"', pb_attrs)
+                if attr_match:
+                    binding_expr = attr_match.group(1)
+                    if "Mode=OneWay" not in binding_expr:
+                        problems.append(
+                            f"{os.path.relpath(path, ROOT)}: ProgressBar.{attr} по умолчанию привязывается TwoWay; добавьте Mode=OneWay в '{{Binding {binding_expr}}}'"
+                        )
 
         code_behind = path + ".cs"
         if os.path.exists(code_behind):

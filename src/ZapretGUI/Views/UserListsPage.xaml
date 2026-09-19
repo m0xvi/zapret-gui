@@ -11,23 +11,61 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Margin="0,0,12,0">
-                    <TextBlock Style="{StaticResource DisplayText}" Text="Списки пользователя" />
+                    <TextBlock Style="{StaticResource DisplayText}" Text="Списки и фильтры" />
                     <TextBlock Style="{StaticResource MutedText}"
-                               Text="Добавляйте домены и IP через интерфейс. Блокнот и ручное редактирование больше не нужны." />
+                               Text="Управление доменами, списками исключений, режимами ipset и игровым фильтром" />
                 </StackPanel>
-                <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Открыть папку lists"
-                        Command="{Binding OpenFolderCommand}" ToolTip="Открыть папку списков в проводнике" />
+                <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <Button Style="{StaticResource SecondaryButton}" Content="Применить и перезапустить"
+                            Command="{Binding RestartBypassCommand}"
+                            ToolTip="Перезапустить активный обход для применения новых списков и настроек фильтрации" />
+                    <Button Style="{StaticResource GhostButton}" Content="Папка lists" Margin="8,0,0,0"
+                            Command="{Binding OpenFolderCommand}" ToolTip="Открыть папку списков в проводнике" />
+                </WrapPanel>
             </Grid>
 
+            <!-- Параметры фильтрации IP и игр -->
             <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionText}" Text="ВЫБЕРИТЕ КАТЕГОРИЮ" />
-                    <ComboBox Style="{StaticResource AppComboBox}" ItemsSource="{Binding ListOptions}"
+                    <TextBlock Style="{StaticResource SectionText}" Text="РЕЖИМЫ ФИЛЬТРАЦИИ IP И ПОРТОВ" />
+                    <Grid Margin="0,8,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,10,0">
+                            <TextBlock Style="{StaticResource DimText}" Text="Фильтрация IP (режим ipset)" />
+                            <ComboBox Style="{StaticResource AppComboBox}" Margin="0,5,0,0"
+                                      ItemsSource="{Binding IpsetOptions}"
+                                      SelectedIndex="{Binding IpsetModeIndex, Mode=TwoWay}"
+                                      ToolTip="Режим фильтрации IP: по файлу ipset-all.txt, все адреса (Any) или отключено (None)" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0"
+                                       Text="Режим Any перенаправляет все IP в движок (максимальный обход, но выше нагрузка)." TextWrapping="Wrap" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                            <TextBlock Style="{StaticResource DimText}" Text="Игровой фильтр (порты выше 1023)" />
+                            <ComboBox Style="{StaticResource AppComboBox}" Margin="0,5,0,0"
+                                      ItemsSource="{Binding GameFilterOptions}"
+                                      SelectedIndex="{Binding GameFilterIndex, Mode=TwoWay}"
+                                      ToolTip="Игровой фильтр: обрабатывать ли трафик игр, Discord голосовых каналов и сторонних сервисов" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0"
+                                       Text="TCP+UDP обеспечивает лучшую совместимость с онлайн-играми и голосовым чатом." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Border>
+
+            <!-- Выбор и редактирование списка -->
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="РЕДАКТИРОВАНИЕ СПИСКОВ ДОМЕНОВ" />
+                    <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
+                              ItemsSource="{Binding ListOptions}"
                               SelectedValuePath="Key" DisplayMemberPath="Title"
                               SelectedValue="{Binding SelectedListKey, Mode=TwoWay}" />
-                    <TextBlock Style="{StaticResource MutedText}" Text="{Binding SelectedList.Description}" Margin="0,10,0,0"
+                    <TextBlock Style="{StaticResource MutedText}" Text="{Binding SelectedList.Description}" Margin="0,8,0,0"
                                TextWrapping="Wrap" />
-                    <TextBlock Style="{StaticResource DimText}" Text="{Binding ListPath}" Margin="0,6,0,0"
+                    <TextBlock Style="{StaticResource DimText}" Text="{Binding ListPath}" Margin="0,4,0,0"
                                TextTrimming="CharacterEllipsis" ToolTip="{Binding ListPath}" />
                 </StackPanel>
             </Border>
@@ -45,8 +83,8 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ЗАПИСИ" />
-                            <TextBlock Style="{StaticResource DimText}" Text="По одной записи в строке" />
+                            <TextBlock Style="{StaticResource SectionText}" Text="ЗАПИСИ СПИСКА" />
+                            <TextBlock Style="{StaticResource DimText}" Text="По одной записи в строке (домен или IP-подсеть)" />
                         </StackPanel>
                         <WrapPanel Grid.Column="1">
                             <Button Style="{StaticResource SecondaryButton}" Content="Добавить запись"
@@ -57,9 +95,9 @@
                                     Command="{Binding ReloadCommand}" />
                         </WrapPanel>
                     </Grid>
-                    <TextBlock Grid.Row="1" Style="{StaticResource MutedText}" Text="{Binding Status}" Margin="0,12,0,0"
+                    <TextBlock Grid.Row="1" Style="{StaticResource MutedText}" Text="{Binding Status}" Margin="0,10,0,0"
                                TextWrapping="Wrap" />
-                    <ListBox Grid.Row="2" Margin="0,12,0,0" MinHeight="180" MaxHeight="520"
+                    <ListBox Grid.Row="2" Margin="0,10,0,0" MinHeight="180" MaxHeight="480"
                              Style="{StaticResource PlainListBox}" ItemsSource="{Binding Entries}"
                              SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">

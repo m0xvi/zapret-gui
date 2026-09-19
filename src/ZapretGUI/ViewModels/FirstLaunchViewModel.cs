@@ -18,6 +18,7 @@ namespace ZapretGui.ViewModels
         private readonly MainViewModel _main;
         private int _step;
         private bool _isBusy;
+        private string _busyText = "";
         private bool _trialCompleted;
         private bool _isSafeModeChoice = true;
         private string _selectedStrategyName = "";
@@ -69,7 +70,17 @@ namespace ZapretGui.ViewModels
             }
         }
 
-        public string BusyText => IsBusy ? "Выполняю выбранную операцию…" : "";
+        public string BusyText
+        {
+            get => string.IsNullOrWhiteSpace(_busyText) ? "Выполняю выбранную операцию…" : _busyText;
+            private set => Set(ref _busyText, value);
+        }
+
+        private void SetBusy(bool busy, string text = "")
+        {
+            BusyText = text;
+            IsBusy = busy;
+        }
 
         public int CurrentStep
         {
@@ -184,9 +195,21 @@ namespace ZapretGui.ViewModels
 
         public bool StrategyProgressVisible => _main.StrategiesPage.IsTestingAll;
         public string StrategyProgressText => _main.StrategiesPage.TestProgressText;
-        public double StrategyProgressValue => _main.StrategiesPage.TestProgressValue;
-        public double StrategyProgressMaximum => _main.StrategiesPage.TestProgressMaximum;
-        public bool StrategyProgressIndeterminate => _main.StrategiesPage.TestProgressIndeterminate;
+        public double StrategyProgressValue
+        {
+            get => _main.StrategiesPage.TestProgressValue;
+            set => _main.StrategiesPage.TestProgressValue = value;
+        }
+        public double StrategyProgressMaximum
+        {
+            get => _main.StrategiesPage.TestProgressMaximum;
+            set => _main.StrategiesPage.TestProgressMaximum = value;
+        }
+        public bool StrategyProgressIndeterminate
+        {
+            get => _main.StrategiesPage.TestProgressIndeterminate;
+            set => _main.StrategiesPage.TestProgressIndeterminate = value;
+        }
         public string StrategyProgressPercentText => _main.StrategiesPage.TestProgressPercentText;
 
         public string TrialStatusText => _trialCompleted
@@ -268,6 +291,18 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ReadinessDetails));
             Raise(nameof(ReadinessKey));
             RaiseServiceHealth();
+        }
+
+        public void Reset()
+        {
+            CurrentStep = 0;
+            _trialCompleted = false;
+            _isSafeModeChoice = true;
+            _selectedStrategyName = _main.Settings.SelectedStrategy;
+            RefreshStrategyList();
+            SetStatus("", "Info");
+            RaiseStepVisibility();
+            RaiseCommands();
         }
 
         public void RefreshStrategyList()
@@ -367,7 +402,7 @@ namespace ZapretGui.ViewModels
                 "Восстановление BFE", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (answer != MessageBoxResult.Yes) return;
 
-            IsBusy = true;
+            SetBusy(true, "Включаю автозапуск и запускаю службу BFE…");
             try
             {
                 var result = DiagnosticsService.FixBfe();
@@ -377,7 +412,7 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
-                IsBusy = false;
+                SetBusy(false);
             }
         }
 
@@ -389,7 +424,7 @@ namespace ZapretGui.ViewModels
                 "Восстановление WinDivert", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (answer != MessageBoxResult.Yes) return;
 
-            IsBusy = true;
+            SetBusy(true, "Останавливаю и удаляю остаточные службы WinDivert…");
             try
             {
                 var result = DiagnosticsService.RemoveDivertLeftovers();
@@ -399,7 +434,7 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
-                IsBusy = false;
+                SetBusy(false);
             }
         }
 
@@ -426,7 +461,7 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
-            IsBusy = true;
+            SetBusy(true, "Скачиваю и устанавливаю комплект движка из официального репозитория…");
             try
             {
                 var installed = await _main.Updates.EnsureEngineInstalledAsync();
@@ -439,13 +474,13 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
-                IsBusy = false;
+                SetBusy(false);
             }
         }
 
         private async Task RunDiagnosticsAsync()
         {
-            IsBusy = true;
+            SetBusy(true, "Выполняю диагностику системных условий и служб…");
             try
             {
                 await _main.Diagnostics.RunAsync();
@@ -461,7 +496,7 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
-                IsBusy = false;
+                SetBusy(false);
                 RaiseCommands();
             }
         }
@@ -479,7 +514,7 @@ namespace ZapretGui.ViewModels
                 "Подтверждение проверки стратегий", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (answer != MessageBoxResult.Yes) return;
 
-            IsBusy = true;
+            SetBusy(true, "Запускаю проверку стратегий…");
             try
             {
                 var batch = await _main.StrategiesPage.TestAllAsync();
@@ -501,7 +536,7 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
-                IsBusy = false;
+                SetBusy(false);
                 RaiseCommands();
             }
         }
@@ -526,7 +561,7 @@ namespace ZapretGui.ViewModels
                 "Подтверждение пробного запуска", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (answer != MessageBoxResult.Yes) return;
 
-            IsBusy = true;
+            SetBusy(true, $"Выполняю пробный запуск стратегии «{strategy.Name}»…");
             try
             {
                 var result = await _main.Bypass.TestStrategyAsync(strategy);
@@ -537,7 +572,7 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
-                IsBusy = false;
+                SetBusy(false);
                 RaiseCommands();
             }
         }
@@ -551,7 +586,7 @@ namespace ZapretGui.ViewModels
                 "Подтверждение установки службы", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (answer != MessageBoxResult.Yes) return;
 
-            IsBusy = true;
+            SetBusy(true, $"Устанавливаю системную службу zapret со стратегией «{strategy.Name}»…");
             try
             {
                 var result = await _main.Bypass.InstallServiceAsync(strategy,
@@ -561,7 +596,7 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
-                IsBusy = false;
+                SetBusy(false);
             }
         }
 

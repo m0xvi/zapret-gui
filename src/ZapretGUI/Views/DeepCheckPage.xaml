@@ -39,8 +39,9 @@
                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding ProgressPercentText}" HorizontalAlignment="Right"
                                    Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                     </Grid>
-                    <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding ProgressValue}" Maximum="100"
-                                 IsIndeterminate="{Binding ProgressIndeterminate}" Height="7" Margin="0,8,0,0"
+                    <ProgressBar Style="{StaticResource ThinProgress}"
+                                 Value="{Binding ProgressValue, Mode=OneWay}" Maximum="100"
+                                 IsIndeterminate="{Binding ProgressIndeterminate, Mode=OneWay}" Height="7" Margin="0,8,0,0"
                                  Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
             </Border>

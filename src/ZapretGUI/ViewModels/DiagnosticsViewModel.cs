@@ -63,6 +63,11 @@ namespace ZapretGui.ViewModels
             RunDpiCommand = new AsyncRelayCommand(RunDpiAsync, () => !IsRunning && !IsDpiRunning);
             CancelDpiCommand = new RelayCommand(CancelDpi, () => IsDpiRunning);
             OpenDpiCommand = new RelayCommand(() => _main.Navigate("dpi"));
+            SelectExpressTabCommand = new RelayCommand(() => SelectedSubTab = 0);
+            SelectDpiTabCommand = new RelayCommand(() => SelectedSubTab = 1);
+            SelectDeepCheckTabCommand = new RelayCommand(() => SelectedSubTab = 2);
+            SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 3);
+            SelectResultsTabCommand = new RelayCommand(() => SelectedSubTab = 4);
             ExportReportCommand = new RelayCommand(ExportReport,
                 () => HasResults || DpiResults.Count > 0 ||
                      DiagnosticsHistoryStore.LoadLastDiagnostics() != null ||
@@ -106,6 +111,59 @@ namespace ZapretGui.ViewModels
 
         public ObservableCollection<DiagnosticItem> Items { get; } = new();
 
+        private int _selectedSubTab;
+
+        public int SelectedSubTab
+        {
+            get => _selectedSubTab;
+            set
+            {
+                if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 4)))
+                {
+                    Raise(nameof(IsExpressTabSelected));
+                    Raise(nameof(IsDpiTabSelected));
+                    Raise(nameof(IsDeepCheckTabSelected));
+                    Raise(nameof(IsSystemTabSelected));
+                    Raise(nameof(IsResultsTabSelected));
+                }
+            }
+        }
+
+        public bool IsExpressTabSelected
+        {
+            get => _selectedSubTab == 0;
+            set { if (value) SelectedSubTab = 0; }
+        }
+
+        public bool IsDpiTabSelected
+        {
+            get => _selectedSubTab == 1;
+            set { if (value) SelectedSubTab = 1; }
+        }
+
+        public bool IsDeepCheckTabSelected
+        {
+            get => _selectedSubTab == 2;
+            set { if (value) SelectedSubTab = 2; }
+        }
+
+        public bool IsSystemTabSelected
+        {
+            get => _selectedSubTab == 3;
+            set { if (value) SelectedSubTab = 3; }
+        }
+
+        public bool IsResultsTabSelected
+        {
+            get => _selectedSubTab == 4;
+            set { if (value) SelectedSubTab = 4; }
+        }
+
+        public MonitoringViewModel Monitoring => _main.Monitoring;
+        public DeepCheckViewModel DeepCheck => _main.DeepCheck;
+        public HomeViewModel Home => _main.Home;
+        public MainViewModel Main => _main;
+
         public bool IsRunning
         {
             get => _isRunning;
@@ -130,31 +188,31 @@ namespace ZapretGui.ViewModels
         public double ProgressValue
         {
             get => _progressValue;
-            private set => Set(ref _progressValue, value);
+            set => Set(ref _progressValue, value);
         }
 
         public double ProgressMaximum
         {
             get => _progressMaximum;
-            private set => Set(ref _progressMaximum, value);
+            set => Set(ref _progressMaximum, value);
         }
 
         public bool ProgressIndeterminate
         {
             get => _progressIndeterminate;
-            private set => Set(ref _progressIndeterminate, value);
+            set => Set(ref _progressIndeterminate, value);
         }
 
         public string ProgressPercentText
         {
             get => _progressPercentText;
-            private set => Set(ref _progressPercentText, value);
+            set => Set(ref _progressPercentText, value);
         }
 
         public string ProgressText
         {
             get => _progressText;
-            private set => Set(ref _progressText, value);
+            set => Set(ref _progressText, value);
         }
 
         public string Summary
@@ -217,31 +275,31 @@ namespace ZapretGui.ViewModels
         public double DpiProgressValue
         {
             get => _dpiProgressValue;
-            private set => Set(ref _dpiProgressValue, value);
+            set => Set(ref _dpiProgressValue, value);
         }
 
         public double DpiProgressMaximum
         {
             get => _dpiProgressMaximum;
-            private set => Set(ref _dpiProgressMaximum, value);
+            set => Set(ref _dpiProgressMaximum, value);
         }
 
         public bool DpiProgressIndeterminate
         {
             get => _dpiProgressIndeterminate;
-            private set => Set(ref _dpiProgressIndeterminate, value);
+            set => Set(ref _dpiProgressIndeterminate, value);
         }
 
         public string DpiProgressText
         {
             get => _dpiProgressText;
-            private set => Set(ref _dpiProgressText, value);
+            set => Set(ref _dpiProgressText, value);
         }
 
         public string DpiProgressPercentText
         {
             get => _dpiProgressPercentText;
-            private set => Set(ref _dpiProgressPercentText, value);
+            set => Set(ref _dpiProgressPercentText, value);
         }
 
         public string DpiSummary
@@ -256,7 +314,12 @@ namespace ZapretGui.ViewModels
             private set => Set(ref _dpiSummaryKey, value);
         }
 
-        public string DpiLastCheckText { get; private set; } = "Проверка ещё не выполнялась";
+        private string _dpiLastCheckText = "Проверка ещё не выполнялась";
+        public string DpiLastCheckText
+        {
+            get => _dpiLastCheckText;
+            private set => Set(ref _dpiLastCheckText, value);
+        }
 
         public NetworkObservationSnapshot DpiObservation
         {
@@ -311,6 +374,11 @@ namespace ZapretGui.ViewModels
         public ICommand RunDpiCommand { get; }
         public ICommand CancelDpiCommand { get; }
         public ICommand OpenDpiCommand { get; }
+        public ICommand SelectExpressTabCommand { get; }
+        public ICommand SelectDpiTabCommand { get; }
+        public ICommand SelectDeepCheckTabCommand { get; }
+        public ICommand SelectSystemTabCommand { get; }
+        public ICommand SelectResultsTabCommand { get; }
         public ICommand FixItemCommand { get; }
         public ICommand ClearDiscordCacheCommand { get; }
         public ICommand ResetNetworkCommand { get; }
@@ -624,7 +692,7 @@ namespace ZapretGui.ViewModels
                 var comparison = await _main.Bypass.DiagnoseResourceAsync(comparisonTarget, ct);
                 var snapshot = await _main.Bypass.RunDpiCheckAsync(
                     string.IsNullOrWhiteSpace(DpiCustomHost) ? null : DpiCustomHost,
-                    progress, ct);
+                    progress, ct, maxTargets: 34);
                 snapshot.BypassComparison = comparison;
                 snapshot.Observation = NetworkObservationSnapshot.From(
                     snapshot.Results, comparison, snapshot.CreatedAt, snapshot.ControlResult);

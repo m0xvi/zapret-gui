@@ -121,15 +121,15 @@
                             </Border>
 
                             <StackPanel Margin="0,14,0,0" Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}">
-                                <WrapPanel>
-                                    <Border Style="{StaticResource BusySpinner}">
-                                        <TextBlock Text="…" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Style="{StaticResource MutedText}" Text="Операция выполняется" Margin="8,2,0,0" />
-                                </WrapPanel>
-                                <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding Progress, Mode=OneWay}" Maximum="100"
-                                             IsIndeterminate="{Binding Indeterminate}" Margin="0,8,0,0" />
-                                <TextBlock Style="{StaticResource MutedText}" Text="{Binding Status}" Margin="0,8,0,0" />
+                                <Grid>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Status}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding ProgressPercentText}" HorizontalAlignment="Right"
+                                               Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
+                                               Visibility="{Binding Indeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                                </Grid>
+                                <ProgressBar Style="{StaticResource ThinProgress}"
+                                             Value="{Binding Progress, Mode=OneWay}" Maximum="100"
+                                             IsIndeterminate="{Binding Indeterminate, Mode=OneWay}" Margin="0,8,0,0" />
                             </StackPanel>
                             <TextBlock Style="{StaticResource MutedText}" Text="{Binding Status}" Margin="0,12,0,0"
                                        Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />

@@ -38,6 +38,10 @@ namespace ZapretGui.ViewModels
         private string _candidateGenerationText = "";
         private bool _isEvaluatingCandidates;
         private string _candidateEvaluationText = "";
+        private double _candidateEvaluationProgressValue;
+        private double _candidateEvaluationProgressMaximum = 1;
+        private string _candidateEvaluationProgressPercentText = "";
+        private bool _candidateEvaluationProgressVisible;
         private CancellationTokenSource? _testCts;
         private readonly List<StrategyEvaluationHistoryRecord> _evaluationHistory;
         private readonly ICollectionView _candidateEvaluationView;
@@ -81,6 +85,7 @@ namespace ZapretGui.ViewModels
                 () => IsEvaluatingCandidates);
             ExportCandidateReportCommand = new RelayCommand(ExportCandidateReport,
                 () => CandidateEvaluations.Count > 0 || EvaluationHistory.Count > 0);
+            ClearHistoryCommand = new RelayCommand(ClearHistory, () => EvaluationHistory.Count > 0);
             SaveCandidateCommand = new RelayCommand(SaveCandidate, () => CandidatePreview != null);
             RunSavedCandidateCommand = new AsyncRelayCommand(RunSavedCandidateAsync,
                 () => CandidatePreview != null && IsCandidatePreviewSaved && !IsBusy && !IsTestingAll && !IsGeneratingCandidates && !IsEvaluatingCandidates);
@@ -271,13 +276,41 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        public double CandidateEvaluationProgressValue
+        {
+            get => _candidateEvaluationProgressValue;
+            set => Set(ref _candidateEvaluationProgressValue, value);
+        }
+
+        public double CandidateEvaluationProgressMaximum
+        {
+            get => _candidateEvaluationProgressMaximum;
+            set => Set(ref _candidateEvaluationProgressMaximum, value);
+        }
+
+        public string CandidateEvaluationProgressPercentText
+        {
+            get => _candidateEvaluationProgressPercentText;
+            set => Set(ref _candidateEvaluationProgressPercentText, value);
+        }
+
+        public bool CandidateEvaluationProgressVisible
+        {
+            get => _candidateEvaluationProgressVisible;
+            set => Set(ref _candidateEvaluationProgressVisible, value);
+        }
+
         public bool CandidateEvaluationVisible => IsEvaluatingCandidates || CandidateEvaluations.Count > 0;
         public bool EvaluationHistoryVisible => EvaluationHistory.Count > 0;
+        public string EvaluationHistoryCountText => EvaluationHistory.Count > 0
+            ? $"Сохранено проверок: {EvaluationHistory.Count}"
+            : "История проверок пуста";
         public bool SavedCandidatesVisible => SavedCandidates.Count > 0;
 
         public ICommand EvaluateCandidatesCommand { get; }
         public ICommand CancelCandidateEvaluationCommand { get; }
         public ICommand ExportCandidateReportCommand { get; }
+        public ICommand ClearHistoryCommand { get; }
 
         public bool IsSelectedDefault => Selected != null &&
             Selected.Name.Equals(Settings.SelectedStrategy, StringComparison.OrdinalIgnoreCase);
@@ -327,31 +360,31 @@ namespace ZapretGui.ViewModels
         public string TestProgressText
         {
             get => _testProgressText;
-            private set => Set(ref _testProgressText, value);
+            set => Set(ref _testProgressText, value);
         }
 
         public double TestProgressValue
         {
             get => _testProgressValue;
-            private set => Set(ref _testProgressValue, value);
+            set => Set(ref _testProgressValue, value);
         }
 
         public double TestProgressMaximum
         {
             get => _testProgressMaximum;
-            private set => Set(ref _testProgressMaximum, value);
+            set => Set(ref _testProgressMaximum, value);
         }
 
         public bool TestProgressIndeterminate
         {
             get => _testProgressIndeterminate;
-            private set => Set(ref _testProgressIndeterminate, value);
+            set => Set(ref _testProgressIndeterminate, value);
         }
 
         public string TestProgressPercentText
         {
             get => _testProgressPercentText;
-            private set => Set(ref _testProgressPercentText, value);
+            set => Set(ref _testProgressPercentText, value);
         }
 
         public string TestSummary
@@ -521,6 +554,11 @@ namespace ZapretGui.ViewModels
                 return;
 
             const int repeats = 2;
+            var total = CandidateEvaluations.Count * repeats;
+            CandidateEvaluationProgressMaximum = Math.Max(1, total);
+            CandidateEvaluationProgressValue = 0;
+            CandidateEvaluationProgressPercentText = "0%";
+            CandidateEvaluationProgressVisible = true;
             IsEvaluatingCandidates = true;
             CandidateEvaluationText = "Подготавливаю повторные проверки кандидатов…";
             _candidateEvaluationCts = new CancellationTokenSource();
@@ -533,7 +571,10 @@ namespace ZapretGui.ViewModels
                     for (var repeat = 1; repeat <= repeats; repeat++)
                     {
                         _candidateEvaluationCts.Token.ThrowIfCancellationRequested();
-                        CandidateEvaluationText = $"Проверяю кандидат {index + 1} из {CandidateEvaluations.Count}, повтор {repeat} из {repeats}…";
+                        var done = index * repeats + repeat;
+                        CandidateEvaluationProgressValue = done;
+                        CandidateEvaluationProgressPercentText = $"{done * 100 / total:0}%";
+                        CandidateEvaluationText = $"Проверяю вариант {index + 1} из {CandidateEvaluations.Count}, повтор {repeat} из {repeats}…";
                         evaluation.MarkTesting(repeat, repeats);
                         using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(_candidateEvaluationCts.Token);
                         attemptCts.CancelAfter(TimeSpan.FromSeconds(45));
@@ -559,6 +600,7 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
+                CandidateEvaluationProgressVisible = false;
                 foreach (var evaluation in CandidateEvaluations.Where(evaluation => evaluation.IsTesting))
                     evaluation.Complete();
                 foreach (var evaluation in CandidateEvaluations.Where(evaluation => evaluation.RepeatCount > 0))
@@ -614,13 +656,54 @@ namespace ZapretGui.ViewModels
 
         private void AppendHistory(StrategyEvaluationHistoryRecord record)
         {
+            if (record == null) return;
             if (!StrategyEvaluationHistoryStore.TryAppend(record)) return;
-            _evaluationHistory.Insert(0, record);
-            while (_evaluationHistory.Count > 200) _evaluationHistory.RemoveAt(_evaluationHistory.Count - 1);
-            EvaluationHistory.Insert(0, record);
-            while (EvaluationHistory.Count > 50) EvaluationHistory.RemoveAt(EvaluationHistory.Count - 1);
+
+            lock (_evaluationHistory)
+            {
+                _evaluationHistory.Insert(0, record);
+                while (_evaluationHistory.Count > 200) _evaluationHistory.RemoveAt(_evaluationHistory.Count - 1);
+            }
+
+            void UpdateUi()
+            {
+                EvaluationHistory.Insert(0, record);
+                while (EvaluationHistory.Count > 50) EvaluationHistory.RemoveAt(EvaluationHistory.Count - 1);
+                Raise(nameof(EvaluationHistoryVisible));
+                Raise(nameof(EvaluationHistoryCountText));
+                (ExportCandidateReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (ClearHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
+            {
+                dispatcher.BeginInvoke(new Action(UpdateUi));
+            }
+            else
+            {
+                UpdateUi();
+            }
+        }
+
+        private void ClearHistory()
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Очистить сохранённую историю проверок стратегий?",
+                "Очистка истории", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+            if (answer != System.Windows.MessageBoxResult.Yes) return;
+
+            StrategyEvaluationHistoryStore.Clear();
+            lock (_evaluationHistory)
+            {
+                _evaluationHistory.Clear();
+            }
+            EvaluationHistory.Clear();
             Raise(nameof(EvaluationHistoryVisible));
+            Raise(nameof(EvaluationHistoryCountText));
+            (ClearHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ExportCandidateReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            Message = "История проверок стратегий очищена";
         }
 
         private void CancelCandidateEvaluation()
@@ -848,16 +931,35 @@ namespace ZapretGui.ViewModels
 
             IsTestingAll = true;
             TestProgressValue = 0;
-            TestProgressMaximum = 1;
+            TestProgressMaximum = 8;
             TestProgressIndeterminate = false;
             TestProgressPercentText = "0%";
             TestProgressText = $"Проверяю стратегию «{strategy.Name}»…";
             strategy.SetTestStarted();
             try
             {
-                var result = await Bypass.TestStrategyAsync(strategy);
+                var progress = new Progress<string>(text =>
+                {
+                    if (text.StartsWith("CONNECTION_PROGRESS:", StringComparison.Ordinal))
+                    {
+                        var parts = text.Substring("CONNECTION_PROGRESS:".Length).Split(" — ", 2);
+                        var numbers = parts[0].Split('/');
+                        if (numbers.Length == 2 && int.TryParse(numbers[0], out var cur) && int.TryParse(numbers[1], out var tot))
+                        {
+                            TestProgressValue = cur;
+                            TestProgressMaximum = Math.Max(1, tot);
+                            TestProgressPercentText = $"{TestProgressValue / TestProgressMaximum * 100:0}%";
+                        }
+                        if (parts.Length > 1) TestProgressText = $"«{strategy.Name}»: {parts[1]}…";
+                    }
+                    else
+                    {
+                        TestProgressText = text;
+                    }
+                });
+                var result = await Bypass.TestStrategyAsync(strategy, default, progress);
                 strategy.SetTestResult(result);
-                TestProgressValue = 1;
+                TestProgressValue = TestProgressMaximum;
                 TestProgressPercentText = "100%";
                 AppendHistory(StrategyEvaluationHistoryRecord.FromTestResult(
                     strategy, result, Settings.ProviderContext ?? new ProviderContext()));

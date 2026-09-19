@@ -1,6 +1,7 @@
 using System;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
@@ -46,20 +47,16 @@ namespace ZapretGui.ViewModels
             {
                 new() { Key = "group-main", Title = "ОСНОВНОЕ", IsSectionHeader = true },
                 new() { Key = "home", Title = "Обзор", Icon = "\uE80F", Hint = "Состояние обхода" },
-                new() { Key = "first-run", Title = "Первый запуск", Icon = "\uE748", Hint = "Мастер настройки" },
-                new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор обхода" },
-                new() { Key = "group-checks", Title = "ПРОВЕРКИ И НАБЛЮДЕНИЕ", IsSectionHeader = true },
-                new() { Key = "monitoring", Title = "Мониторинг", Icon = "\uE701", Hint = "Ресурсы и провайдер" },
-                new() { Key = "diagnostics", Title = "Диагностика", Icon = "\uE90F", Hint = "Проверка проблем" },
-                new() { Key = "deep-check", Title = "Глубокая проверка", Icon = "\uE9CE", Hint = "Полный профиль сети" },
-                new() { Key = "dpi", Title = "Проверка DPI", Icon = "\uE71C", Hint = "DNS, TCP и TLS" },
-                new() { Key = "logs", Title = "Журнал", Icon = "\uE7C3", Hint = "События приложения" },
-                new() { Key = "group-data", Title = "ПОЛЬЗОВАТЕЛЬСКИЕ ДАННЫЕ", IsSectionHeader = true },
-                new() { Key = "user-lists", Title = "Списки пользователя", Icon = "\uE8FD", Hint = "Домены и IP" },
+                new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
+                new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
+                new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check и результаты" },
+                new() { Key = "group-data", Title = "СПИСКИ И ФИЛЬТРЫ", IsSectionHeader = true },
+                new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
                 new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
-                new() { Key = "updates", Title = "Обновления", Icon = "\uE895", Hint = "Движок и списки" },
-                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Путь, тема, автозапуск" },
-                new() { Key = "about", Title = "О программе", Icon = "\uE946", Hint = "Авторы и лицензии" }
+                new() { Key = "updates", Title = "Обновления", Icon = "\uE895", Hint = "Движок, hosts, ipset и GUI" },
+                new() { Key = "logs", Title = "Журнал", Icon = "\uE7C3", Hint = "События и отладка" },
+                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация приложения" },
+                new() { Key = "about", Title = "О программе", Icon = "\uE946", Hint = "Версия и лицензия" }
             };
             _selectedNav = NavItems[1];
 
@@ -68,6 +65,8 @@ namespace ZapretGui.ViewModels
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
             RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
+            NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
+            NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
 
             Strategies.Refresh();
             Home.ReloadFromEngine();
@@ -161,9 +160,69 @@ namespace ZapretGui.ViewModels
 
         public string StatusPillKey => Home.StatusKey;
 
+        public string ActiveStrategySummaryText
+        {
+            get
+            {
+                var running = Home.RunningStrategyName;
+                if (Home.IsRunning && !string.IsNullOrWhiteSpace(running))
+                    return running;
+                if (!string.IsNullOrWhiteSpace(Settings.SelectedStrategy))
+                    return Settings.SelectedStrategy;
+                return Strategies.Recommended?.Name ?? "не выбрана";
+            }
+        }
+
+        public string ActiveStrategyKey => Home.IsRunning ? "Success" : "Info";
+
+        public string ActiveStrategyTooltipText => Home.IsRunning
+            ? $"Активная запущенная стратегия: «{ActiveStrategySummaryText}»\nНажмите для перехода к выбору стратегий"
+            : $"Выбранная стратегия (обход выключен): «{ActiveStrategySummaryText}»\nНажмите для перехода к выбору стратегий";
+
+        public string MonitoringSummaryText
+        {
+            get
+            {
+                if (Monitoring.Results.Count > 0)
+                {
+                    var ok = Monitoring.Results.Count(r => r.Ok);
+                    var total = Monitoring.Results.Count;
+                    return $"Узлы: {ok}/{total} OK";
+                }
+                var targets = Monitoring.Targets.Count(t => t.Enabled);
+                return targets > 0 ? $"Узлы: {targets} в списке" : "Узлы: выкл";
+            }
+        }
+
+        public string MonitoringSummaryKey
+        {
+            get
+            {
+                if (Monitoring.Results.Count == 0) return "Info";
+                var ok = Monitoring.Results.Count(r => r.Ok);
+                var total = Monitoring.Results.Count;
+                if (ok == total) return "Success";
+                if (ok > 0) return "Warning";
+                return "Danger";
+            }
+        }
+
+        public string MonitoringSummaryTooltip
+        {
+            get
+            {
+                if (Monitoring.Results.Count == 0)
+                    return "Мониторинг ключевых ресурсов (YouTube, Discord и др.). Нажмите для перехода к экспресс-проверке.";
+                var details = string.Join("\n", Monitoring.Results.Select(r => $"• {r.Target.Name}: {(r.Ok ? $"доступен ({r.Milliseconds} мс)" : "недоступен")}"));
+                return $"Результаты проверки ресурсов:\n{details}\n\nНажмите для перехода к мониторингу.";
+            }
+        }
+
         public ICommand ToggleThemeCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
+        public ICommand NavigateStrategiesCommand { get; }
+        public ICommand NavigateMonitoringCommand { get; }
 
         /// <summary>Публичное уведомление об изменении свойства (для подстраниц).</summary>
         public void Notify(string propertyName) => Raise(propertyName);
@@ -180,16 +239,38 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ReadinessKey));
             Raise(nameof(ReadinessDetails));
             Raise(nameof(ReadinessIsReady));
+            Raise(nameof(ActiveStrategySummaryText));
+            Raise(nameof(ActiveStrategyKey));
+            Raise(nameof(ActiveStrategyTooltipText));
+            Raise(nameof(MonitoringSummaryText));
+            Raise(nameof(MonitoringSummaryKey));
+            Raise(nameof(MonitoringSummaryTooltip));
         }
 
         public void Navigate(string key)
         {
+            if (key is "monitoring" or "dpi" or "deep-check" or "results")
+            {
+                var tab = key switch
+                {
+                    "monitoring" => 0,
+                    "dpi" => 1,
+                    "deep-check" => 2,
+                    "results" => 4,
+                    _ => 0
+                };
+                Diagnostics.SelectedSubTab = tab;
+                key = "diagnostics";
+            }
+
             foreach (var item in NavItems)
             {
                 if (item.Key != key) continue;
                 SelectedNav = item;
                 return;
             }
+
+            NavChanged?.Invoke(key);
         }
 
         /// <summary>Оставлено для совместимости со старым вызывающим кодом; мастер управляется вручную.</summary>
@@ -241,6 +322,12 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(ReadinessKey));
                 Raise(nameof(ReadinessDetails));
                 Raise(nameof(ReadinessIsReady));
+                Raise(nameof(ActiveStrategySummaryText));
+                Raise(nameof(ActiveStrategyKey));
+                Raise(nameof(ActiveStrategyTooltipText));
+                Raise(nameof(MonitoringSummaryText));
+                Raise(nameof(MonitoringSummaryKey));
+                Raise(nameof(MonitoringSummaryTooltip));
             }
             catch (Exception ex)
             {

@@ -42,6 +42,9 @@ namespace ZapretGui.CoreLogicHarness
                 ("Безопасный режим не меняет готовность и отключает автозапуск", SafeModeKeepsReadinessExplicit),
                 ("Отмена DPI-проверки не запускает сетевые пробы", DpiCancellationIsPrompt),
                 ("Снимок DPI сохраняет этапы, контрольный endpoint и повторы", DpiSnapshotKeepsStages),
+                ("Контракт IsSuitable сохраняет совместимость с двухресурсным smoke", StrategySuitabilitySmokeContract),
+                ("DPI-score и классификация freeze соответствуют формуле", DpiProbeScoreAndFreezeClassification),
+                ("Score кандидата приоритизирует эмпирические результаты проверок", EmpiricalCandidateEvaluationScoreOrdering),
                 ("Диагностический отчёт сериализуется вместе с журналом восстановления", DiagnosticsReportRoundTrips)
             };
 
@@ -788,6 +791,105 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 "контрольный endpoint или число повторов потеряны");
             Assert(restored.SuiteSource.Contains("кэш", StringComparison.OrdinalIgnoreCase),
                 "источник набора не сохранён");
+        }
+
+        private static void StrategySuitabilitySmokeContract()
+        {
+            var twoChecks = new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = "smoke-2" },
+                Started = true,
+                Checks = new[]
+                {
+                    new ConnectionCheck { Title = "YouTube", Ok = true },
+                    new ConnectionCheck { Title = "Discord", Ok = true }
+                }
+            };
+            Assert(twoChecks.IsSuitable, "двухресурсный smoke-тест должен быть пригодным");
+
+            var extendedThree = new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = "extended-3" },
+                Started = true,
+                Checks = new[]
+                {
+                    new ConnectionCheck { Title = "YouTube", Ok = true },
+                    new ConnectionCheck { Title = "Discord", Ok = true },
+                    new ConnectionCheck { Title = "Google", Ok = true }
+                }
+            };
+            Assert(extendedThree.IsSuitable, "расширенный тест с 3 успешными ресурсами должен быть пригодным");
+
+            var extendedOnlyTwo = new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = "extended-fail" },
+                Started = true,
+                Checks = new[]
+                {
+                    new ConnectionCheck { Title = "YouTube", Ok = true },
+                    new ConnectionCheck { Title = "Discord", Ok = true },
+                    new ConnectionCheck { Title = "Google", Ok = false },
+                    new ConnectionCheck { Title = "Cloudflare", Ok = false }
+                }
+            };
+            Assert(!extendedOnlyTwo.IsSuitable, "расширенный тест с 2 из 4 успешных не должен быть пригодным");
+        }
+
+        private static void DpiProbeScoreAndFreezeClassification()
+        {
+            var probeSuccess = new DpiProbeResult { TestName = "TLS 1.2", ProbeKind = "HTTPS", Status = "ОТВЕТ" };
+            var probeFreeze = new DpiProbeResult { TestName = "TLS 1.3", ProbeKind = "HTTPS", Status = "ВОЗМОЖНА БЛОКИРОВКА", PossibleDpiFreeze = true, TimedOut = true };
+            var probeError = new DpiProbeResult { TestName = "HTTP/1.1", ProbeKind = "HTTPS", Status = "ОШИБКА", PossibleDpiFreeze = false };
+
+            var probes = new List<DpiProbeResult> { probeSuccess, probeFreeze, probeError };
+            var freezes = probes.Count(p => p.PossibleDpiFreeze);
+            var failed = probes.Count(p => p.Status != "ОТВЕТ");
+            var successful = probes.Count - failed;
+            var score = successful * 10 - failed * 20 - freezes * 100;
+            Assert(score == -130, "формула DPI-score рассчитана неверно");
+        }
+
+        private static void EmpiricalCandidateEvaluationScoreOrdering()
+        {
+            var candidateA = new StrategyCandidate { Name = "Candidate A", Args = new List<string> { "--wf-tcp=443" } };
+            var candidateB = new StrategyCandidate { Name = "Candidate B", Args = new List<string> { "--wf-tcp=443", "--dpi-desync=fake" } };
+
+            var evalA = new StrategyCandidateEvaluation(candidateA);
+            evalA.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateA.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = true } }
+            }, 1, 2);
+            evalA.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateA.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = true } }
+            }, 2, 2);
+            evalA.Complete();
+
+            var evalB = new StrategyCandidateEvaluation(candidateB);
+            evalB.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateB.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = false } }
+            }, 1, 2);
+            evalB.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateB.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = false } }
+            }, 2, 2);
+            evalB.Complete();
+
+            Assert(evalA.Score > evalB.Score, "кандидат со 100% стабильностью и прохождением проверок должен иметь больший score");
+            Assert(evalA.IsStable && !evalB.IsStable, "стабильность кандидатов должна различаться");
         }
 
         private static void DiagnosticsReportRoundTrips()

@@ -982,4 +982,83 @@ CI и что требует Windows runtime.
 - CI run и его статус;
 - что осталось проверить на Windows;
 - что merge в main не выполнялся без отдельного запроса пользователя.
+
+---
+
+### Итерация 2026-09-18 (Determinate Progress, Empirical Scoring & UI Polish)
+
+1. **Замена спиннеров и плейсхолдеров на честные детерминированные индикаторы:**
+   - `MonitoringPage.xaml` / `MonitoringViewModel.cs`: Добавлен детерминированный прогресс-бар `ProgressValue` / `ProgressMaximum` с расчётом `ProgressPercentText` и текстовым статусом по проверяемым ресурсам (`1 из N: Name…`).
+   - `StrategiesPage.xaml` / `StrategiesViewModel.cs`: Заменены спиннеры `BusySpinner` в блоках генерации и проверки кандидатов на структурированные индикаторы и детерминированный прогресс-бар `CandidateEvaluationProgressValue` / `CandidateEvaluationProgressMaximum` с процентами.
+   - `BypassController.cs` / `StrategiesViewModel.cs`: В `TestStrategyAsync` добавлен `IProgress<string>? progress`, транслирующий детальный прогресс подключения по 8 контрольным ресурсам из `ConnectionTester.RunAsync`.
+   - `UpdatesPage.xaml` / `UpdatesViewModel.cs`: В панели загрузки обновления движка спиннер заменён на статусную строку с процентом `ProgressPercentText` и `ThinProgress`.
+
+2. **Эмпирическая приоритизация рекомендаций:**
+   - В `StrategyCandidateEvaluation` подтверждена формула `Score = SuccessfulRepeats * 10000 + PassedChecks * 100 + (RepeatCount == 0 ? 0 : SuccessfulRepeats * 100 / RepeatCount) + LatencyScore`, где стабильность и эмпирические результаты проверок строго превалируют над эвристиками.
+   - Добавлен 33-й тест в `tools/CoreLogicHarness/Program.cs`: `Score кандидата приоритизирует эмпирические результаты проверок`.
+
+3. **Исправление ошибки двухсторонней привязки ProgressBar (v1.2.2):**
+   - В WPF `ProgressBar.Value` (наследуемый от `RangeBase.ValueProperty`) имеет `BindsTwoWayByDefault = true`.
+   - На всех страницах (`HomePage.xaml`, `DeepCheckPage.xaml`, `DiagnosticsPage.xaml`, `DpiPage.xaml`, `FirstLaunchPage.xaml`, `MonitoringPage.xaml`, `StrategiesPage.xaml`, `UpdatesPage.xaml`) ко всем привязкам `ProgressBar.Value`, `Maximum`, `IsIndeterminate` явно добавлен `Mode=OneWay`.
+   - Во всех ViewModels (`HomeViewModel`, `DeepCheckViewModel`, `DiagnosticsViewModel`, `FirstLaunchViewModel`, `MonitoringViewModel`, `StrategiesViewModel`, `UpdatesViewModel`) сеттеры прогресс-свойств сделаны открытыми (`public set => Set(ref ...)`), исключая исключения `InvalidOperationException` при запуске.
+   - В `tools/check_bindings.py` добавлен статический валидатор, требующий `Mode=OneWay` для всех привязок `ProgressBar`.
+   - Версия приложения обновлена до `1.2.2` в `ZapretGUI.csproj` и динамически выведена в `MainWindow.xaml`.
+
+4. **Верификация:**
+   - `python3 tools/check_bindings.py`: Проверено 16 XAML-файлов и 90 ключей ресурсов — 0 ошибок.
+   - `git diff --check`: 0 предупреждений по форматированию и пробелам.
+
+---
+
+### Итерация 2026-09-19 (v1.2.3 · Navigation Architecture, Domain/Game Lists UX & Unified Diagnostics)
+
+1. **Рефакторинг навигации и бокового меню:**
+   - Из постоянного бокового меню (`MainViewModel.NavItems`) удалён пункт «Первый запуск» (`first-run`). Мастер первого запуска отображается только при первом открытии приложения либо запускается по кнопке «Запустить мастер первого запуска заново» в настройках.
+   - Маршрутизация навигации: ссылки на старые диагностические ключи (`monitoring`, `dpi`, `deep-check`, `results`) прозрачно перенаправляются в объединённый раздел `DiagnosticsPage` с переключением на соответствующую подвкладку.
+
+2. **Чёткое разделение разделов приложения:**
+   - **Обновления (`UpdatesPage`):** Все инструменты обновления: движок zapret, списки ipset (любой/загруженный), файл hosts (GitHub/Discord) и самообновление GUI.
+   - **Списки (`UserListsPage`):** Управление пользовательскими и встроенными списками доменов (`list-general-user`, `list-discord-user`, `list-youtube-user`, `list-exclude-user`, `ipset-exclude-user`), режим фильтрации ipset (`Loaded`/`Any`/`None`) и режим игрового фильтра (`Disabled`/`TcpAndUdp`/`TcpOnly`/`UdpOnly`) с кнопкой перезапуска обхода в один клик.
+   - **Настройки (`SettingsPage`):** Исключительно параметры приложения (автозапуск, автообход, трей, подтверждения, темы, масштабирование, сброс кэша, сброс настроек и повторный запуск мастера настройки).
+   - **Проверка и диагностика (`DiagnosticsPage`):** Объединённый диагностический центр с 5 подвкладками:
+     1. `⚡ Экспресс (Мониторинг)`: фоновая проверка ключевых сервисов (YouTube, Discord) и выявление проблем.
+     2. `🌐 Проверка DPI (34 узла)`: все 34 узла DNS/TCP/HTTP/TLS Flowseal-проверки.
+     3. `🔬 Deep Check (Матрица)`: подбор параметров стратегии по многодоменной матрице.
+     4. `🛠 Аудит системы`: права Windows, службы, WinDivert, сеть, исправления в один клик.
+     5. `📊 Сводные результаты`: единый обзор статусов, история проверок и экспорт JSON/ZIP.
+
+3. **История тестирования стратегий (`StrategyEvaluationHistory`):**
+   - Добавлена очистка истории (`ClearHistoryCommand`, `StrategyEvaluationHistoryStore.Clear()`) с атомарной записью через временный файл.
+   - Потокобезопасное добавление записей в UI-коллекцию через `Application.Current.Dispatcher`.
+   - Вывод количества записей и карточек истории на странице стратегий.
+
+4. **Прогресс-бары с процентами:**
+   - Проверены и снабжены процентными индикаторами все прогресс-бары приложения (Express, DPI, Deep Check, Audit, Strategies, Updates, FirstLaunch, Home).
+   - Все привязки `ProgressBar` используют `Mode=OneWay` и открытые геттеры/сеттеры во ViewModels.
+
+5. **Версионирование и валидация:**
+   - Версия приложения обновлена до `1.2.3` в `ZapretGUI.csproj`.
+   - `python3 tools/check_bindings.py` проверил 16 XAML-файлов и 90 ресурсов — 0 ошибок.
+   - `git diff --check` — 0 ошибок форматирования.
+
+---
+
+### Итерация 2026-09-19 (v1.2.3 Update · High-Density Strategies View, Header Badges & Segmented Controls Fix)
+
+1. **Исправление сжатых кнопок переключателей (`SegmentedControl`):**
+   - В `SegmentItemStyle` (`Themes/Controls.xaml`) отключен перенос слов (`TextWrapping="NoWrap"`), добавлен `TextTrimming="CharacterEllipsis"` и скорректирован паддинг (`12,7`), исключая перенос букв на новые строки (как на скриншоте «Выкл ючен», «Тольк о TCP»).
+   - В `HomePage.xaml` убраны жёсткие ограничения ширины (`Width="220" MaxWidth="330"`) для игрового фильтра и ipset, заменены на `MinWidth="380"` / `MinWidth="340"` с `HorizontalAlignment="Right"`, благодаря чему на экранах любой ширины и в полноэкранном режиме кнопки отображаются просторно и пропорционально.
+   - В `SettingsPage.xaml` для переключателя темы задан `MinWidth="280"` с выравниванием по правому краю.
+
+2. **Компактное высокоплотное отображение стратегий (`StrategiesPage`):**
+   - Переработана разметка страницы стратегий на современный **двухколоночный Master-Detail layout**:
+     - **Левая колонка:** компактный список всех доступных стратегий со стилем `CompactRowItemStyle` (высота строк ~38-42px). Теперь на одном экране одновременно помещаются 12-16 стратегий без необходимости прокрутки через огромные карточки. Каждая строка содержит статус проверки, имя стратегии, бейдж категории, отметку «рекомендуется» и быстрые кнопки «Применить» и «Тест».
+     - **Правая колонка:** детальная панель выбранной стратегии — запуск/применение, проверка, установка в службу, копирование аргументов winws.exe, открытие .bat, нормализованные признаки, результаты тестов и сворачиваемая история проверок с кнопкой очистки.
+
+3. **Отображение активной стратегии и мониторинга узлов в верхней панели:**
+   - В верхний заголовок окна (`MainWindow.xaml`) рядом с индикатором статуса обхода добавлены интерактивные бейджи:
+     - **Активная стратегия:** отображает имя текущей запущенной стратегии (или выбранной стратегии по умолчанию со статусом) и по клику переходит в раздел «Стратегии».
+     - **Краткий мониторинг узлов:** статус доступности контрольных ресурсов (`5/5 OK` / `Предупреждение` / `Ошибка`) с подробным всплывающим тултипом по каждому ресурсу и переходом в «Мониторинг» по клику.
+   - Добавлены свойства `ActiveStrategySummaryText`, `ActiveStrategyKey`, `ActiveStrategyTooltipText`, `MonitoringSummaryText`, `MonitoringSummaryKey`, `MonitoringSummaryTooltip` и команды `NavigateStrategiesCommand`, `NavigateMonitoringCommand` в `MainViewModel`.
+
 ```

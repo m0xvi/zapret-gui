@@ -193,14 +193,24 @@ namespace ZapretGui.ViewModels
         public double Progress
         {
             get => _progress;
-            set => Set(ref _progress, value);
+            set
+            {
+                if (Set(ref _progress, value))
+                    Raise(nameof(ProgressPercentText));
+            }
         }
 
         public bool Indeterminate
         {
             get => _indeterminate;
-            private set => Set(ref _indeterminate, value);
+            set
+            {
+                if (Set(ref _indeterminate, value))
+                    Raise(nameof(ProgressPercentText));
+            }
         }
+
+        public string ProgressPercentText => Indeterminate ? "" : $"{Progress:0}%";
 
         public bool ProgressVisible => IsBusy;
 

@@ -213,7 +213,7 @@ namespace ZapretGui.Core
         private const string SuiteUrl = "https://hyperion-cs.github.io/dpi-checkers/ru/tcp-16-20/suite.v2.json";
         private const int TimeoutSeconds = 5;
         private const int PayloadBytes = 65536;
-        private const int MaxTargets = 12;
+        private const int MaxTargets = 34;
         private const int MaxSuiteTargets = 34;
         // Flowseal запускает DPI targets параллельно пулом 8–16 workers. Это сохраняет
         // длительность и нагрузку оригинального теста, но не превращает результаты
@@ -615,6 +615,16 @@ namespace ZapretGui.Core
             }
             catch (Exception ex)
             {
+                var isTimeout = ex is TimeoutException ||
+                                ex.InnerException is TimeoutException ||
+                                ex.Message.IndexOf("timed out", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                ex.Message.IndexOf("тайм-аут", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                ex.Message.IndexOf("The operation has timed out", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (isTimeout)
+                {
+                    return ProbeFailure(testName, "Тайм-аут HTTPS после успешного TCP", started,
+                        possibleBlock: transportReady, uploadedBytes: transportReady ? payload.Length : 0);
+                }
                 return ProbeFailure(testName, "Ошибка HTTPS: " + Short(ex.Message), started, possibleBlock: false,
                     uploadedBytes: payload.Length);
             }
@@ -628,7 +638,9 @@ namespace ZapretGui.Core
                 ProbeKind = name.StartsWith("DNS", StringComparison.Ordinal) ? "DNS" : name.StartsWith("TCP", StringComparison.Ordinal) ? "TCP" : "HTTPS",
                 UploadedBytes = uploadedBytes,
                 Milliseconds = Elapsed(started),
-                TimedOut = details.Contains("Тайм-аут", StringComparison.OrdinalIgnoreCase),
+                TimedOut = details.Contains("Тайм-аут", StringComparison.OrdinalIgnoreCase) ||
+                           details.Contains("timed out", StringComparison.OrdinalIgnoreCase) ||
+                           details.Contains("timeout", StringComparison.OrdinalIgnoreCase),
                 PossibleDpiFreeze = possibleBlock,
                 Status = possibleBlock ? "ВОЗМОЖНА БЛОКИРОВКА" : "ОШИБКА",
                 Details = details

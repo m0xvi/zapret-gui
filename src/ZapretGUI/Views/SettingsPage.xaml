@@ -127,7 +127,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Style="{StaticResource BodyText}" Text="Тема оформления" VerticalAlignment="Center" />
-                                <controls:SegmentedControl Grid.Column="1" HorizontalAlignment="Right" Width="220" MinWidth="160" MaxWidth="330"
+                                <controls:SegmentedControl Grid.Column="1" HorizontalAlignment="Right" MinWidth="280"
                                                            ItemsSource="{Binding ThemeOptions}"
                                                            SelectedIndex="{Binding ThemeIndex, Mode=TwoWay}"
                                                            ToolTip="Тёмная, светлая тема или как в системе (переключается на лету)" />
@@ -190,6 +190,18 @@
                                       ToolTip="Перед проверкой стратегий проверить BFE, TCP timestamps, WinDivert и сетевые конфликты" />
                             <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
                                        Text="Проверка выполняется только один раз после установки движка. Повторить её можно вручную на странице «Стратегии»." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="МАСТЕР НАСТРОЙКИ" />
+                            <TextBlock Style="{StaticResource DimText}"
+                                       Text="Пошаговый мастер проверки прав, установки движка, диагностики и выбора первой стратегии." TextWrapping="Wrap" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Запустить мастер первого запуска заново"
+                                    Margin="0,10,0,0" HorizontalAlignment="Left"
+                                    Command="{Binding RerunFirstLaunchWizardCommand}"
+                                    ToolTip="Открыть пошаговый мастер настройки" />
                         </StackPanel>
                     </Border>
 

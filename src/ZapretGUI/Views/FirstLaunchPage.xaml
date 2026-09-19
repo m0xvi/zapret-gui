@@ -122,8 +122,7 @@
                                 <TextBlock Text="…" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                <TextBlock Style="{StaticResource BodyText}" Text="Выполняю выбранную операцию…" FontWeight="SemiBold" />
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding BusyText}" Margin="0,3,0,0" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding BusyText}" FontWeight="SemiBold" TextWrapping="Wrap" />
                                 <ProgressBar Style="{StaticResource ThinProgress}" IsIndeterminate="True" Margin="0,8,0,0" />
                             </StackPanel>
                         </Grid>
@@ -228,9 +227,10 @@
                                                    Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                                     </Grid>
                                     <TextBlock Style="{StaticResource MutedText}" Text="{Binding StrategyProgressText}" Margin="0,3,0,0" />
-                                    <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding StrategyProgressValue}"
-                                                 Maximum="{Binding StrategyProgressMaximum}"
-                                                 IsIndeterminate="{Binding StrategyProgressIndeterminate}" Margin="0,8,0,0" />
+                                    <ProgressBar Style="{StaticResource ThinProgress}"
+                                                 Value="{Binding StrategyProgressValue, Mode=OneWay}"
+                                                 Maximum="{Binding StrategyProgressMaximum, Mode=OneWay}"
+                                                 IsIndeterminate="{Binding StrategyProgressIndeterminate, Mode=OneWay}" Margin="0,8,0,0" />
                                 </StackPanel>
                             </Grid>
                         </Border>

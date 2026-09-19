@@ -44,6 +44,7 @@ namespace ZapretGui.ViewModels
             SaveProviderContextCommand = new RelayCommand(SaveProviderContext);
             ClearProviderContextCommand = new RelayCommand(ClearProviderContext);
             LookupProviderCommand = new AsyncRelayCommand(LookupProviderAsync, () => !IsProviderLookupBusy);
+            RerunFirstLaunchWizardCommand = new RelayCommand(RerunFirstLaunchWizard);
         }
 
         public AppSettings Settings => _main.Settings;
@@ -296,6 +297,7 @@ namespace ZapretGui.ViewModels
         public ICommand ValidateEngineCommand { get; }
         public ICommand OpenRepoCommand { get; }
         public ICommand OpenHostsCommand { get; }
+        public ICommand RerunFirstLaunchWizardCommand { get; }
 
         public void Reload()
         {
@@ -580,6 +582,19 @@ namespace ZapretGui.ViewModels
             Reload();
             ThemeService.Apply(_main.Settings.Theme);
             Status = "Настройки сброшены";
+        }
+
+        private void RerunFirstLaunchWizard()
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Запустить мастер первого запуска? Вы сможете снова пройти все шаги настройки по порядку.",
+                "Мастер настройки", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+            if (answer != System.Windows.MessageBoxResult.Yes) return;
+
+            _main.Settings.FirstLaunchWizardCompleted = false;
+            SettingsStore.Save(_main.Settings);
+            _main.FirstLaunch.Reset();
+            _main.Navigate("first-run");
         }
 
         private void ApplyAutostart(bool enabled)
