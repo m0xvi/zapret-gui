@@ -106,6 +106,9 @@ namespace ZapretGui.Core
             if (profileId == "custom" && !string.IsNullOrWhiteSpace(customTcp))
                 return customTcp.Trim();
 
+            if (string.IsNullOrWhiteSpace(profileId))
+                return "1024-65535";
+
             var profile = GetProfileById(profileId);
             return string.IsNullOrWhiteSpace(profile.TcpPorts) ? "1024-65535" : profile.TcpPorts.Trim();
         }
@@ -121,8 +124,11 @@ namespace ZapretGui.Core
             if (profileId == "custom" && !string.IsNullOrWhiteSpace(customUdp))
                 return customUdp.Trim();
 
+            if (string.IsNullOrWhiteSpace(profileId))
+                return "1024-65535";
+
             var profile = GetProfileById(profileId);
-            return string.IsNullOrWhiteSpace(profile.UdpPorts) ? "50000-65535" : profile.UdpPorts.Trim();
+            return string.IsNullOrWhiteSpace(profile.UdpPorts) ? "1024-65535" : profile.UdpPorts.Trim();
         }
     }
 }
