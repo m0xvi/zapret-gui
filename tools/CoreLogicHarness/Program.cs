@@ -48,7 +48,9 @@ namespace ZapretGui.CoreLogicHarness
                 ("Диагностический отчёт сериализуется вместе с журналом восстановления", DiagnosticsReportRoundTrips),
                 ("Списки доменов автоматически наполняются эталонными записями", DomainListsAutoSeedingWorks),
                 ("Менеджер фейковых бинарных нагрузок и Voice RTC эндпоинты работают", VoiceRtcProberAndFakeBinManagerWork),
-                ("Очистка кэша Discord и сетевой стек работают корректно", DiscordNetworkCleanerWorks)
+                ("Очистка кэша Discord и сетевой стек работают корректно", DiscordNetworkCleanerWorks),
+                ("Тонкая настройка портов GameFilter и профили исключений работают", GameFilterPortConfigWorks),
+                ("Пул TLS SNI фейков и подстановка SNI работают", SniFakePoolManagerWorks)
             };
 
             foreach (var check in checks)
@@ -1001,6 +1003,42 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
             {
                 if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true);
             }
+        }
+
+        private static void GameFilterPortConfigWorks()
+        {
+            var discordProfile = GameFilterPortConfig.GetProfileById("discord_voice");
+            Assert(discordProfile.UdpPorts == "50000-65535", "Порты Discord Voice определены неверно");
+
+            var cs2Profile = GameFilterPortConfig.GetProfileById("steam_cs2");
+            Assert(cs2Profile.ExcludedPorts.Contains("27000"), "Исключения портов CS2 не найдены");
+
+            var resolvedUdp = GameFilterPortConfig.ResolveUdpPortString(GameFilterMode.TcpAndUdp, "discord_voice");
+            Assert(resolvedUdp == "50000-65535", "Разрешение портов UDP для Discord Voice неверно");
+
+            var disabledUdp = GameFilterPortConfig.ResolveUdpPortString(GameFilterMode.Disabled, "discord_voice");
+            Assert(disabledUdp == "12", "Отключённый GameFilter должен возвращать заглушку 12");
+
+            var strategy = new StrategyInfo
+            {
+                Name = "test-strat",
+                Args = new List<string> { "--wf-tcp={GameFilterTCP}", "--wf-udp={GameFilterUDP}", "--dpi-desync-fake-tls=google.com" }
+            };
+
+            var built = BypassArgumentBuilder.Build(strategy, GameFilterMode.TcpAndUdp, "discord_voice", null, null, "gosuslugi.ru");
+            Assert(built.Any(a => a == "--wf-udp=50000-65535"), "Аргумент --wf-udp не содержит настроенного диапазона портов");
+            Assert(built.Any(a => a.Contains("sni=gosuslugi.ru")), "SNI фейк не подставлен в аргументы стратегии");
+        }
+
+        private static void SniFakePoolManagerWorks()
+        {
+            Assert(SniFakePoolManager.PredefinedSniPool.Count >= 10, "Пул SNI фейков не содержит достаточного количества доменов");
+            Assert(SniFakePoolManager.PredefinedSniPool.Any(s => s.Domain == "gosuslugi.ru"), "Госуслуги отсутствуют в пуле SNI");
+            Assert(SniFakePoolManager.PredefinedSniPool.Any(s => s.Domain == "cloudflare.com"), "Cloudflare отсутствует в пуле SNI");
+
+            var testArgs = new List<string> { "--wf-tcp=443", "--dpi-desync=fake", "--dpi-desync-fake-tls-mod=sni=google.com,pad=10" };
+            var replaced = SniFakePoolManager.ApplySniOverride(testArgs, "sberbank.ru");
+            Assert(replaced.Any(a => a.Contains("sni=sberbank.ru,pad=10")), "Замена SNI внутри mod не сработала");
         }
 
         private static void Assert(bool value, string message)

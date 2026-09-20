@@ -84,7 +84,7 @@ namespace ZapretGui.ViewModels
             _evaluationHistory = StrategyEvaluationHistoryStore.Load();
 
             Categories = new[] { "Все категории", "FAKE TLS AUTO", "ALT", "SIMPLE FAKE", "БАЗОВАЯ", "EXP", "АВТОКОНСТРУКТОР" };
-            SubTabs = new[] { "Каталог стратегий", "Конструктор параметров", "Умный автоподбор", "Контрольные адреса" };
+            SubTabs = new[] { "Каталог стратегий", "Конструктор параметров", "Умный автоподбор", "Пул TLS SNI", "Контрольные адреса" };
 
             // Инициализация контрольных адресов
             TargetEndpoints = new ObservableCollection<MonitorTarget>(main.Settings.MonitorTargets);
@@ -139,6 +139,11 @@ namespace ZapretGui.ViewModels
             MakeCandidatePrimaryCommand = new RelayCommand(MakeCandidatePrimary, () => CandidatePreview != null && IsCandidatePreviewSaved);
             RestorePreviousCommand = new RelayCommand(RestorePrevious, () => CanRestorePrevious);
 
+            // Команды TLS SNI пула и автоподбора
+            TestSniPoolCommand = new AsyncRelayCommand(TestSniPoolAsync, () => !IsTestingSniPool && !IsBusy);
+            AutoSelectBestSniCommand = new AsyncRelayCommand(AutoSelectBestSniAsync, () => !IsTestingSniPool && !IsBusy);
+            RotateToNextSniCommand = new RelayCommand(RotateToNextSni);
+
             foreach (var saved in StrategyCandidateStore.Load()) SavedCandidates.Add(saved);
             foreach (var record in _evaluationHistory.Take(50)) EvaluationHistory.Add(record);
         }
@@ -159,6 +164,7 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsCatalogTabVisible));
                     Raise(nameof(IsBuilderTabVisible));
                     Raise(nameof(IsAutoTunerTabVisible));
+                    Raise(nameof(IsSniPoolTabVisible));
                     Raise(nameof(IsTargetsTabVisible));
                 }
             }
@@ -167,7 +173,8 @@ namespace ZapretGui.ViewModels
         public bool IsCatalogTabVisible => SelectedSubTabIndex == 0;
         public bool IsBuilderTabVisible => SelectedSubTabIndex == 1;
         public bool IsAutoTunerTabVisible => SelectedSubTabIndex == 2;
-        public bool IsTargetsTabVisible => SelectedSubTabIndex == 3;
+        public bool IsSniPoolTabVisible => SelectedSubTabIndex == 3;
+        public bool IsTargetsTabVisible => SelectedSubTabIndex == 4;
 
         public AppSettings Settings => _main.Settings;
         public BypassController Bypass => _main.Bypass;
@@ -240,9 +247,95 @@ namespace ZapretGui.ViewModels
             ? $"🏆 Лучший результат: {WinnerCandidate.DisplayName}"
             : "";
 
+        public IReadOnlyList<SniCandidate> SniCandidates => SniFakePoolManager.PredefinedSniPool;
+
+        public SniCandidate? SelectedSniCandidate
+        {
+            get => SniFakePoolManager.PredefinedSniPool.FirstOrDefault(c => string.Equals(c.Domain, Settings.SelectedFakeSni, StringComparison.OrdinalIgnoreCase))
+                   ?? SniFakePoolManager.PredefinedSniPool[0];
+            set
+            {
+                if (value != null)
+                {
+                    Settings.SelectedFakeSni = value.Domain;
+                    SettingsStore.Save(Settings);
+                    Raise(nameof(SelectedSniCandidate));
+                    Raise(nameof(SelectedFakeSni));
+                    Message = $"Выбран TLS SNI фейк: {value.DisplayText}";
+                }
+            }
+        }
+
+        public string SelectedFakeSni
+        {
+            get => Settings.SelectedFakeSni;
+            set
+            {
+                Settings.SelectedFakeSni = value ?? "gosuslugi.ru";
+                SettingsStore.Save(Settings);
+                Raise(nameof(SelectedFakeSni));
+                Raise(nameof(SelectedSniCandidate));
+            }
+        }
+
+        public bool AutoSniRotationEnabled
+        {
+            get => Settings.AutoSniRotationEnabled;
+            set
+            {
+                Settings.AutoSniRotationEnabled = value;
+                SettingsStore.Save(Settings);
+                Raise(nameof(AutoSniRotationEnabled));
+            }
+        }
+
+        public ObservableCollection<SniTestResult> SniTestResults { get; } = new();
+
+        private bool _isTestingSniPool;
+        private string _sniTestingStatusText = "Тестирование пула SNI ещё не выполнялось";
+        private SniTestResult? _winnerSni;
+
+        public bool IsTestingSniPool
+        {
+            get => _isTestingSniPool;
+            private set
+            {
+                if (Set(ref _isTestingSniPool, value))
+                {
+                    (TestSniPoolCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (AutoSelectBestSniCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string SniTestingStatusText
+        {
+            get => _sniTestingStatusText;
+            private set => Set(ref _sniTestingStatusText, value);
+        }
+
+        public SniTestResult? WinnerSni
+        {
+            get => _winnerSni;
+            private set
+            {
+                if (Set(ref _winnerSni, value))
+                {
+                    Raise(nameof(HasWinnerSni));
+                }
+            }
+        }
+
+        public bool HasWinnerSni => _winnerSni != null;
+        public bool HasSniResults => SniTestResults.Count > 0;
+
         public ICommand StartSmartAutoTuningCommand { get; }
         public ICommand CancelSmartAutoTuningCommand { get; }
         public ICommand ApplyWinnerStrategyCommand { get; }
+
+        public ICommand TestSniPoolCommand { get; }
+        public ICommand AutoSelectBestSniCommand { get; }
+        public ICommand RotateToNextSniCommand { get; }
 
         private async Task StartSmartAutoTuningAsync()
         {
@@ -1554,6 +1647,70 @@ namespace ZapretGui.ViewModels
 
             SavedCandidates.Clear();
             foreach (var item in StrategyCandidateStore.Load()) SavedCandidates.Add(item);
+        }
+
+        public async Task TestSniPoolAsync()
+        {
+            if (IsTestingSniPool) return;
+
+            IsTestingSniPool = true;
+            SniTestingStatusText = "Тестирование пула TLS SNI фейков…";
+            SniTestResults.Clear();
+
+            try
+            {
+                var progress = new Progress<string>(s => SniTestingStatusText = s);
+                var results = await SniFakePoolManager.TestPoolAsync(null, progress).ConfigureAwait(true);
+
+                foreach (var r in results)
+                {
+                    SniTestResults.Add(r);
+                }
+
+                Raise(nameof(HasSniResults));
+
+                var best = results.FirstOrDefault(r => r.Ok);
+                if (best != null)
+                {
+                    WinnerSni = best;
+                    SniTestingStatusText = $"Тест завершён! Лучший SNI: {best.Domain} ({best.LatencyMs} мс, {best.Category}).";
+                }
+                else
+                {
+                    SniTestingStatusText = "Тест завершён. Доступные SNI не ответили.";
+                }
+            }
+            catch (Exception ex)
+            {
+                SniTestingStatusText = "Ошибка тестирования SNI: " + ex.Message;
+            }
+            finally
+            {
+                IsTestingSniPool = false;
+            }
+        }
+
+        public async Task AutoSelectBestSniAsync()
+        {
+            await TestSniPoolAsync();
+            if (WinnerSni != null && WinnerSni.Ok)
+            {
+                SelectedFakeSni = WinnerSni.Domain;
+                Message = $"✅ Автоматически выбран оптимальный SNI фейк: {WinnerSni.Domain} ({WinnerSni.LatencyMs} мс).";
+                _main.Home.ShowSuccess($"✅ Оптимальный TLS SNI: {WinnerSni.Domain} ({WinnerSni.LatencyMs} мс).");
+            }
+        }
+
+        public void RotateToNextSni()
+        {
+            var pool = SniFakePoolManager.PredefinedSniPool;
+            var currentIdx = pool.ToList().FindIndex(c => string.Equals(c.Domain, Settings.SelectedFakeSni, StringComparison.OrdinalIgnoreCase));
+            var nextIdx = (currentIdx + 1) % pool.Count;
+            var next = pool[nextIdx];
+
+            SelectedFakeSni = next.Domain;
+            Message = $"🔄 Ротация SNI: активирован {next.DisplayText}";
+            _main.Home.ShowSuccess($"🔄 Активирован TLS SNI: {next.Domain}");
         }
     }
 }

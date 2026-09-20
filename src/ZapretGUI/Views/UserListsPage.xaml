@@ -316,6 +316,39 @@
                                           ToolTip="Игровой фильтр: обрабатывать ли трафик игр, Discord голосовых каналов и сторонних сервисов" />
                                 <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
                                            Text="• TCP + UDP — оптимально для голосовых серверов Discord (UDP 50000-65535) и онлайн-игр.&#x0a;• Только TCP / Только UDP — выборочный перехват протоколов.&#x0a;• Выключен — обрабатываются только стандартные порты 80 и 443." TextWrapping="Wrap" />
+
+                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОФИЛЬ ПОРТОВ И ИСКЛЮЧЕНИЙ ДЛЯ ИГР" Margin="0,12,0,0" />
+                                <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
+                                          ItemsSource="{Binding GameFilterProfiles}"
+                                          DisplayMemberPath="Name"
+                                          SelectedItem="{Binding SelectedGameFilterProfile, Mode=TwoWay}"
+                                          ToolTip="Выберите профиль портов для исключения античитов и оптимизации задержки" />
+                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0"
+                                           Text="{Binding SelectedGameFilterProfile.Description}" TextWrapping="Wrap" />
+
+                                <!-- Кастомные порты -->
+                                <StackPanel Margin="0,8,0,0" Visibility="{Binding IsCustomGameFilterSelected, Converter={StaticResource BoolToVis}}">
+                                    <Grid Margin="0,4,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" Margin="0,0,4,0">
+                                            <TextBlock Style="{StaticResource SectionText}" Text="TCP ПОРТЫ" />
+                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterTcpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Margin="4,0,0,0">
+                                            <TextBlock Style="{StaticResource SectionText}" Text="UDP ПОРТЫ" />
+                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterUdpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ИСКЛЮЧЁННЫЕ ПОРТЫ" Margin="0,6,0,0" />
+                                    <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomExcludedPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                </StackPanel>
+
+                                <Button Style="{StaticResource SecondaryButton}" Content="Применить настройки портов" Margin="0,10,0,0"
+                                        Command="{Binding ApplyGameFilterPortsCommand}" HorizontalAlignment="Left"
+                                        ToolTip="Сохранить выбранные диапазоны портов и перезапустить winws" />
                             </StackPanel>
                         </Border>
                     </Grid>

@@ -72,7 +72,7 @@
 
             <controls:SegmentedControl ItemsSource="{Binding SubTabs}"
                                        SelectedIndex="{Binding SelectedSubTabIndex, Mode=TwoWay}"
-                                       MinWidth="460" />
+                                       MinWidth="580" />
         </Grid>
 
         <!-- ============================== ВКЛАДКА 1: КАТАЛОГ СТРАТЕГИЙ ============================== -->
@@ -606,7 +606,123 @@
             </Border>
         </Grid>
 
-        <!-- ============================== ВКЛАДКА 4: КОНТРОЛЬНЫЕ АДРЕСА ============================== -->
+        <!-- ============================== ВКЛАДКА 4: ПУЛ TLS SNI ФЕЙКОВ ============================== -->
+        <Grid Grid.Row="3" Visibility="{Binding IsSniPoolTabVisible, Converter={StaticResource BoolToVis}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Верхняя панель: Выбор и автоподбор SNI -->
+            <Border Grid.Row="0" Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,12">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ПУЛ TLS SNI ФЕЙКОВ И РОТАЦИЯ ПРОТИВ ТСПУ" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Text="Winws десинхронизирует TLS-трафик, подставляя доверенный SNI в фейковый ClientHello. Выберите домен с наивысшим доверием у вашего провайдера или запустите автоподбор." TextWrapping="Wrap" />
+                        </StackPanel>
+                        <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <Button Style="{StaticResource PrimaryButton}" Content="⚡ Подобрать лучший SNI"
+                                    Command="{Binding AutoSelectBestSniCommand}"
+                                    ToolTip="Провести параллельное TLS-тестирование всех SNI и выбрать самый быстрый и стабильный" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="🔄 Сменить SNI" Margin="8,0,0,0"
+                                    Command="{Binding RotateToNextSniCommand}"
+                                    ToolTip="Переключить на следующий домен из пула высокой надежности" />
+                        </WrapPanel>
+                    </Grid>
+
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="3*" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Grid.Column="0" Margin="0,0,8,0">
+                            <TextBlock Style="{StaticResource SectionText}" Text="АКТИВНЫЙ TLS SNI ФЕЙК" />
+                            <ComboBox Style="{StaticResource AppComboBox}" Margin="0,4,0,0"
+                                      ItemsSource="{Binding SniCandidates}"
+                                      DisplayMemberPath="DisplayText"
+                                      SelectedItem="{Binding SelectedSniCandidate, Mode=TwoWay}"
+                                      ToolTip="Выберите домен, который будет отправляться ТСПУ в фейковом TLS ClientHello" />
+                        </StackPanel>
+
+                        <StackPanel Grid.Column="1" Margin="8,0,0,0">
+                            <TextBlock Style="{StaticResource SectionText}" Text="АВТОМАТИЧЕСКАЯ РОТАЦИЯ" />
+                            <CheckBox Style="{StaticResource CheckBoxApp}" Content="Ротировать SNI при падении качества связи"
+                                      IsChecked="{Binding AutoSniRotationEnabled, Mode=TwoWay}" Margin="0,6,0,0"
+                                      ToolTip="При обнаружении сбоев или блокировок автоматически переключаться на следующий резервный SNI" />
+                        </StackPanel>
+                    </Grid>
+
+                    <!-- Статус тестирования SNI -->
+                    <Border Margin="0,10,0,0" Padding="12,10" CornerRadius="8"
+                            Background="{DynamicResource ElevatedBrush}"
+                            Visibility="{Binding IsTestingSniPool, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding SniTestingStatusText}" FontWeight="SemiBold" />
+                            <ProgressBar Style="{StaticResource ThinProgress}" IsIndeterminate="True" Margin="0,6,0,0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </Border>
+
+            <!-- Список результатов тестирования SNI -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="16,14">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <TextBlock Grid.Row="0" Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПРОВЕРКИ ДОМЕНОВ И ЗАДЕРЖКА TLS HANDSHAKE" Margin="0,0,0,10" />
+
+                    <ListView Grid.Row="1"
+                              ItemsSource="{Binding SniTestResults}"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                        <ListView.ItemTemplate>
+                            <DataTemplate>
+                                <Border Padding="12,10" Margin="0,0,0,6" CornerRadius="8"
+                                        Background="{DynamicResource ElevatedBrush}"
+                                        BorderBrush="{DynamicResource BorderBrush}"
+                                        BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <Border Grid.Column="0" Margin="0,0,12,0" Padding="8,4" CornerRadius="4" VerticalAlignment="Center"
+                                                Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}">
+                                            <TextBlock Text="{Binding Category}" FontWeight="Bold" FontSize="11"
+                                                       Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
+                                        </Border>
+
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding Domain}" />
+                                            <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding Details}" Margin="0,2,0,0" />
+                                        </StackPanel>
+
+                                        <StackPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="12,0,0,0">
+                                            <TextBlock Text="{Binding Status}" FontWeight="Bold" FontSize="12"
+                                                       Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" HorizontalAlignment="Right" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- ============================== ВКЛАДКА 5: КОНТРОЛЬНЫЕ АДРЕСА ============================== -->
         <Grid Grid.Row="3" Visibility="{Binding IsTargetsTabVisible, Converter={StaticResource BoolToVis}}">
             <Border Style="{StaticResource Card}" Padding="16,14">
                 <Grid>

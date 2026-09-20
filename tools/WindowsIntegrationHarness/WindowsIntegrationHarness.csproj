@@ -16,6 +16,8 @@
     <Compile Include="..\..\src\ZapretGUI\Core\DiscordNetworkCleaner.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DiscordVoiceRtcProber.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\FakeBinManager.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\GameFilterPortConfig.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\SniFakePoolManager.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\BypassArgumentBuilder.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\BypassController.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\ConnectionTester.cs" />

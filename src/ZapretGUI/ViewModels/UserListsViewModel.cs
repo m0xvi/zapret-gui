@@ -134,6 +134,7 @@ namespace ZapretGui.ViewModels
             ResetDnsToDhcpCommand = new AsyncRelayCommand(ResetDnsToDhcpAsync);
             TestDnsServerCommand = new AsyncRelayCommand(TestDnsServerAsync, () => !IsTestingDns);
             RefreshCurrentDnsCommand = new RelayCommand(RefreshCurrentDns);
+            ApplyGameFilterPortsCommand = new AsyncRelayCommand(ApplyGameFilterPortsAsync);
 
             RefreshCurrentDns();
             LoadEntries();
@@ -201,6 +202,68 @@ namespace ZapretGui.ViewModels
 
         public string[] GameFilterOptions { get; } = { "Выключен (только стандартные порты)", "TCP + UDP (игры и сервисы, порты > 1023)", "Только TCP", "Только UDP" };
         public string[] IpsetOptions { get; } = { "По списку ipset-all.txt (рекомендуется)", "Все IP / Any (максимальный охват)", "Без фильтрации IP / None (все адреса)" };
+
+        public IReadOnlyList<GameFilterProfile> GameFilterProfiles => GameFilterPortConfig.PredefinedProfiles;
+
+        public GameFilterProfile SelectedGameFilterProfile
+        {
+            get => GameFilterPortConfig.GetProfileById(Settings.GameFilterProfileId);
+            set
+            {
+                if (value != null)
+                {
+                    Settings.GameFilterProfileId = value.Id;
+                    if (value.Id != "custom")
+                    {
+                        Settings.CustomGameFilterTcpPorts = value.TcpPorts;
+                        Settings.CustomGameFilterUdpPorts = value.UdpPorts;
+                        Settings.CustomExcludedPorts = value.ExcludedPorts;
+                    }
+                    SettingsStore.Save(Settings);
+                    Raise(nameof(SelectedGameFilterProfile));
+                    Raise(nameof(IsCustomGameFilterSelected));
+                    Raise(nameof(CustomGameFilterTcpPorts));
+                    Raise(nameof(CustomGameFilterUdpPorts));
+                    Raise(nameof(CustomExcludedPorts));
+                    Status = $"Выбран профиль GameFilter: «{value.Name}».";
+                }
+            }
+        }
+
+        public bool IsCustomGameFilterSelected => Settings.GameFilterProfileId == "custom";
+
+        public string CustomGameFilterTcpPorts
+        {
+            get => Settings.CustomGameFilterTcpPorts;
+            set
+            {
+                Settings.CustomGameFilterTcpPorts = value ?? "1024-65535";
+                SettingsStore.Save(Settings);
+                Raise(nameof(CustomGameFilterTcpPorts));
+            }
+        }
+
+        public string CustomGameFilterUdpPorts
+        {
+            get => Settings.CustomGameFilterUdpPorts;
+            set
+            {
+                Settings.CustomGameFilterUdpPorts = value ?? "50000-65535";
+                SettingsStore.Save(Settings);
+                Raise(nameof(CustomGameFilterUdpPorts));
+            }
+        }
+
+        public string CustomExcludedPorts
+        {
+            get => Settings.CustomExcludedPorts;
+            set
+            {
+                Settings.CustomExcludedPorts = value ?? "";
+                SettingsStore.Save(Settings);
+                Raise(nameof(CustomExcludedPorts));
+            }
+        }
 
         public int GameFilterIndex
         {
@@ -363,6 +426,7 @@ namespace ZapretGui.ViewModels
         public ICommand OpenFolderCommand { get; }
         public ICommand RestartBypassCommand { get; }
         public ICommand UpdateListsFromGithubCommand { get; }
+        public ICommand ApplyGameFilterPortsCommand { get; }
 
         public ICommand ApplyDnsProfileCommand { get; }
         public ICommand ResetDnsToDhcpCommand { get; }
@@ -591,6 +655,19 @@ namespace ZapretGui.ViewModels
             catch (Exception ex)
             {
                 Status = "Не удалось сохранить список: " + ex.Message;
+            }
+        }
+
+        private async Task ApplyGameFilterPortsAsync()
+        {
+            SettingsStore.Save(Settings);
+            var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+            var udpPort = GameFilterPortConfig.ResolveUdpPortString(mode, Settings.GameFilterProfileId, Settings.CustomGameFilterUdpPorts);
+            Status = $"Настройки GameFilter сохранены (UDP: {udpPort}).";
+            _main.Home.ShowSuccess($"✅ GameFilter: порты обновлены (UDP: {udpPort}).");
+            if (_main.Bypass.GetStatus().IsRunning)
+            {
+                await RestartBypassAsync();
             }
         }
 

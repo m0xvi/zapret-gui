@@ -151,7 +151,13 @@ namespace ZapretGui.Core
         // ---------------------------------------------------------------- запуск / остановка
 
         public List<string> BuildArgs(StrategyInfo strategy, GameFilterMode gameFilter)
-            => BypassArgumentBuilder.Build(strategy, gameFilter);
+            => BypassArgumentBuilder.Build(
+                strategy,
+                gameFilter,
+                _settings.GameFilterProfileId,
+                _settings.CustomGameFilterTcpPorts,
+                _settings.CustomGameFilterUdpPorts,
+                _settings.SelectedFakeSni);
 
         public async Task<OperationResult> StartAsync(StrategyInfo strategy, GameFilterMode gameFilter, bool showConsole,
             CancellationToken ct = default, bool testMode = false)

@@ -72,6 +72,27 @@ namespace ZapretGui.Core
         /// <summary>Выбранный канал движка.</summary>
         public bool UseGameFilterOnStart { get; set; }
 
+        /// <summary>Идентификатор выбранного профиля игрового фильтра и портов (discord_voice, steam_cs2, riot_games, all_broad, custom).</summary>
+        public string GameFilterProfileId { get; set; } = "discord_voice";
+
+        /// <summary>Кастомный диапазон TCP портов для GameFilter.</summary>
+        public string CustomGameFilterTcpPorts { get; set; } = "1024-65535";
+
+        /// <summary>Кастомный диапазон UDP портов для GameFilter.</summary>
+        public string CustomGameFilterUdpPorts { get; set; } = "50000-65535";
+
+        /// <summary>Пользовательские исключения портов.</summary>
+        public string CustomExcludedPorts { get; set; } = "";
+
+        /// <summary>Выбранный TLS SNI домен для desync-fake-tls (например, gosuslugi.ru, cloudflare.com).</summary>
+        public string SelectedFakeSni { get; set; } = "gosuslugi.ru";
+
+        /// <summary>Включить автоматическую ротацию TLS SNI при сбоях.</summary>
+        public bool AutoSniRotationEnabled { get; set; }
+
+        /// <summary>Пользовательский пул доменов для TLS SNI.</summary>
+        public List<string> CustomSniList { get; set; } = new();
+
         /// <summary>Пользователь попросил больше не спрашивать про найденный старый запуск запрета.</summary>
         public bool LegacyZapretDismissed { get; set; }
 
