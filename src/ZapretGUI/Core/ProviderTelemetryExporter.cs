@@ -17,7 +17,7 @@ namespace ZapretGui.Core
         public string Title { get; init; } = "Zapret GUI — Полная сетевая телеметрия и профиль провайдера";
         public string FormatVersion { get; init; } = "2.0";
         public DateTime GeneratedAt { get; init; } = DateTime.Now;
-        public string AppVersion { get; init; } = "1.3.7";
+        public string AppVersion { get; init; } = "1.3.8";
         public string OsVersion { get; init; } = Environment.OSVersion.ToString();
         public bool IsAdmin { get; init; }
         public bool IsPortable { get; init; }
@@ -47,7 +47,7 @@ namespace ZapretGui.Core
     {
         public string SelectedStrategy { get; init; } = "";
         public string BypassState { get; init; } = "";
-        public int Pid { get; init; }
+        public int? Pid { get; init; }
         public string Uptime { get; init; } = "";
         public string GameFilterMode { get; init; } = "";
         public string IpsetMode { get; init; } = "";
@@ -118,8 +118,6 @@ namespace ZapretGui.Core
         public string Url { get; init; } = "";
         public string Host { get; init; } = "";
         public bool Enabled { get; init; }
-        public bool LastOk { get; init; }
-        public long LastLatencyMs { get; init; }
     }
 
     /// <summary>
@@ -130,8 +128,8 @@ namespace ZapretGui.Core
         public static ProviderTelemetryDump Collect(MainViewModel main)
         {
             var status = main.Bypass.GetStatus();
-            var enginePath = main.Settings.EnginePath;
-            var listsDir = Path.Combine(enginePath ?? "", "lists");
+            var enginePath = main.Settings.EnginePath ?? "";
+            var listsDir = Path.Combine(enginePath, "lists");
 
             var dnsList = new List<string>();
             try
@@ -224,30 +222,31 @@ namespace ZapretGui.Core
                     Name = t.Name,
                     Url = t.Url,
                     Host = t.Host,
-                    Enabled = t.Enabled,
-                    LastOk = t.LastResult?.Ok ?? false,
-                    LastLatencyMs = t.LastResult?.Milliseconds ?? 0
+                    Enabled = t.Enabled
                 });
             }
 
             var logEntries = AppLog.Entries.TakeLast(80).Select(e => e.ToString()).ToList();
 
             var prov = main.Settings.ProviderContext ?? new ProviderContext();
+            var bfe = WinServices.Query("BFE") == ServiceState.Running;
+            var winDivert = WinServices.Query(WinServices.WinDivertService) != ServiceState.NotInstalled ||
+                            WinServices.Query(WinServices.WinDivert14Service) != ServiceState.NotInstalled;
 
             return new ProviderTelemetryDump
             {
-                AppVersion = typeof(ProviderTelemetryExporter).Assembly.GetName().Version?.ToString(3) ?? "1.3.7",
+                AppVersion = typeof(ProviderTelemetryExporter).Assembly.GetName().Version?.ToString(3) ?? "1.3.8",
                 IsAdmin = Shell.IsAdmin(),
                 IsPortable = AppPaths.IsPortableMode,
                 EnginePath = enginePath,
-                EngineVersion = EngineService.GetInstalledVersion(enginePath) ?? "не определена",
+                EngineVersion = EngineService.ReadVersion(enginePath),
                 Provider = new ProviderContextTelemetry
                 {
                     Name = prov.Name,
                     Asn = prov.Asn,
                     Confidence = prov.Confidence.ToString(),
-                    Source = prov.Source,
-                    CheckedAt = prov.CheckedAtText
+                    Source = prov.Source.ToString(),
+                    CheckedAt = prov.CheckedAt.HasValue ? prov.CheckedAt.Value.ToString("yyyy-MM-dd HH:mm") : ""
                 },
                 Configuration = new ActiveConfigurationTelemetry
                 {
@@ -262,9 +261,9 @@ namespace ZapretGui.Core
                 },
                 SystemServices = new SystemServicesTelemetry
                 {
-                    BfeRunning = WinServices.IsBfeRunning(),
-                    WinDivertInstalled = WinServices.IsWinDivertInstalled(),
-                    ZapretServiceInstalled = status.ServiceInstalled,
+                    BfeRunning = bfe,
+                    WinDivertInstalled = winDivert,
+                    ZapretServiceInstalled = status.ServiceState != ServiceState.NotInstalled,
                     ZapretServiceStatus = status.ServiceState.ToString(),
                     TcpTimestampsEnabled = WinServices.AreTcpTimestampsEnabled(),
                     DnsServers = dnsList
