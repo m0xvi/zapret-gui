@@ -115,6 +115,13 @@ namespace ZapretGui.Core
             }
         }
 
+        public static bool Save(SavedStrategyCandidate saved)
+        {
+            var candidates = Load();
+            candidates.Insert(0, saved);
+            return TryWrite(candidates);
+        }
+
         public static bool TrySave(StrategyCandidate candidate, out SavedStrategyCandidate saved)
         {
             var candidates = Load();
