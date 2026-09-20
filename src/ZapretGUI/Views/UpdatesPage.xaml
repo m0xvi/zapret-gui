@@ -119,8 +119,6 @@
                                     ToolTip="Остановить обход, восстановить файлы выбранной версии и вернуть обход после подтверждения" />
                         </StackPanel>
                     </Border>
-                        </StackPanel>
-                    </Border>
 
                     <StackPanel Margin="0,14,0,0" Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}">
                         <Grid>
