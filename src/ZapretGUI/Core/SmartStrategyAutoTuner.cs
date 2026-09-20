@@ -50,9 +50,6 @@ namespace ZapretGui.Core
         public static readonly IReadOnlyList<(string Desync, string Split, string Sni, string Ttl, string Fooling, bool Multi, string Desc)> Hypotheses =
             new List<(string, string, string, string, string, bool, string)>
             {
-        public static readonly IReadOnlyList<(string Desync, string Split, string Sni, string Ttl, string Fooling, bool Multi, string Desc)> Hypotheses =
-            new List<(string, string, string, string, string, bool, string)>
-            {
                 // 1. Семейство Split2 (Разделение TLS ClientHello)
                 ("split2", "midsld", "www.google.com", "auto", "badsum", true, "Разделение TLS (midsld) + Fake SNI Google + badsum + multisplit"),
                 ("split2", "sniext", "www.google.com", "auto", "badsum", true, "Разделение на границе SNI (sniext) + Fake SNI Google + badsum"),
