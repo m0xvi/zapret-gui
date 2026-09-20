@@ -1267,21 +1267,6 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(CandidateEvaluationSummaryText));
             }
         }
-            }
-            catch (OperationCanceledException)
-            {
-                CandidateEvaluationText = "Оценка кандидатов отменена";
-            }
-            finally
-            {
-                IsEvaluatingCandidates = false;
-                CandidateEvaluationProgressVisible = false;
-                _candidateEvaluationCts?.Dispose();
-                _candidateEvaluationCts = null;
-                _candidateEvaluationView.Refresh();
-                Raise(nameof(CandidateEvaluationSummaryText));
-            }
-        }
 
         private void CancelCandidateEvaluation() => _candidateEvaluationCts?.Cancel();
 
