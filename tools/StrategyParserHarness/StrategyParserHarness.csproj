@@ -22,6 +22,8 @@
 
   <ItemGroup>
     <Compile Include="..\..\src\ZapretGUI\Core\StrategyParser.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\DefaultDomainLists.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\DomainListUpdater.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\AppLog.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\AppPaths.cs" />
   </ItemGroup>
