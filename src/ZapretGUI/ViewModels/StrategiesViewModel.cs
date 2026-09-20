@@ -566,7 +566,7 @@ namespace ZapretGui.ViewModels
         public string SelectedCategory => Selected?.Category ?? "";
         public string SelectedDescription => Selected?.Description ?? "";
         public string SelectedArgs => Selected?.ShortArgs ?? "";
-        public string SelectedFeatures => Selected == null ? "" : StrategyFeatureAnalyzer.Analyze(Selected.Args, false).Summary;
+        public string SelectedFeatures => Selected == null ? "" : StrategyFeatureAnalyzer.Analyze(Selected).Summary;
         public string SelectedPath => Selected?.FullPath ?? "";
 
         public bool IsBusy
@@ -1168,9 +1168,10 @@ namespace ZapretGui.ViewModels
 
             try
             {
-                var options = new StrategyCandidateGenerationOptions { Limit = 18 };
+                var options = new StrategyCandidateGenerationOptions { MaxCandidates = 18 };
+                var gameFilter = EngineService.GetGameFilterMode(Store.Folder);
                 var genResult = StrategyCandidateGenerator.Generate(
-                    Store.Items, Settings.ProviderContext ?? new ProviderContext(), options, _candidateGenerationCts.Token);
+                    Store.Items, Settings.ProviderContext ?? new ProviderContext(), gameFilter, options, _candidateGenerationCts.Token);
                 foreach (var candidate in genResult.Candidates) GeneratedCandidates.Add(candidate);
                 foreach (var candidate in genResult.Candidates) CandidateEvaluations.Add(new StrategyCandidateEvaluation(candidate));
 
