@@ -566,7 +566,7 @@ namespace ZapretGui.ViewModels
         public string SelectedCategory => Selected?.Category ?? "";
         public string SelectedDescription => Selected?.Description ?? "";
         public string SelectedArgs => Selected?.ShortArgs ?? "";
-        public string SelectedFeatures => Selected?.FeaturesSummary ?? "";
+        public string SelectedFeatures => Selected == null ? "" : StrategyFeatureAnalyzer.Analyze(Selected.Args, false).Summary;
         public string SelectedPath => Selected?.FullPath ?? "";
 
         public bool IsBusy
@@ -740,6 +740,28 @@ namespace ZapretGui.ViewModels
             foreach (var target in Settings.MonitorTargets) TargetEndpoints.Add(target);
         }
 
+        public void RefreshTheme()
+        {
+            foreach (var strategy in Store.Items) strategy.RefreshTheme();
+            Raise(nameof(TestSummaryKey));
+        }
+
+        public void SelectAsDefault(StrategyInfo strategy)
+        {
+            if (!Store.Items.Contains(strategy)) return;
+            Selected = strategy;
+            SetDefault();
+        }
+
+        public async Task ApplyStrategyAsync(StrategyInfo strategy)
+        {
+            if (strategy == null || IsBusy || IsTestingAll || IsGeneratingCandidates || IsEvaluatingCandidates)
+                return;
+            var target = Store.Find(strategy.Name) ?? strategy;
+            Selected = target;
+            await RunAsync(target);
+        }
+
         private async Task RunAsync(object? parameter)
         {
             var target = parameter as StrategyInfo ?? Selected;
@@ -749,8 +771,8 @@ namespace ZapretGui.ViewModels
             Message = $"Запускаю стратегию «{target.Name}»…";
             try
             {
-                var result = await Bypass.StartStandaloneAsync(target,
-                    EngineService.GetGameFilterMode(Store.Folder));
+                var result = await Bypass.StartAsync(target,
+                    EngineService.GetGameFilterMode(Store.Folder), false);
                 if (result.Ok)
                 {
                     Settings.SelectedStrategy = target.Name;
@@ -1111,7 +1133,7 @@ namespace ZapretGui.ViewModels
         // ------------------------------------------------------------------ Кандидаты и история
         private void AppendHistory(StrategyEvaluationHistoryRecord record)
         {
-            StrategyEvaluationHistoryStore.Append(record);
+            StrategyEvaluationHistoryStore.TryAppend(record);
             EvaluationHistory.Insert(0, record);
             while (EvaluationHistory.Count > 50) EvaluationHistory.RemoveAt(EvaluationHistory.Count - 1);
             Raise(nameof(EvaluationHistoryCountText));
@@ -1130,7 +1152,7 @@ namespace ZapretGui.ViewModels
         private void BuildCandidatePreview()
         {
             if (Selected == null) return;
-            CandidatePreview = StrategyCandidateMutator.CreateBaselineCandidate(Selected, Settings.ProviderContext ?? new ProviderContext());
+            CandidatePreview = StrategyCandidateFactory.CreatePreview(Selected, Settings.ProviderContext ?? new ProviderContext());
             Message = $"Подготовлен базовый кандидат для «{Selected.Name}»";
         }
 
@@ -1146,10 +1168,11 @@ namespace ZapretGui.ViewModels
 
             try
             {
-                var candidates = await StrategyCandidateMutator.GenerateBatchAsync(
-                    Store.Items, Settings.ProviderContext ?? new ProviderContext(), 18, _candidateGenerationCts.Token);
-                foreach (var candidate in candidates) GeneratedCandidates.Add(candidate);
-                foreach (var candidate in candidates) CandidateEvaluations.Add(new StrategyCandidateEvaluation { Candidate = candidate });
+                var options = new StrategyCandidateGenerationOptions { Limit = 18 };
+                var genResult = StrategyCandidateGenerator.Generate(
+                    Store.Items, Settings.ProviderContext ?? new ProviderContext(), options, _candidateGenerationCts.Token);
+                foreach (var candidate in genResult.Candidates) GeneratedCandidates.Add(candidate);
+                foreach (var candidate in genResult.Candidates) CandidateEvaluations.Add(new StrategyCandidateEvaluation(candidate));
 
                 CandidateGenerationText = $"Сформировано кандидатов: {GeneratedCandidates.Count}. Запустите оценку для безопасного тестирования.";
                 Message = $"Сформировано {GeneratedCandidates.Count} кандидатов для проверки";
@@ -1212,7 +1235,8 @@ namespace ZapretGui.ViewModels
                     };
 
                     var result = await Bypass.TestStrategyAsync(fakeInfo, _candidateEvaluationCts.Token);
-                    eval.ApplyTestResult(result);
+                    eval.AddResult(result, 1, 1);
+                    eval.Complete();
                     completed++;
                     CandidateEvaluationProgressValue = completed;
                     CandidateEvaluationProgressPercentText = $"{CandidateEvaluationProgressValue / CandidateEvaluationProgressMaximum * 100:0}%";
@@ -1222,12 +1246,27 @@ namespace ZapretGui.ViewModels
                 if (best != null && best.IsWinner)
                 {
                     CandidatePreview = best.Candidate;
-                    CandidateEvaluationText = $"Оценка завершена. Лучший кандидат: «{best.Candidate.Name}» ({best.PassedChecksCount}/{best.TotalChecksCount} проверок OK, средний пинг {best.AverageLatencyMs} мс).";
+                    CandidateEvaluationText = $"Оценка завершена. Лучший кандидат: «{best.Candidate.Name}» ({best.PassedChecks}/{best.TotalChecks} проверок OK, средний пинг {best.AverageElapsedText}).";
                 }
                 else
                 {
                     CandidateEvaluationText = "Оценка завершена. Ни один кандидат не показал полного успеха.";
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                CandidateEvaluationText = "Оценка кандидатов отменена";
+            }
+            finally
+            {
+                IsEvaluatingCandidates = false;
+                CandidateEvaluationProgressVisible = false;
+                _candidateEvaluationCts?.Dispose();
+                _candidateEvaluationCts = null;
+                _candidateEvaluationView.Refresh();
+                Raise(nameof(CandidateEvaluationSummaryText));
+            }
+        }
             }
             catch (OperationCanceledException)
             {

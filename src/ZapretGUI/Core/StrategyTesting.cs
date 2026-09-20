@@ -26,6 +26,7 @@ namespace ZapretGui.Core
         public int PassedCount => Checks.Count(c => c.Ok);
         public int FailedCount => Checks.Count(c => !c.Ok);
         public int Score => PassedCount * 1000 + (IsSuitable ? 1000 : 0);
+        public double AverageLatencyMs => Checks == null || Checks.Count == 0 ? 0 : Math.Round(Checks.Where(c => c.Ok).Select(c => (double)c.Milliseconds).DefaultIfEmpty(0).Average());
         public string ElapsedText => Elapsed.TotalSeconds < 1
             ? $"{Elapsed.TotalMilliseconds:0} мс"
             : $"{Elapsed.TotalSeconds:0.0} с";
@@ -106,6 +107,7 @@ namespace ZapretGui.Core
         public int FailedChecks => _repeats.Sum(result => result.FailedCount);
         public string ChecksText => $"{PassedChecks}/{TotalChecks}";
         public bool IsStable => RepeatCount > 0 && SuccessfulRepeats == RepeatCount;
+        public bool IsWinner => IsStable && SuccessfulRepeats > 0;
 
         public double AverageElapsedMilliseconds => RepeatCount == 0
             ? 0
