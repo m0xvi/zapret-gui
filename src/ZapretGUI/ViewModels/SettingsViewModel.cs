@@ -23,6 +23,66 @@ namespace ZapretGui.ViewModels
         private int _providerConfidenceIndex;
         private string _status = "Изменения сохраняются автоматически";
         private bool _isProviderLookupBusy;
+        private int _selectedTabIndex;
+
+        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры" };
+
+        public int SelectedTabIndex
+        {
+            get => _selectedTabIndex;
+            set
+            {
+                if (Set(ref _selectedTabIndex, Math.Clamp(value, 0, SettingsTabs.Length - 1)))
+                {
+                    Raise(nameof(IsGeneralTabSelected));
+                    Raise(nameof(IsBypassTabSelected));
+                    Raise(nameof(IsNetworkTabSelected));
+                    Raise(nameof(IsAppearanceTabSelected));
+                    Raise(nameof(IsGamingTabSelected));
+                    Raise(nameof(SelectedTabHint));
+                }
+            }
+        }
+
+        public bool IsGeneralTabSelected
+        {
+            get => _selectedTabIndex == 0;
+            set { if (value) SelectedTabIndex = 0; }
+        }
+
+        public bool IsBypassTabSelected
+        {
+            get => _selectedTabIndex == 1;
+            set { if (value) SelectedTabIndex = 1; }
+        }
+
+        public bool IsNetworkTabSelected
+        {
+            get => _selectedTabIndex == 2;
+            set { if (value) SelectedTabIndex = 2; }
+        }
+
+        public bool IsAppearanceTabSelected
+        {
+            get => _selectedTabIndex == 3;
+            set { if (value) SelectedTabIndex = 3; }
+        }
+
+        public bool IsGamingTabSelected
+        {
+            get => _selectedTabIndex == 4;
+            set { if (value) SelectedTabIndex = 4; }
+        }
+
+        public string SelectedTabHint => SelectedTabIndex switch
+        {
+            0 => "Движок, папки и системный автозапуск — всё, что нужно для первого старта.",
+            1 => "Как ведёт себя обход: автозапуск, безопасный режим, сторож и автоподбор.",
+            2 => "Провайдер, телеметрия и фоновый мониторинг — диагностика вашей сети.",
+            3 => "Тема, масштаб, трей, горячие клавиши и мини-виджет HUD.",
+            4 => "Детектор игр, игровой режим и твики сети для минимальных задержек.",
+            _ => ""
+        };
 
         public SettingsViewModel(MainViewModel main)
         {

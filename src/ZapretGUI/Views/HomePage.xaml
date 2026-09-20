@@ -66,6 +66,63 @@
                 </Grid>
             </Border>
 
+            <!-- Быстрый старт: 3 шага — визуальный гид, чтобы не потеряться -->
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0" Padding="16,14">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Top">
+                            <TextBlock Text="&#xE8A7;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРЫЙ СТАРТ — 3 ШАГА" Margin="0,0,0,2" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Если вы впервые здесь — делайте по порядку, это займёт минуту." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                    <Grid Margin="0,14,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource InnerCard}" Padding="12,10">
+                            <StackPanel>
+                                <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource AccentBrush}" HorizontalAlignment="Left">
+                                    <TextBlock Text="1" Foreground="{DynamicResource OnAccentBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Margin="0,8,0,0" Text="Выберите стратегию" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Откройте «Стратегии» → нажмите «Рекомендуемая» или «Проверить все» — приложение покажет, что работает в вашей сети." TextWrapping="Wrap" FontSize="11" />
+                                <Button Style="{StaticResource GhostButton}" Content="Открыть стратегии →" Margin="-8,6,0,0" HorizontalAlignment="Left" Command="{Binding OpenStrategiesCommand}" FontSize="11" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="2" Style="{StaticResource InnerCard}" Padding="12,10">
+                            <StackPanel>
+                                <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource SuccessBrush}" HorizontalAlignment="Left">
+                                    <TextBlock Text="2" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Margin="0,8,0,0" Text="Нажмите круглую кнопку" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Большая круглая кнопка — вкл/выкл обхода. Зелёное свечение = всё работает." TextWrapping="Wrap" FontSize="11" />
+                            </StackPanel>
+                        </Border>
+                        <Border Grid.Column="4" Style="{StaticResource InnerCard}" Padding="12,10">
+                            <StackPanel>
+                                <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource InfoBrush}" HorizontalAlignment="Left">
+                                    <TextBlock Text="3" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Margin="0,8,0,0" Text="Проверьте сайты" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Ниже нажмите «Проверить» — увидите YouTube, Discord и свои адреса зелёным." TextWrapping="Wrap" FontSize="11" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                    <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" Text="Не работает? Нажмите «Диагностика» вверху — она найдёт конфликт, прокси или старую службу и предложит «Исправить» в 1 клик." TextWrapping="Wrap" FontSize="11" />
+                </StackPanel>
+            </Border>
+
             <StackPanel Margin="0,16,0,0">
 
                 <!-- ================= ОСНОВНОЙ БЛОК ================= -->
@@ -182,10 +239,23 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Фильтры -->
+                    <!-- Фильтры — продвинутая настройка, свёрнутая визуально -->
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ФИЛЬТРЫ" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Top">
+                                    <TextBlock Text="&#xE9D9;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ФИЛЬТРЫ · ДЛЯ ПРОДВИНУТЫХ" Margin="0,0,0,2" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="Можно не трогать — по умолчанию работает для большинства. Меняйте только если не работают игры или нужен максимум обхода." TextWrapping="Wrap" FontSize="11" />
+                                </StackPanel>
+                            </Grid>
+                            <Border Style="{StaticResource Divider}" Margin="0,14,0,14" />
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
