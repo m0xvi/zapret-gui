@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using ZapretGui.ViewModels;
@@ -50,42 +49,40 @@ namespace ZapretGui.Core
         public static readonly IReadOnlyList<(string Desync, string Split, string Sni, string Ttl, string Fooling, bool Multi, string Desc)> Hypotheses =
             new List<(string, string, string, string, string, bool, string)>
             {
-                // 1. Семейство Split2 (Разделение TLS ClientHello)
-                ("split2", "midsld", "www.google.com", "auto", "badsum", true, "Разделение TLS (midsld) + Fake SNI Google + badsum + multisplit"),
-                ("split2", "sniext", "www.google.com", "auto", "badsum", true, "Разделение на границе SNI (sniext) + Fake SNI Google + badsum"),
-                ("split2", "sniext", "www.microsoft.com", "auto", "badsum", true, "Разделение на границе SNI (sniext) + Fake SNI Microsoft + badsum"),
-                ("split2", "sniext", "www.cloudflare.com", "auto", "badseq", false, "Разделение SNI (sniext) + Fake SNI Cloudflare + badseq"),
-                ("split2", "1", "www.google.com", "auto", "badsum", true, "Разделение 1-го байта ClientHello (split-pos=1) + badsum"),
-                ("split2", "2", "www.google.com", "auto", "badsum", false, "Разделение 2-го байта ClientHello (split-pos=2) + badsum"),
-                ("split2", "3", "www.google.com", "auto", "badseq", false, "Разделение 3-го байта ClientHello (split-pos=3) + badseq"),
-                ("split2", "host", "www.google.com", "auto", "badsum", false, "Разделение по домену Host (split-pos=host) + badsum"),
-                ("split2", "1", "none", "auto", "disoob", true, "Комбинированный сплит 1-го байта + OOB смещение"),
+                // 1. Семейство современных гибридов Fake + Split2 / Disorder2 (Высочайшая пробиваемость YouTube & Discord)
+                ("fake,split2", "1", "www.google.com", "auto", "badsum", false, "Гибрид Fake TLS + Split2 (pos=1) + Google SNI + badsum"),
+                ("fake,split2", "sniext", "www.google.com", "auto", "badsum", false, "Гибрид Fake TLS + Split2 на границе SNI (sniext) + badsum"),
+                ("fake,split2", "midsld", "www.google.com", "auto", "badsum", false, "Гибрид Fake TLS + Split2 (midsld) + Google SNI + badsum"),
+                ("fake,split2", "1", "www.microsoft.com", "auto", "badsum", false, "Гибрид Fake TLS + Split2 (pos=1) + Microsoft SNI + badsum"),
+                ("fake,split2", "sniext", "www.cloudflare.com", "auto", "badseq", false, "Гибрид Fake TLS + Split2 (sniext) + Cloudflare SNI + badseq"),
+                ("fake,disorder2", "1", "www.google.com", "auto", "badsum", false, "Гибрид Fake TLS + Disorder2 (pos=1) + badsum"),
+                ("fake,disorder2", "midsld", "www.google.com", "auto", "badsum", false, "Гибрид Fake TLS + Disorder2 (midsld) + badsum"),
 
-                // 2. Семейство Disorder / Out-of-Order (Нарушение порядка TCP-пакетов)
-                ("disoob", "1", "none", "auto", "badseq", false, "Out-of-Order смещение 1 байта (disoob=1) + badseq"),
-                ("disoob", "2", "none", "auto", "badsum", false, "Out-of-Order смещение 2 байт (disoob=2) + badsum"),
-                ("disoob", "3", "none", "auto", "badsum", true, "Out-of-Order смещение 3 байт (disoob=3) + badsum + multisplit"),
-                ("disoob", "sniext", "none", "auto", "badseq", false, "Out-of-Order по границе SNI (disoob=sniext) + badseq"),
+                // 2. Семейство чистого разделения TLS ClientHello (Split2)
+                ("split2", "1", "none", "auto", "badsum", false, "Разделение 1-го байта ClientHello (split-pos=1) + badsum"),
+                ("split2", "2", "none", "auto", "badsum", false, "Разделение 2-го байта ClientHello (split-pos=2) + badsum"),
+                ("split2", "3", "none", "auto", "badseq", false, "Разделение 3-го байта ClientHello (split-pos=3) + badseq"),
+                ("split2", "sniext", "none", "auto", "badsum", false, "Разделение на границе SNI (sniext) + badsum"),
+                ("split2", "midsld", "none", "auto", "badsum", false, "Разделение середины домена SNI (midsld) + badsum"),
+                ("split2", "host", "none", "auto", "badsum", false, "Разделение по заголовку Host (split-pos=host) + badsum"),
 
-                // 3. Семейство Fake ClientHello (Инъекция поддельных TLS-пакетов)
-                ("fake", "none", "www.google.com", "auto", "badsum", false, "Fake TLS ClientHello + Google SNI + repeats=6"),
-                ("fake", "none", "www.microsoft.com", "auto", "badsum", false, "Fake TLS ClientHello + Microsoft SNI + badsum"),
-                ("fake", "none", "fonts.google.com", "auto", "badsum", false, "Fake TLS + fonts.google.com SNI + badsum"),
-                ("fake", "none", "ru.wikipedia.org", "auto", "badsum", false, "Fake TLS + Wikipedia SNI (ru.wikipedia.org) + badsum"),
-                ("fake", "none", "yandex.ru", "auto", "badsum", true, "Fake TLS с RU SNI (yandex.ru) + агрессивный QUIC"),
+                // 3. Семейство изменения порядка пакетов (Disorder / Disorder2)
+                ("disorder2", "1", "none", "auto", "badsum", false, "Перестановка порядка пакетов (disorder2, pos=1) + badsum"),
+                ("disorder2", "2", "none", "auto", "badsum", false, "Перестановка порядка пакетов (disorder2, pos=2) + badsum"),
+                ("disorder2", "midsld", "none", "auto", "badsum", false, "Перестановка порядка пакетов (disorder2, midsld) + badsum"),
+                ("disorder2", "sniext", "none", "auto", "badseq", false, "Перестановка порядка пакетов (disorder2, sniext) + badseq"),
+                ("disorder", "1", "none", "auto", "badseq", false, "Классический Disorder (pos=1) + badseq"),
 
-                // 4. Двойной Fake SNI и Fake Disorder
-                ("fakedsni", "midsld", "www.google.com", "auto", "badsum", true, "Двойной Fake SNI (fakedsni midsld) + multisplit"),
-                ("fakedsni", "sniext", "www.google.com", "auto", "badsum", false, "Двойной Fake SNI (fakedsni sniext) + badsum"),
+                // 4. Семейство многосегментного оверлея (Multisplit)
+                ("multisplit", "1", "none", "auto", "badsum", true, "Многосегментный оверлей TCP (multisplit, pos=1, seqovl=1) + badsum"),
+                ("multisplit", "midsld", "none", "auto", "badsum", true, "Многосегментный оверлей TCP (multisplit, midsld, seqovl=1) + badsum"),
+                ("multisplit", "2", "none", "auto", "badsum", true, "Многосегментный оверлей TCP (multisplit, pos=2, seqovl=1) + badsum"),
 
-                // 5. Семейство Multisplit & Sequence Overlap
-                ("multisplit", "midsld", "none", "auto", "badsum", true, "Многосегментный оверлей TCP (split-seqovl=1, midsld)"),
-                ("multisplit", "2", "none", "auto", "badsum", true, "Многосегментный оверлей TCP со смещением 2 байта"),
-
-                // 6. Семейство TTL & MD5 Evasion (Обход через расстояние до узла фильтрации)
+                // 5. Семейство Fake ClientHello & TTL Evasions
+                ("fake", "none", "www.google.com", "auto", "badsum", false, "Fake TLS ClientHello + Google SNI + repeats=6 + badsum"),
                 ("fake", "none", "www.google.com", "1", "badsum", false, "Fake TLS с ультра-малым TTL (TTL=1) + badsum"),
-                ("fake", "none", "www.google.com", "3", "badsum", false, "Fake TLS с фиксированным малым TTL (TTL=3)"),
-                ("fake", "none", "www.google.com", "5", "badsum", false, "Fake TLS с фиксированным средним TTL (TTL=5)"),
+                ("fake", "none", "www.google.com", "3", "badsum", false, "Fake TLS с малым TTL (TTL=3) + badsum"),
+                ("fake", "none", "www.google.com", "5", "badsum", false, "Fake TLS со средним TTL (TTL=5) + badsum"),
                 ("fake", "none", "www.google.com", "4", "md5sig", false, "Fake TLS с TCP MD5 Signature fooling (md5sig) + TTL=4")
             };
 
@@ -100,7 +97,12 @@ namespace ZapretGui.Core
             CancellationToken ct)
         {
             var results = new List<AutoTunerStepResult>();
-            var testTargets = targets.Count > 0 ? targets.ToList() : ConnectionTester.GetEffectiveTargets().Take(3).ToList();
+            var activeTargets = targets.Where(t => t.Enabled).ToList();
+            if (activeTargets.Count == 0)
+            {
+                activeTargets = ConnectionTester.GetEffectiveTargets().Take(4).ToList();
+            }
+
             var total = Hypotheses.Count;
 
             var before = bypass.GetStatus();
@@ -108,7 +110,7 @@ namespace ZapretGui.Core
             var restoreStandalone = before.State == BypassState.RunningStandalone;
             var previousStrategyName = before.StrategyName;
 
-            AppLog.Info($"[SmartAutoTuner] Запуск глубокого автоподбора стратегии ({total} гипотез, {testTargets.Count} контрольных точек)...");
+            AppLog.Info($"[SmartAutoTuner] Запуск глубокого автоподбора стратегии ({total} гипотез, {activeTargets.Count} контрольных точек)...");
 
             int bestScore = -1;
             AutoTunerStepResult? bestResult = null;
@@ -133,7 +135,7 @@ namespace ZapretGui.Core
 
                     var (desync, split, sni, ttl, fooling, multi, desc) = Hypotheses[i];
                     var stepNum = i + 1;
-                    var candName = $"SmartHypothesis_{stepNum}_{desync}";
+                    var candName = $"SmartHypothesis_{stepNum}_{desync.Replace(',', '_')}";
 
                     progress?.Report(new AutoTunerProgress
                     {
@@ -158,7 +160,7 @@ namespace ZapretGui.Core
 
                     // Запуск пробного изолированного процесса winws
                     var stepResult = await EvaluateSingleHypothesisAsync(
-                        bypass, tempStrategy, testTargets, stepNum, total, desc, ct).ConfigureAwait(false);
+                        bypass, tempStrategy, activeTargets, stepNum, total, desc, ct).ConfigureAwait(false);
 
                     if (stepResult.Score > bestScore)
                     {
@@ -171,7 +173,7 @@ namespace ZapretGui.Core
                     onStep?.Invoke(stepResult);
 
                     AppLog.Info($"[SmartAutoTuner] Тест {stepNum}/{total} ({candName}): Успех {stepResult.SuccessRate:0}%, Пинг {stepResult.AvgRttMs} мс, Скоринг {stepResult.Score}/100");
-                    await Task.Delay(400, ct).ConfigureAwait(false);
+                    await Task.Delay(300, ct).ConfigureAwait(false);
                 }
             }
             finally
@@ -254,43 +256,26 @@ namespace ZapretGui.Core
                     };
                 }
 
-                // Небольшая задержка для инициализации WinDivert перехвата
-                await Task.Delay(1000, ct).ConfigureAwait(false);
+                // Задержка для инициализации WinDivert перехвата
+                await Task.Delay(1200, ct).ConfigureAwait(false);
 
-                // Тестируем контрольные адреса
+                // Тестируем контрольные адреса через системный ResourceProbe
                 int successCount = 0;
                 long totalRtt = 0;
                 var detailsList = new List<string>();
 
-                using var handler = new SocketsHttpHandler
-                {
-                    AllowAutoRedirect = true,
-                    ConnectTimeout = TimeSpan.FromSeconds(3.5),
-                    PooledConnectionLifetime = TimeSpan.FromSeconds(10)
-                };
-                using var client = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(4) };
-
                 foreach (var target in targets)
                 {
                     ct.ThrowIfCancellationRequested();
-                    var sw = Stopwatch.StartNew();
-                    try
+                    var probe = await ResourceProbe.CheckAsync(target, ct).ConfigureAwait(false);
+                    if (probe.Ok)
                     {
-                        using var req = new HttpRequestMessage(HttpMethod.Head, target.Url);
-                        req.Headers.UserAgent.ParseAdd("Mozilla/5.0 (Windows NT 10.0; Win64; x64) ZapretTest/1.3");
-                        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                        cts.CancelAfter(TimeSpan.FromSeconds(3.5));
-
-                        var resp = await client.SendAsync(req, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
-                        sw.Stop();
-
                         successCount++;
-                        totalRtt += sw.ElapsedMilliseconds;
-                        detailsList.Add($"{target.Name}: OK ({sw.ElapsedMilliseconds} мс)");
+                        totalRtt += probe.Milliseconds;
+                        detailsList.Add($"{target.Name}: OK ({probe.Milliseconds} мс)");
                     }
-                    catch (Exception)
+                    else
                     {
-                        sw.Stop();
                         detailsList.Add($"{target.Name}: FAIL");
                     }
                 }

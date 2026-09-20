@@ -360,17 +360,17 @@ namespace ZapretGui.ViewModels
         // ------------------------------------------------------------------ Визуальный конструктор параметров winws
         public ObservableCollection<string> BuilderDesyncModes { get; } = new()
         {
-            "split2", "disorder2", "fake", "fakedsni", "multisplit", "disorder", "split", "none"
+            "fake,split2", "fake,disorder2", "split2", "disorder2", "fake", "fakedsni", "multisplit", "disorder", "split", "none"
         };
 
         public ObservableCollection<string> BuilderSplitPositions { get; } = new()
         {
-            "midsld", "sni", "host", "1", "2", "3", "4"
+            "1", "2", "3", "sniext", "midsld", "host", "none"
         };
 
         public ObservableCollection<string> BuilderFakeSnis { get; } = new()
         {
-            "www.google.com", "googlevideo.com", "youtube.com", "cloudflare.com"
+            "www.google.com", "www.microsoft.com", "www.cloudflare.com", "yandex.ru", "none"
         };
 
         public ObservableCollection<string> BuilderTtls { get; } = new()
@@ -380,7 +380,7 @@ namespace ZapretGui.ViewModels
 
         public ObservableCollection<string> BuilderFoolings { get; } = new()
         {
-            "badsum", "badseq", "datanoack", "none"
+            "badsum", "badseq", "md5sig", "datanoack", "none"
         };
 
         public string BuilderStrategyName
