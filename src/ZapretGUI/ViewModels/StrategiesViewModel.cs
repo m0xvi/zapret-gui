@@ -269,6 +269,7 @@ namespace ZapretGui.ViewModels
                 var (ok, msg, winner, results) = await SmartStrategyAutoTuner.RunDeepAutoTuningAsync(
                     Store.Folder,
                     _main.Bypass,
+                    Store,
                     TargetEndpoints,
                     _main.Settings.ProviderContext,
                     progress,

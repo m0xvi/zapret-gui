@@ -66,6 +66,7 @@ namespace ZapretGui.Core
         public static async Task<(bool Ok, string Message, SavedStrategyCandidate? Winner, List<AutoTunerStepResult> Results)> RunDeepAutoTuningAsync(
             string enginePath,
             BypassController bypass,
+            StrategyStore strategyStore,
             IReadOnlyList<MonitorTarget> targets,
             ProviderContext? provider,
             IProgress<AutoTunerProgress>? progress,
@@ -76,56 +77,101 @@ namespace ZapretGui.Core
             var testTargets = targets.Count > 0 ? targets.ToList() : ConnectionTester.GetEffectiveTargets().Take(3).ToList();
             var total = Hypotheses.Count;
 
+            var before = bypass.GetStatus();
+            var restoreService = before.State == BypassState.RunningService;
+            var restoreStandalone = before.State == BypassState.RunningStandalone;
+            var previousStrategyName = before.StrategyName;
+
             AppLog.Info($"[SmartAutoTuner] Запуск глубокого автоподбора стратегии ({total} гипотез, {testTargets.Count} контрольных точек)...");
 
             int bestScore = -1;
             AutoTunerStepResult? bestResult = null;
 
-            for (int i = 0; i < total; i++)
+            try
             {
-                ct.ThrowIfCancellationRequested();
-
-                var (desync, split, sni, ttl, fooling, multi, desc) = Hypotheses[i];
-                var stepNum = i + 1;
-                var candName = $"SmartHypothesis_{stepNum}_{desync}";
-
-                progress?.Report(new AutoTunerProgress
+                if (before.IsRunning)
                 {
-                    CurrentStep = stepNum,
-                    TotalSteps = total,
-                    StatusMessage = $"[Тест {stepNum}/{total}] {desc}…",
-                    BestScore = Math.Max(0, bestScore),
-                    BestCandidateName = bestResult?.CandidateName ?? "—"
-                });
-
-                var args = VisualStrategyBuilder.BuildArgs(
-                    enginePath, desync, split, sni, ttl, fooling, multi,
-                    useGameUdp: true, useHostlist: true, useIpSet: true);
-
-                var tempStrategy = new StrategyInfo
-                {
-                    Name = candName,
-                    Args = args,
-                    Category = "АВТОКОНСТРУКТОР",
-                    Description = desc
-                };
-
-                // Запуск пробного изолированного процесса winws
-                var stepResult = await EvaluateSingleHypothesisAsync(
-                    bypass, tempStrategy, testTargets, stepNum, total, desc, ct).ConfigureAwait(false);
-
-                if (stepResult.Score > bestScore)
-                {
-                    bestScore = stepResult.Score;
-                    bestResult = stepResult;
-                    stepResult.IsWinnerSoFar = true;
+                    progress?.Report(new AutoTunerProgress
+                    {
+                        CurrentStep = 0,
+                        TotalSteps = total,
+                        StatusMessage = "Останавливаю текущий обход для изолированного тестирования…"
+                    });
+                    await bypass.StopAsync(ct).ConfigureAwait(false);
+                    await Task.Delay(800, ct).ConfigureAwait(false);
                 }
 
-                results.Add(stepResult);
-                onStep?.Invoke(stepResult);
+                for (int i = 0; i < total; i++)
+                {
+                    ct.ThrowIfCancellationRequested();
 
-                AppLog.Info($"[SmartAutoTuner] Тест {stepNum}/{total} ({candName}): Успех {stepResult.SuccessRate:0}%, Пинг {stepResult.AvgRttMs} мс, Скоринг {stepResult.Score}/100");
-                await Task.Delay(400, ct).ConfigureAwait(false);
+                    var (desync, split, sni, ttl, fooling, multi, desc) = Hypotheses[i];
+                    var stepNum = i + 1;
+                    var candName = $"SmartHypothesis_{stepNum}_{desync}";
+
+                    progress?.Report(new AutoTunerProgress
+                    {
+                        CurrentStep = stepNum,
+                        TotalSteps = total,
+                        StatusMessage = $"[Тест {stepNum}/{total}] {desc}…",
+                        BestScore = Math.Max(0, bestScore),
+                        BestCandidateName = bestResult?.CandidateName ?? "—"
+                    });
+
+                    var args = VisualStrategyBuilder.BuildArgs(
+                        enginePath, desync, split, sni, ttl, fooling, multi,
+                        useGameUdp: true, useHostlist: true, useIpSet: true);
+
+                    var tempStrategy = new StrategyInfo
+                    {
+                        Name = candName,
+                        Args = args,
+                        Category = "АВТОКОНСТРУКТОР",
+                        Description = desc
+                    };
+
+                    // Запуск пробного изолированного процесса winws
+                    var stepResult = await EvaluateSingleHypothesisAsync(
+                        bypass, tempStrategy, testTargets, stepNum, total, desc, ct).ConfigureAwait(false);
+
+                    if (stepResult.Score > bestScore)
+                    {
+                        bestScore = stepResult.Score;
+                        bestResult = stepResult;
+                        stepResult.IsWinnerSoFar = true;
+                    }
+
+                    results.Add(stepResult);
+                    onStep?.Invoke(stepResult);
+
+                    AppLog.Info($"[SmartAutoTuner] Тест {stepNum}/{total} ({candName}): Успех {stepResult.SuccessRate:0}%, Пинг {stepResult.AvgRttMs} мс, Скоринг {stepResult.Score}/100");
+                    await Task.Delay(400, ct).ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                // Если был запущен обход, восстанавливаем исходное состояние
+                if (before.IsRunning)
+                {
+                    try
+                    {
+                        var previousStrategy = strategyStore.Find(previousStrategyName);
+                        if (previousStrategy != null)
+                        {
+                            if (restoreService)
+                            {
+                                await bypass.InstallServiceAsync(previousStrategy,
+                                    EngineService.GetGameFilterMode(enginePath), CancellationToken.None).ConfigureAwait(false);
+                            }
+                            else if (restoreStandalone)
+                            {
+                                await bypass.StartAsync(previousStrategy,
+                                    EngineService.GetGameFilterMode(enginePath), false, CancellationToken.None).ConfigureAwait(false);
+                            }
+                        }
+                    }
+                    catch { }
+                }
             }
 
             if (bestResult == null || bestScore < 20)

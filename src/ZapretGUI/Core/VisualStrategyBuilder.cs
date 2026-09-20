@@ -23,8 +23,11 @@ namespace ZapretGui.Core
         {
             var args = new List<string>();
             var listsDir = Path.Combine(enginePath ?? "", "lists");
+            var binDir = Path.Combine(enginePath ?? "", "bin");
             var listGeneral = Path.Combine(listsDir, "list-general.txt");
             var ipsetAll = Path.Combine(listsDir, "ipset-all.txt");
+            var tlsFakeGoogle = Path.Combine(binDir, "tls_clienthello_www_google_com.bin");
+            var quicFakeGoogle = Path.Combine(binDir, "quic_initial_www_google_com.bin");
 
             var udpPorts = useGameUdp ? "443,50000-65535" : "443";
             args.Add("--wf-tcp=80,443");
@@ -34,11 +37,11 @@ namespace ZapretGui.Core
             args.Add("--filter-tcp=80,443");
             if (useHostlist && File.Exists(listGeneral))
             {
-                args.Add($"--hostlist=\"{listGeneral}\"");
+                args.Add($"--hostlist={listGeneral}");
             }
             if (useIpSet && File.Exists(ipsetAll))
             {
-                args.Add($"--ipset=\"{ipsetAll}\"");
+                args.Add($"--ipset={ipsetAll}");
             }
 
             var mode = string.IsNullOrWhiteSpace(desyncMode) ? "split2" : desyncMode.Trim();
@@ -73,6 +76,11 @@ namespace ZapretGui.Core
                 args.Add("--dpi-desync-split-seqovl=1");
             }
 
+            if (File.Exists(tlsFakeGoogle) && (mode == "fake" || mode == "fakedsni"))
+            {
+                args.Add($"--dpi-desync-fake-tls={tlsFakeGoogle}");
+            }
+
             var sni = string.IsNullOrWhiteSpace(fakeSni) ? "www.google.com" : fakeSni.Trim();
             if (!string.IsNullOrWhiteSpace(sni) && sni != "none")
             {
@@ -84,10 +92,14 @@ namespace ZapretGui.Core
             args.Add("--filter-udp=443");
             if (useHostlist && File.Exists(listGeneral))
             {
-                args.Add($"--hostlist=\"{listGeneral}\"");
+                args.Add($"--hostlist={listGeneral}");
             }
             args.Add("--dpi-desync=fake");
             args.Add("--dpi-desync-repeats=6");
+            if (File.Exists(quicFakeGoogle))
+            {
+                args.Add($"--dpi-desync-fake-quic={quicFakeGoogle}");
+            }
             if (!string.IsNullOrWhiteSpace(ttl) && ttl != "auto" && int.TryParse(ttl, out var ttlUdp))
             {
                 args.Add($"--dpi-desync-ttl={ttlUdp}");
