@@ -29,9 +29,18 @@ namespace ZapretGui.ViewModels
         private bool _isPingProbing;
 
         public event Action<string>? WatchdogNotificationRequested;
+        public event Action? RequestToggleOverlay;
 
         public WatchdogService Watchdog { get; }
         public RealTimePingSnapshot? RealTimePing { get; private set; }
+        public GameDetectionService GameDetector { get; }
+        public GlobalHotkeyService Hotkeys { get; }
+        public MiniOverlayViewModel MiniOverlay { get; }
+
+        public bool IsGameRunning => GameDetector.IsGameRunning;
+        public string? ActiveGameName => GameDetector.ActiveGameName;
+        public string GameStatusBadgeText => IsGameRunning ? $"🎮 {ActiveGameName}" : "🎮 Игры: не обнаружены";
+        public string GameModeSummaryText => Settings.GameModeActive ? "Игровой режим (ВКЛ)" : "Обычный режим";
 
         public MainViewModel(AppSettings settings)
         {
@@ -49,6 +58,55 @@ namespace ZapretGui.ViewModels
             FirstLaunch = new FirstLaunchViewModel(this);
             Logs = new LogsViewModel();
             Monitoring = new MonitoringViewModel(this);
+
+            GameDetector = new GameDetectionService(settings);
+            Hotkeys = new GlobalHotkeyService(settings);
+            MiniOverlay = new MiniOverlayViewModel(this);
+
+            GameDetector.GameStatusChanged += (isRunning, gameName) =>
+            {
+                Application.Current?.Dispatcher?.Invoke(() =>
+                {
+                    Raise(nameof(IsGameRunning));
+                    Raise(nameof(ActiveGameName));
+                    Raise(nameof(GameStatusBadgeText));
+                    Home.RefreshGamingStatus();
+                    MiniOverlay.Refresh();
+
+                    if (isRunning && Settings.AutoGameModeOnLaunch && !Settings.GameModeActive)
+                    {
+                        AppLog.Info($"[GameMode] Автоматическая активация игрового режима для «{gameName}»");
+                        Settings.GameModeActive = true;
+                        SettingsStore.Save(Settings);
+                        ApplyGameFilterState();
+                        WatchdogNotificationRequested?.Invoke($"🎮 Запущена игра «{gameName}». Игровой режим активирован (UDP исключён).");
+                    }
+                });
+            };
+
+            if (settings.GameDetectionEnabled && !settings.SafeMode)
+            {
+                GameDetector.Start();
+            }
+
+            Hotkeys.ToggleBypassRequested += () => Application.Current?.Dispatcher?.Invoke(async () =>
+            {
+                await Home.ToggleBypassAsync();
+                MiniOverlay.Refresh();
+            });
+
+            Hotkeys.ToggleGameModeRequested += () => Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                ToggleGameMode();
+                WatchdogNotificationRequested?.Invoke(Settings.GameModeActive
+                    ? "🎮 Игровой режим включён"
+                    : "🎮 Игровой режим выключен");
+            });
+
+            Hotkeys.ToggleMiniOverlayRequested += () => Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                ToggleMiniOverlay();
+            });
 
             Watchdog = new WatchdogService(settings, Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended);
             Watchdog.EventLogged += msg =>
@@ -460,11 +518,44 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        public void ApplyGameFilterState()
+        {
+            if (Settings.GameModeActive)
+            {
+                EngineService.SetGameFilterMode(Settings.EnginePath, GameFilterMode.TcpOnly);
+            }
+            else
+            {
+                EngineService.SetGameFilterMode(Settings.EnginePath, Settings.UseGameFilterOnStart ? GameFilterMode.TcpAndUdp : GameFilterMode.Disabled);
+            }
+            Home.ReloadFromEngine();
+            Home.RefreshStatus();
+            Home.RefreshGamingStatus();
+            Raise(nameof(GameModeSummaryText));
+        }
+
+        public void ToggleGameMode()
+        {
+            Settings.GameModeActive = !Settings.GameModeActive;
+            SettingsStore.Save(Settings);
+            ApplyGameFilterState();
+            MiniOverlay.Refresh();
+            Home.RefreshGamingStatus();
+            Raise(nameof(GameModeSummaryText));
+        }
+
+        public void ToggleMiniOverlay()
+        {
+            RequestToggleOverlay?.Invoke();
+        }
+
         /// <summary>Вызывается при выходе: остановка обхода, если так настроено.</summary>
         public async System.Threading.Tasks.Task ShutdownAsync()
         {
             _timer.Stop();
             Monitoring.Stop();
+            GameDetector.Dispose();
+            Hotkeys.Dispose();
             if (Settings.StopBypassOnExit && Bypass.GetStatus().IsRunning)
             {
                 AppLog.Info("Останавливаю обход при выходе из приложения");

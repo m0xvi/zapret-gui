@@ -167,6 +167,20 @@ namespace ZapretGui.Core
             => Binding.DoNothing;
     }
 
+    /// <summary>bool → AccentBrush (при true) или TextMutedBrush (при false).</summary>
+    public sealed class BoolToAccentBrushConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var active = value is bool b && b;
+            var resource = active ? "AccentBrush" : "TextMutedBrush";
+            return Application.Current?.TryFindResource(resource) as Brush ?? (active ? Brushes.DodgerBlue : Brushes.Gray);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
+    }
+
     /// <summary>Цвет статуса обхода → кисть (зелёный при работе, серый при остановке).</summary>
     public sealed class BypassStateBrushConverter : IValueConverter
     {

@@ -1,0 +1,84 @@
+<Window x:Class="ZapretGui.Views.MiniOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Zapret GUI HUD" Height="86" Width="330"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        Topmost="{Binding Topmost, Mode=OneWay}"
+        Opacity="{Binding WindowOpacity, Mode=OneWay}"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown"
+        Closing="Window_Closing"
+        TextOptions.TextFormattingMode="Ideal" UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+    <Border Background="{DynamicResource CardBrush}"
+            BorderBrush="{DynamicResource AccentBrush}"
+            BorderThickness="1.5"
+            CornerRadius="14"
+            Padding="12,10"
+            Margin="6">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="12" ShadowDepth="3" Direction="270" Color="#000000" Opacity="0.45" />
+        </Border.Effect>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Кнопка Вкл/Выкл питания -->
+            <Button Grid.Column="0" Style="{StaticResource PowerButton}" Width="44" Height="44"
+                    Command="{Binding ToggleBypassCommand}"
+                    ToolTip="Включить / остановить обход Zapret"
+                    VerticalAlignment="Center" />
+
+            <!-- Инфо-блок -->
+            <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                <WrapPanel Orientation="Horizontal">
+                    <Border Style="{StaticResource Dot}"
+                            Background="{Binding BypassStateKey, Converter={StaticResource SeverityBrush}}"
+                            Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}" FontWeight="SemiBold"
+                               FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="150" />
+                </WrapPanel>
+
+                <TextBlock Text="{Binding StrategyName}" Style="{StaticResource DimText}" FontSize="11"
+                           TextTrimming="CharacterEllipsis" MaxWidth="160" Margin="0,2,0,2" />
+
+                <WrapPanel Orientation="Horizontal">
+                    <!-- RTT пинг -->
+                    <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="0,0,4,0" Padding="5,2">
+                        <TextBlock Text="{Binding PingText}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{Binding PingSeverityKey, Converter={StaticResource SeverityBrush}}" />
+                    </Border>
+                    <!-- Бейдж игры -->
+                    <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}" Padding="5,2"
+                            Visibility="{Binding IsGameRunning, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding ActiveGameName, StringFormat=🎮 {0}}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis" MaxWidth="90" />
+                    </Border>
+                </WrapPanel>
+            </StackPanel>
+
+            <!-- Кнопки управления HUD -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                <!-- Игровой режим -->
+                <Button Style="{StaticResource SmallIconButton}" Margin="0,0,4,0"
+                        Command="{Binding ToggleGameModeCommand}"
+                        ToolTip="{Binding GameModeStatusText}">
+                    <TextBlock Text="🎮" FontSize="13"
+                               Foreground="{Binding GameModeActive, Converter={StaticResource BoolToAccentBrush}}" />
+                </Button>
+                <!-- Развернуть главное окно -->
+                <Button Style="{StaticResource SmallIconButton}" Content="&#xE8A7;" Margin="0,0,4,0"
+                        Command="{Binding OpenMainWindowCommand}"
+                        ToolTip="Развернуть главное окно Zapret GUI" />
+                <!-- Скрыть виджет -->
+                <Button Style="{StaticResource SmallIconButton}" Content="&#xE711;"
+                        Command="{Binding CloseOverlayCommand}"
+                        ToolTip="Скрыть мини-виджет (доступен из трея)" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

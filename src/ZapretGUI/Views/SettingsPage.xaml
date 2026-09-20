@@ -222,6 +222,87 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Игровой опыт и сетевые твики -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ИГРОВОЙ ОПЫТ И ОНЛАЙН-ИГРЫ (UX &amp; GAMING)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включить автоматический детектор запущенных игр"
+                                      IsChecked="{Binding GameDetectionEnabled, Mode=TwoWay}"
+                                      ToolTip="Отслеживать процессы популярных игр (CS2, Dota 2, Valorant, Apex, War Thunder, Genshin и др.)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Автоматически активировать игровой режим при запуске игры"
+                                      Margin="0,10,0,0" IsChecked="{Binding AutoGameModeOnLaunch, Mode=TwoWay}"
+                                      IsEnabled="{Binding GameDetectionEnabled}"
+                                      ToolTip="При запуске игры автоматически переключать zapret на режим пропуска UDP для защиты от лагов и скачков пинга" />
+                            <Border Style="{StaticResource Divider}" />
+                            <TextBlock Style="{StaticResource BodyText}" Text="Оптимизация сетевых задержек Windows (TCP/IP Gaming Tweaks)" FontWeight="SemiBold" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding GamingOptimizationStatusText}" Margin="0,3,0,0" TextWrapping="Wrap" />
+                            <WrapPanel Margin="0,10,0,0">
+                                <Button Style="{StaticResource SecondaryButton}" Content="Применить оптимизацию для игр"
+                                        Command="{Binding ApplyGamingTweaksCommand}"
+                                        ToolTip="Отключить алгоритм Nagle (TCPNoDelay = 1), задержку ACK (TcpAckFrequency = 1) и троттлинг сети" />
+                                <Button Style="{StaticResource GhostButton}" Content="Сбросить по умолчанию" Margin="8,0,0,0"
+                                        Command="{Binding RevertGamingTweaksCommand}"
+                                        ToolTip="Восстановить стандартные параметры сетевого стека Windows" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Глобальные горячие клавиши -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ГЛОБАЛЬНЫЕ ГОРЯЧИЕ КЛАВИШИ (HOTKEYS)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включить глобальные горячие клавиши"
+                                      IsChecked="{Binding GlobalHotkeysEnabled, Mode=TwoWay}"
+                                      ToolTip="Позволяет управлять обходом из любой игры или программы" />
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="160" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource BodyText}" Text="Включение / выключение Zapret" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleBypass, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding GlobalHotkeysEnabled}" ToolTip="Например: Ctrl+Shift+Z" />
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="160" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource BodyText}" Text="Переключение игрового режима" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleGameMode, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding GlobalHotkeysEnabled}" ToolTip="Например: Ctrl+Shift+G" />
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="160" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource BodyText}" Text="Показать / скрыть HUD виджет" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleMiniOverlay, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding GlobalHotkeysEnabled}" ToolTip="Например: Ctrl+Shift+O" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Мини-виджет HUD -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="КОМПАКТНЫЙ МИНИ-ВИДЖЕТ (HUD OVERLAY)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Виджет поверх всех окон (Topmost)"
+                                      IsChecked="{Binding MiniOverlayTopmost, Mode=TwoWay}"
+                                      ToolTip="Отображать плавающий HUD поверх игр и других окон" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Прозрачность виджета (%)" />
+                            <Slider Minimum="50" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding MiniOverlayOpacity, Mode=TwoWay}" ToolTip="От 50% до 100%" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding MiniOverlayOpacity, StringFormat={}{0}%}" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Открыть / показать HUD виджет"
+                                    Margin="0,10,0,0" HorizontalAlignment="Left"
+                                    Command="{Binding OpenOverlayCommand}"
+                                    ToolTip="Показать компактный полупрозрачный оверлей с быстрым управлением" />
+                        </StackPanel>
+                    </Border>
+
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="АВТОПОДБОР СТРАТЕГИИ" />

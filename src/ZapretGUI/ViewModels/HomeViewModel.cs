@@ -42,7 +42,7 @@ namespace ZapretGui.ViewModels
 
             StartCommand = new AsyncRelayCommand(StartAsync, () => !IsRunning && HasStrategy && !IsBusy);
             StopCommand = new AsyncRelayCommand(StopAsync, () => IsRunning && !IsBusy);
-            ToggleBypassCommand = new AsyncRelayCommand(ToggleAsync, () => HasStrategy && !IsBusy);
+            ToggleBypassCommand = new AsyncRelayCommand(ToggleBypassAsync, () => HasStrategy && !IsBusy);
             ResolveLegacyCommand = new AsyncRelayCommand(ResolveLegacyFromBannerAsync, () => !IsBusy);
             InstallServiceCommand = new AsyncRelayCommand(InstallServiceAsync, () => (HasStrategy || ServiceInstalled) && !IsBusy);
             ReinstallServiceCommand = new AsyncRelayCommand(ReinstallServiceAsync, () => HasStrategy && !IsBusy);
@@ -58,11 +58,91 @@ namespace ZapretGui.ViewModels
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RestartAsAdminCommand = new RelayCommand(() => _main.RestartAsAdminCommand.Execute(null));
             ClearMessageCommand = new RelayCommand(() => Message = "");
+            ToggleGameModeCommand = new RelayCommand(() => _main.ToggleGameMode());
+            OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
+            ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
+            RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
+            RefreshGamingStatus();
         }
 
         public AppSettings Settings => _main.Settings;
         public BypassController Bypass => _main.Bypass;
         public StrategyStore Store => _main.Strategies;
+
+        public bool IsGameRunning => _main.IsGameRunning;
+        public string ActiveGameName => _main.ActiveGameName ?? "";
+        public string GameStatusBadgeText => _main.GameStatusBadgeText;
+        public bool GameModeActive => Settings.GameModeActive;
+        public string GameModeStatusText => Settings.GameModeActive
+            ? "Игровой режим ВКЛ (UDP порты исключены для минимального пинга)"
+            : "Игровой режим ВЫКЛ (обычная фильтрация)";
+
+        private string _gamingNetworkStatus = "";
+        private bool _gamingNetworkOptimized;
+        public string GamingNetworkStatusText
+        {
+            get => _gamingNetworkStatus;
+            private set => Set(ref _gamingNetworkStatus, value);
+        }
+        public bool GamingNetworkIsOptimized
+        {
+            get => _gamingNetworkOptimized;
+            private set => Set(ref _gamingNetworkOptimized, value);
+        }
+
+        public ICommand ToggleGameModeCommand { get; }
+        public ICommand OpenOverlayCommand { get; }
+        public ICommand ApplyGamingTweaksCommand { get; }
+        public ICommand RevertGamingTweaksCommand { get; }
+
+        public void RefreshGamingStatus()
+        {
+            try
+            {
+                var opt = GamingNetworkOptimizer.CheckStatus();
+                GamingNetworkStatusText = opt.Summary;
+                GamingNetworkIsOptimized = opt.IsOptimized;
+            }
+            catch
+            {
+                GamingNetworkStatusText = "Параметры сети по умолчанию";
+                GamingNetworkIsOptimized = false;
+            }
+
+            Raise(nameof(IsGameRunning));
+            Raise(nameof(ActiveGameName));
+            Raise(nameof(GameStatusBadgeText));
+            Raise(nameof(GameModeActive));
+            Raise(nameof(GameModeStatusText));
+        }
+
+        private async Task ApplyGamingTweaksAsync()
+        {
+            if (!Shell.IsAdmin())
+            {
+                ShowError("Для изменения сетевых параметров Windows требуются права администратора.");
+                return;
+            }
+
+            var (ok, msg) = await GamingNetworkOptimizer.ApplyTweaksAsync();
+            if (ok) ShowSuccess(msg);
+            else ShowError(msg);
+            RefreshGamingStatus();
+        }
+
+        private async Task RevertGamingTweaksAsync()
+        {
+            if (!Shell.IsAdmin())
+            {
+                ShowError("Для изменения сетевых параметров Windows требуются права администратора.");
+                return;
+            }
+
+            var (ok, msg) = await GamingNetworkOptimizer.RevertTweaksAsync();
+            if (ok) ShowSuccess(msg);
+            else ShowError(msg);
+            RefreshGamingStatus();
+        }
 
         public ObservableCollection<string> StrategyNames { get; } = new();
         public ObservableCollection<ConnectionCheck> ConnectionChecks { get; } = new();
@@ -542,7 +622,7 @@ namespace ZapretGui.ViewModels
             _legacyCache = null;
         }
 
-        private async Task ToggleAsync()
+        public async Task ToggleBypassAsync()
         {
             if (IsRunning) await StopAsync();
             else await StartAsync();

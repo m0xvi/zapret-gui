@@ -45,6 +45,10 @@ namespace ZapretGui.ViewModels
             ClearProviderContextCommand = new RelayCommand(ClearProviderContext);
             LookupProviderCommand = new AsyncRelayCommand(LookupProviderAsync, () => !IsProviderLookupBusy);
             RerunFirstLaunchWizardCommand = new RelayCommand(RerunFirstLaunchWizard);
+            ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
+            RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
+            OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
+            RefreshGamingOptimization();
         }
 
         public AppSettings Settings => _main.Settings;
@@ -332,6 +336,130 @@ namespace ZapretGui.ViewModels
         {
             get => _status;
             private set => Set(ref _status, value);
+        }
+
+        public bool GameDetectionEnabled
+        {
+            get => Settings.GameDetectionEnabled;
+            set
+            {
+                Settings.GameDetectionEnabled = value;
+                OnSettingChanged();
+                if (value) _main.GameDetector.Start();
+                else _main.GameDetector.Stop();
+            }
+        }
+
+        public bool AutoGameModeOnLaunch
+        {
+            get => Settings.AutoGameModeOnLaunch;
+            set { Settings.AutoGameModeOnLaunch = value; OnSettingChanged(); }
+        }
+
+        public bool GlobalHotkeysEnabled
+        {
+            get => Settings.GlobalHotkeysEnabled;
+            set { Settings.GlobalHotkeysEnabled = value; OnSettingChanged(); }
+        }
+
+        public string HotkeyToggleBypass
+        {
+            get => Settings.HotkeyToggleBypass;
+            set { Settings.HotkeyToggleBypass = value ?? "Ctrl+Shift+Z"; OnSettingChanged(); }
+        }
+
+        public string HotkeyToggleGameMode
+        {
+            get => Settings.HotkeyToggleGameMode;
+            set { Settings.HotkeyToggleGameMode = value ?? "Ctrl+Shift+G"; OnSettingChanged(); }
+        }
+
+        public string HotkeyToggleMiniOverlay
+        {
+            get => Settings.HotkeyToggleMiniOverlay;
+            set { Settings.HotkeyToggleMiniOverlay = value ?? "Ctrl+Shift+O"; OnSettingChanged(); }
+        }
+
+        public bool MiniOverlayTopmost
+        {
+            get => Settings.MiniOverlayTopmost;
+            set
+            {
+                Settings.MiniOverlayTopmost = value;
+                OnSettingChanged();
+                _main.MiniOverlay.Refresh();
+            }
+        }
+
+        public int MiniOverlayOpacity
+        {
+            get => Math.Clamp(Settings.MiniOverlayOpacity, 50, 100);
+            set
+            {
+                Settings.MiniOverlayOpacity = Math.Clamp(value, 50, 100);
+                OnSettingChanged();
+                _main.MiniOverlay.Refresh();
+                Raise(nameof(MiniOverlayOpacity));
+            }
+        }
+
+        private string _gamingOptimizationStatus = "";
+        private bool _gamingIsOptimized;
+        public string GamingOptimizationStatusText
+        {
+            get => _gamingOptimizationStatus;
+            private set => Set(ref _gamingOptimizationStatus, value);
+        }
+
+        public bool GamingIsOptimized
+        {
+            get => _gamingIsOptimized;
+            private set => Set(ref _gamingIsOptimized, value);
+        }
+
+        public ICommand ApplyGamingTweaksCommand { get; }
+        public ICommand RevertGamingTweaksCommand { get; }
+        public ICommand OpenOverlayCommand { get; }
+
+        public void RefreshGamingOptimization()
+        {
+            try
+            {
+                var opt = GamingNetworkOptimizer.CheckStatus();
+                GamingOptimizationStatusText = opt.Summary;
+                GamingIsOptimized = opt.IsOptimized;
+            }
+            catch
+            {
+                GamingOptimizationStatusText = "Параметры сети по умолчанию";
+                GamingIsOptimized = false;
+            }
+        }
+
+        private async Task ApplyGamingTweaksAsync()
+        {
+            if (!Shell.IsAdmin())
+            {
+                Status = "Для изменения сетевых параметров Windows требуются права администратора";
+                return;
+            }
+
+            var (ok, msg) = await GamingNetworkOptimizer.ApplyTweaksAsync();
+            Status = msg;
+            RefreshGamingOptimization();
+        }
+
+        private async Task RevertGamingTweaksAsync()
+        {
+            if (!Shell.IsAdmin())
+            {
+                Status = "Для изменения сетевых параметров Windows требуются права администратора";
+                return;
+            }
+
+            var (ok, msg) = await GamingNetworkOptimizer.RevertTweaksAsync();
+            Status = msg;
+            RefreshGamingOptimization();
         }
 
         public string LastBackupText { get; }

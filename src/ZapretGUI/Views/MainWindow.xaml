@@ -80,6 +80,17 @@
                                    Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
                     </WrapPanel>
                 </Button>
+                <!-- Бейдж активной игры -->
+                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
+                        Command="{Binding Home.ToggleGameModeCommand}"
+                        Visibility="{Binding IsGameRunning, Converter={StaticResource BoolToVis}}"
+                        ToolTip="Обнаружен игровой процесс. Нажмите, чтобы переключить игровой режим (пропуск UDP).">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Dot}" Background="{DynamicResource AccentBrush}" />
+                        <TextBlock Text="{Binding GameStatusBadgeText}" Margin="6,0,0,0" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                    </WrapPanel>
+                </Button>
                 <Button Style="{StaticResource SecondaryButton}" Padding="8,3" Margin="6,0,0,0"
                         Command="{Binding NavigateActiveCheckCommand}"
                         Visibility="{Binding IsAnyCheckRunning, Converter={StaticResource BoolToVis}}"
@@ -104,6 +115,9 @@
 
             <WrapPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <Button Style="{StaticResource IconButton}" Content="&#xE737;"
+                        Command="{Binding Home.OpenOverlayCommand}" ToolTip="Открыть компактный мини-виджет (HUD)"
+                        AutomationProperties.Name="Открыть HUD" />
                 <Button Style="{StaticResource IconButton}" Content="&#xE793;"
                         Command="{Binding ToggleThemeCommand}" ToolTip="Переключить тему (системная → тёмная → светлая)"
                         AutomationProperties.Name="Переключить тему" />

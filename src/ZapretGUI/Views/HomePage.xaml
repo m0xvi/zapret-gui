@@ -135,6 +135,50 @@
                         </Grid>
                     </Border>
 
+                    <!-- Игровой опыт и онлайн-игры -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ИГРОВОЙ ОПЫТ (UX &amp; GAMING)" />
+                                    <WrapPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                        <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="0,0,8,0">
+                                            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Border Style="{StaticResource Dot}"
+                                                        Background="{Binding IsGameRunning, Converter={StaticResource SeverityBrush}}" />
+                                                <TextBlock Text="{Binding GameStatusBadgeText}" Style="{StaticResource BodyText}" FontSize="12" Margin="6,0,0,0" FontWeight="SemiBold" />
+                                            </WrapPanel>
+                                        </Border>
+                                        <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}">
+                                            <TextBlock Text="{Binding GameModeStatusText}" Style="{StaticResource DimText}" FontSize="12" />
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding GamingNetworkStatusText}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <Button Style="{StaticResource SecondaryButton}" Margin="0,0,8,0"
+                                            Command="{Binding ToggleGameModeCommand}"
+                                            ToolTip="Включить или выключить игровой режим (пропуск игрового UDP для минимального инпут-лага)">
+                                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="🎮 " FontSize="12" />
+                                            <TextBlock Text="Игровой режим" FontWeight="SemiBold" />
+                                        </WrapPanel>
+                                    </Button>
+                                    <Button Style="{StaticResource GhostButton}" Content="🗗 HUD Виджет" Margin="0,0,8,0"
+                                            Command="{Binding OpenOverlayCommand}"
+                                            ToolTip="Открыть плавающий компактный мини-виджет поверх экрана" />
+                                    <Button Style="{StaticResource GhostButton}" Content="Твики сети (TCP/IP)"
+                                            Command="{Binding ApplyGamingTweaksCommand}"
+                                            ToolTip="Отключить алгоритм Nagle (TCPNoDelay) и задержку ACK (TcpAckFrequency) для активного адаптера" />
+                                </WrapPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Фильтры -->
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>

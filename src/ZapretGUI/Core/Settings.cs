@@ -129,6 +129,42 @@ namespace ZapretGui.Core
         /// <summary>Ресурсы пользователя для фонового контроля.</summary>
         public List<MonitorTarget> MonitorTargets { get; set; } = new();
 
+        /// <summary>Включить автоматический мониторинг запущенных игр.</summary>
+        public bool GameDetectionEnabled { get; set; } = true;
+
+        /// <summary>Автоматически включать режим оптимизации для игр при обнаружении игры.</summary>
+        public bool AutoGameModeOnLaunch { get; set; } = true;
+
+        /// <summary>Игровой режим активен (облегчённая фильтрация и пропуск UDP).</summary>
+        public bool GameModeActive { get; set; }
+
+        /// <summary>Включить глобальные горячие клавиши Windows.</summary>
+        public bool GlobalHotkeysEnabled { get; set; } = true;
+
+        /// <summary>Горячая клавиша переключения обхода (по умолчанию Ctrl+Shift+Z).</summary>
+        public string HotkeyToggleBypass { get; set; } = "Ctrl+Shift+Z";
+
+        /// <summary>Горячая клавиша переключения игрового режима (по умолчанию Ctrl+Shift+G).</summary>
+        public string HotkeyToggleGameMode { get; set; } = "Ctrl+Shift+G";
+
+        /// <summary>Горячая клавиша открытия мини-виджета (по умолчанию Ctrl+Shift+O).</summary>
+        public string HotkeyToggleMiniOverlay { get; set; } = "Ctrl+Shift+O";
+
+        /// <summary>Координата X мини-виджета на экране (-1 = по умолчанию).</summary>
+        public double MiniOverlayLeft { get; set; } = -1;
+
+        /// <summary>Координата Y мини-виджета на экране (-1 = по умолчанию).</summary>
+        public double MiniOverlayTop { get; set; } = -1;
+
+        /// <summary>Прозрачность мини-виджета (50–100).</summary>
+        public int MiniOverlayOpacity { get; set; } = 95;
+
+        /// <summary>Мини-виджет поверх всех окон.</summary>
+        public bool MiniOverlayTopmost { get; set; } = true;
+
+        /// <summary>Флаг отображения мини-виджета вместо или рядом с главным окном.</summary>
+        public bool MiniOverlayEnabled { get; set; }
+
         /// <summary>Необязательный контекст провайдера для будущего подбора стратегий.</summary>
         public ProviderContext ProviderContext { get; set; } = new();
     }
