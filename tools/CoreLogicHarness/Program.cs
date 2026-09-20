@@ -47,7 +47,8 @@ namespace ZapretGui.CoreLogicHarness
                 ("Score кандидата приоритизирует эмпирические результаты проверок", EmpiricalCandidateEvaluationScoreOrdering),
                 ("Диагностический отчёт сериализуется вместе с журналом восстановления", DiagnosticsReportRoundTrips),
                 ("Списки доменов автоматически наполняются эталонными записями", DomainListsAutoSeedingWorks),
-                ("Менеджер фейковых бинарных нагрузок и Voice RTC эндпоинты работают", VoiceRtcProberAndFakeBinManagerWork)
+                ("Менеджер фейковых бинарных нагрузок и Voice RTC эндпоинты работают", VoiceRtcProberAndFakeBinManagerWork),
+                ("Очистка кэша Discord и сетевой стек работают корректно", DiscordNetworkCleanerWorks)
             };
 
             foreach (var check in checks)
@@ -969,6 +970,32 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 var payloads = FakeBinManager.GetAvailablePayloads(tempDir);
                 Assert(payloads.Count >= 1, "Эталонный bin фейк не создан");
                 Assert(payloads.Any(p => p.FileName.Contains("quic")), "QUIC фейк не распознан");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true);
+            }
+        }
+
+        private static void DiscordNetworkCleanerWorks()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "ZapretGUI-discord-cache-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var discordDir = Path.Combine(tempDir, "discord");
+                var cacheDir = Path.Combine(discordDir, "Cache");
+                var gpuDir = Path.Combine(discordDir, "GPUCache");
+                Directory.CreateDirectory(cacheDir);
+                Directory.CreateDirectory(gpuDir);
+
+                File.WriteAllText(Path.Combine(cacheDir, "data_0"), new string('A', 5000));
+                File.WriteAllText(Path.Combine(gpuDir, "shader_0"), new string('B', 3000));
+
+                var (bytes, files, editions) = DiscordNetworkCleaner.GetDetailedCacheStatus(tempDir);
+                Assert(bytes == 8000, "Размер кэша Discord подсчитан неверно");
+                Assert(files == 2, "Число файлов кэша Discord подсчитано неверно");
+                Assert(editions.Count == 1 && editions[0].EditionName.Contains("Stable"), "Редакция Discord не распознана");
+                Assert(editions[0].FormattedSize.Contains("КБ"), "Форматирование размера кэша не работает");
             }
             finally
             {

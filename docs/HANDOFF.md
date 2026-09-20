@@ -1121,4 +1121,11 @@ CI и что требует Windows runtime.
    - В `DiagnosticsPage` добавлена вкладка **«🎙️ Discord Voice (RTC)»** с живым мониторингом голосовых серверов, кнопкой проверки и смарт-действием **«Применить фикс для Discord Voice»**.
    - Улучшена функция `ClearDiscordCache`: теперь очищает кэш всех редакций Discord (Stable, Canary, PTB, Dev), удаляет GPU/Dawn/Blob кэши и сбрасывает DNS-кэш Windows.
 
+12. **Очистка кэша Discord и сетевого стека в 1 клик (v1.4.4 Update · Issues #10114, PR #16169, #15962):**
+   - Создан комплексный модуль `DiscordNetworkCleaner`, выполняющий остановку заблокированных процессов Discord, сканирование и удаление кэшей всех редакций (Stable, Canary, PTB, Dev: `Cache`, `GPUCache`, `DawnCache`, `Code Cache`, `Session Storage`, `IndexedDB`, `Network`, WebRTC логи) с расчётом освобождённого места в МБ.
+   - Автоматический сброс сетевого стека Windows: сброс кэша DNS (`ipconfig /flushdns`), очистка ARP-таблицы (`arp -d *`), NetBIOS (`nbtstat -R`), системного прокси WinHTTP и активация TCP Timestamps / Auto-Tuning.
+   - В `DiagnosticsPage` добавлена карточка «⚡ Очистка кэша Discord и сетевого стека в 1 клик» с опцией автоматического перезапуска Discord, глубокого сброса сетевого стека и подробным отчётом об освобождённом месте.
+   - На главной странице (`HomePage`) добавлен быстрый переход к фиксу Discord Voice RTC.
+
+
 ```

@@ -62,6 +62,22 @@ namespace ZapretGui.ViewModels
             OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
             ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
+            OpenDiscordVoiceFixCommand = new RelayCommand(() =>
+            {
+                _main.Navigate("diagnostics");
+                _main.DiagnosticsPage.SelectedSubTab = 5;
+            });
+            CleanDiscordAndNetworkCommand = new AsyncRelayCommand(async () =>
+            {
+                var summary = await DiscordNetworkCleaner.CleanAsync(new DiscordCleanOptions
+                {
+                    CloseDiscordProcesses = true,
+                    ResetNetworkStack = true
+                }).ConfigureAwait(true);
+
+                if (summary.Ok) ShowSuccess($"✅ {summary.Message}");
+                else ShowError(summary.Message);
+            });
             RefreshGamingStatus();
         }
 
@@ -94,6 +110,8 @@ namespace ZapretGui.ViewModels
         public ICommand OpenOverlayCommand { get; }
         public ICommand ApplyGamingTweaksCommand { get; }
         public ICommand RevertGamingTweaksCommand { get; }
+        public ICommand OpenDiscordVoiceFixCommand { get; }
+        public ICommand CleanDiscordAndNetworkCommand { get; }
 
         public void RefreshGamingStatus()
         {

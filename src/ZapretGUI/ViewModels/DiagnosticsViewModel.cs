@@ -71,6 +71,10 @@ namespace ZapretGui.ViewModels
             SelectVoiceRtcTabCommand = new RelayCommand(() => SelectedSubTab = 5);
             RunVoiceRtcAuditCommand = new AsyncRelayCommand(RunVoiceRtcAuditAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
             OptimizeDiscordVoiceCommand = new AsyncRelayCommand(OptimizeDiscordVoiceAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
+            CleanDiscordAndNetworkCommand = new AsyncRelayCommand(() => CleanDiscordAndNetworkAsync(false), () => !IsCleaningDiscord && !IsRunning);
+            CleanAndRestartDiscordCommand = new AsyncRelayCommand(() => CleanDiscordAndNetworkAsync(true), () => !IsCleaningDiscord && !IsRunning);
+            DeepNetworkResetCommand = new AsyncRelayCommand(DeepNetworkResetAsync, () => !IsCleaningDiscord && !IsRunning);
+            RefreshDiscordCacheStatusCommand = new RelayCommand(RefreshDiscordCacheStatus);
             ExportReportCommand = new RelayCommand(ExportReport,
                 () => HasResults || DpiResults.Count > 0 ||
                      DiagnosticsHistoryStore.LoadLastDiagnostics() != null ||
@@ -129,6 +133,11 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsSystemTabSelected));
                     Raise(nameof(IsResultsTabSelected));
                     Raise(nameof(IsVoiceRtcTabSelected));
+
+                    if (_selectedSubTab == 3 || _selectedSubTab == 5)
+                    {
+                        RefreshDiscordCacheStatus();
+                    }
                 }
             }
         }
@@ -228,6 +237,58 @@ namespace ZapretGui.ViewModels
             get => _voiceRtcReport;
             private set => Set(ref _voiceRtcReport, value);
         }
+
+        private bool _isCleaningDiscord;
+        private string _discordCleanStatusText = "Кэш не очищался в текущей сессии";
+        private string _discordCacheStatusText = "Определение размера кэша Discord…";
+        private bool _restartDiscordAfterClean;
+        private DiscordCleanSummary? _lastDiscordCleanSummary;
+
+        public bool IsCleaningDiscord
+        {
+            get => _isCleaningDiscord;
+            private set
+            {
+                if (Set(ref _isCleaningDiscord, value))
+                {
+                    (CleanDiscordAndNetworkCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (CleanAndRestartDiscordCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (DeepNetworkResetCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string DiscordCleanStatusText
+        {
+            get => _discordCleanStatusText;
+            private set => Set(ref _discordCleanStatusText, value);
+        }
+
+        public string DiscordCacheStatusText
+        {
+            get => _discordCacheStatusText;
+            private set => Set(ref _discordCacheStatusText, value);
+        }
+
+        public bool RestartDiscordAfterClean
+        {
+            get => _restartDiscordAfterClean;
+            set => Set(ref _restartDiscordAfterClean, value);
+        }
+
+        public DiscordCleanSummary? LastDiscordCleanSummary
+        {
+            get => _lastDiscordCleanSummary;
+            private set
+            {
+                if (Set(ref _lastDiscordCleanSummary, value))
+                {
+                    Raise(nameof(HasDiscordCleanSummary));
+                }
+            }
+        }
+
+        public bool HasDiscordCleanSummary => _lastDiscordCleanSummary != null;
 
         public MonitoringViewModel Monitoring => _main.Monitoring;
         public DeepCheckViewModel DeepCheck => _main.DeepCheck;
@@ -452,6 +513,10 @@ namespace ZapretGui.ViewModels
         public ICommand SelectVoiceRtcTabCommand { get; }
         public ICommand RunVoiceRtcAuditCommand { get; }
         public ICommand OptimizeDiscordVoiceCommand { get; }
+        public ICommand CleanDiscordAndNetworkCommand { get; }
+        public ICommand CleanAndRestartDiscordCommand { get; }
+        public ICommand DeepNetworkResetCommand { get; }
+        public ICommand RefreshDiscordCacheStatusCommand { get; }
         public ICommand FixItemCommand { get; }
         public ICommand ClearDiscordCacheCommand { get; }
         public ICommand ResetNetworkCommand { get; }
@@ -947,29 +1012,109 @@ namespace ZapretGui.ViewModels
             return EngineService.ApplyHosts(check.TempFile);
         }
 
-        private void ClearDiscordCache()
+        public async Task CleanDiscordAndNetworkAsync(bool restartDiscord = false)
+        {
+            if (IsCleaningDiscord) return;
+
+            IsCleaningDiscord = true;
+            DiscordCleanStatusText = "Подготовка к очистке кэша Discord и сбросу сети…";
+            try
+            {
+                var progress = new Progress<string>(s => DiscordCleanStatusText = s);
+                var summary = await DiscordNetworkCleaner.CleanAsync(new DiscordCleanOptions
+                {
+                    CloseDiscordProcesses = true,
+                    RestartDiscordAfterClean = restartDiscord || RestartDiscordAfterClean,
+                    ResetNetworkStack = true
+                }, progress).ConfigureAwait(true);
+
+                LastDiscordCleanSummary = summary;
+                RefreshDiscordCacheStatus();
+
+                DiscordCleanStatusText = summary.Message;
+                SetMessage(summary.Message, summary.Ok ? "Success" : "Warning");
+                AppLog.Info($"[1-Клик Очистка Discord]: {summary.Message}");
+                _main.Home.ShowSuccess($"✅ {summary.Message}");
+            }
+            catch (Exception ex)
+            {
+                DiscordCleanStatusText = "Ошибка очистки: " + ex.Message;
+                SetMessage("Ошибка очистки кэша: " + ex.Message, "Danger");
+                AppLog.Error("Ошибка очистки кэша Discord", ex);
+            }
+            finally
+            {
+                IsCleaningDiscord = false;
+            }
+        }
+
+        public async Task DeepNetworkResetAsync()
         {
             var confirm = System.Windows.MessageBox.Show(
-                "Будут удалены локальные файлы кэша Discord. Сам Discord лучше закрыть заранее. Продолжить?",
-                "Очистка кэша Discord", System.Windows.MessageBoxButton.YesNo,
-                System.Windows.MessageBoxImage.Question);
+                "Будет выполнен глубокий сброс сетевого стека Windows:\n\n" +
+                "• netsh winsock reset (сброс каталога Winsock)\n" +
+                "• netsh int ip reset all (сброс стека TCP/IP)\n" +
+                "• netsh winhttp reset proxy (сброс прокси WinHTTP)\n" +
+                "• ipconfig /flushdns (сброс кэша DNS)\n" +
+                "• arp -d * (очистка ARP-таблицы)\n" +
+                "• nbtstat -R (сброс NetBIOS кэша)\n" +
+                "• netsh interface tcp set global timestamps=enabled\n\n" +
+                "После выполнения потребуется перезагрузка компьютера. Продолжить?",
+                "Глубокий сброс сетевого стека", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+
             if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
-            var (ok, message) = EngineService.ClearDiscordCache();
-            SetMessage(message, ok ? "Success" : "Warning");
+            IsCleaningDiscord = true;
+            DiscordCleanStatusText = "Выполняется глубокий сброс сетевого стека Windows…";
+            try
+            {
+                var progress = new Progress<string>(s => DiscordCleanStatusText = s);
+                var report = await DiscordNetworkCleaner.DeepNetworkStackResetAsync(progress).ConfigureAwait(true);
+                DiscordCleanStatusText = "Сброс сети завершён. Рекомендуется перезагрузить ПК.";
+                SetMessage(string.Join("\n", report), "Warning");
+                AppLog.Info("[Deep Network Reset]:\n" + string.Join("\n", report));
+            }
+            catch (Exception ex)
+            {
+                DiscordCleanStatusText = "Ошибка сброса сети: " + ex.Message;
+                SetMessage("Ошибка сброса сети: " + ex.Message, "Danger");
+            }
+            finally
+            {
+                IsCleaningDiscord = false;
+            }
+        }
+
+        public void RefreshDiscordCacheStatus()
+        {
+            try
+            {
+                var (totalBytes, totalFiles, editions) = DiscordNetworkCleaner.GetDetailedCacheStatus();
+                if (editions.Count == 0 || totalFiles == 0)
+                {
+                    DiscordCacheStatusText = "Кэш Discord чист (0 файлов)";
+                }
+                else
+                {
+                    var editionNames = string.Join(", ", editions.Select(e => e.EditionName));
+                    DiscordCacheStatusText = $"Кэш Discord: {DiscordCacheDirectoryInfo.FormatBytes(totalBytes)} ({totalFiles} файлов) · {editionNames}";
+                }
+            }
+            catch
+            {
+                DiscordCacheStatusText = "Размер кэша неизвестен";
+            }
+        }
+
+        private void ClearDiscordCache()
+        {
+            _ = CleanDiscordAndNetworkAsync(false);
         }
 
         private void ResetNetwork()
         {
-            var confirm = System.Windows.MessageBox.Show(
-                "Будут выполнены команды:\n\nnetsh winsock reset\nnetsh int ip reset all\nnetsh winhttp reset proxy\nipconfig /flushdns\n\n" +
-                "После этого потребуется перезагрузка. Продолжить?",
-                "Сброс сетевых настроек", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
-
-            if (confirm != System.Windows.MessageBoxResult.Yes) return;
-
-            var report = DiagnosticsService.ResetNetwork();
-            SetMessage(string.Join(" · ", report), "Warning");
+            _ = DeepNetworkResetAsync();
         }
 
         private async Task RemoveServicesAsync()

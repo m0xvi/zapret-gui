@@ -17,10 +17,13 @@
                     <TextBlock Style="{StaticResource MutedText}"
                                Text="Запуск обхода, служба Windows, фильтры и состояние движка" />
                 </StackPanel>
-                <WrapPanel Grid.Column="1" MaxWidth="270" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <WrapPanel Grid.Column="1" MaxWidth="420" HorizontalAlignment="Right" VerticalAlignment="Top">
                     <Button Style="{StaticResource SecondaryButton}" Content="Стратегии"
                             Command="{Binding OpenStrategiesCommand}"
                             ToolTip="Список стратегий обхода из .bat файлов движка: выбор, описание, запуск" />
+                    <Button Style="{StaticResource GhostButton}" Content="🎙️ Voice RTC" Margin="8,0,0,0"
+                            Command="{Binding OpenDiscordVoiceFixCommand}"
+                            ToolTip="Диагностика голосовых серверов Discord, очистка кэша и сброс сети в 1 клик" />
                     <Button Style="{StaticResource GhostButton}" Content="Диагностика" Margin="8,0,0,0"
                             Command="{Binding OpenDiagnosticsCommand}"
                             ToolTip="Проверка типичных проблем: права, службы, VPN, прокси, конфликты — с автоисправлением" />

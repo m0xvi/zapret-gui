@@ -341,11 +341,76 @@
                                 <Button Style="{StaticResource SecondaryButton}" Content="Применить фикс для Discord Voice" Margin="8,0,0,0"
                                         Command="{Binding OptimizeDiscordVoiceCommand}"
                                         ToolTip="Активировать проверенную стратегию для UDP 50000-65535 и очистить кэш Discord" />
-                                <Button Style="{StaticResource GhostButton}" Content="Очистить кэш Discord" Margin="8,0,0,0"
-                                        Command="{Binding ClearDiscordCacheCommand}"
-                                        ToolTip="Очистить кэш всех версий Discord (Stable, Canary, PTB, Dev) и сбросить DNS" />
                             </WrapPanel>
                         </Grid>
+                    </Border>
+
+                    <!-- Панель: Очистка кэша Discord и сетевого стека в 1 клик -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="⚡ ОЧИСТКА КЭША DISCORD И СЕТЕВОГО СТЕКА (1 КЛИК)" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding DiscordCacheStatusText}" Margin="0,2,0,0" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Обновить размер"
+                                        Command="{Binding RefreshDiscordCacheStatusCommand}"
+                                        ToolTip="Пересчитать размер кэша всех установленных версий Discord" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,8,0,0" TextWrapping="Wrap"
+                                       Text="Закрывает процессы Discord, удаляет медиа/RTC-кэш, шейдеры GPU, сбрасывает DNS-кэш, ARP-таблицу шлюзов и включает TCP Timestamps для WinDivert. Устраняет зависания «Подключение к RTC» и «Маршрут не найден»." />
+
+                            <WrapPanel Margin="0,12,0,0">
+                                <Button Style="{StaticResource PrimaryButton}" Content="⚡ Очистить кэш и сбросить сеть (1 клик)"
+                                        Command="{Binding CleanDiscordAndNetworkCommand}"
+                                        ToolTip="Закрыть Discord, очистить кэш всех редакций, сбросить DNS/ARP и включить TCP Timestamps" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="🔄 Очистить и перезапустить Discord" Margin="8,0,0,0"
+                                        Command="{Binding CleanAndRestartDiscordCommand}"
+                                        ToolTip="Выполнить очистку кэша и сети, а затем автоматически запустить Discord" />
+                                <Button Style="{StaticResource DangerButton}" Content="🧹 Глубокий сброс сетевого стека" Margin="8,0,0,0"
+                                        Command="{Binding DeepNetworkResetCommand}"
+                                        ToolTip="Полный сброс Winsock, TCP/IP стека, WinHTTP прокси, DNS и ARP (потребуется перезагрузка)" />
+                            </WrapPanel>
+
+                            <!-- Прогресс выполнения очистки -->
+                            <Border CornerRadius="8" Padding="12,10" Margin="0,10,0,0"
+                                    Background="{DynamicResource ElevatedBrush}"
+                                    Visibility="{Binding IsCleaningDiscord, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding DiscordCleanStatusText}" FontWeight="SemiBold" />
+                                    <ProgressBar Style="{StaticResource ThinProgress}" IsIndeterminate="True" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Отчёт о последней очистке -->
+                            <Border CornerRadius="8" Padding="12,10" Margin="0,10,0,0"
+                                    Background="{DynamicResource SuccessSoftBrush}"
+                                    Visibility="{Binding HasDiscordCleanSummary, Converter={StaticResource BoolToVis}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding LastDiscordCleanSummary.Message}" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextWrapping="Wrap" />
+                                        <WrapPanel Margin="0,4,0,0">
+                                            <TextBlock Style="{StaticResource DimText}" Text="Освобождено: " />
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastDiscordCleanSummary.FreedBytesText}" FontWeight="Bold" Margin="0,0,12,0" />
+                                            <TextBlock Style="{StaticResource DimText}" Text="Удалено файлов: " />
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastDiscordCleanSummary.DeletedFiles}" FontWeight="Bold" Margin="0,0,12,0" />
+                                            <TextBlock Style="{StaticResource DimText}" Text="Закрыто процессов: " />
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastDiscordCleanSummary.TerminatedProcesses}" FontWeight="Bold" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding LastDiscordCleanSummary.CleanedAtText}" VerticalAlignment="Top" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
                     </Border>
 
                     <!-- Статус и вердикт Voice RTC -->
@@ -643,10 +708,10 @@
                             <Button Style="{StaticResource SecondaryButton}" Content="Включить TCP timestamps" Margin="0,8,0,0"
                                     Command="{Binding FixTimestampsCommand}"
                                     ToolTip="Выполнить netsh interface tcp set global timestamps=enabled" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="Очистить кэш Discord" Margin="0,8,0,0"
-                                    Command="{Binding ClearDiscordCacheCommand}"
-                                    ToolTip="Удалить файлы кэша Discord (сам Discord нужно закрыть)" />
-                            <Button Style="{StaticResource DangerButton}" Content="Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
+                            <Button Style="{StaticResource SecondaryButton}" Content="⚡ Очистить кэш Discord и сбросить сеть (1 клик)" Margin="0,8,0,0"
+                                    Command="{Binding CleanDiscordAndNetworkCommand}"
+                                    ToolTip="Закрыть Discord, удалить кэш всех версий, сбросить DNS/ARP и включить TCP Timestamps" />
+                            <Button Style="{StaticResource DangerButton}" Content="🧹 Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
                                     Command="{Binding ResetNetworkCommand}"
                                     ToolTip="netsh winsock reset, netsh int ip reset all, netsh winhttp reset proxy, ipconfig /flushdns" />
                         </StackPanel>
