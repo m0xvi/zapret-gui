@@ -908,7 +908,6 @@ namespace ZapretGui.ViewModels
             TargetEndpoints.Clear();
             foreach (var target in Settings.MonitorTargets) TargetEndpoints.Add(target);
         }
-        }
 
         public void RefreshTheme()
         {
