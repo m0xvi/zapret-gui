@@ -233,6 +233,8 @@ namespace ZapretGui.Core
             var winDivert = WinServices.Query(WinServices.WinDivertService) != ServiceState.NotInstalled ||
                             WinServices.Query(WinServices.WinDivert14Service) != ServiceState.NotInstalled;
 
+            var timestamps = WinServices.GetTcpTimestampsState().Enabled;
+
             return new ProviderTelemetryDump
             {
                 AppVersion = typeof(ProviderTelemetryExporter).Assembly.GetName().Version?.ToString(3) ?? "1.3.8",
@@ -265,7 +267,7 @@ namespace ZapretGui.Core
                     WinDivertInstalled = winDivert,
                     ZapretServiceInstalled = status.ServiceState != ServiceState.NotInstalled,
                     ZapretServiceStatus = status.ServiceState.ToString(),
-                    TcpTimestampsEnabled = WinServices.AreTcpTimestampsEnabled(),
+                    TcpTimestampsEnabled = timestamps,
                     DnsServers = dnsList
                 },
                 DomainLists = new DomainListsTelemetry
