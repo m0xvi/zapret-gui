@@ -262,7 +262,9 @@ namespace ZapretGui.Core
                 using var response = await http.GetAsync(target.Url,
                     System.Net.Http.HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
                 var status = (int)response.StatusCode;
-                var ok = status >= 200 && status < 400;
+                // Любой HTTP-код ответа (< 500) подтверждает, что TLS-рукопожатие и TCP-соединение
+                // успешно прошли сквозь ТСПУ и сервер ответил (включая 404/400/426/204 на служебные пути).
+                var ok = status > 0 && status < 500;
                 return new ResourceProbeResult
                 {
                     Target = target,

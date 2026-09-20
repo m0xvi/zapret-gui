@@ -30,11 +30,11 @@ namespace ZapretGui.Core
                 // Набор шире прежних трёх ресурсов и ближе к standard mode
                 // из Flowseal test zapret.ps1: несколько независимых CDN/доменов.
                 MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"),
-                MonitorTarget.CreateBuiltIn("Discord CDN", "https://cdn.discordapp.com"),
-                MonitorTarget.CreateBuiltIn("Discord Gateway", "https://gateway.discord.gg"),
+                MonitorTarget.CreateBuiltIn("Discord CDN", "https://cdn.discordapp.com/favicon.ico"),
+                MonitorTarget.CreateBuiltIn("Discord Gateway", "https://gateway.discord.gg/"),
                 MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"),
-                MonitorTarget.CreateBuiltIn("YouTube image", "https://i.ytimg.com"),
-                MonitorTarget.CreateBuiltIn("Google", "https://www.google.com"),
+                MonitorTarget.CreateBuiltIn("YouTube image", "https://i.ytimg.com/generate_204"),
+                MonitorTarget.CreateBuiltIn("Google", "https://www.google.com/generate_204"),
                 MonitorTarget.CreateBuiltIn("Cloudflare", "https://www.cloudflare.com"),
                 MonitorTarget.CreateBuiltIn("GitHub (обновления)", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
             };
