@@ -19,13 +19,12 @@ namespace ZapretGui.Core
             bool useMultisplit,
             bool useGameUdp,
             bool useHostlist,
-            bool useIpSet)
+            bool useIpSet,
+            int repeats = 0)
         {
             var args = new List<string>();
             var listsDir = Path.Combine(enginePath ?? "", "lists");
             var binDir = Path.Combine(enginePath ?? "", "bin");
-            var listGeneral = Path.Combine(listsDir, "list-general.txt");
-            var listGeneralUser = Path.Combine(listsDir, "list-general-user.txt");
             var ipsetAll = Path.Combine(listsDir, "ipset-all.txt");
             var ipsetDiscord = Path.Combine(listsDir, "ipset-discord.txt");
             var tlsFakeGoogle = Path.Combine(binDir, "tls_clienthello_www_google_com.bin");
@@ -37,13 +36,27 @@ namespace ZapretGui.Core
 
             // Блок 1: TCP 80,443 (HTTP / HTTPS / Discord Gateway / YouTube Web)
             args.Add("--filter-tcp=80,443");
-            if (useHostlist && File.Exists(listGeneral))
+            if (useHostlist)
             {
-                args.Add($"--hostlist={listGeneral}");
-            }
-            if (useHostlist && File.Exists(listGeneralUser))
-            {
-                args.Add($"--hostlist-domains={listGeneralUser}");
+                var builtInLists = new[] { "list-general.txt", "list-youtube.txt", "list-discord.txt" };
+                foreach (var listName in builtInLists)
+                {
+                    var fullPath = Path.Combine(listsDir, listName);
+                    if (File.Exists(fullPath))
+                    {
+                        args.Add($"--hostlist={fullPath}");
+                    }
+                }
+
+                var userLists = new[] { "list-general-user.txt", "list-youtube-user.txt", "list-discord-user.txt" };
+                foreach (var listName in userLists)
+                {
+                    var fullPath = Path.Combine(listsDir, listName);
+                    if (File.Exists(fullPath))
+                    {
+                        args.Add($"--hostlist-domains={fullPath}");
+                    }
+                }
             }
 
             var mode = string.IsNullOrWhiteSpace(desyncMode) ? "fake,split2" : desyncMode.Trim();
@@ -53,7 +66,7 @@ namespace ZapretGui.Core
             }
 
             var pos = string.IsNullOrWhiteSpace(splitPos) ? "none" : splitPos.Trim();
-            if (pos != "none" && (mode.Contains("split") || mode.Contains("disorder")))
+            if (pos != "none" && (mode.Contains("split") || mode.Contains("disorder") || mode.Contains("fake")))
             {
                 args.Add($"--dpi-desync-split-pos={pos}");
             }
@@ -62,6 +75,11 @@ namespace ZapretGui.Core
             if (fool != "none")
             {
                 args.Add($"--dpi-desync-fooling={fool}");
+            }
+
+            if (repeats > 0)
+            {
+                args.Add($"--dpi-desync-repeats={repeats}");
             }
 
             if (!string.IsNullOrWhiteSpace(ttl) && ttl != "auto" && int.TryParse(ttl, out var ttlVal))
@@ -90,18 +108,34 @@ namespace ZapretGui.Core
                 {
                     args.Add($"--dpi-desync-fake-tls-mod=sni={sni}");
                 }
+
+                args.Add("--ip-id=zero");
             }
 
             // Блок 2: UDP 443 (QUIC / YouTube)
             args.Add("--new");
             args.Add("--filter-udp=443");
-            if (useHostlist && File.Exists(listGeneral))
+            if (useHostlist)
             {
-                args.Add($"--hostlist={listGeneral}");
-            }
-            if (useHostlist && File.Exists(listGeneralUser))
-            {
-                args.Add($"--hostlist-domains={listGeneralUser}");
+                var builtInLists = new[] { "list-general.txt", "list-youtube.txt", "list-discord.txt" };
+                foreach (var listName in builtInLists)
+                {
+                    var fullPath = Path.Combine(listsDir, listName);
+                    if (File.Exists(fullPath))
+                    {
+                        args.Add($"--hostlist={fullPath}");
+                    }
+                }
+
+                var userLists = new[] { "list-general-user.txt", "list-youtube-user.txt", "list-discord-user.txt" };
+                foreach (var listName in userLists)
+                {
+                    var fullPath = Path.Combine(listsDir, listName);
+                    if (File.Exists(fullPath))
+                    {
+                        args.Add($"--hostlist-domains={fullPath}");
+                    }
+                }
             }
             args.Add("--dpi-desync=fake");
             args.Add("--dpi-desync-repeats=6");

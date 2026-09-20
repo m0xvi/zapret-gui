@@ -380,7 +380,7 @@ namespace ZapretGui.ViewModels
 
         public ObservableCollection<string> BuilderFoolings { get; } = new()
         {
-            "badsum", "badseq", "md5sig", "datanoack", "none"
+            "ts", "badsum,ts", "badsum", "badseq", "md5sig", "datanoack", "none"
         };
 
         public string BuilderStrategyName

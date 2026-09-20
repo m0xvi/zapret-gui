@@ -46,44 +46,48 @@ namespace ZapretGui.Core
     /// </summary>
     public static class SmartStrategyAutoTuner
     {
-        public static readonly IReadOnlyList<(string Desync, string Split, string Sni, string Ttl, string Fooling, bool Multi, string Desc)> Hypotheses =
-            new List<(string, string, string, string, string, bool, string)>
+        public static readonly IReadOnlyList<(string Desync, string Split, string Sni, string Ttl, string Fooling, int Repeats, bool Multi, string Desc)> Hypotheses =
+            new List<(string, string, string, string, string, int, bool, string)>
             {
-                // 1. Семейство современных гибридов Fake + Split2 / Disorder2 (Высочайшая пробиваемость YouTube & Discord)
-                ("fake,split2", "1", "www.google.com", "auto", "badsum", false, "Гибрид Fake TLS + Split2 (pos=1) + Google SNI + badsum"),
-                ("fake,split2", "sniext", "www.google.com", "auto", "badsum", false, "Гибрид Fake TLS + Split2 на границе SNI (sniext) + badsum"),
-                ("fake,split2", "midsld", "www.google.com", "auto", "badsum", false, "Гибрид Fake TLS + Split2 (midsld) + Google SNI + badsum"),
-                ("fake,split2", "1", "www.microsoft.com", "auto", "badsum", false, "Гибрид Fake TLS + Split2 (pos=1) + Microsoft SNI + badsum"),
-                ("fake,split2", "sniext", "www.cloudflare.com", "auto", "badseq", false, "Гибрид Fake TLS + Split2 (sniext) + Cloudflare SNI + badseq"),
-                ("fake,disorder2", "1", "www.google.com", "auto", "badsum", false, "Гибрид Fake TLS + Disorder2 (pos=1) + badsum"),
-                ("fake,disorder2", "midsld", "www.google.com", "auto", "badsum", false, "Гибрид Fake TLS + Disorder2 (midsld) + badsum"),
+                // 1. Семейство доказанных чемпионов для ТСПУ РФ (Fake + Split2 / Disorder2 + Timestamp Fooling ts + Repeats=11 + IP-ID zero)
+                ("fake,split2", "1", "none", "auto", "ts", 11, false, "Гибрид Fake TLS + Split2 (pos=1) + fooling ts + repeats=11 (Формула ALT11/ALT12)"),
+                ("fake,split2", "1", "none", "auto", "badsum,ts", 11, false, "Гибрид Fake TLS + Split2 (pos=1) + badsum,ts + repeats=11"),
+                ("fake", "1", "none", "auto", "ts", 11, false, "Fake TLS + split-pos 1 + fooling ts + repeats=11 (Формула ALT13/EXP)"),
+                ("fake", "none", "none", "auto", "ts", 6, false, "Fake TLS + fooling ts + repeats=6 (Формула general ALT)"),
+                ("fake,split2", "sniext", "none", "auto", "ts", 11, false, "Гибрид Fake TLS + Split2 (sniext) + fooling ts + repeats=11"),
+                ("fake,split2", "midsld", "none", "auto", "ts", 11, false, "Гибрид Fake TLS + Split2 (midsld) + fooling ts + repeats=11"),
+                ("fake,disorder2", "1", "none", "auto", "ts", 11, false, "Гибрид Fake TLS + Disorder2 (pos=1) + fooling ts + repeats=11"),
+                ("fake,disorder2", "midsld", "none", "auto", "ts", 11, false, "Гибрид Fake TLS + Disorder2 (midsld) + fooling ts + repeats=11"),
 
-                // 2. Семейство чистого разделения TLS ClientHello (Split2)
-                ("split2", "1", "none", "auto", "badsum", false, "Разделение 1-го байта ClientHello (split-pos=1) + badsum"),
-                ("split2", "2", "none", "auto", "badsum", false, "Разделение 2-го байта ClientHello (split-pos=2) + badsum"),
-                ("split2", "3", "none", "auto", "badseq", false, "Разделение 3-го байта ClientHello (split-pos=3) + badseq"),
-                ("split2", "sniext", "none", "auto", "badsum", false, "Разделение на границе SNI (sniext) + badsum"),
-                ("split2", "midsld", "none", "auto", "badsum", false, "Разделение середины домена SNI (midsld) + badsum"),
-                ("split2", "host", "none", "auto", "badsum", false, "Разделение по заголовку Host (split-pos=host) + badsum"),
+                // 2. Семейство многосегментных оверлеев с защитой таймстемпами (Multisplit + ts)
+                ("multisplit", "1", "none", "auto", "ts", 0, true, "Многосегментный оверлей TCP (multisplit, pos=1, seqovl=1) + fooling ts"),
+                ("multisplit", "midsld", "none", "auto", "ts", 0, true, "Многосегментный оверлей TCP (multisplit, midsld, seqovl=1) + fooling ts"),
 
-                // 3. Семейство изменения порядка пакетов (Disorder / Disorder2)
-                ("disorder2", "1", "none", "auto", "badsum", false, "Перестановка порядка пакетов (disorder2, pos=1) + badsum"),
-                ("disorder2", "2", "none", "auto", "badsum", false, "Перестановка порядка пакетов (disorder2, pos=2) + badsum"),
-                ("disorder2", "midsld", "none", "auto", "badsum", false, "Перестановка порядка пакетов (disorder2, midsld) + badsum"),
-                ("disorder2", "sniext", "none", "auto", "badseq", false, "Перестановка порядка пакетов (disorder2, sniext) + badseq"),
-                ("disorder", "1", "none", "auto", "badseq", false, "Классический Disorder (pos=1) + badseq"),
+                // 3. Семейство гибридов с подстановкой SNI (Google, Microsoft, Cloudflare)
+                ("fake,split2", "1", "www.google.com", "auto", "ts", 11, false, "Гибрид Fake TLS + Split2 (pos=1) + Google SNI + fooling ts"),
+                ("fake,split2", "1", "www.google.com", "auto", "badsum", 6, false, "Гибрид Fake TLS + Split2 (pos=1) + Google SNI + badsum"),
+                ("fake,split2", "sniext", "www.google.com", "auto", "badsum", 6, false, "Гибрид Fake TLS + Split2 (sniext) + Google SNI + badsum"),
+                ("fake,split2", "1", "www.microsoft.com", "auto", "badsum", 6, false, "Гибрид Fake TLS + Split2 (pos=1) + Microsoft SNI + badsum"),
+                ("fake,split2", "sniext", "www.cloudflare.com", "auto", "badseq", 6, false, "Гибрид Fake TLS + Split2 (sniext) + Cloudflare SNI + badseq"),
 
-                // 4. Семейство многосегментного оверлея (Multisplit)
-                ("multisplit", "1", "none", "auto", "badsum", true, "Многосегментный оверлей TCP (multisplit, pos=1, seqovl=1) + badsum"),
-                ("multisplit", "midsld", "none", "auto", "badsum", true, "Многосегментный оверлей TCP (multisplit, midsld, seqovl=1) + badsum"),
-                ("multisplit", "2", "none", "auto", "badsum", true, "Многосегментный оверлей TCP (multisplit, pos=2, seqovl=1) + badsum"),
+                // 4. Семейство чистого разделения TLS ClientHello (Split2)
+                ("split2", "1", "none", "auto", "badsum", 0, false, "Разделение 1-го байта ClientHello (split-pos=1) + badsum"),
+                ("split2", "sniext", "none", "auto", "badsum", 0, false, "Разделение на границе SNI (sniext) + badsum"),
+                ("split2", "midsld", "none", "auto", "badsum", 0, false, "Разделение середины домена SNI (midsld) + badsum"),
 
-                // 5. Семейство Fake ClientHello & TTL Evasions
-                ("fake", "none", "www.google.com", "auto", "badsum", false, "Fake TLS ClientHello + Google SNI + repeats=6 + badsum"),
-                ("fake", "none", "www.google.com", "1", "badsum", false, "Fake TLS с ультра-малым TTL (TTL=1) + badsum"),
-                ("fake", "none", "www.google.com", "3", "badsum", false, "Fake TLS с малым TTL (TTL=3) + badsum"),
-                ("fake", "none", "www.google.com", "5", "badsum", false, "Fake TLS со средним TTL (TTL=5) + badsum"),
-                ("fake", "none", "www.google.com", "4", "md5sig", false, "Fake TLS с TCP MD5 Signature fooling (md5sig) + TTL=4")
+                // 5. Семейство изменения порядка пакетов (Disorder / Disorder2)
+                ("disorder2", "1", "none", "auto", "badsum", 0, false, "Перестановка порядка пакетов (disorder2, pos=1) + badsum"),
+                ("disorder2", "midsld", "none", "auto", "badsum", 0, false, "Перестановка порядка пакетов (disorder2, midsld) + badsum"),
+                ("disorder2", "sniext", "none", "auto", "badseq", 0, false, "Перестановка порядка пакетов (disorder2, sniext) + badseq"),
+
+                // 6. Семейство чистого Multisplit
+                ("multisplit", "1", "none", "auto", "badsum", 0, true, "Многосегментный оверлей TCP (multisplit, pos=1, seqovl=1) + badsum"),
+                ("multisplit", "2", "none", "auto", "badsum", 0, true, "Многосегментный оверлей TCP (multisplit, pos=2, seqovl=1) + badsum"),
+
+                // 7. Семейство TTL & MD5 Evasion
+                ("fake", "none", "www.google.com", "1", "badsum", 6, false, "Fake TLS с ультра-малым TTL (TTL=1) + badsum"),
+                ("fake", "none", "www.google.com", "3", "badsum", 6, false, "Fake TLS с малым TTL (TTL=3) + badsum"),
+                ("fake", "none", "www.google.com", "4", "md5sig", 6, false, "Fake TLS с TCP MD5 Signature fooling (md5sig) + TTL=4")
             };
 
         public static async Task<(bool Ok, string Message, SavedStrategyCandidate? Winner, List<AutoTunerStepResult> Results)> RunDeepAutoTuningAsync(
@@ -133,7 +137,7 @@ namespace ZapretGui.Core
                 {
                     ct.ThrowIfCancellationRequested();
 
-                    var (desync, split, sni, ttl, fooling, multi, desc) = Hypotheses[i];
+                    var (desync, split, sni, ttl, fooling, repeats, multi, desc) = Hypotheses[i];
                     var stepNum = i + 1;
                     var candName = $"SmartHypothesis_{stepNum}_{desync.Replace(',', '_')}";
 
@@ -148,7 +152,7 @@ namespace ZapretGui.Core
 
                     var args = VisualStrategyBuilder.BuildArgs(
                         enginePath, desync, split, sni, ttl, fooling, multi,
-                        useGameUdp: true, useHostlist: true, useIpSet: true);
+                        useGameUdp: true, useHostlist: true, useIpSet: true, repeats: repeats);
 
                     var tempStrategy = new StrategyInfo
                     {
