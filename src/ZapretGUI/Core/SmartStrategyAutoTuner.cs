@@ -50,18 +50,47 @@ namespace ZapretGui.Core
         public static readonly IReadOnlyList<(string Desync, string Split, string Sni, string Ttl, string Fooling, bool Multi, string Desc)> Hypotheses =
             new List<(string, string, string, string, string, bool, string)>
             {
+        public static readonly IReadOnlyList<(string Desync, string Split, string Sni, string Ttl, string Fooling, bool Multi, string Desc)> Hypotheses =
+            new List<(string, string, string, string, string, bool, string)>
+            {
+                // 1. Семейство Split2 (Разделение TLS ClientHello)
                 ("split2", "midsld", "www.google.com", "auto", "badsum", true, "Разделение TLS (midsld) + Fake SNI Google + badsum + multisplit"),
-                ("split2", "sniext", "www.google.com", "auto", "badsum", true, "Разделение на границе SNI (sniext) + Google + badsum"),
+                ("split2", "sniext", "www.google.com", "auto", "badsum", true, "Разделение на границе SNI (sniext) + Fake SNI Google + badsum"),
+                ("split2", "sniext", "www.microsoft.com", "auto", "badsum", true, "Разделение на границе SNI (sniext) + Fake SNI Microsoft + badsum"),
+                ("split2", "sniext", "www.cloudflare.com", "auto", "badseq", false, "Разделение SNI (sniext) + Fake SNI Cloudflare + badseq"),
+                ("split2", "1", "www.google.com", "auto", "badsum", true, "Разделение 1-го байта ClientHello (split-pos=1) + badsum"),
+                ("split2", "2", "www.google.com", "auto", "badsum", false, "Разделение 2-го байта ClientHello (split-pos=2) + badsum"),
+                ("split2", "3", "www.google.com", "auto", "badseq", false, "Разделение 3-го байта ClientHello (split-pos=3) + badseq"),
+                ("split2", "host", "www.google.com", "auto", "badsum", false, "Разделение по домену Host (split-pos=host) + badsum"),
+                ("split2", "1", "none", "auto", "disoob", true, "Комбинированный сплит 1-го байта + OOB смещение"),
+
+                // 2. Семейство Disorder / Out-of-Order (Нарушение порядка TCP-пакетов)
                 ("disoob", "1", "none", "auto", "badseq", false, "Out-of-Order смещение 1 байта (disoob=1) + badseq"),
                 ("disoob", "2", "none", "auto", "badsum", false, "Out-of-Order смещение 2 байт (disoob=2) + badsum"),
+                ("disoob", "3", "none", "auto", "badsum", true, "Out-of-Order смещение 3 байт (disoob=3) + badsum + multisplit"),
+                ("disoob", "sniext", "none", "auto", "badseq", false, "Out-of-Order по границе SNI (disoob=sniext) + badseq"),
+
+                // 3. Семейство Fake ClientHello (Инъекция поддельных TLS-пакетов)
                 ("fake", "none", "www.google.com", "auto", "badsum", false, "Fake TLS ClientHello + Google SNI + repeats=6"),
+                ("fake", "none", "www.microsoft.com", "auto", "badsum", false, "Fake TLS ClientHello + Microsoft SNI + badsum"),
                 ("fake", "none", "fonts.google.com", "auto", "badsum", false, "Fake TLS + fonts.google.com SNI + badsum"),
-                ("fakedsni", "midsld", "www.google.com", "auto", "badsum", true, "Двойной Fake SNI (fakedsni) + multisplit"),
-                ("multisplit", "midsld", "none", "auto", "badsum", true, "Многосегментный оверлей TCP (split-seqovl=1)"),
+                ("fake", "none", "ru.wikipedia.org", "auto", "badsum", false, "Fake TLS + Wikipedia SNI (ru.wikipedia.org) + badsum"),
+                ("fake", "none", "yandex.ru", "auto", "badsum", true, "Fake TLS с RU SNI (yandex.ru) + агрессивный QUIC"),
+
+                // 4. Двойной Fake SNI и Fake Disorder
+                ("fakedsni", "midsld", "www.google.com", "auto", "badsum", true, "Двойной Fake SNI (fakedsni midsld) + multisplit"),
+                ("fakedsni", "sniext", "www.google.com", "auto", "badsum", false, "Двойной Fake SNI (fakedsni sniext) + badsum"),
+
+                // 5. Семейство Multisplit & Sequence Overlap
+                ("multisplit", "midsld", "none", "auto", "badsum", true, "Многосегментный оверлей TCP (split-seqovl=1, midsld)"),
+                ("multisplit", "2", "none", "auto", "badsum", true, "Многосегментный оверлей TCP со смещением 2 байта"),
+
+                // 6. Семейство TTL & MD5 Evasion (Обход через расстояние до узла фильтрации)
+                ("fake", "none", "www.google.com", "1", "badsum", false, "Fake TLS с ультра-малым TTL (TTL=1) + badsum"),
                 ("fake", "none", "www.google.com", "3", "badsum", false, "Fake TLS с фиксированным малым TTL (TTL=3)"),
-                ("fake", "none", "www.google.com", "5", "md5sig", false, "Fake TLS с TCP MD5 Signature fooling + TTL=5"),
-                ("split2", "1", "none", "auto", "disoob", true, "Комбинированный сплит 1-го байта + OOB"),
-                ("fake", "none", "yandex.ru", "auto", "badsum", true, "Fake TLS с RU SNI (yandex.ru) + агрессивный QUIC")
+                ("fake", "none", "www.google.com", "5", "badsum", false, "Fake TLS с фиксированным средним TTL (TTL=5)"),
+                ("fake", "none", "www.google.com", "4", "md5sig", false, "Fake TLS с TCP MD5 Signature fooling (md5sig) + TTL=4")
+            };
             };
 
         public static async Task<(bool Ok, string Message, SavedStrategyCandidate? Winner, List<AutoTunerStepResult> Results)> RunDeepAutoTuningAsync(
