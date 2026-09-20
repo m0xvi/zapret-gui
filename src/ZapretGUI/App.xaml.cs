@@ -61,24 +61,40 @@ namespace ZapretGui
             AppLog.Info("=== Zapret GUI запущен ===");
             AppLog.Info($"Права администратора: {(Shell.IsAdmin() ? "да" : "нет")}");
 
-            var settings = SettingsStore.Load();
-            ThemeService.Apply(settings.Theme);
+            MainWindow window;
+            AppSettings settings;
 
-            _viewModel = new MainViewModel(settings);
-            var window = new MainWindow(_viewModel);
-
-            // Первый запуск всегда открывается явно. До согласия пользователя не
-            // скачиваем движок, не запускаем тесты и не меняем службу или сеть.
-            if (settings.FirstLaunchWizardCompleted && settings.StartMinimized)
+            try
             {
-                window.ShowInTaskbar = false;
-                window.WindowState = WindowState.Minimized;
-                window.Show();
-                window.Hide();
+                settings = SettingsStore.Load();
+                ThemeService.Apply(settings.Theme);
+
+                _viewModel = new MainViewModel(settings);
+                window = new MainWindow(_viewModel);
+
+                // Первый запуск всегда открывается явно. До согласия пользователя не
+                // скачиваем движок, не запускаем тесты и не меняем службу или сеть.
+                if (settings.FirstLaunchWizardCompleted && settings.StartMinimized)
+                {
+                    window.ShowInTaskbar = false;
+                    window.WindowState = WindowState.Minimized;
+                    window.Show();
+                    window.Hide();
+                }
+                else
+                {
+                    window.Show();
+                }
             }
-            else
+            catch (Exception ex)
             {
-                window.Show();
+                AppLog.Error("Критическая ошибка инициализации Zapret GUI: " + ex);
+                MessageBox.Show(
+                    "Произошла ошибка при запуске Zapret GUI:\n\n" + ex.Message +
+                    "\n\nПодробный отчёт записан в журнал:\n" + AppPaths.LogFile,
+                    "Ошибка запуска Zapret GUI", MessageBoxButton.OK, MessageBoxImage.Error);
+                Shutdown(1);
+                return;
             }
 
             var viewModel = _viewModel;

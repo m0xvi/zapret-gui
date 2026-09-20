@@ -91,7 +91,7 @@ namespace ZapretGui.Core
         public void Start()
         {
             if (_isDisposed) return;
-            _timer.Change(TimeSpan.Zero, TimeSpan.FromSeconds(3));
+            _timer.Change(TimeSpan.FromSeconds(2.5), TimeSpan.FromSeconds(3));
         }
 
         public void Stop()

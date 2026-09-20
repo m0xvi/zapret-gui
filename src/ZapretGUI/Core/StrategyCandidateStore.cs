@@ -22,6 +22,10 @@ namespace ZapretGui.Core
 
         public string SavedAtText => SavedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
         public string ArgsText => string.Join(" ", Args);
+        public string ArgumentsPreview => ArgsText;
+        public string Summary => string.IsNullOrWhiteSpace(MutationDescription)
+            ? $"Сохранённая стратегия ({SavedAtText})"
+            : $"{MutationDescription} · сохранён {SavedAtText}";
         public string DisplayName => Name.Length == 0 ? "Сохранённый кандидат" : Name;
         public string StrategyName => $"{DisplayName} · {Id[..Math.Min(8, Id.Length)]}";
 

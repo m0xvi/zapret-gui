@@ -47,7 +47,7 @@ PAGE_VM = {
 ITEM_TYPES = {
     "UpdatesPage": ["EngineConsistencyItem", "EngineBackupInfo"],
     "HomePage": ["ConnectionCheck", "MonitorTarget"],
-    "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord", "MonitorTarget"],
+    "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord", "MonitorTarget", "AutoTunerStepResult"],
     "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult", "MonitorTarget", "ResourceProbeResult", "DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation"],
     "DpiPage": ["DpiTargetResult", "DpiProbeResult"],
     "DeepCheckPage": ["DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "EngineConsistencyCheck"],

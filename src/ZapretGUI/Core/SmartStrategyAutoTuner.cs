@@ -21,6 +21,14 @@ namespace ZapretGui.Core
         public bool IsWinnerSoFar { get; set; }
         public string Details { get; init; } = "";
         public List<string> Args { get; init; } = new();
+
+        public string HypothesisTitle => $"Гипотеза #{StepNumber}: {MutationDescription}";
+        public string StatusSeverity => SuccessRate >= 80 ? "Success" : SuccessRate >= 40 ? "Warning" : "Danger";
+        public string StatusText => SuccessRate >= 80 ? $"{SuccessRate:0}% РАБОТАЕТ" : SuccessRate > 0 ? $"{SuccessRate:0}% ЧАСТИЧНО" : "БЛОКИРУЕТСЯ";
+        public string DetailsText => Details;
+        public string ArgumentsPreview => string.Join(" ", Args);
+        public string ScoreText => $"Балл: {Score}/100";
+        public string RttText => AvgRttMs > 0 && AvgRttMs < 900 ? $"RTT: ~{AvgRttMs} мс" : "RTT: —";
     }
 
     public sealed class AutoTunerProgress

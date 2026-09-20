@@ -482,7 +482,7 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Style="{StaticResource SubheadingText}" Text="🧠 Глубокий интеллектуальный автоподбор DPI-стратегий" FontWeight="Bold" />
+                            <TextBlock Style="{StaticResource TitleText}" Text="🧠 Глубокий интеллектуальный автоподбор DPI-стратегий" FontWeight="Bold" />
                             <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,4,0,0"
                                        Text="Автономный движок последовательно синтезирует и тестирует передовые комбинации обхода (split2, sniext, disoob, fake sni, badsum, md5sig, multisplit) в изолированном тестовом контуре с замером RTT и процента успешных ответов контрольных ресурсов." />
                         </StackPanel>
@@ -517,8 +517,8 @@
                                        Text="{Binding AutoTuningProgressPercentText}" FontWeight="Bold" />
                         </Grid>
                         <ProgressBar Grid.Row="1" Height="8"
-                                     Value="{Binding AutoTuningProgressValue}"
-                                     Maximum="{Binding AutoTuningProgressMaximum}"
+                                     Value="{Binding AutoTuningProgressValue, Mode=OneWay}"
+                                     Maximum="{Binding AutoTuningProgressMaximum, Mode=OneWay}"
                                      BorderThickness="0" Background="#26262B" Foreground="{DynamicResource AccentBrush}" />
                     </Grid>
 
