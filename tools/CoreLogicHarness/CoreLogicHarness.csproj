@@ -13,6 +13,7 @@
     <Compile Include="..\..\src\ZapretGUI\Core\AppLog.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\AppPaths.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DefaultDomainLists.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\DnsManagementService.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DomainListUpdater.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DiscordVoiceRtcProber.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\FakeBinManager.cs" />

@@ -86,6 +86,18 @@ namespace ZapretGui.Core
             }
         };
 
+        public static void FlushDnsCache()
+        {
+            try
+            {
+                Shell.Run("ipconfig.exe", new[] { "/flushdns" });
+            }
+            catch
+            {
+                // Игнорируем ошибки вызова в изолированных средах
+            }
+        }
+
         public static NetworkInterface? GetActiveInterface()
         {
             try

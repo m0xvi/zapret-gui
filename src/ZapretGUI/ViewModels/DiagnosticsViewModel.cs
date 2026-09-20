@@ -1088,7 +1088,7 @@ namespace ZapretGui.ViewModels
                 {
                     _main.Settings.SelectedStrategy = targetStrat.Name;
                     SettingsStore.Save(_main.Settings);
-                    await _main.Home.ApplyStrategyAsync(targetStrat).ConfigureAwait(true);
+                    await _main.StrategiesPage.ApplyStrategyAsync(targetStrat).ConfigureAwait(true);
                 }
 
                 // 4. Очищаем кэш Discord и сбрасываем DNS
