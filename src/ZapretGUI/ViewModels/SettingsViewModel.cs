@@ -48,7 +48,98 @@ namespace ZapretGui.ViewModels
             ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
             OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
+            CopyTelemetryMarkdownCommand = new RelayCommand(CopyTelemetryMarkdown);
+            ExportTelemetryJsonCommand = new RelayCommand(ExportTelemetryJson);
+            ExportTelemetryZipCommand = new AsyncRelayCommand(ExportTelemetryZipAsync);
             RefreshGamingOptimization();
+        }
+
+        public ICommand CopyTelemetryMarkdownCommand { get; }
+        public ICommand ExportTelemetryJsonCommand { get; }
+        public ICommand ExportTelemetryZipCommand { get; }
+
+        public string TelemetrySummaryText
+        {
+            get
+            {
+                var tested = _main.Strategies.Items.Count(s => s.TestState != StrategyTestState.NotTested);
+                var passed = _main.Strategies.Items.Count(s => s.IsRecommended || (s.TestResult != null && s.TestResult.PassedCount >= 6));
+                var prov = _main.Settings.ProviderContext?.Name;
+                var provText = string.IsNullOrWhiteSpace(prov) ? "Провайдер: авто/не указан" : $"Провайдер: {prov}";
+                return $"Протестировано стратегий: {tested}/{_main.Strategies.Items.Count} (Рабочих: {passed}) · {provText}";
+            }
+        }
+
+        private void CopyTelemetryMarkdown()
+        {
+            try
+            {
+                var dump = ProviderTelemetryExporter.Collect(_main);
+                var md = ProviderTelemetryExporter.GenerateMarkdown(dump);
+                System.Windows.Clipboard.SetText(md);
+                _main.Home.ShowSuccess("Полный отчёт и телеметрия скопированы в буфер обмена! Вы можете вставить его в чат.");
+                Status = "Отчёт скопирован в буфер обмена (" + DateTime.Now.ToString("HH:mm:ss") + ")";
+            }
+            catch (Exception ex)
+            {
+                _main.Home.ShowError("Не удалось скопировать отчёт: " + ex.Message);
+            }
+        }
+
+        private void ExportTelemetryJson()
+        {
+            try
+            {
+                var dump = ProviderTelemetryExporter.Collect(_main);
+                var json = ProviderTelemetryExporter.GenerateJson(dump);
+                var dlg = new SaveFileDialog
+                {
+                    FileName = $"ZapretGUI_Telemetry_{DateTime.Now:yyyyMMdd_HHmm}.json",
+                    Filter = "JSON файлы (*.json)|*.json|Все файлы (*.*)|*.*",
+                    Title = "Сохранить полный снимок телеметрии"
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    File.WriteAllText(dlg.FileName, json, Encoding.UTF8);
+                    _main.Home.ShowSuccess("Телеметрия сохранена в файл: " + Path.GetFileName(dlg.FileName));
+                    Status = "Телеметрия сохранена в " + Path.GetFileName(dlg.FileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _main.Home.ShowError("Ошибка экспорта JSON: " + ex.Message);
+            }
+        }
+
+        private async Task ExportTelemetryZipAsync()
+        {
+            try
+            {
+                var dlg = new SaveFileDialog
+                {
+                    FileName = $"ZapretGUI_Diagnostic_Package_{DateTime.Now:yyyyMMdd_HHmm}.zip",
+                    Filter = "ZIP архивы (*.zip)|*.zip|Все файлы (*.*)|*.*",
+                    Title = "Сохранить полный диагностический пакет"
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    var dump = ProviderTelemetryExporter.Collect(_main);
+                    var (ok, msg, _) = await ProviderTelemetryExporter.CreateDiagnosticZipArchiveAsync(dump, dlg.FileName);
+                    if (ok)
+                    {
+                        _main.Home.ShowSuccess("Диагностический пакет сохранён: " + Path.GetFileName(dlg.FileName));
+                        Status = "Пакет сохранён: " + Path.GetFileName(dlg.FileName);
+                    }
+                    else
+                    {
+                        _main.Home.ShowError(msg);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _main.Home.ShowError("Ошибка создания архива: " + ex.Message);
+            }
         }
 
         public AppSettings Settings => _main.Settings;
