@@ -938,15 +938,19 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 var ytFile = Path.Combine(tempDir, "lists", "list-youtube.txt");
                 var dsFile = Path.Combine(tempDir, "lists", "list-discord.txt");
                 var genFile = Path.Combine(tempDir, "lists", "list-general.txt");
+                var googFile = Path.Combine(tempDir, "lists", "list-google.txt");
 
                 Assert(File.Exists(ytFile), "list-youtube.txt не создан");
                 Assert(File.Exists(dsFile), "list-discord.txt не создан");
                 Assert(File.Exists(genFile), "list-general.txt не создан");
+                Assert(File.Exists(googFile), "list-google.txt не создан");
 
                 var ytLines = File.ReadAllLines(ytFile);
                 var dsLines = File.ReadAllLines(dsFile);
+                var googLines = File.ReadAllLines(googFile);
                 Assert(ytLines.Contains("i.ytimg.com") && ytLines.Contains("googlevideo.com"), "list-youtube.txt не содержит i.ytimg.com или googlevideo.com");
                 Assert(dsLines.Contains("cdn.discordapp.com") && dsLines.Contains("gateway.discord.gg"), "list-discord.txt не содержит cdn.discordapp.com или gateway.discord.gg");
+                Assert(googLines.Contains("googleapis.com") && googLines.Contains("googlevideo.com"), "list-google.txt не содержит googleapis.com или googlevideo.com");
             }
             finally
             {

@@ -164,6 +164,20 @@ namespace ZapretGui.Core
                     if (v.Length > 0) return v;
                 }
 
+                var serviceVersionTxt = Path.Combine(engineRoot, ".service", "version.txt");
+                if (File.Exists(serviceVersionTxt))
+                {
+                    var v = File.ReadAllText(serviceVersionTxt).Trim();
+                    if (v.Length > 0) return v;
+                }
+
+                var docsVersionTxt = Path.Combine(engineRoot, "docs", "version.txt");
+                if (File.Exists(docsVersionTxt))
+                {
+                    var v = File.ReadAllText(docsVersionTxt).Trim();
+                    if (v.Length > 0) return v;
+                }
+
                 var serviceBat = Path.Combine(engineRoot, "service.bat");
                 if (File.Exists(serviceBat))
                 {
@@ -755,14 +769,26 @@ namespace ZapretGui.Core
             throw new NotSupportedException("Неподдерживаемый формат архива: " + Path.GetFileName(archivePath));
         }
 
-        /// <summary>В архивах Flowseal всё лежит в подпапке вида zapret-discord-youtube-1.10.2.</summary>
+        /// <summary>В архивах Flowseal всё лежит в подпапке вида zapret-discord-youtube-1.10.x.</summary>
         private static string ResolveContentRoot(string extractedDirectory)
         {
             try
             {
-                var entries = Directory.GetFileSystemEntries(extractedDirectory);
-                if (entries.Length == 1 && Directory.Exists(entries[0]) && !entries[0].EndsWith("__MACOSX", StringComparison.OrdinalIgnoreCase))
-                    return entries[0];
+                if (File.Exists(Path.Combine(extractedDirectory, "bin", "winws.exe")))
+                    return extractedDirectory;
+
+                var dirs = Directory.GetDirectories(extractedDirectory)
+                    .Where(d => !Path.GetFileName(d).StartsWith("__MACOSX", StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+                if (dirs.Length == 1 && (File.Exists(Path.Combine(dirs[0], "bin", "winws.exe")) || Directory.Exists(Path.Combine(dirs[0], "bin"))))
+                    return dirs[0];
+
+                foreach (var dir in dirs)
+                {
+                    if (File.Exists(Path.Combine(dir, "bin", "winws.exe")))
+                        return dir;
+                }
             }
             catch { }
             return extractedDirectory;

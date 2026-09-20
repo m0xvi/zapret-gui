@@ -433,6 +433,13 @@ namespace ZapretGui.Core
                         "cdn.discordapp.com" + Environment.NewLine +
                         "gateway.discord.gg" + Environment.NewLine);
 
+                var listGoogleUser = Path.Combine(lists, "list-google-user.txt");
+                if (!File.Exists(listGoogleUser))
+                    File.WriteAllText(listGoogleUser,
+                        "# Пользовательские домены Google" + Environment.NewLine +
+                        "googlevideo.com" + Environment.NewLine +
+                        "googleapis.com" + Environment.NewLine);
+
                 var listExcludeUser = Path.Combine(lists, "list-exclude-user.txt");
                 if (!File.Exists(listExcludeUser))
                     File.WriteAllText(listExcludeUser,

@@ -21,6 +21,7 @@ namespace ZapretGui.Core
     /// <summary>
     /// Автоматическое и ручное обновление списков доменов и IP из официального репозитория Flowseal,
     /// а также автоматическое первичное наполнение (auto-seeding) при пустых списках.
+    /// Поддерживает форматы и структуру Flowseal 1.10.2, 1.10.3 и новее.
     /// </summary>
     public static class DomainListUpdater
     {
@@ -29,6 +30,7 @@ namespace ZapretGui.Core
             ("list-general.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/list-general.txt", DefaultDomainLists.GeneralDomains),
             ("list-discord.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/list-discord.txt", DefaultDomainLists.DiscordDomains),
             ("list-youtube.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/list-youtube.txt", DefaultDomainLists.YoutubeDomains),
+            ("list-google.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/list-google.txt", DefaultDomainLists.GoogleDomains),
             ("ipset-all.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/ipset-all.txt", Array.Empty<string>()),
             ("ipset-discord.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/ipset-discord.txt", Array.Empty<string>())
         };

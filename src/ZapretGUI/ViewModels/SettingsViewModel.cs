@@ -143,11 +143,26 @@ namespace ZapretGui.ViewModels
                 // Попытка фонового обновления списков с GitHub
                 try
                 {
-                    await DomainListUpdater.UpdateAllAsync(Settings.EnginePath).ConfigureAwait(false);
+                    await Task.Run(() => DomainListUpdater.UpdateAllAsync(Settings.EnginePath)).ConfigureAwait(true);
                 }
                 catch { }
 
-                _main.Strategies.Refresh();
+                if (System.Windows.Application.Current?.Dispatcher != null)
+                {
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        _main.Strategies.Refresh();
+                        _main.StrategiesPage.Refresh();
+                        _main.RefreshReadiness();
+                    });
+                }
+                else
+                {
+                    _main.Strategies.Refresh();
+                    _main.StrategiesPage.Refresh();
+                    _main.RefreshReadiness();
+                }
+
                 var total = _main.Strategies.Items.Count;
                 if (total == 0)
                 {

@@ -1110,4 +1110,8 @@ CI и что требует Windows runtime.
    - Реализована функция фонового автообновления списков с официального репозитория `Flowseal/zapret-discord-youtube` при сохранении пользовательских исключений.
    - В `SettingsViewModel` процедура `RunFullDiagnosticsAndExportAsync` проводит аудит состояния служб, активирует TCP Timestamps, актуализирует списки, прогоняет матрицу стратегий и сохраняет полный отчёт в буфер обмена.
 
+10. **Адаптивность к Flowseal 1.10.3+ и исправление потокобезопасности UI (v1.4.1 Update):**
+   - Устранено исключение `NotSupportedException: CollectionView does not support changes from a thread different from the Dispatcher thread` при фоновых проверках: все методы обновления `ObservableCollection` и вызовы `Refresh()` в `StrategyStore` и `StrategiesViewModel` теперь гарантированно выполняются на UI Dispatcher.
+   - Устранён ложный статус «Стратегии не найдены» в верхней панели состояния: `strategyCount` теперь не обнуляется при фоновом тесте.
+   - Добавлена полная поддержка Flowseal 1.10.3+: новый список `list-google.txt`, адаптивный парсер корневых каталогов `ResolveContentRoot`, чтение версий из `.service/version.txt` и `docs/version.txt`, поддержка стратегии `ALT13` и кастомных диапазонов GameFilter.
 ```

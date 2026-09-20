@@ -3,8 +3,9 @@ using System;
 namespace ZapretGui.Core
 {
     /// <summary>
-    /// Встроенные эталонные наборы доменов для YouTube, Discord и ключевых заблокированных сервисов.
-    /// Используются для начального заполнения (auto-seeding) при первом запуске или если файлы списков пусты.
+    /// Встроенные эталонные наборы доменов для YouTube, Discord, Google и ключевых заблокированных сервисов.
+    /// Используются для начального заполнения (auto-seeding) при первом запуске или если файлы списков пусты,
+    /// обеспечивая отказоустойчивость и совместимость со всеми версиями движка Flowseal (включая 1.10.3+).
     /// </summary>
     public static class DefaultDomainLists
     {
@@ -65,6 +66,27 @@ namespace ZapretGui.Core
             "media.discordapp.net",
             "images-ext-1.discordapp.net",
             "images-ext-2.discordapp.net"
+        };
+
+        public static readonly string[] GoogleDomains = new[]
+        {
+            "google.com",
+            "www.google.com",
+            "play.google.com",
+            "googleapis.com",
+            "gstatic.com",
+            "googleusercontent.com",
+            "googlevideo.com",
+            "youtube.com",
+            "www.youtube.com",
+            "ytimg.com",
+            "i.ytimg.com",
+            "yt3.ggpht.com",
+            "recaptcha.net",
+            "widevine.com",
+            "jnn-pa.googleapis.com",
+            "gvt1.com",
+            "1e100.net"
         };
 
         public static readonly string[] GeneralDomains = new[]
