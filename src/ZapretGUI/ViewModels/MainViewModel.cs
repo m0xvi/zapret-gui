@@ -55,6 +55,7 @@ namespace ZapretGui.ViewModels
             Diagnostics = new DiagnosticsViewModel(this);
             DeepCheck = new DeepCheckViewModel(this);
             UserLists = new UserListsViewModel(this);
+            Profiles = new ProfilesViewModel(this);
             FirstLaunch = new FirstLaunchViewModel(this);
             Logs = new LogsViewModel();
             Monitoring = new MonitoringViewModel(this);
@@ -132,6 +133,7 @@ namespace ZapretGui.ViewModels
                 new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check и результаты" },
                 new() { Key = "group-data", Title = "СПИСКИ И ФИЛЬТРЫ", IsSectionHeader = true },
                 new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
+                new() { Key = "profiles", Title = "Профили", Icon = "\uE753", Hint = "Пресеты настроек и полные бэкапы" },
                 new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
                 new() { Key = "updates", Title = "Обновления", Icon = "\uE895", Hint = "Движок, hosts, ipset и GUI" },
                 new() { Key = "logs", Title = "Журнал", Icon = "\uE7C3", Hint = "События и отладка" },
@@ -168,6 +170,7 @@ namespace ZapretGui.ViewModels
         public DiagnosticsViewModel Diagnostics { get; }
         public DeepCheckViewModel DeepCheck { get; }
         public UserListsViewModel UserLists { get; }
+        public ProfilesViewModel Profiles { get; }
         public FirstLaunchViewModel FirstLaunch { get; }
         public LogsViewModel Logs { get; }
         public MonitoringViewModel Monitoring { get; }

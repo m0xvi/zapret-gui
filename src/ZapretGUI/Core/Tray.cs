@@ -17,6 +17,7 @@ namespace ZapretGui.Core
         private readonly ToolStripMenuItem _headerItem;
         private readonly ToolStripMenuItem _toggleBypassItem;
         private readonly ToolStripMenuItem _gameModeItem;
+        private readonly ToolStripMenuItem _profilesSubMenu;
         private readonly ToolStripMenuItem _strategiesSubMenu;
         private readonly ToolStripMenuItem _dnsSubMenu;
         private readonly ToolStripMenuItem _miniOverlayItem;
@@ -27,6 +28,7 @@ namespace ZapretGui.Core
         public event Action? ToggleBypassRequested;
         public event Action? ToggleGameModeRequested;
         public event Action? ToggleMiniOverlayRequested;
+        public event Action<UserProfile>? SelectProfileRequested;
         public event Action<string>? SelectStrategyRequested;
         public event Action<DnsProfile>? SelectDnsRequested;
         public event Action? OpenLogsRequested;
@@ -45,6 +47,7 @@ namespace ZapretGui.Core
             _openItem = new ToolStripMenuItem("Открыть Zapret GUI", null, (_, __) => OpenRequested?.Invoke());
             _toggleBypassItem = new ToolStripMenuItem("Запустить обход", null, (_, __) => ToggleBypassRequested?.Invoke());
             _gameModeItem = new ToolStripMenuItem("🎮 Игровой режим: Выкл", null, (_, __) => ToggleGameModeRequested?.Invoke());
+            _profilesSubMenu = new ToolStripMenuItem("Профили настроек");
             _strategiesSubMenu = new ToolStripMenuItem("Выбор стратегии обхода");
             _dnsSubMenu = new ToolStripMenuItem("Безопасный DNS (DoH)");
             _miniOverlayItem = new ToolStripMenuItem("Компактный мини-виджет (HUD)", null, (_, __) => ToggleMiniOverlayRequested?.Invoke());
@@ -57,6 +60,7 @@ namespace ZapretGui.Core
             _menu.Items.Add(_toggleBypassItem);
             _menu.Items.Add(_gameModeItem);
             _menu.Items.Add(new ToolStripSeparator());
+            _menu.Items.Add(_profilesSubMenu);
             _menu.Items.Add(_strategiesSubMenu);
             _menu.Items.Add(_dnsSubMenu);
             _menu.Items.Add(_miniOverlayItem);
@@ -127,6 +131,20 @@ namespace ZapretGui.Core
                         Checked = string.Equals(strat.Name, selectedStrategy, StringComparison.OrdinalIgnoreCase)
                     };
                     _strategiesSubMenu.DropDownItems.Add(item);
+                }
+            }
+            catch { }
+        }
+
+        public void PopulateProfilesMenu(IEnumerable<UserProfile> profiles)
+        {
+            try
+            {
+                _profilesSubMenu.DropDownItems.Clear();
+                foreach (var prof in profiles)
+                {
+                    var item = new ToolStripMenuItem(prof.Name, null, (_, __) => SelectProfileRequested?.Invoke(prof));
+                    _profilesSubMenu.DropDownItems.Add(item);
                 }
             }
             catch { }

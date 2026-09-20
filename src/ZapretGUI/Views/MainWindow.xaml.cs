@@ -38,6 +38,7 @@ namespace ZapretGui.Views
             _pages["dpi"] = new DpiPage(_vm.Diagnostics);
             _pages["logs"] = new LogsPage(_vm.Logs);
             _pages["user-lists"] = new UserListsPage(_vm.UserLists);
+            _pages["profiles"] = new ProfilesPage(_vm.Profiles);
             _pages["settings"] = new SettingsPage(_vm.SettingsPage);
             _pages["about"] = new AboutPage(_vm);
 
@@ -154,6 +155,13 @@ namespace ZapretGui.Views
                         : "🎮 Игровой режим отключён");
                 });
                 _tray.ToggleMiniOverlayRequested += () => Dispatcher.Invoke(ToggleMiniOverlayWindow);
+                _tray.SelectProfileRequested += profile => Dispatcher.Invoke(async () =>
+                {
+                    var (ok, msg) = await ProfileManager.ApplyProfileAsync(profile, _vm.Settings, _vm.Bypass, _vm.Strategies);
+                    _tray?.ShowBalloon("Профиль настроек", msg);
+                    _vm.Home.RefreshStatus();
+                    UpdateTrayStatus();
+                });
                 _tray.SelectStrategyRequested += name => Dispatcher.Invoke(async () =>
                 {
                     var strat = _vm.Strategies.Find(name);
@@ -202,6 +210,7 @@ namespace ZapretGui.Views
             var ping = _vm.RealTimePing?.HasData == true ? _vm.RealTimePing.SummaryText : null;
             _tray.UpdateState(status.IsRunning, _vm.Settings.SelectedStrategy, status.StateText, ping, _vm.ActiveGameName, _vm.Settings.GameModeActive);
             _tray.PopulateStrategiesMenu(_vm.Strategies.Items, _vm.Settings.SelectedStrategy);
+            _tray.PopulateProfilesMenu(_vm.Profiles.Profiles);
         }
 
         public void ToggleMiniOverlayWindow()
