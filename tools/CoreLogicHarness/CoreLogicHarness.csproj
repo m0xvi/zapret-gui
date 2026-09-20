@@ -14,6 +14,8 @@
     <Compile Include="..\..\src\ZapretGUI\Core\AppPaths.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DefaultDomainLists.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DomainListUpdater.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\DiscordVoiceRtcProber.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\FakeBinManager.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\BypassArgumentBuilder.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\ConnectionTester.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticModels.cs" />

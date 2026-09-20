@@ -38,6 +38,8 @@
                               IsChecked="{Binding IsExpressTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
                 <ToggleButton Style="{StaticResource ChipToggle}" Content="🌐 Проверка DPI (34 узла)"
                               IsChecked="{Binding IsDpiTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
+                <ToggleButton Style="{StaticResource ChipToggle}" Content="🎙️ Discord Voice (RTC)"
+                              IsChecked="{Binding IsVoiceRtcTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
                 <ToggleButton Style="{StaticResource ChipToggle}" Content="🔬 Deep Check (Матрица)"
                               IsChecked="{Binding IsDeepCheckTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
                 <ToggleButton Style="{StaticResource ChipToggle}" Content="🛠 Аудит системы"
@@ -311,6 +313,92 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                             </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ==================== ВКЛАДКА: DISCORD VOICE (RTC / WebRTC) ==================== -->
+                <StackPanel Visibility="{Binding IsVoiceRtcTabSelected, Converter={StaticResource BoolToVis}}">
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ГОЛОСОВОЙ СТЕК DISCORD (RTC / WebRTC / UDP)" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="Диагностика голосовых шлюзов Discord (Роттердам, Франкфурт, Стокгольм и др.), измерение RTT, проверка прохождения UDP-пакетов сквозь ТСПУ и устранение зависания «Подключение к RTC»." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Проверить Voice RTC"
+                                        Command="{Binding RunVoiceRtcAuditCommand}"
+                                        ToolTip="Отправить STUN/UDP тестовые пакеты на все голосовые серверы Discord" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Применить фикс для Discord Voice" Margin="8,0,0,0"
+                                        Command="{Binding OptimizeDiscordVoiceCommand}"
+                                        ToolTip="Активировать проверенную стратегию для UDP 50000-65535 и очистить кэш Discord" />
+                                <Button Style="{StaticResource GhostButton}" Content="Очистить кэш Discord" Margin="8,0,0,0"
+                                        Command="{Binding ClearDiscordCacheCommand}"
+                                        ToolTip="Очистить кэш всех версий Discord (Stable, Canary, PTB, Dev) и сбросить DNS" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Статус и вердикт Voice RTC -->
+                    <Border CornerRadius="10" Padding="14,12" Margin="0,12,0,0"
+                            Background="{Binding VoiceRtcDiagnosisKey, Converter={StaticResource SoftSeverityBrush}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding VoiceRtcSummary}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding VoiceRtcRecommendation}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding VoiceRtcCheckedAtText}" Margin="12,0,0,0" VerticalAlignment="Top" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Индикатор выполнения -->
+                    <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
+                            Background="{DynamicResource ElevatedBrush}"
+                            Visibility="{Binding IsVoiceRtcRunning, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding VoiceRtcStatusText}" FontWeight="SemiBold" />
+                            <ProgressBar Style="{StaticResource ThinProgress}" IsIndeterminate="True" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Список проверенных голосовых шлюзов -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПРОВЕРКИ ГОЛОСОВЫХ ШЛЮЗОВ (UDP / STUN)" />
+                            
+                            <ItemsControl ItemsSource="{Binding VoiceServers}" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" Padding="12,10" Margin="0,0,0,6"
+                                                Background="{DynamicResource ElevatedBrush}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding ServerName}" FontWeight="SemiBold" />
+                                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding StatusDetails}" Margin="0,2,0,0" />
+                                                </StackPanel>
+                                                <Border Grid.Column="1" CornerRadius="6" Padding="8,4" VerticalAlignment="Center"
+                                                        Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}">
+                                                    <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="11"
+                                                               Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
+                                                </Border>
+                                            </Grid>
                                         </Border>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

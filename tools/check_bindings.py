@@ -48,7 +48,7 @@ ITEM_TYPES = {
     "UpdatesPage": ["EngineConsistencyItem", "EngineBackupInfo"],
     "HomePage": ["ConnectionCheck", "MonitorTarget"],
     "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord", "MonitorTarget", "AutoTunerStepResult"],
-    "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult", "MonitorTarget", "ResourceProbeResult", "DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation"],
+    "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult", "MonitorTarget", "ResourceProbeResult", "DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "DiscordVoiceServerCheck"],
     "DpiPage": ["DpiTargetResult", "DpiProbeResult"],
     "DeepCheckPage": ["DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "EngineConsistencyCheck"],
     "MonitoringPage": ["MonitorTarget", "ResourceProbeResult"],

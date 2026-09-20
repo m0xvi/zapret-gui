@@ -1197,27 +1197,51 @@ namespace ZapretGui.Core
         {
             try
             {
-                var discord = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "discord");
-                if (!Directory.Exists(discord)) return (false, "Папка Discord не найдена");
-
-                if (Shell.IsProcessRunning("Discord"))
-                    return (false, "Сначала закройте Discord — кэш занят приложением");
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+                var discordDirs = new[]
+                {
+                    Path.Combine(appData, "discord"),
+                    Path.Combine(appData, "discordcanary"),
+                    Path.Combine(appData, "discordptb"),
+                    Path.Combine(appData, "discorddevelopment")
+                };
 
                 int removed = 0;
-                foreach (var name in new[] { "Cache", "Code Cache", "GPUCache" })
+                int foldersCleaned = 0;
+
+                foreach (var discord in discordDirs)
                 {
-                    var path = Path.Combine(discord, name);
-                    if (!Directory.Exists(path)) continue;
-                    foreach (var file in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
+                    if (!Directory.Exists(discord)) continue;
+
+                    foreach (var name in new[] { "Cache", "Code Cache", "GPUCache", "DawnCache", "blob_storage" })
                     {
-                        try { File.Delete(file); removed++; } catch { }
+                        var path = Path.Combine(discord, name);
+                        if (!Directory.Exists(path)) continue;
+                        foldersCleaned++;
+
+                        try
+                        {
+                            foreach (var file in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
+                            {
+                                try { File.Delete(file); removed++; } catch { }
+                            }
+                        }
+                        catch { }
                     }
                 }
-                return (true, $"Очищено файлов кэша: {removed}");
+
+                // Сброс сетевого DNS-кэша Windows
+                DnsManagementService.FlushDnsCache();
+
+                if (foldersCleaned == 0)
+                    return (true, "Папки кэша Discord пусты или уже очищены. DNS-кэш сброшен.");
+
+                return (true, $"Очищено {removed} файлов кэша Discord ({foldersCleaned} каталогов), DNS-кэш Windows сброшен.");
             }
             catch (Exception ex)
             {
-                return (false, "Не удалось очистить кэш: " + ex.Message);
+                return (false, "Не удалось очистить кэш Discord: " + ex.Message);
             }
         }
     }

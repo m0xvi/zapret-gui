@@ -46,7 +46,8 @@ namespace ZapretGui.CoreLogicHarness
                 ("DPI-score и классификация freeze соответствуют формуле", DpiProbeScoreAndFreezeClassification),
                 ("Score кандидата приоритизирует эмпирические результаты проверок", EmpiricalCandidateEvaluationScoreOrdering),
                 ("Диагностический отчёт сериализуется вместе с журналом восстановления", DiagnosticsReportRoundTrips),
-                ("Списки доменов автоматически наполняются эталонными записями", DomainListsAutoSeedingWorks)
+                ("Списки доменов автоматически наполняются эталонными записями", DomainListsAutoSeedingWorks),
+                ("Менеджер фейковых бинарных нагрузок и Voice RTC эндпоинты работают", VoiceRtcProberAndFakeBinManagerWork)
             };
 
             foreach (var check in checks)
@@ -951,6 +952,23 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 Assert(ytLines.Contains("i.ytimg.com") && ytLines.Contains("googlevideo.com"), "list-youtube.txt не содержит i.ytimg.com или googlevideo.com");
                 Assert(dsLines.Contains("cdn.discordapp.com") && dsLines.Contains("gateway.discord.gg"), "list-discord.txt не содержит cdn.discordapp.com или gateway.discord.gg");
                 Assert(googLines.Contains("googleapis.com") && googLines.Contains("googlevideo.com"), "list-google.txt не содержит googleapis.com или googlevideo.com");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true);
+            }
+        }
+
+        private static void VoiceRtcProberAndFakeBinManagerWork()
+        {
+            Assert(DiscordVoiceRtcProber.VoiceEndpoints.Length >= 4, "Список голосовых шлюзов пуст");
+            var tempDir = Path.Combine(Path.GetTempPath(), "ZapretGUI-bin-test-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                FakeBinManager.EnsureDefaultPayloads(tempDir);
+                var payloads = FakeBinManager.GetAvailablePayloads(tempDir);
+                Assert(payloads.Count >= 1, "Эталонный bin фейк не создан");
+                Assert(payloads.Any(p => p.FileName.Contains("quic")), "QUIC фейк не распознан");
             }
             finally
             {

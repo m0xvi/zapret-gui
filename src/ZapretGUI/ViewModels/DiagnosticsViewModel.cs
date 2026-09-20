@@ -68,6 +68,9 @@ namespace ZapretGui.ViewModels
             SelectDeepCheckTabCommand = new RelayCommand(() => SelectedSubTab = 2);
             SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 3);
             SelectResultsTabCommand = new RelayCommand(() => SelectedSubTab = 4);
+            SelectVoiceRtcTabCommand = new RelayCommand(() => SelectedSubTab = 5);
+            RunVoiceRtcAuditCommand = new AsyncRelayCommand(RunVoiceRtcAuditAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
+            OptimizeDiscordVoiceCommand = new AsyncRelayCommand(OptimizeDiscordVoiceAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
             ExportReportCommand = new RelayCommand(ExportReport,
                 () => HasResults || DpiResults.Count > 0 ||
                      DiagnosticsHistoryStore.LoadLastDiagnostics() != null ||
@@ -118,13 +121,14 @@ namespace ZapretGui.ViewModels
             get => _selectedSubTab;
             set
             {
-                if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 4)))
+                if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 5)))
                 {
                     Raise(nameof(IsExpressTabSelected));
                     Raise(nameof(IsDpiTabSelected));
                     Raise(nameof(IsDeepCheckTabSelected));
                     Raise(nameof(IsSystemTabSelected));
                     Raise(nameof(IsResultsTabSelected));
+                    Raise(nameof(IsVoiceRtcTabSelected));
                 }
             }
         }
@@ -157,6 +161,72 @@ namespace ZapretGui.ViewModels
         {
             get => _selectedSubTab == 4;
             set { if (value) SelectedSubTab = 4; }
+        }
+
+        public bool IsVoiceRtcTabSelected
+        {
+            get => _selectedSubTab == 5;
+            set { if (value) SelectedSubTab = 5; }
+        }
+
+        public ObservableCollection<DiscordVoiceServerCheck> VoiceServers { get; } = new();
+
+        private bool _isVoiceRtcRunning;
+        private string _voiceRtcStatusText = "Проверка Voice RTC ещё не выполнялась";
+        private string _voiceRtcDiagnosisKey = "Muted";
+        private string _voiceRtcSummary = "Нажмите «Проверить Voice RTC», чтобы протестировать WebRTC/STUN подключение к голосовым серверам Discord.";
+        private string _voiceRtcRecommendation = "";
+        private string _voiceRtcCheckedAtText = "";
+        private DiscordVoiceRtcReport? _voiceRtcReport;
+
+        public bool IsVoiceRtcRunning
+        {
+            get => _isVoiceRtcRunning;
+            private set
+            {
+                if (Set(ref _isVoiceRtcRunning, value))
+                {
+                    (RunVoiceRtcAuditCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (OptimizeDiscordVoiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string VoiceRtcStatusText
+        {
+            get => _voiceRtcStatusText;
+            private set => Set(ref _voiceRtcStatusText, value);
+        }
+
+        public string VoiceRtcDiagnosisKey
+        {
+            get => _voiceRtcDiagnosisKey;
+            private set => Set(ref _voiceRtcDiagnosisKey, value);
+        }
+
+        public string VoiceRtcSummary
+        {
+            get => _voiceRtcSummary;
+            private set => Set(ref _voiceRtcSummary, value);
+        }
+
+        public string VoiceRtcRecommendation
+        {
+            get => _voiceRtcRecommendation;
+            private set => Set(ref _voiceRtcRecommendation, value);
+        }
+
+        public string VoiceRtcCheckedAtText
+        {
+            get => _voiceRtcCheckedAtText;
+            private set => Set(ref _voiceRtcCheckedAtText, value);
+        }
+
+        public bool HasVoiceRtcResults => VoiceServers.Count > 0;
+        public DiscordVoiceRtcReport? VoiceRtcReport
+        {
+            get => _voiceRtcReport;
+            private set => Set(ref _voiceRtcReport, value);
         }
 
         public MonitoringViewModel Monitoring => _main.Monitoring;
@@ -379,6 +449,9 @@ namespace ZapretGui.ViewModels
         public ICommand SelectDeepCheckTabCommand { get; }
         public ICommand SelectSystemTabCommand { get; }
         public ICommand SelectResultsTabCommand { get; }
+        public ICommand SelectVoiceRtcTabCommand { get; }
+        public ICommand RunVoiceRtcAuditCommand { get; }
+        public ICommand OptimizeDiscordVoiceCommand { get; }
         public ICommand FixItemCommand { get; }
         public ICommand ClearDiscordCacheCommand { get; }
         public ICommand ResetNetworkCommand { get; }
@@ -942,6 +1015,102 @@ namespace ZapretGui.ViewModels
                 IsRunning = false;
             }
             await RunAsync();
+        }
+
+        public async Task RunVoiceRtcAuditAsync()
+        {
+            if (IsVoiceRtcRunning) return;
+            IsVoiceRtcRunning = true;
+            VoiceRtcStatusText = "Запуск проверки голосовых серверов Discord (WebRTC/STUN)…";
+            VoiceRtcDiagnosisKey = "Warning";
+            VoiceServers.Clear();
+
+            var progress = new Progress<string>(text => VoiceRtcStatusText = text);
+
+            try
+            {
+                var report = await DiscordVoiceRtcProber.RunFullVoiceAuditAsync(progress).ConfigureAwait(true);
+                VoiceRtcReport = report;
+                VoiceRtcSummary = report.SummaryText;
+                VoiceRtcDiagnosisKey = report.DiagnosisKey;
+                VoiceRtcRecommendation = report.RecommendationText;
+                VoiceRtcStatusText = $"Проверка завершена: {report.PassedCount}/{report.TotalCount} шлюзов доступны (пинг {report.AveragePingMs} мс)";
+                VoiceRtcCheckedAtText = "Проверено: " + report.CheckedAt.ToString("HH:mm:ss");
+
+                foreach (var s in report.Servers)
+                {
+                    VoiceServers.Add(s);
+                }
+
+                Raise(nameof(HasVoiceRtcResults));
+                if (report.OverallVoiceReady)
+                {
+                    _main.Home.ShowSuccess("✅ Голосовой стек Discord (RTC/UDP) полностью доступен!");
+                }
+                else
+                {
+                    _main.Home.ShowWarning("⚠️ Обнаружен сбой голосового подключения Discord (UDP WebRTC дропается ТСПУ).");
+                }
+            }
+            catch (Exception ex)
+            {
+                VoiceRtcStatusText = "Ошибка проверки: " + ex.Message;
+                VoiceRtcDiagnosisKey = "Danger";
+            }
+            finally
+            {
+                IsVoiceRtcRunning = false;
+                Raise(nameof(HasVoiceRtcResults));
+            }
+        }
+
+        public async Task OptimizeDiscordVoiceAsync()
+        {
+            if (IsVoiceRtcRunning) return;
+            IsVoiceRtcRunning = true;
+            VoiceRtcStatusText = "Применяю оптимизированную конфигурацию для Discord Voice…";
+
+            try
+            {
+                // 1. Гарантируем наполнение списков доменов
+                DomainListUpdater.EnsureSeeded(Settings.EnginePath);
+
+                // 2. Включаем поддержку TCP Timestamps
+                WinServices.EnsureTcpTimestamps();
+
+                // 3. Выбираем стратегию с поддержкой UDP desync (general (ALT9) или general (EXP))
+                var targetStrat = _main.Strategies.Find("general (ALT9)")
+                               ?? _main.Strategies.Find("general (EXP)")
+                               ?? _main.Strategies.Find("general (ALT13)")
+                               ?? _main.Strategies.Items.FirstOrDefault(s => s.UsesGameFilter || s.UsesFakeQuic);
+
+                if (targetStrat != null)
+                {
+                    _main.Settings.SelectedStrategy = targetStrat.Name;
+                    SettingsStore.Save(_main.Settings);
+                    await _main.Home.ApplyStrategyAsync(targetStrat).ConfigureAwait(true);
+                }
+
+                // 4. Очищаем кэш Discord и сбрасываем DNS
+                EngineService.ClearDiscordCache();
+                DnsManagementService.FlushDnsCache();
+
+                VoiceRtcStatusText = "Оптимизация Discord Voice завершена! Перезапустите Discord и войдите в голосовой канал.";
+                VoiceRtcDiagnosisKey = "Success";
+                _main.Home.ShowSuccess("✅ Настройки для Discord Voice применены (стратегия " + (_main.Settings.SelectedStrategy ?? "ALT9") + ", UDP 50000-65535, кэш очищен).");
+
+                // Перепроверяем войс
+                await RunVoiceRtcAuditAsync().ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                VoiceRtcStatusText = "Ошибка оптимизации: " + ex.Message;
+                VoiceRtcDiagnosisKey = "Danger";
+            }
+            finally
+            {
+                IsVoiceRtcRunning = false;
+            }
         }
 
         public void RefreshTheme()

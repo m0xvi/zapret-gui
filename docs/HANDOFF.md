@@ -1114,4 +1114,11 @@ CI и что требует Windows runtime.
    - Устранено исключение `NotSupportedException: CollectionView does not support changes from a thread different from the Dispatcher thread` при фоновых проверках: все методы обновления `ObservableCollection` и вызовы `Refresh()` в `StrategyStore` и `StrategiesViewModel` теперь гарантированно выполняются на UI Dispatcher.
    - Устранён ложный статус «Стратегии не найдены» в верхней панели состояния: `strategyCount` теперь не обнуляется при фоновом тесте.
    - Добавлена полная поддержка Flowseal 1.10.3+: новый список `list-google.txt`, адаптивный парсер корневых каталогов `ResolveContentRoot`, чтение версий из `.service/version.txt` и `docs/version.txt`, поддержка стратегии `ALT13` и кастомных диапазонов GameFilter.
+
+11. **Устранение бесконечного «Подключения к RTC» и диагностика Discord Voice (v1.4.3 Update):**
+   - Добавлен специализированный зонд `DiscordVoiceRtcProber` (RFC 5389 STUN Binding / UDP WebRTC), выполняющий прямое тестирование голосовых шлюзов Discord (Роттердам, Франкфурт, Стокгольм, Мадрид) с замером задержки и потерь пакетов.
+   - Добавлен `FakeBinManager` для каталогизации и управления бинарными фейковыми нагрузками (`bin/*.bin`) для голосового трафика Discord и GameFilter UDP.
+   - В `DiagnosticsPage` добавлена вкладка **«🎙️ Discord Voice (RTC)»** с живым мониторингом голосовых серверов, кнопкой проверки и смарт-действием **«Применить фикс для Discord Voice»**.
+   - Улучшена функция `ClearDiscordCache`: теперь очищает кэш всех редакций Discord (Stable, Canary, PTB, Dev), удаляет GPU/Dawn/Blob кэши и сбрасывает DNS-кэш Windows.
+
 ```
