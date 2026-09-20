@@ -8,6 +8,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Input;
 using Microsoft.Win32;
@@ -25,8 +26,9 @@ namespace ZapretGui.ViewModels
         private bool _isBusy;
         private bool _isTestingAll;
         private double _testProgressValue;
+        private double _lastProgressValue;
         private double _testProgressMaximum = 1;
-        private bool _testProgressIndeterminate = true;
+        private bool _testProgressIndeterminate;
         private string _testProgressPercentText = "";
         private string _testProgressText = "";
         private string _testSummary = "";
@@ -48,6 +50,28 @@ namespace ZapretGui.ViewModels
         private CancellationTokenSource? _candidateGenerationCts;
         private CancellationTokenSource? _candidateEvaluationCts;
 
+        // --- Раздел 1: Интеллектуальный подбор и авто-настройка ---
+        private int _selectedSubTabIndex;
+        private StrategyInfo? _bestEmpiricalStrategy;
+
+        // Конструктор параметров
+        private string _builderStrategyName = "custom_split2_google";
+        private string _builderDesyncMode = "split2";
+        private string _builderSplitPos = "midsld";
+        private string _builderFakeSni = "www.google.com";
+        private string _builderTtl = "auto";
+        private string _builderFooling = "badsum";
+        private bool _builderUseMultisplit = true;
+        private bool _builderUseGameUdp = true;
+        private bool _builderUseHostlist = true;
+        private bool _builderUseIpSet = true;
+        private string _builderTestStatus = "";
+        private string _builderTestStatusKey = "Info";
+
+        // Контрольные адреса
+        private string _newTargetName = "";
+        private string _newTargetUrl = "";
+
         public StrategiesViewModel(MainViewModel main)
         {
             _main = main;
@@ -60,6 +84,10 @@ namespace ZapretGui.ViewModels
             _evaluationHistory = StrategyEvaluationHistoryStore.Load();
 
             Categories = new[] { "Все категории", "FAKE TLS AUTO", "ALT", "SIMPLE FAKE", "БАЗОВАЯ", "EXP", "АВТОКОНСТРУКТОР" };
+            SubTabs = new[] { "Каталог стратегий", "Конструктор параметров", "Контрольные адреса" };
+
+            // Инициализация контрольных адресов
+            TargetEndpoints = new ObservableCollection<MonitorTarget>(main.Settings.MonitorTargets);
 
             RunCommand = new AsyncRelayCommand(RunAsync,
                 parameter => (parameter is StrategyInfo || Selected != null) && !IsBusy && !IsTestingAll && !IsGeneratingCandidates && !IsEvaluatingCandidates);
@@ -73,6 +101,18 @@ namespace ZapretGui.ViewModels
             RefreshCommand = new RelayCommand(Refresh);
             OpenFolderCommand = new RelayCommand(() => Shell.OpenFolder(Store.Folder));
             UseRecommendedCommand = new RelayCommand(UseRecommended);
+            ApplyBestRecommendedCommand = new AsyncRelayCommand(ApplyBestRecommendedAsync, () => BestEmpiricalStrategy != null && !IsBusy && !IsTestingAll);
+
+            // Команды конструктора параметров
+            BuilderTestCommand = new AsyncRelayCommand(BuilderTestAsync, () => !IsBusy && !IsTestingAll);
+            BuilderSaveCommand = new RelayCommand(BuilderSave, () => !string.IsNullOrWhiteSpace(BuilderStrategyName));
+            BuilderApplyCommand = new AsyncRelayCommand(BuilderApplyAsync, () => !IsBusy && !IsTestingAll && !string.IsNullOrWhiteSpace(BuilderStrategyName));
+
+            // Команды контрольных адресов
+            AddTargetCommand = new RelayCommand(AddTarget, () => !string.IsNullOrWhiteSpace(NewTargetUrl));
+            RemoveTargetCommand = new RelayCommand(RemoveTarget);
+            ToggleTargetCommand = new RelayCommand(ToggleTarget);
+
             BuildCandidatePreviewCommand = new RelayCommand(BuildCandidatePreview, () => Selected != null);
             GenerateCandidatesCommand = new AsyncRelayCommand(GenerateCandidatesAsync,
                 () => !IsGeneratingCandidates && !IsTestingAll && !IsBusy && Store.Items.Count > 0);
@@ -99,79 +139,221 @@ namespace ZapretGui.ViewModels
         }
 
         public StrategyStore Store => _main.Strategies;
+        public ICollectionView View { get; }
+        public ICollectionView CandidateEvaluationsView => _candidateEvaluationView;
+        public string[] Categories { get; }
+        public string[] SubTabs { get; }
+
+        public int SelectedSubTabIndex
+        {
+            get => _selectedSubTabIndex;
+            set
+            {
+                if (Set(ref _selectedSubTabIndex, Math.Clamp(value, 0, SubTabs.Length - 1)))
+                {
+                    Raise(nameof(IsCatalogTabVisible));
+                    Raise(nameof(IsBuilderTabVisible));
+                    Raise(nameof(IsTargetsTabVisible));
+                }
+            }
+        }
+
+        public bool IsCatalogTabVisible => SelectedSubTabIndex == 0;
+        public bool IsBuilderTabVisible => SelectedSubTabIndex == 1;
+        public bool IsTargetsTabVisible => SelectedSubTabIndex == 2;
+
         public AppSettings Settings => _main.Settings;
         public BypassController Bypass => _main.Bypass;
+
+        // ------------------------------------------------------------------ Интеллектуальный подбор
+        public StrategyInfo? BestEmpiricalStrategy
+        {
+            get => _bestEmpiricalStrategy ?? Store.Recommended;
+            private set
+            {
+                if (Set(ref _bestEmpiricalStrategy, value))
+                {
+                    Raise(nameof(HasBestRecommendation));
+                    Raise(nameof(BestStrategyRecommendationText));
+                    Raise(nameof(BestStrategyDetailsText));
+                    (ApplyBestRecommendedCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public bool HasBestRecommendation => BestEmpiricalStrategy != null;
+
+        public string BestStrategyRecommendationText => BestEmpiricalStrategy != null
+            ? $"Рекомендовано для вашей сети: «{BestEmpiricalStrategy.Name}»"
+            : "Проверьте стратегии для подбора лучшей под вашего провайдера";
+
+        public string BestStrategyDetailsText
+        {
+            get
+            {
+                if (BestEmpiricalStrategy?.TestResult != null)
+                {
+                    var r = BestEmpiricalStrategy.TestResult;
+                    return $"{r.PassedCount}/{r.Checks.Count} проверок OK · средняя задержка {r.AverageLatencyMs} мс";
+                }
+                return "Базовая проверенная стратегия с максимальной совместимостью";
+            }
+        }
+
+        public ICommand ApplyBestRecommendedCommand { get; }
+
+        // ------------------------------------------------------------------ Визуальный конструктор параметров winws
+        public ObservableCollection<string> BuilderDesyncModes { get; } = new()
+        {
+            "split2", "disorder2", "fake", "fakedsni", "multisplit", "disorder", "split", "none"
+        };
+
+        public ObservableCollection<string> BuilderSplitPositions { get; } = new()
+        {
+            "midsld", "sni", "host", "1", "2", "3", "4"
+        };
+
+        public ObservableCollection<string> BuilderFakeSnis { get; } = new()
+        {
+            "www.google.com", "googlevideo.com", "youtube.com", "cloudflare.com"
+        };
+
+        public ObservableCollection<string> BuilderTtls { get; } = new()
+        {
+            "auto", "1", "2", "3", "4", "5", "8", "12"
+        };
+
+        public ObservableCollection<string> BuilderFoolings { get; } = new()
+        {
+            "badsum", "badseq", "datanoack", "none"
+        };
+
+        public string BuilderStrategyName
+        {
+            get => _builderStrategyName;
+            set
+            {
+                if (Set(ref _builderStrategyName, value ?? ""))
+                {
+                    (BuilderSaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (BuilderApplyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string BuilderDesyncMode
+        {
+            get => _builderDesyncMode;
+            set { if (Set(ref _builderDesyncMode, value ?? "split2")) RaiseBuilderPreview(); }
+        }
+
+        public string BuilderSplitPos
+        {
+            get => _builderSplitPos;
+            set { if (Set(ref _builderSplitPos, value ?? "midsld")) RaiseBuilderPreview(); }
+        }
+
+        public string BuilderFakeSni
+        {
+            get => _builderFakeSni;
+            set { if (Set(ref _builderFakeSni, value ?? "www.google.com")) RaiseBuilderPreview(); }
+        }
+
+        public string BuilderTtl
+        {
+            get => _builderTtl;
+            set { if (Set(ref _builderTtl, value ?? "auto")) RaiseBuilderPreview(); }
+        }
+
+        public string BuilderFooling
+        {
+            get => _builderFooling;
+            set { if (Set(ref _builderFooling, value ?? "badsum")) RaiseBuilderPreview(); }
+        }
+
+        public bool BuilderUseMultisplit
+        {
+            get => _builderUseMultisplit;
+            set { if (Set(ref _builderUseMultisplit, value)) RaiseBuilderPreview(); }
+        }
+
+        public bool BuilderUseGameUdp
+        {
+            get => _builderUseGameUdp;
+            set { if (Set(ref _builderUseGameUdp, value)) RaiseBuilderPreview(); }
+        }
+
+        public bool BuilderUseHostlist
+        {
+            get => _builderUseHostlist;
+            set { if (Set(ref _builderUseHostlist, value)) RaiseBuilderPreview(); }
+        }
+
+        public bool BuilderUseIpSet
+        {
+            get => _builderUseIpSet;
+            set { if (Set(ref _builderUseIpSet, value)) RaiseBuilderPreview(); }
+        }
+
+        public List<string> BuilderGeneratedArgs => VisualStrategyBuilder.BuildArgs(
+            Settings.EnginePath, BuilderDesyncMode, BuilderSplitPos, BuilderFakeSni, BuilderTtl,
+            BuilderFooling, BuilderUseMultisplit, BuilderUseGameUdp, BuilderUseHostlist, BuilderUseIpSet);
+
+        public string BuilderGeneratedArgsPreview => string.Join(" ", BuilderGeneratedArgs);
+
+        public string BuilderTestStatus
+        {
+            get => _builderTestStatus;
+            private set => Set(ref _builderTestStatus, value);
+        }
+
+        public string BuilderTestStatusKey
+        {
+            get => _builderTestStatusKey;
+            private set => Set(ref _builderTestStatusKey, value);
+        }
+
+        public ICommand BuilderTestCommand { get; }
+        public ICommand BuilderSaveCommand { get; }
+        public ICommand BuilderApplyCommand { get; }
+
+        private void RaiseBuilderPreview()
+        {
+            Raise(nameof(BuilderGeneratedArgs));
+            Raise(nameof(BuilderGeneratedArgsPreview));
+        }
+
+        // ------------------------------------------------------------------ Управление контрольными адресами
+        public ObservableCollection<MonitorTarget> TargetEndpoints { get; }
+
+        public string NewTargetName
+        {
+            get => _newTargetName;
+            set => Set(ref _newTargetName, value ?? "");
+        }
+
+        public string NewTargetUrl
+        {
+            get => _newTargetUrl;
+            set
+            {
+                if (Set(ref _newTargetUrl, value ?? ""))
+                {
+                    (AddTargetCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public ICommand AddTargetCommand { get; }
+        public ICommand RemoveTargetCommand { get; }
+        public ICommand ToggleTargetCommand { get; }
+
+        public string ProviderContextText => Settings.ProviderContext?.DisplayText ?? "Провайдер не указан";
+
         public ObservableCollection<StrategyCandidate> GeneratedCandidates { get; } = new();
         public ObservableCollection<StrategyCandidateEvaluation> CandidateEvaluations { get; } = new();
         public ObservableCollection<SavedStrategyCandidate> SavedCandidates { get; } = new();
         public ObservableCollection<StrategyEvaluationHistoryRecord> EvaluationHistory { get; } = new();
-
-        public ICollectionView View { get; }
-        public ICollectionView CandidateEvaluationView => _candidateEvaluationView;
-        public string[] Categories { get; }
-
-        public bool IsEngineReady => EngineService.IsEngineReady(Settings.EnginePath);
-        public bool IsEngineMissing => !IsEngineReady;
-
-        public string SearchText
-        {
-            get => _searchText;
-            set
-            {
-                if (Set(ref _searchText, value)) View.Refresh();
-            }
-        }
-
-        public int CategoryIndex
-        {
-            get => _categoryIndex;
-            set
-            {
-                if (Set(ref _categoryIndex, value)) View.Refresh();
-            }
-        }
-
-        public bool OnlyRecommended
-        {
-            get => _onlyRecommended;
-            set
-            {
-                if (Set(ref _onlyRecommended, value)) View.Refresh();
-            }
-        }
-
-        public StrategyInfo? Selected
-        {
-            get => _selected;
-            set
-            {
-                if (!Set(ref _selected, value)) return;
-                Raise(nameof(HasSelection));
-                Raise(nameof(SelectedDescription));
-                Raise(nameof(SelectedArgs));
-                Raise(nameof(SelectedCategory));
-                Raise(nameof(SelectedPath));
-                Raise(nameof(SelectedFeatures));
-                Raise(nameof(IsSelectedDefault));
-                CandidatePreview = null;
-                (BuildCandidatePreviewCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-                (RunSavedCandidateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-                (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-                (CopyArgsCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (SetDefaultCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            }
-        }
-
-        public bool HasSelection => Selected != null;
-        public string SelectedDescription => Selected?.Description ?? "";
-        public string SelectedArgs => Selected?.ShortArgs ?? "";
-        public string SelectedCategory => Selected?.Category ?? "";
-        public string SelectedPath => Selected?.FullPath ?? "";
-        public string SelectedFeatures => Selected == null
-            ? "Признаки не определены"
-            : StrategyFeatureAnalyzer.Analyze(Selected).Summary;
-        public string ProviderContextText => Settings.ProviderContext?.DisplayText ?? "Провайдер не указан";
 
         public StrategyCandidate? CandidatePreview
         {
@@ -179,13 +361,9 @@ namespace ZapretGui.ViewModels
             private set
             {
                 if (!Set(ref _candidatePreview, value)) return;
-                _isCandidatePreviewSaved = value != null && StrategyCandidateStore.Contains(value.Fingerprint);
-                Raise(nameof(IsCandidatePreviewSaved));
-                Raise(nameof(CandidateSaveStatusText));
-                (SaveCandidateCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (RunSavedCandidateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-                (MakeCandidatePrimaryCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                Raise(nameof(CandidatePreviewVisible));
+                _isCandidatePreviewSaved = value != null && StrategyCandidateStore.Load().Any(item =>
+                    item.Fingerprint.Equals(value.Fingerprint, StringComparison.Ordinal));
+                Raise(nameof(CandidatePreview));
                 Raise(nameof(CandidatePreviewName));
                 Raise(nameof(CandidatePreviewProvider));
                 Raise(nameof(CandidatePreviewSummary));
@@ -193,10 +371,14 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(CandidatePreviewFeatures));
                 Raise(nameof(CandidatePreviewFixedArgs));
                 Raise(nameof(CandidatePreviewTunableArgs));
+                Raise(nameof(IsCandidatePreviewSaved));
+                Raise(nameof(CandidateSaveStatusText));
+                (SaveCandidateCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (RunSavedCandidateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                (MakeCandidatePrimaryCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
 
-        public bool CandidatePreviewVisible => CandidatePreview != null;
         public string CandidatePreviewName => CandidatePreview?.Name ?? "";
         public string CandidatePreviewProvider => CandidatePreview?.ProviderText ?? "";
         public string CandidatePreviewSummary => CandidatePreview?.Summary ?? "";
@@ -279,43 +461,113 @@ namespace ZapretGui.ViewModels
         public double CandidateEvaluationProgressValue
         {
             get => _candidateEvaluationProgressValue;
-            set => Set(ref _candidateEvaluationProgressValue, value);
+            private set => Set(ref _candidateEvaluationProgressValue, value);
         }
 
         public double CandidateEvaluationProgressMaximum
         {
             get => _candidateEvaluationProgressMaximum;
-            set => Set(ref _candidateEvaluationProgressMaximum, value);
+            private set => Set(ref _candidateEvaluationProgressMaximum, value);
         }
 
         public string CandidateEvaluationProgressPercentText
         {
             get => _candidateEvaluationProgressPercentText;
-            set => Set(ref _candidateEvaluationProgressPercentText, value);
+            private set => Set(ref _candidateEvaluationProgressPercentText, value);
         }
 
         public bool CandidateEvaluationProgressVisible
         {
             get => _candidateEvaluationProgressVisible;
-            set => Set(ref _candidateEvaluationProgressVisible, value);
+            private set => Set(ref _candidateEvaluationProgressVisible, value);
         }
 
         public bool CandidateEvaluationVisible => IsEvaluatingCandidates || CandidateEvaluations.Count > 0;
-        public bool EvaluationHistoryVisible => EvaluationHistory.Count > 0;
-        public string EvaluationHistoryCountText => EvaluationHistory.Count > 0
-            ? $"Сохранено проверок: {EvaluationHistory.Count}"
-            : "История проверок пуста";
-        public bool SavedCandidatesVisible => SavedCandidates.Count > 0;
+        public string CandidateEvaluationSummaryText => CandidateEvaluations.Count == 0
+            ? "Оценка кандидатов не запускалась"
+            : $"Проверено кандидатов: {CandidateEvaluations.Count} · лучших: {CandidateEvaluations.Count(item => item.IsWinner)}";
 
-        public ICommand EvaluateCandidatesCommand { get; }
-        public ICommand CancelCandidateEvaluationCommand { get; }
-        public ICommand ExportCandidateReportCommand { get; }
-        public ICommand ClearHistoryCommand { get; }
+        public string EvaluationHistoryCountText => EvaluationHistory.Count == 0
+            ? "История пуста"
+            : $"Записей в истории: {EvaluationHistory.Count}";
 
-        public bool IsSelectedDefault => Selected != null &&
-            Selected.Name.Equals(Settings.SelectedStrategy, StringComparison.OrdinalIgnoreCase);
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                if (Set(ref _searchText, value))
+                {
+                    View.Refresh();
+                    Raise(nameof(CountText));
+                }
+            }
+        }
 
-        public string CountText => $"{View.Cast<object>().Count()} из {Store.Items.Count} стратегий";
+        public int CategoryIndex
+        {
+            get => _categoryIndex;
+            set
+            {
+                if (Set(ref _categoryIndex, value))
+                {
+                    View.Refresh();
+                    Raise(nameof(CountText));
+                }
+            }
+        }
+
+        public bool OnlyRecommended
+        {
+            get => _onlyRecommended;
+            set
+            {
+                if (Set(ref _onlyRecommended, value))
+                {
+                    View.Refresh();
+                    Raise(nameof(CountText));
+                }
+            }
+        }
+
+        public string CountText
+        {
+            get
+            {
+                var total = Store.Items.Count;
+                var filtered = View.Cast<object>().Count();
+                return filtered == total ? $"Всего: {total}" : $"Показано: {filtered} из {total}";
+            }
+        }
+
+        public StrategyInfo? Selected
+        {
+            get => _selected ?? Store.Items.FirstOrDefault();
+            set
+            {
+                if (!Set(ref _selected, value)) return;
+                Raise(nameof(SelectedName));
+                Raise(nameof(SelectedCategory));
+                Raise(nameof(SelectedDescription));
+                Raise(nameof(SelectedArgs));
+                Raise(nameof(SelectedFeatures));
+                Raise(nameof(SelectedPath));
+                (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                (TestStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                (OpenBatCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (CopyArgsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (SetDefaultCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (BuildCandidatePreviewCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        public string SelectedName => Selected?.Name ?? "Ничего не выбрано";
+        public string SelectedCategory => Selected?.Category ?? "";
+        public string SelectedDescription => Selected?.Description ?? "";
+        public string SelectedArgs => Selected?.ShortArgs ?? "";
+        public string SelectedFeatures => Selected?.FeaturesSummary ?? "";
+        public string SelectedPath => Selected?.FullPath ?? "";
 
         public bool IsBusy
         {
@@ -325,12 +577,15 @@ namespace ZapretGui.ViewModels
                 if (Set(ref _isBusy, value))
                 {
                     (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-                    (RunSavedCandidateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (TestStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (TestAllCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (GenerateCandidatesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (EvaluateCandidatesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (RunSavedCandidateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplyBestRecommendedCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (BuilderTestCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (BuilderApplyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -344,13 +599,13 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(TestProgressVisible));
                     (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-                    (RunSavedCandidateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-                    (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (TestStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (TestAllCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (CancelTestCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (GenerateCandidatesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (EvaluateCandidatesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplyBestRecommendedCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (BuilderTestCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -366,7 +621,15 @@ namespace ZapretGui.ViewModels
         public double TestProgressValue
         {
             get => _testProgressValue;
-            set => Set(ref _testProgressValue, value);
+            set
+            {
+                // Монотонный прогресс: значение только растёт вперёд
+                if (value >= _lastProgressValue || value == 0)
+                {
+                    _lastProgressValue = value;
+                    Set(ref _testProgressValue, value);
+                }
+            }
         }
 
         public double TestProgressMaximum
@@ -428,6 +691,10 @@ namespace ZapretGui.ViewModels
         public ICommand GenerateCandidatesCommand { get; }
         public ICommand CancelCandidateGenerationCommand { get; }
         public ICommand PreviewGeneratedCandidateCommand { get; }
+        public ICommand EvaluateCandidatesCommand { get; }
+        public ICommand CancelCandidateEvaluationCommand { get; }
+        public ICommand ExportCandidateReportCommand { get; }
+        public ICommand ClearHistoryCommand { get; }
 
         // ------------------------------------------------------------------ логика
 
@@ -452,344 +719,49 @@ namespace ZapretGui.ViewModels
 
         public void Refresh()
         {
-            var keep = Selected?.Name;
             Store.Refresh();
             View.Refresh();
-
-            Selected = Store.Find(keep) ?? Store.Recommended ?? Store.Items.FirstOrDefault();
-            Raise(nameof(CountText));
-            Raise(nameof(IsEngineReady));
-            Raise(nameof(IsEngineMissing));
-        }
-
-        private void UseRecommended()
-        {
-            var recommended = Store.Recommended ?? Store.Items.FirstOrDefault();
-            if (recommended == null) return;
-            Selected = recommended;
-            SetDefault();
-        }
-
-        private void BuildCandidatePreview()
-        {
-            if (Selected == null) return;
-            CandidatePreview = StrategyCandidateFactory.CreatePreview(
-                Selected,
-                Settings.ProviderContext ?? new ProviderContext(),
-                EngineService.GetGameFilterMode(Settings.EnginePath));
-            Message = "Предпросмотр кандидата создан — обход не запускался, файлы не изменены";
-        }
-
-        private async Task GenerateCandidatesAsync()
-        {
-            if (IsGeneratingCandidates || IsTestingAll || IsBusy || Store.Items.Count == 0) return;
-
-            IsGeneratingCandidates = true;
-            CandidateGenerationText = "Собираю ограниченный набор вариантов…";
-            GeneratedCandidates.Clear();
-            CandidateEvaluations.Clear();
-            CandidateEvaluationText = "";
-            Raise(nameof(CandidateGenerationVisible));
-            Raise(nameof(CandidateEvaluationVisible));
-            (EvaluateCandidatesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            _candidateGenerationCts = new CancellationTokenSource();
-            try
-            {
-                var sources = Store.Items
-                    .Where(strategy => strategy.IsRecommended || strategy.TestState == StrategyTestState.Passed)
-                    .ToList();
-                var usedFallback = sources.Count == 0;
-                if (usedFallback && Selected != null) sources.Add(Selected);
-                if (sources.Count == 0)
-                {
-                    CandidateGenerationText = "Нет стратегии-основы для построения вариантов";
-                    return;
-                }
-
-                var result = await Task.Run(() => StrategyCandidateGenerator.Generate(
-                    sources,
-                    Settings.ProviderContext ?? new ProviderContext(),
-                    EngineService.GetGameFilterMode(Settings.EnginePath),
-                    new StrategyCandidateGenerationOptions { MaxCandidates = 16, MaxVariantsPerSource = 4 },
-                    _candidateGenerationCts.Token,
-                    _evaluationHistory,
-                    DiagnosticsHistoryStore.LoadLastDpiCheck()?.Observation), _candidateGenerationCts.Token).ConfigureAwait(true);
-
-                foreach (var candidate in result.Candidates)
-                {
-                    GeneratedCandidates.Add(candidate);
-                    CandidateEvaluations.Add(new StrategyCandidateEvaluation(candidate));
-                }
-                _candidateEvaluationView.Refresh();
-                Raise(nameof(CandidateEvaluationVisible));
-                (EvaluateCandidatesCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-                (ExportCandidateReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                CandidateGenerationText = result.Candidates.Count == 0
-                    ? "Варианты не найдены: в стратегиях нет разрешённых параметров"
-                    : $"Собрано вариантов: {result.Candidates.Count}. Запуск и сохранение не выполнялись."
-                      + (result.WasLimited ? " Достигнут лимит набора." : "")
-                      + (usedFallback ? " Использована стратегия без результата тестирования." : "")
-                      + " " + result.ProviderHeuristicText;
-                Raise(nameof(CandidateGenerationVisible));
-                Message = result.Candidates.Count > 0
-                    ? "Набор кандидатов создан только в памяти — обход не запускался"
-                    : "Не удалось собрать варианты кандидатов";
-            }
-            catch (OperationCanceledException)
-            {
-                CandidateGenerationText = "Сбор кандидатов отменён";
-                Raise(nameof(CandidateGenerationVisible));
-            }
-            finally
-            {
-                _candidateGenerationCts?.Dispose();
-                _candidateGenerationCts = null;
-                IsGeneratingCandidates = false;
-            }
-        }
-
-        private async Task EvaluateCandidatesAsync()
-        {
-            if (IsEvaluatingCandidates || IsGeneratingCandidates || IsTestingAll || IsBusy || CandidateEvaluations.Count == 0)
-                return;
-
-            const int repeats = 2;
-            var total = CandidateEvaluations.Count * repeats;
-            CandidateEvaluationProgressMaximum = Math.Max(1, total);
-            CandidateEvaluationProgressValue = 0;
-            CandidateEvaluationProgressPercentText = "0%";
-            CandidateEvaluationProgressVisible = true;
-            IsEvaluatingCandidates = true;
-            CandidateEvaluationText = "Подготавливаю повторные проверки кандидатов…";
-            _candidateEvaluationCts = new CancellationTokenSource();
-            try
-            {
-                for (var index = 0; index < CandidateEvaluations.Count; index++)
-                {
-                    _candidateEvaluationCts.Token.ThrowIfCancellationRequested();
-                    var evaluation = CandidateEvaluations[index];
-                    for (var repeat = 1; repeat <= repeats; repeat++)
-                    {
-                        _candidateEvaluationCts.Token.ThrowIfCancellationRequested();
-                        var done = index * repeats + repeat;
-                        CandidateEvaluationProgressValue = done;
-                        CandidateEvaluationProgressPercentText = $"{done * 100 / total:0}%";
-                        CandidateEvaluationText = $"Проверяю вариант {index + 1} из {CandidateEvaluations.Count}, повтор {repeat} из {repeats}…";
-                        evaluation.MarkTesting(repeat, repeats);
-                        using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(_candidateEvaluationCts.Token);
-                        attemptCts.CancelAfter(TimeSpan.FromSeconds(45));
-                        var result = await Bypass.TestStrategyAsync(ToStrategyInfo(evaluation.Candidate), attemptCts.Token);
-                        evaluation.AddResult(result, repeat, repeats);
-                        _candidateEvaluationView.Refresh();
-                        if (attemptCts.IsCancellationRequested && !_candidateEvaluationCts.Token.IsCancellationRequested)
-                            break;
-                    }
-                    evaluation.Complete();
-                    _candidateEvaluationView.Refresh();
-                }
-
-                var stable = CandidateEvaluations.Count(evaluation => evaluation.IsStable);
-                CandidateEvaluationText = $"Проверено кандидатов: {CandidateEvaluations.Count}. Стабильных: {stable}. Лучший score: " +
-                    (CandidateEvaluations.Count == 0 ? "—" : CandidateEvaluations.Max(evaluation => evaluation.Score).ToString());
-                Message = "Проверка кандидатов завершена — лучший вариант не включён автоматически";
-            }
-            catch (OperationCanceledException)
-            {
-                CandidateEvaluationText = "Проверка кандидатов отменена. Состояние обхода восстанавливается после текущей пробы.";
-                Message = "Проверка кандидатов отменена";
-            }
-            finally
-            {
-                CandidateEvaluationProgressVisible = false;
-                foreach (var evaluation in CandidateEvaluations.Where(evaluation => evaluation.IsTesting))
-                    evaluation.Complete();
-                foreach (var evaluation in CandidateEvaluations.Where(evaluation => evaluation.RepeatCount > 0))
-                    AppendHistory(StrategyEvaluationHistoryRecord.FromEvaluation(evaluation));
-                _candidateEvaluationView.Refresh();
-                _candidateEvaluationCts?.Dispose();
-                _candidateEvaluationCts = null;
-                IsEvaluatingCandidates = false;
-            }
-        }
-
-        private void ExportCandidateReport()
-        {
-            if (CandidateEvaluations.Count == 0 && EvaluationHistory.Count == 0) return;
-
-            var report = new StrategyEvaluationReport
-            {
-                GeneratedAtUtc = DateTime.UtcNow,
-                Provider = Settings.ProviderContext ?? new ProviderContext(),
-                GeneratedCandidates = GeneratedCandidates.ToList(),
-                CurrentEvaluations = CandidateEvaluations
-                    .Where(evaluation => evaluation.RepeatCount > 0)
-                    .Select(StrategyEvaluationHistoryRecord.FromEvaluation)
-                    .ToList(),
-                History = EvaluationHistory.ToList()
-            };
-
-            var dialog = new SaveFileDialog
-            {
-                Filter = "Отчёт автоконструктора (*.json)|*.json|Все файлы (*.*)|*.*",
-                DefaultExt = ".json",
-                AddExtension = true,
-                FileName = "zapretgui-strategy-report-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".json",
-                Title = "Экспорт отчёта автоконструктора"
-            };
-            if (dialog.ShowDialog() != true) return;
-
-            try
-            {
-                var options = new JsonSerializerOptions
-                {
-                    WriteIndented = true,
-                    Converters = { new JsonStringEnumConverter() }
-                };
-                File.WriteAllText(dialog.FileName, JsonSerializer.Serialize(report, options));
-                Message = "Отчёт автоконструктора сохранён: " + dialog.FileName;
-            }
-            catch (Exception ex)
-            {
-                Message = "Не удалось сохранить отчёт: " + ex.Message;
-            }
-        }
-
-        private void AppendHistory(StrategyEvaluationHistoryRecord record)
-        {
-            if (record == null) return;
-            if (!StrategyEvaluationHistoryStore.TryAppend(record)) return;
-
-            lock (_evaluationHistory)
-            {
-                _evaluationHistory.Insert(0, record);
-                while (_evaluationHistory.Count > 200) _evaluationHistory.RemoveAt(_evaluationHistory.Count - 1);
-            }
-
-            void UpdateUi()
-            {
-                EvaluationHistory.Insert(0, record);
-                while (EvaluationHistory.Count > 50) EvaluationHistory.RemoveAt(EvaluationHistory.Count - 1);
-                Raise(nameof(EvaluationHistoryVisible));
-                Raise(nameof(EvaluationHistoryCountText));
-                (ExportCandidateReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (ClearHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            }
-
-            var dispatcher = System.Windows.Application.Current?.Dispatcher;
-            if (dispatcher != null && !dispatcher.CheckAccess())
-            {
-                dispatcher.BeginInvoke(new Action(UpdateUi));
-            }
-            else
-            {
-                UpdateUi();
-            }
-        }
-
-        private void ClearHistory()
-        {
-            var answer = System.Windows.MessageBox.Show(
-                "Очистить сохранённую историю проверок стратегий?",
-                "Очистка истории", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
-            if (answer != System.Windows.MessageBoxResult.Yes) return;
-
-            StrategyEvaluationHistoryStore.Clear();
-            lock (_evaluationHistory)
-            {
-                _evaluationHistory.Clear();
-            }
-            EvaluationHistory.Clear();
-            Raise(nameof(EvaluationHistoryVisible));
-            Raise(nameof(EvaluationHistoryCountText));
-            (ClearHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (ExportCandidateReportCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            Message = "История проверок стратегий очищена";
-        }
-
-        private void CancelCandidateEvaluation()
-        {
-            if (IsEvaluatingCandidates) _candidateEvaluationCts?.Cancel();
-        }
-
-        private static StrategyInfo ToStrategyInfo(StrategyCandidate candidate)
-        {
-            return new StrategyInfo
-            {
-                Name = candidate.Name,
-                Args = candidate.Args.ToList(),
-                Description = candidate.MutationDescription
-            };
-        }
-
-        private void CancelCandidateGeneration()
-        {
-            if (IsGeneratingCandidates) _candidateGenerationCts?.Cancel();
-        }
-
-        private void PreviewGeneratedCandidate(object? parameter)
-        {
-            if (parameter is not StrategyCandidate candidate) return;
-            CandidatePreview = candidate;
-            Message = "Показан предпросмотр кандидата — запуск и сохранение не выполнялись";
-        }
-
-        private void PreviewSavedCandidate(object? parameter)
-        {
-            if (parameter is not SavedStrategyCandidate saved) return;
-            CandidatePreview = saved.ToCandidate();
-            Message = "Показан сохранённый кандидат — запуск требует отдельного подтверждения";
-        }
-
-        private void SaveCandidate()
-        {
-            if (CandidatePreview == null) return;
-            var answer = System.Windows.MessageBox.Show(
-                "Сохранить этот кандидат отдельно от оригинальных стратегий? Он будет записан только в профиль Zapret GUI и не запустится автоматически.",
-                "Сохранение кандидата", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
-            if (answer != System.Windows.MessageBoxResult.Yes) return;
-
-            if (!StrategyCandidateStore.TrySave(CandidatePreview, out var saved))
-            {
-                Message = "Не удалось сохранить кандидата";
-                return;
-            }
-
             ReloadSavedCandidates();
-            _isCandidatePreviewSaved = true;
-            Raise(nameof(IsCandidatePreviewSaved));
-            Raise(nameof(CandidateSaveStatusText));
-            (RunSavedCandidateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (MakeCandidatePrimaryCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            Message = $"Кандидат «{saved.DisplayName}» сохранён отдельно от файлов движка";
+            ReloadTargetEndpoints();
+            Raise(nameof(CountText));
+            Raise(nameof(Selected));
+            Raise(nameof(ProviderContextText));
+            Raise(nameof(CanRestorePrevious));
+            Raise(nameof(PreviousStrategyText));
+            Raise(nameof(BestEmpiricalStrategy));
+            Raise(nameof(HasBestRecommendation));
+            Raise(nameof(BestStrategyRecommendationText));
+            Raise(nameof(BestStrategyDetailsText));
         }
 
-        private async Task RunSavedCandidateAsync()
+        private void ReloadTargetEndpoints()
         {
-            if (CandidatePreview == null || !IsCandidatePreviewSaved || IsBusy) return;
-            if (!Shell.IsAdmin())
-            {
-                Message = "Нужны права администратора — перезапустите приложение от имени администратора";
-                return;
-            }
+            TargetEndpoints.Clear();
+            foreach (var target in Settings.MonitorTargets) TargetEndpoints.Add(target);
+        }
 
-            var answer = System.Windows.MessageBox.Show(
-                "Запустить сохранённый кандидат временно? Текущий обход будет остановлен, служба и основная стратегия не изменятся.",
-                "Запуск кандидата", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
-            if (answer != System.Windows.MessageBoxResult.Yes) return;
+        private async Task RunAsync(object? parameter)
+        {
+            var target = parameter as StrategyInfo ?? Selected;
+            if (target == null || IsBusy) return;
 
             IsBusy = true;
-            Message = "Запускаю сохранённый кандидат…";
+            Message = $"Запускаю стратегию «{target.Name}»…";
             try
             {
-                var result = await Bypass.StartAsync(
-                    ToStrategyInfo(CandidatePreview),
-                    EngineService.GetGameFilterMode(Settings.EnginePath),
-                    Settings.ShowWinwsConsole,
-                    testMode: true);
-                Message = result.Ok
-                    ? result.Message + ". Основная стратегия и служба не изменены."
-                    : result.Message;
-                if (result.Ok) _main.Home.RefreshStatus();
+                var result = await Bypass.StartStandaloneAsync(target,
+                    EngineService.GetGameFilterMode(Store.Folder));
+                if (result.Ok)
+                {
+                    Settings.SelectedStrategy = target.Name;
+                    SettingsStore.Save(Settings);
+                    _main.Home.RefreshStatus();
+                    Message = $"Стратегия «{target.Name}» успешно запущена";
+                }
+                else
+                {
+                    Message = result.Message;
+                }
             }
             finally
             {
@@ -797,121 +769,62 @@ namespace ZapretGui.ViewModels
             }
         }
 
-        private void MakeCandidatePrimary()
+        private async Task InstallServiceAsync()
         {
-            if (CandidatePreview == null || !IsCandidatePreviewSaved) return;
-            var saved = StrategyCandidateStore.Load().FirstOrDefault(item =>
-                item.Fingerprint.Equals(CandidatePreview.Fingerprint, StringComparison.Ordinal));
-            if (saved == null) return;
+            if (Selected == null || IsBusy) return;
 
-            var answer = System.Windows.MessageBox.Show(
-                $"Сделать «{saved.DisplayName}» основной стратегией? Служба не будет изменена и не будет запущена автоматически. Текущая стратегия сохранится для отката.",
-                "Назначение основной стратегии", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
-            if (answer != System.Windows.MessageBoxResult.Yes) return;
+            var answer = MessageBox.Show(
+                $"Установить «{Selected.Name}» как системную службу zapret?",
+                "Установка службы", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (answer != MessageBoxResult.Yes) return;
 
-            var previous = Settings.SelectedStrategy;
-            if (!string.Equals(previous, saved.StrategyName, StringComparison.OrdinalIgnoreCase))
-                Settings.PreviousSelectedStrategy = previous;
-            Settings.SelectedStrategy = saved.StrategyName;
-            SettingsStore.Save(Settings);
-            _main.Home.ReloadFromEngine();
-            Refresh();
-            Selected = Store.Find(saved.StrategyName) ?? Selected;
-            Raise(nameof(CanRestorePrevious));
-            Raise(nameof(PreviousStrategyText));
-            (RestorePreviousCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            Message = $"«{saved.DisplayName}» назначена основной. Обход не запускался.";
+            IsBusy = true;
+            Message = $"Устанавливаю службу с «{Selected.Name}»…";
+            try
+            {
+                var result = await Bypass.InstallServiceAsync(Selected,
+                    EngineService.GetGameFilterMode(Store.Folder));
+                Message = result.Message;
+                if (result.Ok)
+                {
+                    Settings.SelectedStrategy = Selected.Name;
+                    SettingsStore.Save(Settings);
+                    _main.Home.RefreshStatus();
+                }
+            }
+            finally
+            {
+                IsBusy = false;
+            }
         }
 
-        private void RestorePrevious()
+        private void UseRecommended()
         {
-            if (!CanRestorePrevious) return;
-            var previous = Settings.PreviousSelectedStrategy;
-            var current = Settings.SelectedStrategy;
-            var answer = System.Windows.MessageBox.Show(
-                $"Вернуть предыдущую стратегию «{previous}»? Служба и обход не будут изменены автоматически.",
-                "Откат стратегии", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
-            if (answer != System.Windows.MessageBoxResult.Yes) return;
-
-            Settings.SelectedStrategy = previous;
-            Settings.PreviousSelectedStrategy = current;
-            SettingsStore.Save(Settings);
-            _main.Home.ReloadFromEngine();
-            Refresh();
-            Selected = Store.Find(previous) ?? Selected;
-            Raise(nameof(CanRestorePrevious));
-            Raise(nameof(PreviousStrategyText));
-            (RestorePreviousCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            Message = $"Восстановлена стратегия «{previous}». Обход не запускался.";
+            var rec = BestEmpiricalStrategy ?? Store.Recommended;
+            if (rec != null)
+            {
+                Selected = rec;
+                Message = $"Выбрана рекомендуемая стратегия «{rec.Name}»";
+            }
+            else
+            {
+                Message = "Рекомендуемая стратегия не найдена";
+            }
         }
 
-        private void DeleteSavedCandidate(object? parameter)
+        private async Task ApplyBestRecommendedAsync()
         {
-            if (parameter is not SavedStrategyCandidate saved) return;
-            if (string.Equals(Settings.SelectedStrategy, saved.StrategyName, StringComparison.OrdinalIgnoreCase))
-            {
-                Message = "Нельзя удалить основную стратегию. Сначала верните предыдущую или выберите другую.";
-                return;
-            }
-            var wasPrevious = string.Equals(Settings.PreviousSelectedStrategy, saved.StrategyName, StringComparison.OrdinalIgnoreCase);
-            var answer = System.Windows.MessageBox.Show(
-                $"Удалить сохранённый кандидат «{saved.DisplayName}»? Оригинальная стратегия не будет затронута.",
-                "Удаление кандидата", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
-            if (answer != System.Windows.MessageBoxResult.Yes) return;
-
-            if (!StrategyCandidateStore.Delete(saved.Id))
-            {
-                Message = "Не удалось удалить кандидата";
-                return;
-            }
-            if (wasPrevious)
-            {
-                Settings.PreviousSelectedStrategy = "";
-                SettingsStore.Save(Settings);
-                Raise(nameof(CanRestorePrevious));
-                Raise(nameof(PreviousStrategyText));
-                (RestorePreviousCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            }
-            SavedCandidates.Remove(saved);
-            if (CandidatePreview != null && CandidatePreview.Fingerprint == saved.Fingerprint)
-            {
-                _isCandidatePreviewSaved = false;
-                Raise(nameof(IsCandidatePreviewSaved));
-                Raise(nameof(CandidateSaveStatusText));
-                (RunSavedCandidateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-                (MakeCandidatePrimaryCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            }
-            _main.Home.ReloadFromEngine();
-            Refresh();
-            Message = "Сохранённый кандидат удалён";
-        }
-
-        private void ReloadSavedCandidates()
-        {
-            SavedCandidates.Clear();
-            foreach (var saved in StrategyCandidateStore.Load()) SavedCandidates.Add(saved);
-            Raise(nameof(SavedCandidatesVisible));
+            if (BestEmpiricalStrategy == null || IsBusy) return;
+            await RunAsync(BestEmpiricalStrategy);
         }
 
         private void SetDefault()
         {
             if (Selected == null) return;
-            if (Selected.Category.Equals("АВТОКОНСТРУКТОР", StringComparison.OrdinalIgnoreCase))
-            {
-                var saved = StrategyCandidateStore.Load().FirstOrDefault(candidate =>
-                    candidate.StrategyName.Equals(Selected.Name, StringComparison.OrdinalIgnoreCase));
-                if (saved != null)
-                {
-                    CandidatePreview = saved.ToCandidate();
-                    MakeCandidatePrimary();
-                }
-                return;
-            }
             Settings.SelectedStrategy = Selected.Name;
             SettingsStore.Save(Settings);
-            Message = $"«{Selected.Name}» назначена основной стратегией";
             _main.Home.ReloadFromEngine();
-            Raise(nameof(IsSelectedDefault));
+            Message = $"«{Selected.Name}» установлена как основная стратегия";
         }
 
         private void CopyArgs()
@@ -919,7 +832,7 @@ namespace ZapretGui.ViewModels
             if (Selected == null) return;
             try
             {
-                System.Windows.Clipboard.SetText(Selected.ShortArgs);
+                Clipboard.SetText(Selected.ArgsPreview);
                 Message = "Команда запуска скопирована в буфер обмена";
             }
             catch (Exception ex) { Message = "Не удалось скопировать: " + ex.Message; }
@@ -930,8 +843,10 @@ namespace ZapretGui.ViewModels
             if (parameter is not StrategyInfo strategy || IsTestingAll || IsBusy) return;
 
             IsTestingAll = true;
+            _lastProgressValue = 0;
+            var effectiveTargets = ConnectionTester.GetEffectiveTargets(Settings);
             TestProgressValue = 0;
-            TestProgressMaximum = 8;
+            TestProgressMaximum = Math.Max(1, effectiveTargets.Count);
             TestProgressIndeterminate = false;
             TestProgressPercentText = "0%";
             TestProgressText = $"Проверяю стратегию «{strategy.Name}»…";
@@ -948,7 +863,7 @@ namespace ZapretGui.ViewModels
                         {
                             TestProgressValue = cur;
                             TestProgressMaximum = Math.Max(1, tot);
-                            TestProgressPercentText = $"{TestProgressValue / TestProgressMaximum * 100:0}%";
+                            TestProgressPercentText = $"{Math.Min(100, (int)(TestProgressValue / TestProgressMaximum * 100))}%";
                         }
                         if (parts.Length > 1) TestProgressText = $"«{strategy.Name}»: {parts[1]}…";
                     }
@@ -969,7 +884,7 @@ namespace ZapretGui.ViewModels
                     : $"«{strategy.Name}»: {result.ErrorMessage}";
                 TestSummaryKey = result.IsSuitable ? "Success" : result.Started ? "Warning" : "Danger";
                 Message = result.IsSuitable
-                    ? "Стратегия проходит основные проверки YouTube и Discord"
+                    ? "Стратегия проходит основные проверки соединений"
                     : "Стратегия не прошла все основные проверки — попробуйте другую";
             }
             finally
@@ -992,55 +907,81 @@ namespace ZapretGui.ViewModels
             try
             {
                 var total = Store.Items.Count;
+                var effectiveTargets = ConnectionTester.GetEffectiveTargets(Settings);
+                var targetCount = Math.Max(1, effectiveTargets.Count);
+
+                _lastProgressValue = 0;
                 TestProgressValue = 0;
-                TestProgressMaximum = Math.Max(1, total);
+                TestProgressMaximum = Math.Max(1, total * targetCount);
                 TestProgressIndeterminate = false;
                 TestProgressPercentText = "0%";
+
                 for (var index = 0; index < total; index++)
                 {
                     _testCts.Token.ThrowIfCancellationRequested();
                     var strategy = Store.Items[index];
-                    TestProgressText = $"Проверяю стратегию {index + 1} из {total}: «{strategy.Name}»…";
+                    TestProgressText = $"[{index + 1}/{total}] Проверяю «{strategy.Name}»…";
                     externalProgress?.Report(TestProgressText);
                     strategy.SetTestStarted();
 
-                    var result = await Bypass.TestStrategyAsync(strategy, _testCts.Token);
+                    var baseOffset = index * targetCount;
+                    var subProgress = new Progress<string>(text =>
+                    {
+                        if (text.StartsWith("CONNECTION_PROGRESS:", StringComparison.Ordinal))
+                        {
+                            var parts = text.Substring("CONNECTION_PROGRESS:".Length).Split(" — ", 2);
+                            var numbers = parts[0].Split('/');
+                            if (numbers.Length == 2 && int.TryParse(numbers[0], out var cur))
+                            {
+                                TestProgressValue = baseOffset + cur;
+                                var pct = Math.Min(100, (int)(TestProgressValue / TestProgressMaximum * 100));
+                                TestProgressPercentText = $"{pct}%";
+                            }
+                            if (parts.Length > 1)
+                            {
+                                TestProgressText = $"[{index + 1}/{total}] «{strategy.Name}»: {parts[1]}…";
+                            }
+                        }
+                        else
+                        {
+                            TestProgressText = $"[{index + 1}/{total}] «{strategy.Name}»: {text}";
+                        }
+                    });
+
+                    var result = await Bypass.TestStrategyAsync(strategy, _testCts.Token, subProgress);
                     strategy.SetTestResult(result);
                     Store.RecordTestResult(strategy.Name, result);
                     AppendHistory(StrategyEvaluationHistoryRecord.FromTestResult(
                         strategy, result, Settings.ProviderContext ?? new ProviderContext()));
                     results.Add(result);
-                    TestProgressValue = index + 1;
-                    TestProgressPercentText = $"{TestProgressValue / TestProgressMaximum * 100:0}%";
+
+                    TestProgressValue = baseOffset + targetCount;
+                    TestProgressPercentText = $"{Math.Min(100, (int)(TestProgressValue / TestProgressMaximum * 100))}%";
 
                     var passed = results.Count(r => r.IsSuitable);
                     TestSummary = $"Проверено: {index + 1} из {total}. Подходящих стратегий: {passed}";
                     TestSummaryKey = passed > 0 ? "Success" : "Warning";
                 }
 
+                TestProgressValue = TestProgressMaximum;
+                TestProgressPercentText = "100%";
+
                 var batch = new StrategyTestBatchResult { Results = results };
                 var best = batch.Best;
                 if (best != null)
                 {
+                    BestEmpiricalStrategy = best.Strategy;
                     if (best.IsSuitable)
                     {
-                        // Одного прохода по трём контрольным ресурсам недостаточно,
-                        // чтобы менять провайдерскую рекомендацию. Оставляем рабочую
-                        // стратегию без изменений; глубокая проверка дополнительно
-                        // учитывает DPI и повторяемость.
-                        TestSummary = $"Лидер первичного теста: «{best.Strategy.Name}» — {best.PassedCount}/{best.Checks.Count} проверок. Активная стратегия не изменена.";
+                        TestSummary = $"Лидер тестирования: «{best.Strategy.Name}» ({best.PassedCount}/{best.Checks.Count} проверок OK).";
                     }
                     else
                     {
-                        TestSummary = $"Лучшая стратегия: «{best.Strategy.Name}» — {best.PassedCount}/{best.Checks.Count} проверок. Полного успеха нет, выбор не изменён.";
+                        TestSummary = $"Лучший кандидат: «{best.Strategy.Name}» ({best.PassedCount}/{best.Checks.Count} проверок OK).";
                     }
                     TestSummaryKey = best.IsSuitable ? "Success" : "Warning";
                 }
-                else
-                {
-                    TestSummary = "Ни одна стратегия не запустилась или не ответила на проверки";
-                    TestSummaryKey = "Danger";
-                }
+
                 return batch;
             }
             catch (OperationCanceledException)
@@ -1051,82 +992,367 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
-                _testCts?.Dispose();
-                _testCts = null;
                 TestProgressText = "";
                 IsTestingAll = false;
+                _testCts?.Dispose();
+                _testCts = null;
             }
         }
 
-        public void RefreshTheme()
+        // ------------------------------------------------------------------ Логика визуального конструктора параметров
+        private async Task BuilderTestAsync()
         {
-            foreach (var strategy in Store.Items) strategy.RefreshTheme();
-            Raise(nameof(TestSummaryKey));
-        }
+            if (IsBusy || IsTestingAll) return;
 
-        public void SelectAsDefault(StrategyInfo strategy)
-        {
-            if (!Store.Items.Contains(strategy)) return;
-            Selected = strategy;
-            SetDefault();
-        }
-
-        public async Task ApplyStrategyAsync(StrategyInfo strategy)
-        {
-            if (strategy == null || IsBusy || IsTestingAll || IsGeneratingCandidates || IsEvaluatingCandidates)
-                return;
-            var target = Store.Find(strategy.Name) ?? strategy;
-            Selected = target;
-            await RunAsync(target);
-        }
-
-        private async Task RunAsync(object? parameter)
-        {
-            if (parameter is StrategyInfo strategy)
-                Selected = strategy;
-            if (Selected == null) return;
-            if (!Shell.IsAdmin())
+            var tempStrategy = new StrategyInfo
             {
-                Message = "Нужны права администратора — перезапустите приложение от имени администратора";
-                return;
-            }
+                Name = string.IsNullOrWhiteSpace(BuilderStrategyName) ? "custom_builder_test" : BuilderStrategyName,
+                Category = "АВТОКОНСТРУКТОР",
+                Description = $"Конструктор: {BuilderDesyncMode}, split={BuilderSplitPos}, fake={BuilderFakeSni}",
+                Args = BuilderGeneratedArgs
+            };
 
             IsBusy = true;
-            Message = $"Запускаю «{Selected.Name}»…";
+            BuilderTestStatus = "Запускаю пробную проверку параметров…";
+            BuilderTestStatusKey = "Info";
             try
             {
-                var result = await Bypass.StartAsync(Selected, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
-                Message = result.Message;
-                if (result.Ok)
+                var result = await Bypass.TestStrategyAsync(tempStrategy);
+                if (result.Started)
                 {
-                    Settings.SelectedStrategy = Selected.Name;
-                    SettingsStore.Save(Settings);
-                    _main.Home.ReloadFromEngine();
-                    _main.RefreshReadiness();
-                    _main.Home.RefreshStatus();
+                    BuilderTestStatus = $"Результат: {result.PassedCount}/{result.Checks.Count} проверок OK · среднее время {result.AverageLatencyMs} мс";
+                    BuilderTestStatusKey = result.IsSuitable ? "Success" : "Warning";
+                }
+                else
+                {
+                    BuilderTestStatus = $"Ошибка запуска параметров: {result.ErrorMessage}";
+                    BuilderTestStatusKey = "Danger";
                 }
             }
-            finally { IsBusy = false; }
+            finally
+            {
+                IsBusy = false;
+            }
         }
 
-        private async Task InstallServiceAsync()
+        private void BuilderSave()
+        {
+            var name = string.IsNullOrWhiteSpace(BuilderStrategyName) ? "custom_strategy" : BuilderStrategyName.Trim();
+            var args = BuilderGeneratedArgs;
+            var candidate = new SavedStrategyCandidate
+            {
+                Name = name,
+                SourceStrategy = "Visual Builder",
+                MutationDescription = $"Конструктор: {BuilderDesyncMode}, split-pos={BuilderSplitPos}, fake-sni={BuilderFakeSni}",
+                Args = args,
+                Fingerprint = string.Join(" ", args)
+            };
+
+            if (StrategyCandidateStore.Save(candidate))
+            {
+                BuilderTestStatus = $"Стратегия «{name}» сохранена в каталог!";
+                BuilderTestStatusKey = "Success";
+                Refresh();
+            }
+            else
+            {
+                BuilderTestStatus = "Не удалось сохранить стратегию.";
+                BuilderTestStatusKey = "Danger";
+            }
+        }
+
+        private async Task BuilderApplyAsync()
+        {
+            BuilderSave();
+            var strategy = Store.Find(BuilderStrategyName);
+            if (strategy != null)
+            {
+                await RunAsync(strategy);
+            }
+        }
+
+        // ------------------------------------------------------------------ Логика контрольных адресов
+        private void AddTarget()
+        {
+            if (string.IsNullOrWhiteSpace(NewTargetUrl)) return;
+            var input = NewTargetUrl.Trim();
+            var name = string.IsNullOrWhiteSpace(NewTargetName) ? input : NewTargetName.Trim();
+
+            if (MonitorTarget.TryCreate(input, name, out var target, out var error) && target != null)
+            {
+                Settings.MonitorTargets.Add(target);
+                TargetEndpoints.Add(target);
+                SettingsStore.Save(Settings);
+                NewTargetName = "";
+                NewTargetUrl = "";
+                Message = $"Контрольный адрес «{target.Name}» добавлен.";
+            }
+            else
+            {
+                Message = "Некорректный адрес: " + error;
+            }
+        }
+
+        private void RemoveTarget(object? parameter)
+        {
+            if (parameter is not MonitorTarget target) return;
+            Settings.MonitorTargets.Remove(target);
+            TargetEndpoints.Remove(target);
+            SettingsStore.Save(Settings);
+            Message = $"Адрес «{target.Name}» удалён.";
+        }
+
+        private void ToggleTarget(object? parameter)
+        {
+            if (parameter is not MonitorTarget target) return;
+            SettingsStore.Save(Settings);
+        }
+
+        // ------------------------------------------------------------------ Кандидаты и история
+        private void AppendHistory(StrategyEvaluationHistoryRecord record)
+        {
+            StrategyEvaluationHistoryStore.Append(record);
+            EvaluationHistory.Insert(0, record);
+            while (EvaluationHistory.Count > 50) EvaluationHistory.RemoveAt(EvaluationHistory.Count - 1);
+            Raise(nameof(EvaluationHistoryCountText));
+            (ClearHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void ClearHistory()
+        {
+            StrategyEvaluationHistoryStore.Clear();
+            EvaluationHistory.Clear();
+            Raise(nameof(EvaluationHistoryCountText));
+            (ClearHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            Message = "История проверок очищена";
+        }
+
+        private void BuildCandidatePreview()
         {
             if (Selected == null) return;
-            if (!Shell.IsAdmin())
-            {
-                Message = "Нужны права администратора";
-                return;
-            }
+            CandidatePreview = StrategyCandidateMutator.CreateBaselineCandidate(Selected, Settings.ProviderContext ?? new ProviderContext());
+            Message = $"Подготовлен базовый кандидат для «{Selected.Name}»";
+        }
 
-            IsBusy = true;
-            Message = $"Устанавливаю службу со стратегией «{Selected.Name}»…";
+        private async Task GenerateCandidatesAsync()
+        {
+            if (Store.Items.Count == 0 || IsGeneratingCandidates || IsTestingAll || IsBusy) return;
+
+            IsGeneratingCandidates = true;
+            _candidateGenerationCts = new CancellationTokenSource();
+            CandidateGenerationText = "Формирую мутации аргументов на основе признаков…";
+            GeneratedCandidates.Clear();
+            CandidateEvaluations.Clear();
+
             try
             {
-                var result = await Bypass.InstallServiceAsync(Selected, EngineService.GetGameFilterMode(Settings.EnginePath));
-                Message = result.Message;
-                _main.Home.RefreshStatus();
+                var candidates = await StrategyCandidateMutator.GenerateBatchAsync(
+                    Store.Items, Settings.ProviderContext ?? new ProviderContext(), 18, _candidateGenerationCts.Token);
+                foreach (var candidate in candidates) GeneratedCandidates.Add(candidate);
+                foreach (var candidate in candidates) CandidateEvaluations.Add(new StrategyCandidateEvaluation { Candidate = candidate });
+
+                CandidateGenerationText = $"Сформировано кандидатов: {GeneratedCandidates.Count}. Запустите оценку для безопасного тестирования.";
+                Message = $"Сформировано {GeneratedCandidates.Count} кандидатов для проверки";
             }
-            finally { IsBusy = false; }
+            catch (OperationCanceledException)
+            {
+                CandidateGenerationText = "Генерация кандидатов отменена";
+            }
+            finally
+            {
+                IsGeneratingCandidates = false;
+                _candidateGenerationCts?.Dispose();
+                _candidateGenerationCts = null;
+            }
+        }
+
+        private void CancelCandidateGeneration() => _candidateGenerationCts?.Cancel();
+
+        private void PreviewGeneratedCandidate(object? parameter)
+        {
+            if (parameter is StrategyCandidate candidate)
+            {
+                CandidatePreview = candidate;
+                Message = $"Просмотр кандидата «{candidate.Name}»";
+            }
+            else if (parameter is StrategyCandidateEvaluation eval)
+            {
+                CandidatePreview = eval.Candidate;
+                Message = $"Просмотр кандидата «{eval.Candidate.Name}»";
+            }
+        }
+
+        private async Task EvaluateCandidatesAsync()
+        {
+            if (CandidateEvaluations.Count == 0 || IsEvaluatingCandidates || IsGeneratingCandidates || IsTestingAll || IsBusy) return;
+
+            IsEvaluatingCandidates = true;
+            _candidateEvaluationCts = new CancellationTokenSource();
+            CandidateEvaluationProgressVisible = true;
+            CandidateEvaluationProgressValue = 0;
+            CandidateEvaluationProgressMaximum = Math.Max(1, CandidateEvaluations.Count);
+            CandidateEvaluationProgressPercentText = "0%";
+            CandidateEvaluationText = "Начинаю безопасную проверку кандидатов…";
+
+            try
+            {
+                var completed = 0;
+                for (var i = 0; i < CandidateEvaluations.Count; i++)
+                {
+                    _candidateEvaluationCts.Token.ThrowIfCancellationRequested();
+                    var eval = CandidateEvaluations[i];
+                    CandidateEvaluationText = $"Проверяю кандидата {i + 1} из {CandidateEvaluations.Count}: «{eval.Candidate.Name}»…";
+
+                    var fakeInfo = new StrategyInfo
+                    {
+                        Name = eval.Candidate.Name,
+                        Category = "АВТОКОНСТРУКТОР",
+                        Description = eval.Candidate.MutationDescription,
+                        Args = eval.Candidate.Args
+                    };
+
+                    var result = await Bypass.TestStrategyAsync(fakeInfo, _candidateEvaluationCts.Token);
+                    eval.ApplyTestResult(result);
+                    completed++;
+                    CandidateEvaluationProgressValue = completed;
+                    CandidateEvaluationProgressPercentText = $"{CandidateEvaluationProgressValue / CandidateEvaluationProgressMaximum * 100:0}%";
+                }
+
+                var best = CandidateEvaluations.OrderByDescending(item => item.Score).FirstOrDefault();
+                if (best != null && best.IsWinner)
+                {
+                    CandidatePreview = best.Candidate;
+                    CandidateEvaluationText = $"Оценка завершена. Лучший кандидат: «{best.Candidate.Name}» ({best.PassedChecksCount}/{best.TotalChecksCount} проверок OK, средний пинг {best.AverageLatencyMs} мс).";
+                }
+                else
+                {
+                    CandidateEvaluationText = "Оценка завершена. Ни один кандидат не показал полного успеха.";
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                CandidateEvaluationText = "Оценка кандидатов отменена";
+            }
+            finally
+            {
+                IsEvaluatingCandidates = false;
+                CandidateEvaluationProgressVisible = false;
+                _candidateEvaluationCts?.Dispose();
+                _candidateEvaluationCts = null;
+                _candidateEvaluationView.Refresh();
+                Raise(nameof(CandidateEvaluationSummaryText));
+            }
+        }
+
+        private void CancelCandidateEvaluation() => _candidateEvaluationCts?.Cancel();
+
+        private void ExportCandidateReport()
+        {
+            try
+            {
+                var dialog = new SaveFileDialog
+                {
+                    Filter = "JSON-отчёт (*.json)|*.json|Текстовый отчёт (*.txt)|*.txt",
+                    FileName = $"strategy-report-{DateTime.Now:yyyyMMdd-HHmmss}.json"
+                };
+                if (dialog.ShowDialog() != true) return;
+
+                var data = new
+                {
+                    ExportedAt = DateTime.Now,
+                    Evaluations = CandidateEvaluations.ToList(),
+                    History = EvaluationHistory.ToList()
+                };
+                var json = JsonSerializer.Serialize(data, new JsonSerializerOptions { WriteIndented = true });
+                File.WriteAllText(dialog.FileName, json);
+                Message = "Отчёт сохранён: " + Path.GetFileName(dialog.FileName);
+            }
+            catch (Exception ex)
+            {
+                Message = "Не удалось сохранить отчёт: " + ex.Message;
+            }
+        }
+
+        private void SaveCandidate()
+        {
+            if (CandidatePreview == null) return;
+            if (StrategyCandidateStore.TrySave(CandidatePreview, out var saved))
+            {
+                ReloadSavedCandidates();
+                CandidatePreview = CandidatePreview; // обновление IsCandidatePreviewSaved
+                Refresh();
+                Message = $"Кандидат «{saved.DisplayName}» успешно сохранён";
+            }
+            else
+            {
+                Message = "Не удалось сохранить кандидата";
+            }
+        }
+
+        private async Task RunSavedCandidateAsync()
+        {
+            if (CandidatePreview == null || !IsCandidatePreviewSaved) return;
+            var fakeInfo = new StrategyInfo
+            {
+                Name = CandidatePreview.Name,
+                Category = "АВТОКОНСТРУКТОР",
+                Description = CandidatePreview.MutationDescription,
+                Args = CandidatePreview.Args
+            };
+            await RunAsync(fakeInfo);
+        }
+
+        private void PreviewSavedCandidate(object? parameter)
+        {
+            if (parameter is SavedStrategyCandidate saved)
+            {
+                CandidatePreview = new StrategyCandidate
+                {
+                    Name = saved.DisplayName,
+                    SourceStrategy = saved.SourceStrategy,
+                    MutationDescription = saved.MutationDescription,
+                    ProviderText = saved.ProviderText,
+                    Provider = saved.Provider,
+                    Args = saved.Args,
+                    Summary = saved.ArgsText
+                };
+                Message = $"Выбран сохранённый кандидат «{saved.DisplayName}»";
+            }
+        }
+
+        private void DeleteSavedCandidate(object? parameter)
+        {
+            if (parameter is not SavedStrategyCandidate saved) return;
+            StrategyCandidateStore.Delete(saved.Id);
+            ReloadSavedCandidates();
+            CandidatePreview = null;
+            Refresh();
+            Message = $"Кандидат «{saved.DisplayName}» удалён";
+        }
+
+        private void MakeCandidatePrimary()
+        {
+            if (CandidatePreview == null) return;
+            Settings.SelectedStrategy = CandidatePreview.Name;
+            SettingsStore.Save(Settings);
+            _main.Home.ReloadFromEngine();
+            Message = $"Кандидат «{CandidatePreview.Name}» выбран основной стратегией";
+        }
+
+        private void RestorePrevious()
+        {
+            if (!CanRestorePrevious) return;
+            Settings.SelectedStrategy = Settings.PreviousSelectedStrategy;
+            SettingsStore.Save(Settings);
+            _main.Home.ReloadFromEngine();
+            Refresh();
+            Message = $"Восстановлена прежняя стратегия «{Settings.SelectedStrategy}»";
+        }
+
+        private void ReloadSavedCandidates()
+        {
+            SavedCandidates.Clear();
+            foreach (var item in StrategyCandidateStore.Load()) SavedCandidates.Add(item);
         }
     }
 }

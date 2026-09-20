@@ -295,7 +295,7 @@ namespace ZapretGui.Core
                 // Даём winws.exe загрузить WinDivert и начать обрабатывать трафик.
                 progress?.Report("Ожидаю инициализацию WinDivert…");
                 await Task.Delay(1200, ct).ConfigureAwait(false);
-                var checks = await ConnectionTester.RunAsync(ct, progress).ConfigureAwait(false);
+                var checks = await ConnectionTester.RunAsync(_settings, ct, progress).ConfigureAwait(false);
                 return new StrategyTestResult
                 {
                     Strategy = strategy,
