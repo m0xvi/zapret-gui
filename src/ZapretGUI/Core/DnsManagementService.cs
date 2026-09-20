@@ -136,27 +136,24 @@ namespace ZapretGui.Core
             {
                 if (profile.IsDhcp)
                 {
-                    var cmd = $"interface ip set dns name=\"{adapterName}\" dhcp";
-                    var res = await Shell.RunHiddenAsync("netsh.exe", cmd).ConfigureAwait(false);
-                    await Shell.RunHiddenAsync("ipconfig.exe", "/flushdns").ConfigureAwait(false);
-                    return res.ExitCode == 0
+                    var res = await Task.Run(() => Shell.Run("netsh.exe", new[] { "interface", "ip", "set", "dns", $"name={adapterName}", "dhcp" })).ConfigureAwait(false);
+                    await Task.Run(() => Shell.Run("ipconfig.exe", new[] { "/flushdns" })).ConfigureAwait(false);
+                    return res.Ok
                         ? (true, $"DNS адаптера «{adapterName}» переключён в режим DHCP (автоматически). Кэш очищен.")
-                        : (false, $"Ошибка netsh: {res.Output}");
+                        : (false, $"Ошибка netsh: {res.StdErr}");
                 }
                 else
                 {
-                    var primaryCmd = $"interface ip set dns name=\"{adapterName}\" static {profile.PrimaryServer}";
-                    var res1 = await Shell.RunHiddenAsync("netsh.exe", primaryCmd).ConfigureAwait(false);
-                    if (res1.ExitCode != 0)
-                        return (false, $"Не удалось установить основной DNS: {res1.Output}");
+                    var res1 = await Task.Run(() => Shell.Run("netsh.exe", new[] { "interface", "ip", "set", "dns", $"name={adapterName}", "static", profile.PrimaryServer })).ConfigureAwait(false);
+                    if (!res1.Ok)
+                        return (false, $"Не удалось установить основной DNS: {res1.StdErr}");
 
                     if (!string.IsNullOrWhiteSpace(profile.SecondaryServer))
                     {
-                        var secCmd = $"interface ip add dns name=\"{adapterName}\" {profile.SecondaryServer} index=2";
-                        await Shell.RunHiddenAsync("netsh.exe", secCmd).ConfigureAwait(false);
+                        await Task.Run(() => Shell.Run("netsh.exe", new[] { "interface", "ip", "add", "dns", $"name={adapterName}", profile.SecondaryServer, "index=2" })).ConfigureAwait(false);
                     }
 
-                    await Shell.RunHiddenAsync("ipconfig.exe", "/flushdns").ConfigureAwait(false);
+                    await Task.Run(() => Shell.Run("ipconfig.exe", new[] { "/flushdns" })).ConfigureAwait(false);
                     return (true, $"Установлен {profile.Name} ({profile.PrimaryServer}) для адаптера «{adapterName}». Кэш DNS очищен.");
                 }
             }

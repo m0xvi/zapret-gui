@@ -649,21 +649,21 @@ namespace ZapretGui.ViewModels
             DnsTestStatusText = $"Применяю {SelectedDnsProfile.Name} к сетевому адаптеру…";
             DnsTestStatusKey = "Info";
 
-            var (ok, message) = await DnsManagementService.ApplyDnsProfileAsync(SelectedDnsProfile);
-            DnsTestStatusText = message;
-            DnsTestStatusKey = ok ? "Success" : "Danger";
+            var result = await DnsManagementService.ApplyDnsProfileAsync(SelectedDnsProfile);
+            DnsTestStatusText = result.Message;
+            DnsTestStatusKey = result.Ok ? "Success" : "Danger";
             RefreshCurrentDns();
         }
 
         private async Task ResetDnsToDhcpAsync()
         {
-            var dhcpProfile = DnsProfiles.FirstOrDefault(p => p.IsDhcp) ?? new DnsProfile { IsDhcp = true };
+            var dhcpProfile = DnsProfiles.FirstOrDefault(p => p.IsDhcp) ?? new DnsProfile { Id = "dhcp", Name = "Автоматический DNS (DHCP)" };
             DnsTestStatusText = "Сбрасываю DNS на автоматический режим (DHCP)…";
             DnsTestStatusKey = "Info";
 
-            var (ok, message) = await DnsManagementService.ApplyDnsProfileAsync(dhcpProfile);
-            DnsTestStatusText = message;
-            DnsTestStatusKey = ok ? "Success" : "Danger";
+            var result = await DnsManagementService.ApplyDnsProfileAsync(dhcpProfile);
+            DnsTestStatusText = result.Message;
+            DnsTestStatusKey = result.Ok ? "Success" : "Danger";
             RefreshCurrentDns();
         }
 
