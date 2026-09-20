@@ -49,15 +49,68 @@ namespace ZapretGui.ViewModels
             ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
             OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
+            RunFullDiagnosticsAndExportCommand = new AsyncRelayCommand(RunFullDiagnosticsAndExportAsync, () => !IsRunningFullCheckCycle);
+            CancelFullDiagnosticsCommand = new RelayCommand(CancelFullDiagnostics, () => IsRunningFullCheckCycle);
             CopyTelemetryMarkdownCommand = new RelayCommand(CopyTelemetryMarkdown);
             ExportTelemetryJsonCommand = new RelayCommand(ExportTelemetryJson);
             ExportTelemetryZipCommand = new AsyncRelayCommand(ExportTelemetryZipAsync);
             RefreshGamingOptimization();
         }
 
+        public ICommand RunFullDiagnosticsAndExportCommand { get; }
+        public ICommand CancelFullDiagnosticsCommand { get; }
         public ICommand CopyTelemetryMarkdownCommand { get; }
         public ICommand ExportTelemetryJsonCommand { get; }
         public ICommand ExportTelemetryZipCommand { get; }
+
+        private bool _isRunningFullCheckCycle;
+        public bool IsRunningFullCheckCycle
+        {
+            get => _isRunningFullCheckCycle;
+            private set
+            {
+                if (Set(ref _isRunningFullCheckCycle, value))
+                {
+                    (RunFullDiagnosticsAndExportCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelFullDiagnosticsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        private string _fullCheckStatusText = "";
+        public string FullCheckStatusText
+        {
+            get => _fullCheckStatusText;
+            private set => Set(ref _fullCheckStatusText, value);
+        }
+
+        private double _fullCheckProgressValue;
+        public double FullCheckProgressValue
+        {
+            get => _fullCheckProgressValue;
+            private set => Set(ref _fullCheckProgressValue, value);
+        }
+
+        private double _fullCheckProgressMax = 100;
+        public double FullCheckProgressMax
+        {
+            get => _fullCheckProgressMax;
+            private set => Set(ref _fullCheckProgressMax, value);
+        }
+
+        private string _fullCheckProgressPercentText = "0%";
+        public string FullCheckProgressPercentText
+        {
+            get => _fullCheckProgressPercentText;
+            private set => Set(ref _fullCheckProgressPercentText, value);
+        }
+
+        private bool _fullCheckCompleted;
+        public bool FullCheckCompleted
+        {
+            get => _fullCheckCompleted;
+            private set => Set(ref _fullCheckCompleted, value);
+        }
 
         public string TelemetrySummaryText
         {
@@ -69,6 +122,88 @@ namespace ZapretGui.ViewModels
                 var provText = string.IsNullOrWhiteSpace(prov) ? "Провайдер: авто/не указан" : $"Провайдер: {prov}";
                 return $"Протестировано стратегий: {tested}/{_main.Strategies.Items.Count} (Рабочих: {passed}) · {provText}";
             }
+        }
+
+        private async Task RunFullDiagnosticsAndExportAsync()
+        {
+            if (IsRunningFullCheckCycle) return;
+            IsRunningFullCheckCycle = true;
+            FullCheckCompleted = false;
+            FullCheckStatusText = "Подготовка к комплексному тестированию всех стратегий…";
+            FullCheckProgressValue = 0;
+            FullCheckProgressMax = 100;
+            FullCheckProgressPercentText = "0%";
+
+            _main.Strategies.Refresh();
+            var total = _main.Strategies.Items.Count;
+            if (total == 0)
+            {
+                IsRunningFullCheckCycle = false;
+                _main.Home.ShowError("Стратегии не найдены. Проверьте папку движка.");
+                return;
+            }
+
+            FullCheckProgressMax = total;
+
+            var progress = new Progress<string>(text =>
+            {
+                FullCheckStatusText = text;
+                if (text.StartsWith("[", StringComparison.Ordinal) && text.Contains('/'))
+                {
+                    var endIdx = text.IndexOf(']');
+                    if (endIdx > 1)
+                    {
+                        var span = text.Substring(1, endIdx - 1);
+                        var parts = span.Split('/');
+                        if (parts.Length == 2 && int.TryParse(parts[0], out var current) && int.TryParse(parts[1], out var max))
+                        {
+                            FullCheckProgressValue = current;
+                            FullCheckProgressMax = max;
+                            FullCheckProgressPercentText = $"{(int)((double)current / Math.Max(1, max) * 100)}%";
+                        }
+                    }
+                }
+            });
+
+            try
+            {
+                await _main.StrategiesPage.TestAllAsync(progress).ConfigureAwait(true);
+
+                FullCheckProgressValue = FullCheckProgressMax;
+                FullCheckProgressPercentText = "100%";
+                FullCheckCompleted = true;
+                FullCheckStatusText = "Тестирование завершено! Формирую полный диагностический слепок…";
+
+                // Автоматический сбор и копирование отчёта в буфер обмена
+                var dump = ProviderTelemetryExporter.Collect(_main);
+                var md = ProviderTelemetryExporter.GenerateMarkdown(dump);
+                System.Windows.Clipboard.SetText(md);
+
+                Raise(nameof(TelemetrySummaryText));
+                _main.Home.ShowSuccess("✅ Все проверки завершены! Полный отчёт скопирован в буфер обмена (просто нажмите Ctrl+V в чат).");
+                Status = "Слепок сформирован и скопирован в буфер обмена (" + DateTime.Now.ToString("HH:mm:ss") + ")";
+                FullCheckStatusText = "Готово! Полный отчёт со всеми стратегиями скопирован в буфер обмена.";
+            }
+            catch (OperationCanceledException)
+            {
+                FullCheckStatusText = "Тестирование отменено пользователем.";
+            }
+            catch (Exception ex)
+            {
+                FullCheckStatusText = "Ошибка при выполнении проверок: " + ex.Message;
+                _main.Home.ShowError("Сбой цикла проверок: " + ex.Message);
+            }
+            finally
+            {
+                IsRunningFullCheckCycle = false;
+                Raise(nameof(TelemetrySummaryText));
+            }
+        }
+
+        private void CancelFullDiagnostics()
+        {
+            _main.StrategiesPage.CancelTestCommand.Execute(null);
+            FullCheckStatusText = "Отменяю тестирование…";
         }
 
         private void CopyTelemetryMarkdown()
