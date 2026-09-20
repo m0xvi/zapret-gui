@@ -40,7 +40,16 @@ namespace ZapretGui.ViewModels
             if (list.Count == 0) return;
 
             var current = Settings.SelectedStrategy;
-            var index = list.FindIndex(s => string.Equals(s.Name, current, StringComparison.OrdinalIgnoreCase));
+            int index = -1;
+            for (int i = 0; i < list.Count; i++)
+            {
+                if (string.Equals(list[i].Name, current, StringComparison.OrdinalIgnoreCase))
+                {
+                    index = i;
+                    break;
+                }
+            }
+
             if (index < 0) index = 0;
             else if (forward) index = (index + 1) % list.Count;
             else index = (index - 1 + list.Count) % list.Count;

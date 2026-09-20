@@ -65,7 +65,7 @@ namespace ZapretGui.Core
             CancellationToken ct)
         {
             var results = new List<AutoTunerStepResult>();
-            var testTargets = targets.Count > 0 ? targets.ToList() : MonitorTargetStore.DefaultTargets.Take(3).ToList();
+            var testTargets = targets.Count > 0 ? targets.ToList() : ConnectionTester.GetEffectiveTargets().Take(3).ToList();
             var total = Hypotheses.Count;
 
             AppLog.Info($"[SmartAutoTuner] Запуск глубокого автоподбора стратегии ({total} гипотез, {testTargets.Count} контрольных точек)...");
@@ -135,8 +135,7 @@ namespace ZapretGui.Core
                 ProviderText = provider?.DisplayText ?? "Локальный подбор",
                 Provider = provider ?? new ProviderContext(),
                 Args = bestResult.Args,
-                Features = new StrategyFeatures { DesyncModes = new[] { bestResult.CandidateName } },
-                Fingerprint = $"smart-tuned-{Guid.NewGuid():N}"
+                Features = new StrategyFeatures { DesyncModes = new[] { bestResult.CandidateName } }
             };
 
             StrategyCandidateStore.TrySave(winnerCandidate, out var saved);
@@ -209,7 +208,7 @@ namespace ZapretGui.Core
                         totalRtt += sw.ElapsedMilliseconds;
                         detailsList.Add($"{target.Name}: OK ({sw.ElapsedMilliseconds} мс)");
                     }
-                    catch (Exception ex)
+                    catch (Exception)
                     {
                         sw.Stop();
                         detailsList.Add($"{target.Name}: FAIL");
