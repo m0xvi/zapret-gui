@@ -1,9 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Windows.Data;
 using System.Windows.Input;
+using Microsoft.Win32;
 using ZapretGui.Core;
 using ZapretGui.Views;
 
@@ -17,17 +21,36 @@ namespace ZapretGui.ViewModels
         public string Description { get; init; } = "";
     }
 
-    /// <summary>Управление списками доменов, IP и параметрами фильтрации трафика.</summary>
+    /// <summary>
+    /// Управление списками доменов, IP-фильтрацией и безопасным DNS (DoH).
+    /// </summary>
     public sealed class UserListsViewModel : ObservableObject
     {
         private readonly MainViewModel _main;
         private string _selectedListKey = "general";
         private string _status = "Изменения сохраняются только после нажатия «Сохранить список».";
         private string? _selectedEntry;
+        private string _searchText = "";
+        private string _quickDomainInput = "";
+        private int _selectedSubTabIndex;
+        private bool _isUpdatingLists;
+        private string _domainListUpdateResultText = "";
+        private string _domainListUpdateResultKey = "Info";
+
+        // DNS
+        private DnsProfile _selectedDnsProfile;
+        private string _currentSystemDnsText = "";
+        private string _dnsTestStatusText = "";
+        private string _dnsTestStatusKey = "Info";
+        private bool _isTestingDns;
 
         public UserListsViewModel(MainViewModel main)
         {
             _main = main;
+            SubTabs = new[] { "Редактор списков", "Безопасный DNS (DoH)", "Режимы фильтрации" };
+            DnsProfiles = DnsManagementService.PredefinedProfiles;
+            _selectedDnsProfile = DnsProfiles.FirstOrDefault() ?? DnsProfiles[0];
+
             ListOptions = new[]
             {
                 new UserListOption
@@ -88,19 +111,93 @@ namespace ZapretGui.ViewModels
                 }
             };
 
+            EntriesView = CollectionViewSource.GetDefaultView(Entries);
+            EntriesView.Filter = FilterEntry;
+
             AddEntryCommand = new RelayCommand(AddEntry);
+            QuickAddDomainCommand = new RelayCommand(QuickAddDomain, () => !string.IsNullOrWhiteSpace(QuickDomainInput));
             EditEntryCommand = new RelayCommand(EditEntry);
             RemoveEntryCommand = new RelayCommand(RemoveEntry, _ => SelectedEntry != null);
+            SortEntriesCommand = new RelayCommand(SortEntries, () => Entries.Count > 1);
+            DeduplicateEntriesCommand = new RelayCommand(DeduplicateEntries, () => Entries.Count > 0);
+            OpenInNotepadCommand = new RelayCommand(() => Shell.OpenInNotepad(ListPath));
+            ExportListCommand = new RelayCommand(ExportList, () => Entries.Count > 0);
+            ImportListCommand = new RelayCommand(ImportList);
             SaveCommand = new RelayCommand(Save);
             ReloadCommand = new RelayCommand(LoadEntries);
             OpenFolderCommand = new RelayCommand(() => Shell.OpenFolder(ListsFolder));
             RestartBypassCommand = new AsyncRelayCommand(RestartBypassAsync);
+            UpdateListsFromGithubCommand = new AsyncRelayCommand(UpdateListsFromGithubAsync, () => !IsUpdatingLists);
+
+            // DNS команды
+            ApplyDnsProfileCommand = new AsyncRelayCommand(ApplyDnsProfileAsync, () => SelectedDnsProfile != null);
+            ResetDnsToDhcpCommand = new AsyncRelayCommand(ResetDnsToDhcpAsync);
+            TestDnsServerCommand = new AsyncRelayCommand(TestDnsServerAsync, () => !IsTestingDns);
+            RefreshCurrentDnsCommand = new RelayCommand(RefreshCurrentDns);
+
+            RefreshCurrentDns();
             LoadEntries();
         }
 
         public AppSettings Settings => _main.Settings;
+        public string[] SubTabs { get; }
+
+        public int SelectedSubTabIndex
+        {
+            get => _selectedSubTabIndex;
+            set
+            {
+                if (Set(ref _selectedSubTabIndex, Math.Clamp(value, 0, SubTabs.Length - 1)))
+                {
+                    Raise(nameof(IsEditorTabVisible));
+                    Raise(nameof(IsDnsTabVisible));
+                    Raise(nameof(IsFiltersTabVisible));
+                }
+            }
+        }
+
+        public bool IsEditorTabVisible => SelectedSubTabIndex == 0;
+        public bool IsDnsTabVisible => SelectedSubTabIndex == 1;
+        public bool IsFiltersTabVisible => SelectedSubTabIndex == 2;
+
         public UserListOption[] ListOptions { get; }
         public ObservableCollection<string> Entries { get; } = new();
+        public ICollectionView EntriesView { get; }
+
+        public string SearchText
+        {
+            get => _searchText;
+            set
+            {
+                if (Set(ref _searchText, value ?? ""))
+                {
+                    EntriesView.Refresh();
+                    Raise(nameof(CountText));
+                }
+            }
+        }
+
+        public string QuickDomainInput
+        {
+            get => _quickDomainInput;
+            set
+            {
+                if (Set(ref _quickDomainInput, value ?? ""))
+                {
+                    (QuickAddDomainCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string CountText
+        {
+            get
+            {
+                var total = Entries.Count;
+                var filtered = EntriesView.Cast<object>().Count();
+                return filtered == total ? $"Всего: {total}" : $"Показано: {filtered} из {total}";
+            }
+        }
 
         public string[] GameFilterOptions { get; } = { "Выключен (только стандартные порты)", "TCP + UDP (игры и сервисы, порты > 1023)", "Только TCP", "Только UDP" };
         public string[] IpsetOptions { get; } = { "По списку ipset-all.txt (рекомендуется)", "Все IP / Any (максимальный охват)", "Без фильтрации IP / None (все адреса)" };
@@ -186,13 +283,98 @@ namespace ZapretGui.ViewModels
             private set => Set(ref _status, value);
         }
 
+        public bool IsUpdatingLists
+        {
+            get => _isUpdatingLists;
+            private set
+            {
+                if (Set(ref _isUpdatingLists, value))
+                    (UpdateListsFromGithubCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        public string DomainListUpdateResultText
+        {
+            get => _domainListUpdateResultText;
+            private set => Set(ref _domainListUpdateResultText, value);
+        }
+
+        public string DomainListUpdateResultKey
+        {
+            get => _domainListUpdateResultKey;
+            private set => Set(ref _domainListUpdateResultKey, value);
+        }
+
+        // ------------------------------------------------------------------ DNS
+        public IReadOnlyList<DnsProfile> DnsProfiles { get; }
+
+        public DnsProfile SelectedDnsProfile
+        {
+            get => _selectedDnsProfile;
+            set
+            {
+                if (Set(ref _selectedDnsProfile, value))
+                {
+                    Raise(nameof(SelectedDnsProfile));
+                    (ApplyDnsProfileCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string CurrentSystemDnsText
+        {
+            get => _currentSystemDnsText;
+            private set => Set(ref _currentSystemDnsText, value);
+        }
+
+        public string DnsTestStatusText
+        {
+            get => _dnsTestStatusText;
+            private set => Set(ref _dnsTestStatusText, value);
+        }
+
+        public string DnsTestStatusKey
+        {
+            get => _dnsTestStatusKey;
+            private set => Set(ref _dnsTestStatusKey, value);
+        }
+
+        public bool IsTestingDns
+        {
+            get => _isTestingDns;
+            private set
+            {
+                if (Set(ref _isTestingDns, value))
+                    (TestDnsServerCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
         public ICommand AddEntryCommand { get; }
+        public ICommand QuickAddDomainCommand { get; }
         public ICommand EditEntryCommand { get; }
         public ICommand RemoveEntryCommand { get; }
+        public ICommand SortEntriesCommand { get; }
+        public ICommand DeduplicateEntriesCommand { get; }
+        public ICommand OpenInNotepadCommand { get; }
+        public ICommand ExportListCommand { get; }
+        public ICommand ImportListCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand ReloadCommand { get; }
         public ICommand OpenFolderCommand { get; }
         public ICommand RestartBypassCommand { get; }
+        public ICommand UpdateListsFromGithubCommand { get; }
+
+        public ICommand ApplyDnsProfileCommand { get; }
+        public ICommand ResetDnsToDhcpCommand { get; }
+        public ICommand TestDnsServerCommand { get; }
+        public ICommand RefreshCurrentDnsCommand { get; }
+
+        private bool FilterEntry(object item)
+        {
+            if (item is not string str) return false;
+            if (string.IsNullOrWhiteSpace(SearchText)) return true;
+            return str.IndexOf(SearchText.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
+        }
 
         private void LoadEntries()
         {
@@ -208,14 +390,50 @@ namespace ZapretGui.ViewModels
                         Entries.Add(line);
                 }
                 Status = Entries.Count == 0
-                    ? "Список пуст. Добавьте первую запись отдельным окном."
-                    : $"Записей: {Entries.Count}. Изменения ещё не сохранены.";
+                    ? "Список пуст. Добавьте первый домен через поле ввода."
+                    : $"Записей: {Entries.Count}. Файл: {SelectedList.FileName}";
             }
             catch (Exception ex)
             {
                 Status = "Не удалось прочитать список: " + ex.Message;
             }
             Raise(nameof(HasEntries));
+            Raise(nameof(CountText));
+            RaiseCommands();
+        }
+
+        private void QuickAddDomain()
+        {
+            if (string.IsNullOrWhiteSpace(QuickDomainInput)) return;
+            var clean = CleanDomain(QuickDomainInput);
+            if (string.IsNullOrWhiteSpace(clean)) return;
+
+            if (Entries.Any(entry => entry.Equals(clean, StringComparison.OrdinalIgnoreCase)))
+            {
+                Status = $"«{clean}» уже есть в текущем списке.";
+                return;
+            }
+
+            Entries.Insert(0, clean);
+            SelectedEntry = clean;
+            QuickDomainInput = "";
+            Save();
+            Status = $"Домен «{clean}» успешно добавлен и сохранён в {SelectedList.FileName}!";
+            Raise(nameof(HasEntries));
+            Raise(nameof(CountText));
+            RaiseCommands();
+        }
+
+        private static string CleanDomain(string input)
+        {
+            var s = input.Trim();
+            if (s.StartsWith("https://", StringComparison.OrdinalIgnoreCase)) s = s[8..];
+            else if (s.StartsWith("http://", StringComparison.OrdinalIgnoreCase)) s = s[7..];
+            var slash = s.IndexOf('/');
+            if (slash >= 0) s = s[..slash];
+            var colon = s.IndexOf(':');
+            if (colon >= 0) s = s[..colon];
+            return s.Trim();
         }
 
         private void AddEntry()
@@ -228,7 +446,8 @@ namespace ZapretGui.ViewModels
             };
             if (dialog.ShowDialog() != true) return;
 
-            var value = dialog.Value;
+            var value = CleanDomain(dialog.Value);
+            if (string.IsNullOrWhiteSpace(value)) return;
             if (Entries.Any(entry => entry.Equals(value, StringComparison.OrdinalIgnoreCase)))
             {
                 Status = "Такая запись уже есть в текущем списке.";
@@ -239,6 +458,8 @@ namespace ZapretGui.ViewModels
             SelectedEntry = value;
             Status = "Запись добавлена в редактор. Нажмите «Сохранить список».";
             Raise(nameof(HasEntries));
+            Raise(nameof(CountText));
+            RaiseCommands();
         }
 
         private void EditEntry(object? parameter)
@@ -255,7 +476,8 @@ namespace ZapretGui.ViewModels
             };
             if (dialog.ShowDialog() != true) return;
 
-            var newValue = dialog.Value;
+            var newValue = CleanDomain(dialog.Value);
+            if (string.IsNullOrWhiteSpace(newValue)) return;
             if (Entries.Any(entry => !entry.Equals(oldValue, StringComparison.OrdinalIgnoreCase) &&
                                      entry.Equals(newValue, StringComparison.OrdinalIgnoreCase)))
             {
@@ -276,8 +498,86 @@ namespace ZapretGui.ViewModels
             if (string.IsNullOrWhiteSpace(value)) return;
             Entries.Remove(value);
             SelectedEntry = null;
-            Status = "Запись удалена из редактора. Нажмите «Сохранить список».";
+            Status = $"Запись «{value}» удалена из редактора. Нажмите «Сохранить список».";
             Raise(nameof(HasEntries));
+            Raise(nameof(CountText));
+            RaiseCommands();
+        }
+
+        private void SortEntries()
+        {
+            var sorted = Entries.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList();
+            Entries.Clear();
+            foreach (var s in sorted) Entries.Add(s);
+            Status = "Список отсортирован по алфавиту (A-Z). Нажмите «Сохранить список».";
+        }
+
+        private void DeduplicateEntries()
+        {
+            var initial = Entries.Count;
+            var distinct = Entries
+                .Where(s => !string.IsNullOrWhiteSpace(s))
+                .Select(s => s.Trim())
+                .Distinct(StringComparer.OrdinalIgnoreCase)
+                .ToList();
+
+            Entries.Clear();
+            foreach (var s in distinct) Entries.Add(s);
+            var removed = initial - distinct.Count;
+            Status = removed > 0
+                ? $"Удалено дубликатов и пустых строк: {removed}. Нажмите «Сохранить список»."
+                : "Дубликатов не найдено.";
+            Raise(nameof(CountText));
+        }
+
+        private void ExportList()
+        {
+            try
+            {
+                var dialog = new SaveFileDialog
+                {
+                    Filter = "Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*",
+                    FileName = SelectedList.FileName
+                };
+                if (dialog.ShowDialog() != true) return;
+                File.WriteAllLines(dialog.FileName, Entries);
+                Status = "Список экспортирован в файл: " + Path.GetFileName(dialog.FileName);
+            }
+            catch (Exception ex)
+            {
+                Status = "Ошибка экспорта: " + ex.Message;
+            }
+        }
+
+        private void ImportList()
+        {
+            try
+            {
+                var dialog = new OpenFileDialog
+                {
+                    Filter = "Текстовые файлы (*.txt)|*.txt|Все файлы (*.*)|*.*"
+                };
+                if (dialog.ShowDialog() != true) return;
+
+                var added = 0;
+                foreach (var line in File.ReadLines(dialog.FileName).Select(CleanDomain).Where(s => s.Length > 0))
+                {
+                    if (!Entries.Any(e => e.Equals(line, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        Entries.Add(line);
+                        added++;
+                    }
+                }
+
+                Status = $"Импортировано {added} новых записей. Нажмите «Сохранить список».";
+                Raise(nameof(HasEntries));
+                Raise(nameof(CountText));
+                RaiseCommands();
+            }
+            catch (Exception ex)
+            {
+                Status = "Ошибка импорта: " + ex.Message;
+            }
         }
 
         private void Save()
@@ -285,8 +585,8 @@ namespace ZapretGui.ViewModels
             try
             {
                 Directory.CreateDirectory(ListsFolder);
-                File.WriteAllLines(ListPath, Entries.Where(entry => !string.IsNullOrWhiteSpace(entry)));
-                Status = $"Список сохранён: {SelectedList.FileName}. Перезапустите обход, чтобы применить изменения.";
+                File.WriteAllLines(ListPath, Entries);
+                Status = $"Список «{SelectedList.FileName}» успешно сохранён ({Entries.Count} записей). Перезапустите обход для применения.";
             }
             catch (Exception ex)
             {
@@ -299,22 +599,105 @@ namespace ZapretGui.ViewModels
             var status = _main.Bypass.GetStatus();
             if (!status.IsRunning)
             {
-                Status = "Обход выключен. Включите его на странице «Обзор».";
+                Status = "Обход в данный момент выключен. Запустите его на главной странице.";
                 return;
             }
 
-            var strategy = _main.Strategies.Find(Settings.SelectedStrategy) ?? _main.Strategies.Recommended;
-            if (strategy == null)
-            {
-                Status = "Стратегия не выбрана.";
-                return;
-            }
+            Status = "Перезапускаю обход для применения обновлённых списков…";
+            var strat = _main.Strategies.Find(status.StrategyName) ?? _main.Strategies.Recommended;
+            if (strat == null) return;
 
-            Status = "Перезапускаю обход с обновлёнными списками и фильтрами…";
-            var result = await _main.Bypass.StartAsync(strategy,
-                EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
-            Status = result.Message;
+            var res = await _main.Bypass.StartAsync(strat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+            Status = res.Ok ? "Обход успешно перезапущен с новыми списками!" : "Ошибка перезапуска: " + res.Message;
             _main.Home.RefreshStatus();
+        }
+
+        private async Task UpdateListsFromGithubAsync()
+        {
+            if (IsUpdatingLists) return;
+            IsUpdatingLists = true;
+            DomainListUpdateResultText = "Загружаю свежие списки с GitHub…";
+            DomainListUpdateResultKey = "Info";
+
+            try
+            {
+                var progress = new Progress<string>(msg => DomainListUpdateResultText = msg);
+                var res = await DomainListUpdater.UpdateAllAsync(Settings.EnginePath, progress);
+                DomainListUpdateResultText = res.Message;
+                DomainListUpdateResultKey = res.Ok ? "Success" : "Danger";
+                if (res.Ok)
+                {
+                    LoadEntries();
+                }
+            }
+            finally
+            {
+                IsUpdatingLists = false;
+            }
+        }
+
+        // ------------------------------------------------------------------ DNS методы
+        public void RefreshCurrentDns()
+        {
+            CurrentSystemDnsText = DnsManagementService.GetCurrentDnsSummary();
+            Raise(nameof(CurrentSystemDnsText));
+        }
+
+        private async Task ApplyDnsProfileAsync()
+        {
+            if (SelectedDnsProfile == null) return;
+            DnsTestStatusText = $"Применяю {SelectedDnsProfile.Name} к сетевому адаптеру…";
+            DnsTestStatusKey = "Info";
+
+            var (ok, message) = await DnsManagementService.ApplyDnsProfileAsync(SelectedDnsProfile);
+            DnsTestStatusText = message;
+            DnsTestStatusKey = ok ? "Success" : "Danger";
+            RefreshCurrentDns();
+        }
+
+        private async Task ResetDnsToDhcpAsync()
+        {
+            var dhcpProfile = DnsProfiles.FirstOrDefault(p => p.IsDhcp) ?? new DnsProfile { IsDhcp = true };
+            DnsTestStatusText = "Сбрасываю DNS на автоматический режим (DHCP)…";
+            DnsTestStatusKey = "Info";
+
+            var (ok, message) = await DnsManagementService.ApplyDnsProfileAsync(dhcpProfile);
+            DnsTestStatusText = message;
+            DnsTestStatusKey = ok ? "Success" : "Danger";
+            RefreshCurrentDns();
+        }
+
+        private async Task TestDnsServerAsync()
+        {
+            if (IsTestingDns) return;
+            IsTestingDns = true;
+            DnsTestStatusText = "Тестирую скорость ответа и резолвинг DNS…";
+            DnsTestStatusKey = "Info";
+
+            try
+            {
+                var ip = SelectedDnsProfile?.PrimaryServer ?? "";
+                var res = await DnsManagementService.TestDnsServerAsync(ip, "www.youtube.com");
+                DnsTestStatusText = res.Ok
+                    ? $"DNS проверен успешно: задержка {res.Milliseconds} мс (резолв youtube.com -> {res.ResolvedIp})"
+                    : $"Ошибка DNS: {res.Message}";
+                DnsTestStatusKey = res.Ok ? "Success" : "Danger";
+            }
+            finally
+            {
+                IsTestingDns = false;
+            }
+        }
+
+        private void RaiseCommands()
+        {
+            (AddEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (QuickAddDomainCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (EditEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (RemoveEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SortEntriesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (DeduplicateEntriesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (ExportListCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
     }
 }
