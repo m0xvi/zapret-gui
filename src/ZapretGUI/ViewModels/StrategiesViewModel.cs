@@ -959,6 +959,7 @@ namespace ZapretGui.ViewModels
                 });
                 var result = await Bypass.TestStrategyAsync(strategy, default, progress);
                 strategy.SetTestResult(result);
+                Store.RecordTestResult(strategy.Name, result);
                 TestProgressValue = TestProgressMaximum;
                 TestProgressPercentText = "100%";
                 AppendHistory(StrategyEvaluationHistoryRecord.FromTestResult(
@@ -1005,6 +1006,7 @@ namespace ZapretGui.ViewModels
 
                     var result = await Bypass.TestStrategyAsync(strategy, _testCts.Token);
                     strategy.SetTestResult(result);
+                    Store.RecordTestResult(strategy.Name, result);
                     AppendHistory(StrategyEvaluationHistoryRecord.FromTestResult(
                         strategy, result, Settings.ProviderContext ?? new ProviderContext()));
                     results.Add(result);
@@ -1071,10 +1073,11 @@ namespace ZapretGui.ViewModels
 
         public async Task ApplyStrategyAsync(StrategyInfo strategy)
         {
-            if (!Store.Items.Contains(strategy) || IsBusy || IsTestingAll || IsGeneratingCandidates || IsEvaluatingCandidates)
+            if (strategy == null || IsBusy || IsTestingAll || IsGeneratingCandidates || IsEvaluatingCandidates)
                 return;
-            Selected = strategy;
-            await RunAsync(strategy);
+            var target = Store.Find(strategy.Name) ?? strategy;
+            Selected = target;
+            await RunAsync(target);
         }
 
         private async Task RunAsync(object? parameter)
@@ -1099,6 +1102,8 @@ namespace ZapretGui.ViewModels
                     Settings.SelectedStrategy = Selected.Name;
                     SettingsStore.Save(Settings);
                     _main.Home.ReloadFromEngine();
+                    _main.RefreshReadiness();
+                    _main.Home.RefreshStatus();
                 }
             }
             finally { IsBusy = false; }

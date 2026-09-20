@@ -45,9 +45,11 @@ namespace ZapretGui.ViewModels
             ToggleBypassCommand = new AsyncRelayCommand(ToggleAsync, () => HasStrategy && !IsBusy);
             ResolveLegacyCommand = new AsyncRelayCommand(ResolveLegacyFromBannerAsync, () => !IsBusy);
             InstallServiceCommand = new AsyncRelayCommand(InstallServiceAsync, () => (HasStrategy || ServiceInstalled) && !IsBusy);
+            ReinstallServiceCommand = new AsyncRelayCommand(ReinstallServiceAsync, () => HasStrategy && !IsBusy);
             RemoveServiceCommand = new AsyncRelayCommand(RemoveServiceAsync, () => ServiceInstalled && !IsBusy);
             TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync, () => !ConnectionBusy);
             AddConnectionTargetCommand = new RelayCommand(AddConnectionTarget);
+            EditConnectionTargetCommand = new RelayCommand(EditConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             RemoveConnectionTargetCommand = new RelayCommand(RemoveConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             CheckUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
             OpenDiagnosticsCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
@@ -305,9 +307,11 @@ namespace ZapretGui.ViewModels
         public ICommand ToggleBypassCommand { get; }
         public ICommand ResolveLegacyCommand { get; }
         public ICommand InstallServiceCommand { get; }
+        public ICommand ReinstallServiceCommand { get; }
         public ICommand RemoveServiceCommand { get; }
         public ICommand TestConnectionCommand { get; }
         public ICommand AddConnectionTargetCommand { get; }
+        public ICommand EditConnectionTargetCommand { get; }
         public ICommand RemoveConnectionTargetCommand { get; }
         public ICommand CheckUpdatesCommand { get; }
         public ICommand OpenDiagnosticsCommand { get; }
@@ -646,6 +650,35 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        private async Task ReinstallServiceAsync()
+        {
+            var strategy = await ResolveLegacyAsync();
+            if (strategy == null) return;
+
+            if (!Shell.IsAdmin())
+            {
+                ShowError("Для переустановки службы нужны права администратора.");
+                return;
+            }
+
+            if (!Confirm("Переустановка службы", $"Служба zapret будет переустановлена со стратегией «{strategy.Name}». Продолжить?"))
+                return;
+
+            IsBusy = true;
+            ShowInfo("Переустанавливаю службу zapret…");
+            try
+            {
+                await Bypass.RemoveServiceAsync();
+                var result = await Bypass.InstallServiceAsync(strategy, CurrentGameFilter());
+                if (result.Ok) ShowSuccess(result.Message); else ShowError(result.Message);
+            }
+            finally
+            {
+                IsBusy = false;
+                RefreshStatus();
+            }
+        }
+
         private async Task RemoveServiceAsync()
         {
             if (!Confirm("Удаление службы", "Будут остановлены обход и служба zapret, а также удалены связанные службы WinDivert. Продолжить?"))
@@ -750,6 +783,37 @@ namespace ZapretGui.ViewModels
             SettingsStore.Save(Settings);
             NewConnectionAddress = "";
             ShowSuccess("Адрес добавлен в проверку соединения");
+        }
+
+        private void EditConnectionTarget(object? parameter)
+        {
+            if (parameter is not MonitorTarget target || target.IsBuiltIn) return;
+            var dialog = new Views.InputDialog(
+                "Изменить адрес",
+                "Укажите новый URL или домен для проверки:",
+                target.Url)
+            {
+                Owner = System.Windows.Application.Current?.MainWindow
+            };
+            if (dialog.ShowDialog() != true) return;
+            var updated = (dialog.Value ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(updated)) return;
+
+            if (!MonitorTarget.TryCreate(updated, target.Name, out var newTarget, out var error) || newTarget == null)
+            {
+                ShowWarning(error);
+                return;
+            }
+
+            var index = ConnectionTargets.IndexOf(target);
+            if (index >= 0)
+            {
+                ConnectionTargets[index] = newTarget;
+                var sIndex = Settings.MonitorTargets.FindIndex(t => t.Id == target.Id || t.Host.Equals(target.Host, StringComparison.OrdinalIgnoreCase));
+                if (sIndex >= 0) Settings.MonitorTargets[sIndex] = newTarget;
+                SettingsStore.Save(Settings);
+                ShowSuccess("Адрес проверки обновлён");
+            }
         }
 
         private void RemoveConnectionTarget(object? parameter)

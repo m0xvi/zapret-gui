@@ -11,6 +11,7 @@ namespace ZapretGui.ViewModels
     public sealed class StrategyStore : ObservableObject
     {
         private readonly AppSettings _settings;
+        private readonly Dictionary<string, StrategyTestResult> _cachedTestResults = new(StringComparer.OrdinalIgnoreCase);
 
         public StrategyStore(AppSettings settings) => _settings = settings;
 
@@ -24,13 +25,45 @@ namespace ZapretGui.ViewModels
 
         public StrategyInfo? Recommended => Items.FirstOrDefault(s => s.IsRecommended);
 
+        public void RecordTestResult(string name, StrategyTestResult result)
+        {
+            if (string.IsNullOrWhiteSpace(name) || result == null) return;
+            _cachedTestResults[name] = result;
+            var strategy = Find(name);
+            strategy?.SetTestResult(result);
+        }
+
         public void Refresh()
         {
+            // Сохраняем все текущие результаты проверок перед перезагрузкой
+            foreach (var item in Items)
+            {
+                if (item.TestResult != null)
+                {
+                    _cachedTestResults[item.Name] = item.TestResult;
+                }
+            }
+
             var loaded = StrategyParser.LoadAll(_settings.EnginePath);
             var saved = StrategyCandidateStore.Load();
             Items.Clear();
-            foreach (var strategy in loaded) Items.Add(strategy);
-            foreach (var candidate in saved) Items.Add(candidate.ToStrategyInfo());
+            foreach (var strategy in loaded)
+            {
+                if (_cachedTestResults.TryGetValue(strategy.Name, out var tr))
+                {
+                    strategy.SetTestResult(tr);
+                }
+                Items.Add(strategy);
+            }
+            foreach (var candidate in saved)
+            {
+                var sInfo = candidate.ToStrategyInfo();
+                if (_cachedTestResults.TryGetValue(sInfo.Name, out var tr))
+                {
+                    sInfo.SetTestResult(tr);
+                }
+                Items.Add(sInfo);
+            }
             Raise(nameof(Items));
             AppLog.Debug($"Найдено стратегий: {Items.Count}");
         }

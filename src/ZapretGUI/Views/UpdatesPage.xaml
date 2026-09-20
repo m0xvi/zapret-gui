@@ -198,31 +198,11 @@
                 </StackPanel>
             </Border>
 
-            <!-- 3. Что нового -->
+            <!-- 3. Настройки обновлений движка -->
             <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionText}" Text="ЧТО НОВОГО" />
-                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding ReleaseTitle}" FontWeight="SemiBold" />
-                    <TextBlock Style="{StaticResource DimText}" Text="{Binding ReleaseDate}" Margin="0,4,0,0" />
-                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
-                        <TextBlock Style="{StaticResource MonoText}" Text="{Binding ReleaseNotes}" />
-                    </ScrollViewer>
-                    <Button Style="{StaticResource GhostButton}" Content="Открыть страницу релиза в браузере"
-                            HorizontalAlignment="Left" Margin="0,8,0,0" Command="{Binding OpenReleasePageCommand}"
-                            ToolTip="Открыть страницу релиза на GitHub" />
-                </StackPanel>
-            </Border>
-
-            <!-- 4. Канал обновлений -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource SectionText}" Text="КАНАЛ ОБНОВЛЕНИЙ" />
-                    <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включать pre-release версии"
-                              IsChecked="{Binding Settings.IncludePrerelease, Mode=TwoWay}"
-                              ToolTip="Pre-release — тестовые сборки от Flowseal: выходят раньше, но могут быть менее стабильны" />
-                    <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
-                               Text="Pre-release версии появляются раньше, но могут быть менее стабильны." />
-                    <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять при запуске" Margin="0,10,0,0"
+                    <TextBlock Style="{StaticResource SectionText}" Text="НАСТРОЙКИ ОБНОВЛЕНИЙ ДВИЖКА" />
+                    <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять при запуске"
                               IsChecked="{Binding Settings.AutoCheckEngineUpdates, Mode=TwoWay}"
                               ToolTip="Тихо проверять новые версии движка при каждом запуске приложения" />
                     <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Сохранять мои списки при обновлении" Margin="0,10,0,0"

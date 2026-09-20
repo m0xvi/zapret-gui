@@ -815,8 +815,15 @@
                                        Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                        HorizontalAlignment="Left" RadiusX="3" RadiusY="3">
                                 <Rectangle.RenderTransform>
-                                    <ScaleTransform CenterX="0" CenterY="0.5"
-                                                    ScaleX="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ProgressScale}}" />
+                                    <ScaleTransform CenterX="0" CenterY="0.5">
+                                        <ScaleTransform.ScaleX>
+                                            <MultiBinding Converter="{StaticResource ProgressScale}">
+                                                <Binding Path="Value" RelativeSource="{RelativeSource TemplatedParent}" />
+                                                <Binding Path="Maximum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                                <Binding Path="Minimum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                            </MultiBinding>
+                                        </ScaleTransform.ScaleX>
+                                    </ScaleTransform>
                                 </Rectangle.RenderTransform>
                             </Rectangle>
                         </Grid>
@@ -826,10 +833,10 @@
                             <Setter TargetName="PART_Indicator" Property="Opacity" Value="0.85" />
                             <Trigger.EnterActions>
                                 <BeginStoryboard>
-                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                                    <Storyboard RepeatBehavior="Forever">
                                         <DoubleAnimation Storyboard.TargetName="PART_Indicator"
                                                          Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                                         From="0.08" To="0.55" Duration="0:0:0.65" />
+                                                         From="0.0" To="1.0" Duration="0:0:1.2" />
                                     </Storyboard>
                                 </BeginStoryboard>
                             </Trigger.EnterActions>

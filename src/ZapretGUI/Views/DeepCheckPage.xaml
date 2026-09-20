@@ -85,7 +85,7 @@
                     <ItemsControl ItemsSource="{Binding Metrics}">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource Divider}" Padding="0,8,0,8">
+                                <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}" Padding="0,8,0,8">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="190" />
@@ -129,15 +129,19 @@
                     <TextBlock Style="{StaticResource BodyText}" Text="{Binding RecommendedStrategyText}" TextWrapping="Wrap" />
                     <TextBlock Style="{StaticResource MonoText}" Text="{Binding RecommendedStrategyArgs}" Margin="0,4,0,0" TextWrapping="Wrap"
                                Visibility="{Binding RecommendedStrategyArgs, Converter={StaticResource StringToVis}}" />
-                    <Button Style="{StaticResource PrimaryButton}" Content="Применить найденную стратегию"
-                            Margin="0,10,0,0" HorizontalAlignment="Left"
-                            Command="{Binding ApplyRecommendationCommand}"
-                            Visibility="{Binding RecommendationCanBeApplied, Converter={StaticResource BoolToVis}}"
-                            ToolTip="Запустить только стратегию с подтверждённым полным успехом; безопасный режим блокирует действие" />
+                    <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Style="{StaticResource PrimaryButton}" Content="Применить найденную стратегию"
+                                Command="{Binding ApplyRecommendationCommand}"
+                                Visibility="{Binding RecommendationCanBeApplied, Converter={StaticResource BoolToVis}}"
+                                ToolTip="Запустить стратегию с подтверждённым успехом" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Добавить стратегию в список" Margin="8,0,0,0"
+                                Command="{Binding AddCustomStrategyToListCommand}"
+                                ToolTip="Сохранить подобранную стратегию с вашим названием в общий список стратегий" />
+                    </WrapPanel>
                     <ItemsControl ItemsSource="{Binding Recommendations}" Margin="0,8,0,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Style="{StaticResource Divider}" Padding="0,8,0,8">
+                                <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}" Padding="0,8,0,8">
                                     <StackPanel>
                                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontWeight="SemiBold" />
                                         <TextBlock Style="{StaticResource MutedText}" Text="{Binding Details}" Margin="0,3,0,0" TextWrapping="Wrap" />

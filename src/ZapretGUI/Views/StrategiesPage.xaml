@@ -268,11 +268,11 @@
                                             Command="{Binding ClearHistoryCommand}" ToolTip="Очистить сохранённую историю проверок" />
                                 </WrapPanel>
                             </Grid>
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" MaxHeight="140" VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
+                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" MaxHeight="220" VerticalScrollBarVisibility="Auto" Margin="0,6,0,0">
                                 <ItemsControl ItemsSource="{Binding EvaluationHistory}">
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
-                                            <Border Style="{StaticResource Divider}" Padding="0,4,0,4">
+                                            <Border Style="{StaticResource InnerCard}" Margin="0,3,0,0" Padding="8,6">
                                                 <Grid>
                                                     <Grid.ColumnDefinitions>
                                                         <ColumnDefinition Width="*" />
@@ -280,9 +280,9 @@
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
                                                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="11.5" />
-                                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding ResultSummaryText}" FontSize="10.5" TextWrapping="Wrap" />
+                                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding ResultSummaryText}" FontSize="10.5" TextWrapping="Wrap" Margin="0,2,0,0" />
                                                     </StackPanel>
-                                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding CompletedAtText}" FontSize="10.5" />
+                                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding CompletedAtText}" FontSize="10.5" VerticalAlignment="Top" Margin="6,0,0,0" />
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
