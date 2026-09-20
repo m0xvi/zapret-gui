@@ -160,6 +160,11 @@
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать обход вместе с приложением"
                                       IsChecked="{Binding AutoStartBypass, Mode=TwoWay}"
                                       ToolTip="Запускать обход с выбранной стратегией сразу при старте приложения" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Отложенный автозапуск обхода (секунды для ожидания инициализации сети)" />
+                            <Slider Minimum="0" Maximum="30" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding StartupDelaySeconds, Mode=TwoWay}" ToolTip="От 0 до 30 секунд (рекомендуется 5-10 сек для Wi-Fi/DHCP)" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding StartupDelaySeconds, StringFormat={}{0} сек}" />
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Безопасный режим"
                                       Margin="0,10,0,0" IsChecked="{Binding SafeMode, Mode=TwoWay}"
                                       ToolTip="Не запускать обход автоматически и не выполнять автоматическую установку службы или сетевые изменения. Диагностика остаётся доступной." />
@@ -176,6 +181,44 @@
                                       ToolTip="Показывать чёрное окно консоли winws.exe (в скрытом режиме его вывод пишется в журнал на странице «Журнал»)" />
                             <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
                                        Text="По умолчанию консоль скрыта — обход работает в фоне, как и раньше через .bat с параметром /min." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="СТОРОЖЕВОЙ ТАЙМЕР И САМОКОНТРОЛЬ (WATCHDOG)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включить сторожевой таймер (Watchdog)"
+                                      IsChecked="{Binding WatchdogEnabled, Mode=TwoWay}"
+                                      ToolTip="Фоновый контроль процесса winws.exe и службы zapret" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Автоматически перезапускать процесс при падении"
+                                      Margin="0,10,0,0" IsChecked="{Binding WatchdogAutoRestart, Mode=TwoWay}"
+                                      IsEnabled="{Binding WatchdogEnabled}"
+                                      ToolTip="Мягко восстанавливать обход при внезапном закрытии winws.exe или службы" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Уведомлять о восстановлении через трей"
+                                      Margin="0,10,0,0" IsChecked="{Binding WatchdogNotifyUser, Mode=TwoWay}"
+                                      IsEnabled="{Binding WatchdogEnabled}"
+                                      ToolTip="Показывать всплывающее уведомление в системном трее при перезапуске" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Интервал проверки сторожа (секунды)" />
+                            <Slider Minimum="5" Maximum="60" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding WatchdogIntervalSeconds, Mode=TwoWay}"
+                                    IsEnabled="{Binding WatchdogEnabled}" ToolTip="От 5 до 60 секунд" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding WatchdogIntervalSeconds, StringFormat={}{0} сек}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="МОНИТОРИНГ ЗАДЕРЖКИ СЕТИ (RTT PING)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отображать живой RTT пинг в шапке окна"
+                                      IsChecked="{Binding RealTimePingEnabled, Mode=TwoWay}"
+                                      ToolTip="Периодический пинг до YouTube, Discord и GitHub в верхней панели окна" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Интервал живого пинга (секунды)" />
+                            <Slider Minimum="5" Maximum="60" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding RealTimePingIntervalSeconds, Mode=TwoWay}"
+                                    IsEnabled="{Binding RealTimePingEnabled}" ToolTip="От 5 до 60 секунд" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding RealTimePingIntervalSeconds, StringFormat={}{0} сек}" />
                         </StackPanel>
                     </Border>
 

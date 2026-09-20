@@ -46,6 +46,8 @@ namespace ZapretGui.Views
             SetupTray();
             _vm.Monitoring.NotificationRequested += text => Dispatcher.Invoke(() =>
                 _tray?.ShowBalloon("Мониторинг ресурсов", text));
+            _vm.WatchdogNotificationRequested += text => Dispatcher.Invoke(() =>
+                _tray?.ShowBalloon("Сторожевой таймер", text));
 
             if (_vm.Settings.FirstLaunchWizardCompleted &&
                 !_vm.Settings.SafeMode &&
@@ -55,6 +57,13 @@ namespace ZapretGui.Views
             {
                 Dispatcher.BeginInvoke(new Action(async () =>
                 {
+                    var delay = Math.Clamp(_vm.Settings.StartupDelaySeconds, 0, 60);
+                    if (delay > 0)
+                    {
+                        AppLog.Info($"[Startup] Отложенный запуск обхода: ожидание {delay} сек для инициализации сети...");
+                        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(delay));
+                    }
+
                     var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy);
                     if (strategy == null) return;
                     var result = await _vm.Bypass.StartAsync(strategy,

@@ -96,6 +96,27 @@ namespace ZapretGui.Core
         /// <summary>Включить фоновую проверку избранных ресурсов.</summary>
         public bool ResourceMonitoringEnabled { get; set; }
 
+        /// <summary>Включить сторожевой таймер (Watchdog) для автоматического контроля winws.exe.</summary>
+        public bool WatchdogEnabled { get; set; } = true;
+
+        /// <summary>Интервал проверки сторожевого таймера в секундах (5-120).</summary>
+        public int WatchdogIntervalSeconds { get; set; } = 15;
+
+        /// <summary>Автоматически перезапускать процесс winws / службу при сбое.</summary>
+        public bool WatchdogAutoRestart { get; set; } = true;
+
+        /// <summary>Уведомлять о восстановлении обхода через системный трей.</summary>
+        public bool WatchdogNotifyUser { get; set; } = true;
+
+        /// <summary>Отображать живой RTT пинг ключевых ресурсов (YouTube, Discord, GitHub) в шапке.</summary>
+        public bool RealTimePingEnabled { get; set; } = true;
+
+        /// <summary>Интервал живого пинга в секундах.</summary>
+        public int RealTimePingIntervalSeconds { get; set; } = 10;
+
+        /// <summary>Задержка автозапуска обхода при старте Windows в секундах (0-60).</summary>
+        public int StartupDelaySeconds { get; set; } = 5;
+
         /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.</summary>
         public bool AutoRecoverStrategy { get; set; } = true;
 

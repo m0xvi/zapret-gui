@@ -263,6 +263,59 @@ namespace ZapretGui.ViewModels
             set => _main.Monitoring.MonitoringIntervalMinutes = value;
         }
 
+        public bool WatchdogEnabled
+        {
+            get => Settings.WatchdogEnabled;
+            set
+            {
+                Settings.WatchdogEnabled = value;
+                OnSettingChanged();
+                if (value && !Settings.SafeMode) _main.Watchdog.Start();
+                else _main.Watchdog.Stop();
+            }
+        }
+
+        public int WatchdogIntervalSeconds
+        {
+            get => Settings.WatchdogIntervalSeconds;
+            set { Settings.WatchdogIntervalSeconds = Math.Clamp(value, 5, 120); OnSettingChanged(); }
+        }
+
+        public bool WatchdogAutoRestart
+        {
+            get => Settings.WatchdogAutoRestart;
+            set { Settings.WatchdogAutoRestart = value; OnSettingChanged(); }
+        }
+
+        public bool WatchdogNotifyUser
+        {
+            get => Settings.WatchdogNotifyUser;
+            set { Settings.WatchdogNotifyUser = value; OnSettingChanged(); }
+        }
+
+        public bool RealTimePingEnabled
+        {
+            get => Settings.RealTimePingEnabled;
+            set
+            {
+                Settings.RealTimePingEnabled = value;
+                OnSettingChanged();
+                _main.Notify(nameof(MainViewModel.RealTimePingVisible));
+            }
+        }
+
+        public int RealTimePingIntervalSeconds
+        {
+            get => Settings.RealTimePingIntervalSeconds;
+            set { Settings.RealTimePingIntervalSeconds = Math.Clamp(value, 3, 120); OnSettingChanged(); }
+        }
+
+        public int StartupDelaySeconds
+        {
+            get => Settings.StartupDelaySeconds;
+            set { Settings.StartupDelaySeconds = Math.Clamp(value, 0, 60); OnSettingChanged(); }
+        }
+
         /// <summary>Автозапуск приложения: планировщик задач (нужны права администратора).</summary>
         public bool RunAtStartup
         {
@@ -333,6 +386,13 @@ namespace ZapretGui.ViewModels
             Raise(nameof(AutoRecoverStrategy));
             Raise(nameof(MonitorNotificationsEnabled));
             Raise(nameof(MonitoringIntervalMinutes));
+            Raise(nameof(WatchdogEnabled));
+            Raise(nameof(WatchdogIntervalSeconds));
+            Raise(nameof(WatchdogAutoRestart));
+            Raise(nameof(WatchdogNotifyUser));
+            Raise(nameof(RealTimePingEnabled));
+            Raise(nameof(RealTimePingIntervalSeconds));
+            Raise(nameof(StartupDelaySeconds));
             Raise(nameof(RunAtStartup));
             Raise(nameof(ProviderName));
             Raise(nameof(ProviderAsn));

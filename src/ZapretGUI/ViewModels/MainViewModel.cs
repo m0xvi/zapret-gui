@@ -25,6 +25,13 @@ namespace ZapretGui.ViewModels
         private readonly DispatcherTimer _timer;
         private NavItem _selectedNav;
         private bool _isAdmin;
+        private DateTime _lastPingProbeTime = DateTime.MinValue;
+        private bool _isPingProbing;
+
+        public event Action<string>? WatchdogNotificationRequested;
+
+        public WatchdogService Watchdog { get; }
+        public RealTimePingSnapshot? RealTimePing { get; private set; }
 
         public MainViewModel(AppSettings settings)
         {
@@ -42,6 +49,21 @@ namespace ZapretGui.ViewModels
             FirstLaunch = new FirstLaunchViewModel(this);
             Logs = new LogsViewModel();
             Monitoring = new MonitoringViewModel(this);
+
+            Watchdog = new WatchdogService(settings, Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended);
+            Watchdog.EventLogged += msg =>
+            {
+                if (Settings.WatchdogNotifyUser)
+                    WatchdogNotificationRequested?.Invoke(msg);
+            };
+            Watchdog.AlertRaised += alert =>
+            {
+                WatchdogNotificationRequested?.Invoke(alert);
+            };
+            if (settings.WatchdogEnabled && !settings.SafeMode)
+            {
+                Watchdog.Start();
+            }
 
             NavItems = new ObservableCollection<NavItem>
             {
@@ -220,6 +242,11 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        public bool RealTimePingVisible => Settings.RealTimePingEnabled;
+        public string RealTimePingSummaryText => RealTimePing?.SummaryText ?? "RTT: проверка…";
+        public string RealTimePingStatusKey => RealTimePing?.StatusKey ?? "Muted";
+        public string RealTimePingTooltip => RealTimePing?.TooltipText ?? "Живой мониторинг сетевой задержки (RTT)…";
+
         public ICommand ToggleThemeCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
@@ -304,6 +331,10 @@ namespace ZapretGui.ViewModels
             Raise(nameof(MonitoringSummaryText));
             Raise(nameof(MonitoringSummaryKey));
             Raise(nameof(MonitoringSummaryTooltip));
+            Raise(nameof(RealTimePingVisible));
+            Raise(nameof(RealTimePingSummaryText));
+            Raise(nameof(RealTimePingStatusKey));
+            Raise(nameof(RealTimePingTooltip));
             Raise(nameof(IsAnyCheckRunning));
             Raise(nameof(ActiveCheckStatusText));
         }
@@ -379,6 +410,7 @@ namespace ZapretGui.ViewModels
             {
                 Home.RefreshStatus();
                 Updates.RefreshBadge();
+                _ = CheckRealTimePingAsync();
                 Raise(nameof(ReadinessText));
                 Raise(nameof(ReadinessKey));
                 Raise(nameof(ReadinessDetails));
@@ -389,12 +421,42 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(MonitoringSummaryText));
                 Raise(nameof(MonitoringSummaryKey));
                 Raise(nameof(MonitoringSummaryTooltip));
+                Raise(nameof(RealTimePingVisible));
+                Raise(nameof(RealTimePingSummaryText));
+                Raise(nameof(RealTimePingStatusKey));
+                Raise(nameof(RealTimePingTooltip));
                 Raise(nameof(IsAnyCheckRunning));
                 Raise(nameof(ActiveCheckStatusText));
             }
             catch (Exception ex)
             {
                 AppLog.Error("Ошибка обновления статуса: " + ex.Message);
+            }
+        }
+
+        private async Task CheckRealTimePingAsync()
+        {
+            if (!Settings.RealTimePingEnabled || _isPingProbing) return;
+            var interval = Math.Clamp(Settings.RealTimePingIntervalSeconds, 3, 120);
+            if ((DateTime.Now - _lastPingProbeTime).TotalSeconds < interval) return;
+
+            _isPingProbing = true;
+            _lastPingProbeTime = DateTime.Now;
+            try
+            {
+                RealTimePing = await RealTimePingService.ProbeAsync();
+                Raise(nameof(RealTimePing));
+                Raise(nameof(RealTimePingSummaryText));
+                Raise(nameof(RealTimePingStatusKey));
+                Raise(nameof(RealTimePingTooltip));
+            }
+            catch (Exception ex)
+            {
+                AppLog.Debug("Ошибка RTT пинга: " + ex.Message);
+            }
+            finally
+            {
+                _isPingProbing = false;
             }
         }
 

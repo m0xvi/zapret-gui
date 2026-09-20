@@ -68,6 +68,18 @@
                                    Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" />
                     </WrapPanel>
                 </Button>
+                <!-- Живой RTT пинг -->
+                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
+                        Command="{Binding NavigateMonitoringCommand}"
+                        Visibility="{Binding RealTimePingVisible, Converter={StaticResource BoolToVis}}"
+                        ToolTip="{Binding RealTimePingTooltip}">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Dot}"
+                                Background="{Binding RealTimePingStatusKey, Converter={StaticResource SeverityBrush}}" />
+                        <TextBlock Text="{Binding RealTimePingSummaryText}" Margin="6,0,0,0" FontSize="11"
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                    </WrapPanel>
+                </Button>
                 <Button Style="{StaticResource SecondaryButton}" Padding="8,3" Margin="6,0,0,0"
                         Command="{Binding NavigateActiveCheckCommand}"
                         Visibility="{Binding IsAnyCheckRunning, Converter={StaticResource BoolToVis}}"
