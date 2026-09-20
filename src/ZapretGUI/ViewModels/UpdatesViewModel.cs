@@ -52,6 +52,7 @@ namespace ZapretGui.ViewModels
             UpdateIpsetCommand = new AsyncRelayCommand(UpdateIpsetAsync, () => !IsBusy);
             CheckHostsCommand = new AsyncRelayCommand(CheckHostsAsync, () => !IsBusy);
             ApplyHostsCommand = new RelayCommand(ApplyHosts, () => !IsBusy && _hostsFile.Length > 0);
+            UpdateHostsCommand = new AsyncRelayCommand(UpdateHostsAsync, () => !IsBusy);
             OpenReleasePageCommand = new RelayCommand(() => Shell.OpenUrl(string.IsNullOrEmpty(_releaseUrl) ? EngineService.RepoUrl + "/releases/latest" : _releaseUrl));
             OpenRepoCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl));
             OpenDownloadsPageCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl + "/releases/latest"));
@@ -184,6 +185,7 @@ namespace ZapretGui.ViewModels
                     (UpdateIpsetCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (CheckHostsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (ApplyHostsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (UpdateHostsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (RollbackEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (CancelCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
@@ -234,10 +236,14 @@ namespace ZapretGui.ViewModels
                 if (Set(ref _hostsNeedsUpdate, value))
                 {
                     Raise(nameof(HostsStatusKey));
+                    Raise(nameof(HostsIsUpToDate));
                     (ApplyHostsCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
+
+        public bool HostsIsUpToDate => !_hostsNeedsUpdate && !string.IsNullOrEmpty(_hostsStatus) && HostsStatusKey == "Success";
+        public bool IpsetIsUpToDate => true;
 
         public string HostsStatusKey => _hostsNeedsUpdate ? "Warning" : "Success";
 
@@ -307,6 +313,7 @@ namespace ZapretGui.ViewModels
         public ICommand UpdateIpsetCommand { get; }
         public ICommand CheckHostsCommand { get; }
         public ICommand ApplyHostsCommand { get; }
+        public ICommand UpdateHostsCommand { get; }
         public ICommand OpenReleasePageCommand { get; }
         public ICommand OpenRepoCommand { get; }
         public ICommand OpenDownloadsPageCommand { get; }
@@ -885,6 +892,43 @@ namespace ZapretGui.ViewModels
             var (ok, message) = EngineService.ApplyHosts(_hostsFile);
             SetMessage(message, ok ? "Success" : "Danger");
             if (ok) HostsNeedsUpdate = false;
+        }
+
+        private async Task UpdateHostsAsync()
+        {
+            IsBusy = true;
+            Indeterminate = true;
+            Status = "Проверяю и обновляю файл hosts…";
+            try
+            {
+                var result = await EngineService.CheckHostsAsync();
+                _hostsFile = result.TempFile;
+                HostsNeedsUpdate = result.NeedsUpdate;
+                HostsStatus = result.Ok
+                    ? result.Message + $" (строк в файле репозитория: {result.LineCount})"
+                    : result.Message;
+
+                if (!result.NeedsUpdate)
+                {
+                    SetMessage("Файл hosts уже актуален (записи GitHub в порядке).", "Success");
+                    return;
+                }
+
+                var confirm = System.Windows.MessageBox.Show(
+                    "Файл hosts требует обновления для GitHub/Discord. Применить обновления сейчас?",
+                    "Обновление hosts", System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Question);
+                if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+                var (ok, message) = EngineService.ApplyHosts(_hostsFile);
+                SetMessage(message, ok ? "Success" : "Danger");
+                if (ok) HostsNeedsUpdate = false;
+            }
+            finally
+            {
+                IsBusy = false;
+                Indeterminate = false;
+            }
         }
 
         private void SetMessage(string message, string key)

@@ -100,20 +100,23 @@
                     <ListBox Grid.Row="2" Margin="0,10,0,0" MinHeight="180" MaxHeight="480"
                              Style="{StaticResource PlainListBox}" ItemsSource="{Binding Entries}"
                              SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                             ItemContainerStyle="{StaticResource CompactRowItemStyle}"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="0,2,0,2">
+                                <Grid Margin="0,1,0,1">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding}" />
-                                    <WrapPanel Grid.Column="1">
-                                        <Button Style="{StaticResource GhostButton}" Content="Изменить" Padding="8,4"
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding}" VerticalAlignment="Center" />
+                                    <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                        <Button Style="{StaticResource SmallIconButton}" Content="&#xE70F;"
+                                                ToolTip="Изменить запись"
                                                 Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                 CommandParameter="{Binding}" />
-                                        <Button Style="{StaticResource GhostButton}" Content="Удалить" Padding="8,4" Margin="6,0,0,0"
+                                        <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;" Margin="4,0,0,0"
+                                                ToolTip="Удалить запись"
                                                 Command="{Binding DataContext.RemoveEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                 CommandParameter="{Binding}" />
                                     </WrapPanel>

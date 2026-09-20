@@ -68,6 +68,16 @@
                                    Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" />
                     </WrapPanel>
                 </Button>
+                <Button Style="{StaticResource SecondaryButton}" Padding="8,3" Margin="6,0,0,0"
+                        Command="{Binding NavigateActiveCheckCommand}"
+                        Visibility="{Binding IsAnyCheckRunning, Converter={StaticResource BoolToVis}}"
+                        ToolTip="В фоне выполняется проверка сети. Нажмите, чтобы перейти к выполняемой проверке.">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource BusySpinner}" Width="12" Height="12" BorderThickness="1.5" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ActiveCheckStatusText}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                    </WrapPanel>
+                </Button>
                 <Border Style="{StaticResource Badge}" Margin="6,0,0,0"
                         Background="{Binding ReadinessKey, Converter={StaticResource SoftSeverityBrush}}"
                         ToolTip="{Binding ReadinessDetails}">

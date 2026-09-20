@@ -237,7 +237,7 @@
                         <WrapPanel Margin="0,12,0,0">
                             <Button Style="{StaticResource PrimaryButton}" Content="Проверить все стратегии"
                                     Command="{Binding RunStrategyChecksCommand}" />
-                            <ComboBox MinWidth="140" MaxWidth="260" Margin="10,0,0,0" ItemsSource="{Binding StrategyNames}"
+                            <ComboBox Style="{StaticResource AppComboBox}" MinWidth="180" MaxWidth="300" Margin="10,0,0,0" ItemsSource="{Binding StrategyNames}"
                                       SelectedItem="{Binding SelectedStrategyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                       ToolTip="Стратегия для явного сохранения и пробного запуска" />
                             <Button Style="{StaticResource SecondaryButton}" Content="Сохранить выбранную"

@@ -33,6 +33,11 @@ namespace ZapretGui.Core
         public List<StrategyEvaluationHistoryAttempt> Attempts { get; set; } = new();
 
         [JsonIgnore]
+        public string DisplayName => !string.IsNullOrWhiteSpace(CandidateName)
+            ? CandidateName
+            : (!string.IsNullOrWhiteSpace(SourceStrategy) ? SourceStrategy : "Стратегия");
+
+        [JsonIgnore]
         public string CompletedAtText => CompletedAtUtc.ToLocalTime().ToString("dd.MM.yyyy HH:mm");
 
         [JsonIgnore]
@@ -44,7 +49,21 @@ namespace ZapretGui.Core
         public string ScoreText => RepeatCount == 0 ? "—" : Score.ToString();
 
         [JsonIgnore]
-        public string ResultSummaryText => $"{StabilityText} · score: {ScoreText}";
+        public string ResultSummaryText
+        {
+            get
+            {
+                if (TotalChecks > 0)
+                {
+                    var time = AverageElapsedMilliseconds > 0 ? $" · {AverageElapsedText}" : "";
+                    var score = Score > 0 ? $" · Score: {Score}" : "";
+                    return $"{PassedChecks}/{TotalChecks} проверок пройдено ({StabilityText}){time}{score}";
+                }
+                if (!string.IsNullOrWhiteSpace(FailureReasons))
+                    return $"Сбой: {FailureReasons} ({StabilityText})";
+                return $"{StabilityText} · Score: {ScoreText}";
+            }
+        }
 
         [JsonIgnore]
         public string AverageElapsedText

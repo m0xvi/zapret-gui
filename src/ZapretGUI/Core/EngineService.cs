@@ -143,11 +143,13 @@ namespace ZapretGui.Core
 
         // ---------------------------------------------------------------- статус
 
-        /// <summary>Версия установленного движка: сначала маркер GUI, затем service.bat.</summary>
+        /// <summary>Версия установленного движка: маркер GUI, service.bat, version.txt, winws.exe или готовность файлов.</summary>
         public static string ReadVersion(string engineRoot)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(engineRoot) || !Directory.Exists(engineRoot)) return "";
+
                 var marker = AppPaths.VersionMarker(engineRoot);
                 if (File.Exists(marker))
                 {
@@ -155,12 +157,41 @@ namespace ZapretGui.Core
                     if (v.Length > 0) return v;
                 }
 
+                var versionTxt = Path.Combine(engineRoot, "version.txt");
+                if (File.Exists(versionTxt))
+                {
+                    var v = File.ReadAllText(versionTxt).Trim();
+                    if (v.Length > 0) return v;
+                }
+
                 var serviceBat = Path.Combine(engineRoot, "service.bat");
                 if (File.Exists(serviceBat))
                 {
-                    var match = Regex.Match(File.ReadAllText(serviceBat), "LOCAL_VERSION=([^\"\\r\\n]+)");
-                    if (match.Success) return match.Groups[1].Value.Trim();
+                    var match = Regex.Match(File.ReadAllText(serviceBat), @"(?:LOCAL_VERSION|VERSION)\s*=\s*""?([^""\r\n]+)""?", RegexOptions.IgnoreCase);
+                    if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value)) return match.Groups[1].Value.Trim();
                 }
+
+                var blockcheck = Path.Combine(engineRoot, "blockcheck.sh");
+                if (File.Exists(blockcheck))
+                {
+                    var match = Regex.Match(File.ReadAllText(blockcheck), @"(?:LOCAL_VERSION|VERSION)\s*=\s*""?([^""\r\n]+)""?", RegexOptions.IgnoreCase);
+                    if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value)) return match.Groups[1].Value.Trim();
+                }
+
+                var winws = Path.Combine(engineRoot, "bin", "winws.exe");
+                if (!File.Exists(winws)) winws = Path.Combine(engineRoot, "winws.exe");
+                if (File.Exists(winws))
+                {
+                    try
+                    {
+                        var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(winws);
+                        var fv = info.ProductVersion ?? info.FileVersion;
+                        if (!string.IsNullOrWhiteSpace(fv) && fv != "0.0.0.0") return fv.Split('+')[0].Trim();
+                    }
+                    catch { }
+                }
+
+                if (IsEngineReady(engineRoot)) return "установлен";
             }
             catch { }
             return "";

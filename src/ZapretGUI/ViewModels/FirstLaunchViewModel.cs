@@ -88,6 +88,7 @@ namespace ZapretGui.ViewModels
             private set
             {
                 if (!Set(ref _step, Math.Clamp(value, 0, StepCount - 1))) return;
+                RefreshStrategyList();
                 Raise(nameof(CurrentStepNumber));
                 Raise(nameof(StepCounterText));
                 Raise(nameof(StepTitleText));
@@ -307,11 +308,15 @@ namespace ZapretGui.ViewModels
 
         public void RefreshStrategyList()
         {
+            _main.Strategies.Refresh();
             var names = _main.Strategies.Items.Select(item => item.Name).ToList();
             StrategyNames.Clear();
             foreach (var name in names) StrategyNames.Add(name);
             if (!string.IsNullOrWhiteSpace(Settings.SelectedStrategy) && names.Contains(Settings.SelectedStrategy))
                 _selectedStrategyName = Settings.SelectedStrategy;
+            else if (names.Count > 0 && string.IsNullOrWhiteSpace(_selectedStrategyName))
+                _selectedStrategyName = names[0];
+
             Raise(nameof(SelectedStrategyName));
             Raise(nameof(SelectedStrategy));
             Raise(nameof(SelectedStrategyText));

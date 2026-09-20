@@ -1061,4 +1061,36 @@ CI и что требует Windows runtime.
      - **Краткий мониторинг узлов:** статус доступности контрольных ресурсов (`5/5 OK` / `Предупреждение` / `Ошибка`) с подробным всплывающим тултипом по каждому ресурсу и переходом в «Мониторинг» по клику.
    - Добавлены свойства `ActiveStrategySummaryText`, `ActiveStrategyKey`, `ActiveStrategyTooltipText`, `MonitoringSummaryText`, `MonitoringSummaryKey`, `MonitoringSummaryTooltip` и команды `NavigateStrategiesCommand`, `NavigateMonitoringCommand` в `MainViewModel`.
 
+---
+
+### Итерация 2026-09-20 (v1.2.4 Polish · Background Checks, Unbiased Recommendations, Engine Detection & Clean Icons)
+
+1. **Мастер первого запуска (`FirstLaunchPage` / `FirstLaunchViewModel`):**
+   - Селектор стратегии на 4-м шаге переведён на фирменный `Style="{StaticResource AppComboBox}"`.
+   - При смене шага мастера вызывается `RefreshStrategyList()`, который перечитывает актуальные `.bat` файлы и активирует кнопку «Проверить все стратегии».
+
+2. **Обновления (`UpdatesPage` / `UpdatesViewModel`):**
+   - Добавлены зелёные галочки (`&#xE73E;`) при актуальности файлов `ipset-all.txt` и `hosts`.
+   - Кнопки `[Проверить]` и `[Применить]` объединены в единое смарт-действие **«Обновить hosts»** (`UpdateHostsCommand`), проверяющее файл и применяющее актуальные записи.
+   - Устранены наезжающие и слипающиеся отступы между карточками «Списки и hosts», «Что нового» и «О программе».
+
+3. **История проверок и автоконструктор (`StrategyEvaluationHistory` / `StrategiesViewModel`):**
+   - Добавлено свойство `DisplayName` и информативный `ResultSummaryText` с выводом числа пройденных проверок, стабильности и времени отклика.
+   - Поля истории проверок отображаются с полными данными без пустых строк.
+
+4. **Фоновая работа и статусная строка проверок в шапке окна (`MainWindow.xaml` / `MainViewModel.cs`):**
+   - Проверки (DPI-тест 34 узлов, Deep Check матрица, проверка стратегий, аудит системы, мониторинг) выполняются в фоновых задачах и не прерываются при скрытии окна или переходе между вкладками.
+   - В верхнем статусном баре добавлен индикатор активной фоновой операции (`IsAnyCheckRunning`, `ActiveCheckStatusText`, спиннер и кнопка быстрого перехода).
+
+5. **Устранение предвзятых рекомендаций (`StrategyParser.cs` / `StrategyStore.cs`):**
+   - Полностью убрана жёсткая привязка `IsRecommended` к стратегии `general (FAKE TLS AUTO)`.
+   - Статус рекомендации присваивается исключительно по результатам реальных эмпирических проверок (`TestResult.IsSuitable == true`).
+
+6. **Определение версии движка и окно «О программе» (`EngineService.cs` / `AboutPage.xaml`):**
+   - В `EngineService.ReadVersion` добавлен опрос маркеров `.gui-engine-version`, `version.txt`, `service.bat`, `blockcheck.sh`, FileVersion `winws.exe` и проверка `IsEngineReady`, исключая ложный статус «не установлен».
+   - В `AboutPage.xaml` версия Zapret GUI привязана к динамическому `{Binding AppVersion}` (вместо статического 1.0.0).
+
+7. **Иконки действий в списках (`UserListsPage`, `MonitoringPage`, `DiagnosticsPage`):**
+   - Текстовые кнопки «Изменить» и «Удалить» заменены на компактные аккуратные иконки карандаша (`&#xE70F;`) и корзины (`&#xE74D;`) (`SmallIconButton`).
+   - Скруглены углы выделения элементов списков (`CompactRowItemStyle`).
 ```

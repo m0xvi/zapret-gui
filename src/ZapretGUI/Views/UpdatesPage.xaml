@@ -25,6 +25,7 @@
                 </WrapPanel>
             </Grid>
 
+            <!-- Сообщения и статус -->
             <Border Margin="0,16,0,0" CornerRadius="10" Padding="14,11"
                     Background="{Binding MessageKey, Converter={StaticResource SoftSeverityBrush}}"
                     Visibility="{Binding MessageVisible, Converter={StaticResource BoolToVis}}">
@@ -41,6 +42,7 @@
                 </StackPanel>
             </Border>
 
+            <!-- Согласованность файлов -->
             <Border Margin="0,10,0,0" CornerRadius="10" Padding="14,11"
                     Background="{Binding ConsistencyKey, Converter={StaticResource SoftSeverityBrush}}">
                 <StackPanel>
@@ -61,223 +63,229 @@
                 </StackPanel>
             </Border>
 
-            <StackPanel Margin="0,16,0,0">
-
+            <!-- Основные карточки обновления -->
+            <!-- 1. Движок zapret -->
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
-                    <!-- Движок -->
-                    <Border Style="{StaticResource Card}">
+                    <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET (ОБХОД)" />
+
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET (ОБХОД)" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Установленная версия" />
+                            <TextBlock Style="{StaticResource StatValueText}" Text="{Binding EngineVersion}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Style="{StaticResource DimText}" Text="Последняя версия на GitHub" />
+                            <TextBlock Style="{StaticResource StatValueText}" Text="{Binding LatestVersion}" />
+                        </StackPanel>
+                    </Grid>
 
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource DimText}" Text="Установленная версия" />
-                                    <TextBlock Style="{StaticResource StatValueText}" Text="{Binding EngineVersion}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Style="{StaticResource DimText}" Text="Последняя версия на GitHub" />
-                                    <TextBlock Style="{StaticResource StatValueText}" Text="{Binding LatestVersion}" />
-                                </StackPanel>
-                            </Grid>
+                    <Border Style="{StaticResource Badge}" HorizontalAlignment="Left" Margin="0,12,0,0"
+                            Background="{DynamicResource AccentSoftBrush}">
+                        <TextBlock Style="{StaticResource MutedText}" Text="{Binding UpdateBadgeText}"
+                                   Foreground="{DynamicResource TextBrush}" />
+                    </Border>
 
-                            <Border Style="{StaticResource Badge}" HorizontalAlignment="Left" Margin="0,12,0,0"
-                                    Background="{DynamicResource AccentSoftBrush}">
-                                <TextBlock Style="{StaticResource MutedText}" Text="{Binding UpdateBadgeText}"
-                                           Foreground="{DynamicResource TextBrush}" />
-                            </Border>
+                    <TextBlock Style="{StaticResource DimText}" Text="{Binding LastCheckText}" Margin="0,10,0,0" />
 
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastCheckText}" Margin="0,10,0,0" />
+                    <WrapPanel Orientation="Horizontal" Margin="0,14,0,0">
+                        <Button Style="{StaticResource PrimaryButton}" Content="{Binding UpdateEngineButtonText}"
+                                Command="{Binding UpdateEngineCommand}"
+                                ToolTip="Скачать свежий релиз, безопасно остановить обход, заменить файлы (ваши списки сохранятся) и перезапустить обход" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Страница релиза" Margin="8,0,0,0"
+                                Command="{Binding OpenReleasePageCommand}"
+                                ToolTip="Открыть страницу релиза на GitHub (для ручной установки)" />
+                        <Button Style="{StaticResource GhostButton}" Content="Отмена" Margin="8,0,0,0"
+                                Command="{Binding CancelCommand}"
+                                ToolTip="Прервать проверку или загрузку" />
+                    </WrapPanel>
 
-                            <WrapPanel Orientation="Horizontal" Margin="0,14,0,0">
-                                <Button Style="{StaticResource PrimaryButton}" Content="{Binding UpdateEngineButtonText}"
-                                        Command="{Binding UpdateEngineCommand}"
-                                        ToolTip="Скачать свежий релиз, безопасно остановить обход, заменить файлы (ваши списки сохранятся) и перезапустить обход" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Страница релиза" Margin="8,0,0,0"
-                                        Command="{Binding OpenReleasePageCommand}"
-                                        ToolTip="Открыть страницу релиза на GitHub (для ручной установки)" />
-                                <Button Style="{StaticResource GhostButton}" Content="Отмена" Margin="8,0,0,0"
-                                        Command="{Binding CancelCommand}"
-                                        ToolTip="Прервать проверку или загрузку" />
-                            </WrapPanel>
-
-                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0">
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource SectionText}" Text="РУЧНОЙ ОТКАТ ДВИЖКА" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding EngineBackupText}" TextWrapping="Wrap" />
-                                    <ComboBox Style="{StaticResource AppComboBox}" Margin="0,8,0,0"
-                                              ItemsSource="{Binding AvailableEngineBackups}"
-                                              SelectedItem="{Binding SelectedEngineBackup, Mode=TwoWay}"
-                                              DisplayMemberPath="DisplayText"
-                                              ToolTip="Выберите сохранённую версию движка для ручного отката" />
-                                    <Button Style="{StaticResource SecondaryButton}" Content="Вернуться к выбранной версии"
-                                            HorizontalAlignment="Left" Margin="0,8,0,0"
-                                            Command="{Binding RollbackEngineCommand}"
-                                            ToolTip="Остановить обход, восстановить файлы выбранной версии и вернуть обход после подтверждения" />
-                                </StackPanel>
-                            </Border>
-
-                            <StackPanel Margin="0,14,0,0" Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}">
-                                <Grid>
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Status}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding ProgressPercentText}" HorizontalAlignment="Right"
-                                               Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
-                                               Visibility="{Binding Indeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
-                                </Grid>
-                                <ProgressBar Style="{StaticResource ThinProgress}"
-                                             Value="{Binding Progress, Mode=OneWay}" Maximum="100"
-                                             IsIndeterminate="{Binding Indeterminate, Mode=OneWay}" Margin="0,8,0,0" />
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource MutedText}" Text="{Binding Status}" Margin="0,12,0,0"
-                                       Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
-
-                            <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0">
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource DimText}"
-                                               Text="Обновление сохраняет ваши файлы: *-user.txt, режимы ipset и игрового фильтра, активные фейки." />
-                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding EnginePathText}"
-                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding EnginePathText}" Margin="0,6,0,0" />
-                                    <Button Style="{StaticResource GhostButton}" Content="Открыть папку движка"
-                                            HorizontalAlignment="Left" Margin="0,4,0,0" Command="{Binding OpenEngineFolderCommand}"
-                                            ToolTip="Открыть папку со сборкой zapret в проводнике" />
-                                </StackPanel>
-                            </Border>
+                    <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="РУЧНОЙ ОТКАТ ДВИЖКА" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding EngineBackupText}" TextWrapping="Wrap" />
+                            <ComboBox Style="{StaticResource AppComboBox}" Margin="0,8,0,0"
+                                      ItemsSource="{Binding AvailableEngineBackups}"
+                                      SelectedItem="{Binding SelectedEngineBackup, Mode=TwoWay}"
+                                      DisplayMemberPath="DisplayText"
+                                      ToolTip="Выберите сохранённую версию движка для ручного отката" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Вернуться к выбранной версии"
+                                    HorizontalAlignment="Left" Margin="0,8,0,0"
+                                    Command="{Binding RollbackEngineCommand}"
+                                    ToolTip="Остановить обход, восстановить файлы выбранной версии и вернуть обход после подтверждения" />
+                        </StackPanel>
+                    </Border>
                         </StackPanel>
                     </Border>
 
-                    <!-- Списки и hosts -->
-                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                    <StackPanel Margin="0,14,0,0" Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}">
+                        <Grid>
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding Status}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding ProgressPercentText}" HorizontalAlignment="Right"
+                                       Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
+                                       Visibility="{Binding Indeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                        </Grid>
+                        <ProgressBar Style="{StaticResource ThinProgress}"
+                                     Value="{Binding Progress, Mode=OneWay}" Maximum="100"
+                                     IsIndeterminate="{Binding Indeterminate, Mode=OneWay}" Margin="0,8,0,0" />
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource MutedText}" Text="{Binding Status}" Margin="0,12,0,0"
+                               Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+
+                    <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="СПИСКИ И ФАЙЛ HOSTS" />
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                    <TextBlock Style="{StaticResource BodyText}" Text="Список ipset-all.txt" FontWeight="SemiBold" />
-                                    <TextBlock Style="{StaticResource DimText}"
-                                               Text="Актуальный список IP-адресов для фильтра ipset. Обновляется отдельно от движка." />
-                                </StackPanel>
-                                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Обновить список"
-                                        HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding UpdateIpsetCommand}" Padding="14,8"
-                                        ToolTip="Скачать свежий ipset-all.txt из репозитория (при режимах none/any пишется в резервную копию)" />
-                            </Grid>
-
-                            <Border Style="{StaticResource Divider}" />
-
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                                    <TextBlock Style="{StaticResource BodyText}" Text="Файл hosts (GitHub-адреса)" FontWeight="SemiBold" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding HostsStatus}"
-                                               Foreground="{Binding HostsStatusKey, Converter={StaticResource SeverityBrush}}" />
-                                </StackPanel>
-                                <WrapPanel Grid.Column="1" MaxWidth="240" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
-                                    <Button Style="{StaticResource SecondaryButton}" Content="Проверить" Padding="14,8"
-                                            Command="{Binding CheckHostsCommand}"
-                                            ToolTip="Сравнить системный файл hosts со свежим из репозитория (чинит веб-Telegram и голосовой чат Discord)" />
-                                    <Button Style="{StaticResource PrimaryButton}" Content="Применить" Margin="8,0,0,0" Padding="14,8"
-                                            Command="{Binding ApplyHostsCommand}"
-                                            ToolTip="Сделает резервную копию hosts и добавит актуальные строки GitHub" />
-                                </WrapPanel>
-                            </Grid>
+                            <TextBlock Style="{StaticResource DimText}"
+                                       Text="Обновление сохраняет ваши файлы: *-user.txt, режимы ipset и игрового фильтра, активные фейки." />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding EnginePathText}"
+                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding EnginePathText}" Margin="0,6,0,0" />
+                            <Button Style="{StaticResource GhostButton}" Content="Открыть папку движка"
+                                    HorizontalAlignment="Left" Margin="0,4,0,0" Command="{Binding OpenEngineFolderCommand}"
+                                    ToolTip="Открыть папку со сборкой zapret в проводнике" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
+            </Border>
 
-                <!-- Правая колонка -->
+            <!-- 2. Списки и файл hosts -->
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ЧТО НОВОГО" />
-                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding ReleaseTitle}" FontWeight="SemiBold" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding ReleaseDate}" Margin="0,4,0,0" />
-                            <ScrollViewer HorizontalScrollBarVisibility="Disabled" MaxHeight="300" VerticalScrollBarVisibility="Auto" Margin="0,12,0,0">
-                                <TextBlock Style="{StaticResource MonoText}" Text="{Binding ReleaseNotes}" />
-                            </ScrollViewer>
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть страницу релиза в браузере"
-                                    HorizontalAlignment="Left" Margin="0,8,0,0" Command="{Binding OpenReleasePageCommand}"
-                                    ToolTip="Открыть страницу релиза на GitHub" />
-                        </StackPanel>
-                    </Border>
+                    <TextBlock Style="{StaticResource SectionText}" Text="СПИСКИ И ФАЙЛ HOSTS" />
 
-                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="КАНАЛ ОБНОВЛЕНИЙ" />
-                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включать pre-release версии"
-                                      IsChecked="{Binding Settings.IncludePrerelease, Mode=TwoWay}"
-                                      ToolTip="Pre-release — тестовые сборки от Flowseal: выходят раньше, но могут быть менее стабильны" />
-                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
-                                       Text="Pre-release версии появляются раньше, но могут быть менее стабильны." />
-                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять при запуске" Margin="0,10,0,0"
-                                      IsChecked="{Binding Settings.AutoCheckEngineUpdates, Mode=TwoWay}"
-                                      ToolTip="Тихо проверять новые версии движка при каждом запуске приложения" />
-                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Сохранять мои списки при обновлении" Margin="0,10,0,0"
-                                      IsChecked="{Binding Settings.PreserveUserDataOnUpdate, Mode=TwoWay}"
-                                      ToolTip="Не затирать *-user.txt, режимы фильтров и резерв ipset при обновлении движка" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ОБНОВЛЕНИЕ ZAPRET GUI" />
-                            <Grid Margin="0,2,0,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource DimText}" Text="Установленная версия" />
-                                    <TextBlock Style="{StaticResource StatValueText}" Text="{Binding GuiCurrentVersion}" />
-                                </StackPanel>
-                                <StackPanel Grid.Column="1">
-                                    <TextBlock Style="{StaticResource DimText}" Text="Последняя версия" />
-                                    <TextBlock Style="{StaticResource StatValueText}" Text="{Binding GuiLatestVersion}" />
-                                </StackPanel>
-                            </Grid>
-                            <Border Style="{StaticResource Badge}" HorizontalAlignment="Left" Margin="0,10,0,0"
-                                    Background="{DynamicResource AccentSoftBrush}">
-                                <TextBlock Style="{StaticResource MutedText}" Text="{Binding GuiUpdateBadgeText}"
-                                           Foreground="{DynamicResource TextBrush}" />
-                            </Border>
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding GuiUpdateStatus}"
-                                       TextWrapping="Wrap" Margin="0,8,0,0" />
-                            <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
-                                <Button Style="{StaticResource SecondaryButton}" Content="Проверить GUI"
-                                        Command="{Binding CheckGuiUpdateCommand}"
-                                        ToolTip="Проверить официальный GitHub-релиз Zapret GUI без установки" />
-                                <Button Style="{StaticResource PrimaryButton}" Content="{Binding GuiUpdateButtonText}"
-                                        Margin="8,0,0,0" Command="{Binding UpdateGuiCommand}"
-                                        ToolTip="Скачать portable EXE, проверить SHA-256, сохранить резервную копию и перезапустить GUI" />
+                    <!-- IPSET -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                            <WrapPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE73E;" FontFamily="{DynamicResource IconFont}" FontSize="13"
+                                           Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="Список ipset-all.txt" FontWeight="SemiBold" VerticalAlignment="Center" />
                             </WrapPanel>
-                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять GUI при запуске"
-                                      Margin="0,10,0,0" IsChecked="{Binding Settings.AutoCheckGuiUpdates, Mode=TwoWay}"
-                                      ToolTip="Только сообщать о новой версии. Автоматическая установка и перезапуск не выполняются." />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding Settings.GuiRepo}"
-                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding Settings.GuiRepo}" Margin="0,7,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Актуальный список IP-адресов для фильтра ipset. Обновляется отдельно от движка." Margin="0,4,0,0" />
                         </StackPanel>
-                    </Border>
+                        <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Обновить список"
+                                HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding UpdateIpsetCommand}" Padding="14,7"
+                                ToolTip="Скачать свежий ipset-all.txt из репозитория (при режимах none/any пишется в резервную копию)" />
+                    </Grid>
 
-                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="РЕЗЕРВНЫЕ КОПИИ" />
-                            <TextBlock Style="{StaticResource MutedText}"
-                                       Text="Перед изменением файла hosts копия сохраняется в папку backups. Там же лежат копии при ручных правках." />
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть журнал"
-                                    HorizontalAlignment="Left" Margin="0,8,0,0" Command="{Binding OpenLogsCommand}"
-                                    ToolTip="Перейти на страницу журнала" />
+                    <Border Style="{StaticResource Divider}" />
+
+                    <!-- HOSTS -->
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                            <WrapPanel Orientation="Horizontal">
+                                <TextBlock Text="&#xE73E;" FontFamily="{DynamicResource IconFont}" FontSize="13"
+                                           Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0"
+                                           Visibility="{Binding HostsIsUpToDate, Converter={StaticResource BoolToVis}}" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="Файл hosts (GitHub-адреса)" FontWeight="SemiBold" VerticalAlignment="Center" />
+                            </WrapPanel>
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding HostsStatus}" Margin="0,4,0,0"
+                                       Foreground="{Binding HostsStatusKey, Converter={StaticResource SeverityBrush}}" />
                         </StackPanel>
-                    </Border>
+                        <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Обновить hosts" Padding="14,7"
+                                HorizontalAlignment="Right" VerticalAlignment="Center"
+                                Command="{Binding UpdateHostsCommand}"
+                                ToolTip="Проверить файл hosts и автоматически применить актуальные записи GitHub при необходимости" />
+                    </Grid>
                 </StackPanel>
-            </StackPanel>
+            </Border>
+
+            <!-- 3. Что нового -->
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="ЧТО НОВОГО" />
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding ReleaseTitle}" FontWeight="SemiBold" />
+                    <TextBlock Style="{StaticResource DimText}" Text="{Binding ReleaseDate}" Margin="0,4,0,0" />
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" MaxHeight="240" VerticalScrollBarVisibility="Auto" Margin="0,10,0,0">
+                        <TextBlock Style="{StaticResource MonoText}" Text="{Binding ReleaseNotes}" />
+                    </ScrollViewer>
+                    <Button Style="{StaticResource GhostButton}" Content="Открыть страницу релиза в браузере"
+                            HorizontalAlignment="Left" Margin="0,8,0,0" Command="{Binding OpenReleasePageCommand}"
+                            ToolTip="Открыть страницу релиза на GitHub" />
+                </StackPanel>
+            </Border>
+
+            <!-- 4. Канал обновлений -->
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="КАНАЛ ОБНОВЛЕНИЙ" />
+                    <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включать pre-release версии"
+                              IsChecked="{Binding Settings.IncludePrerelease, Mode=TwoWay}"
+                              ToolTip="Pre-release — тестовые сборки от Flowseal: выходят раньше, но могут быть менее стабильны" />
+                    <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                               Text="Pre-release версии появляются раньше, но могут быть менее стабильны." />
+                    <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять при запуске" Margin="0,10,0,0"
+                              IsChecked="{Binding Settings.AutoCheckEngineUpdates, Mode=TwoWay}"
+                              ToolTip="Тихо проверять новые версии движка при каждом запуске приложения" />
+                    <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Сохранять мои списки при обновлении" Margin="0,10,0,0"
+                              IsChecked="{Binding Settings.PreserveUserDataOnUpdate, Mode=TwoWay}"
+                              ToolTip="Не затирать *-user.txt, режимы фильтров и резерв ipset при обновлении движка" />
+                </StackPanel>
+            </Border>
+
+            <!-- 5. Обновление Zapret GUI -->
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="ОБНОВЛЕНИЕ ZAPRET GUI" />
+                    <Grid Margin="0,2,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource DimText}" Text="Установленная версия" />
+                            <TextBlock Style="{StaticResource StatValueText}" Text="{Binding GuiCurrentVersion}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1">
+                            <TextBlock Style="{StaticResource DimText}" Text="Последняя версия" />
+                            <TextBlock Style="{StaticResource StatValueText}" Text="{Binding GuiLatestVersion}" />
+                        </StackPanel>
+                    </Grid>
+                    <Border Style="{StaticResource Badge}" HorizontalAlignment="Left" Margin="0,10,0,0"
+                            Background="{DynamicResource AccentSoftBrush}">
+                        <TextBlock Style="{StaticResource MutedText}" Text="{Binding GuiUpdateBadgeText}"
+                                   Foreground="{DynamicResource TextBrush}" />
+                    </Border>
+                    <TextBlock Style="{StaticResource DimText}" Text="{Binding GuiUpdateStatus}"
+                               TextWrapping="Wrap" Margin="0,8,0,0" />
+                    <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
+                        <Button Style="{StaticResource SecondaryButton}" Content="Проверить GUI"
+                                Command="{Binding CheckGuiUpdateCommand}"
+                                ToolTip="Проверить официальный GitHub-релиз Zapret GUI без установки" />
+                        <Button Style="{StaticResource PrimaryButton}" Content="{Binding GuiUpdateButtonText}"
+                                Margin="8,0,0,0" Command="{Binding UpdateGuiCommand}"
+                                ToolTip="Скачать portable EXE, проверить SHA-256, сохранить резервную копию и перезапустить GUI" />
+                    </WrapPanel>
+                    <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять GUI при запуске"
+                              Margin="0,10,0,0" IsChecked="{Binding Settings.AutoCheckGuiUpdates, Mode=TwoWay}"
+                              ToolTip="Только сообщать о новой версии. Автоматическая установка и перезапуск не выполняются." />
+                    <TextBlock Style="{StaticResource DimText}" Text="{Binding Settings.GuiRepo}"
+                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Settings.GuiRepo}" Margin="0,7,0,0" />
+                </StackPanel>
+            </Border>
+
+            <!-- 6. Резервные копии -->
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="РЕЗЕРВНЫЕ КОПИИ" />
+                    <TextBlock Style="{StaticResource MutedText}"
+                               Text="Перед изменением файла hosts копия сохраняется в папку backups. Там же лежат копии при ручных правках." />
+                    <Button Style="{StaticResource GhostButton}" Content="Открыть журнал"
+                            HorizontalAlignment="Left" Margin="0,8,0,0" Command="{Binding OpenLogsCommand}"
+                            ToolTip="Перейти на страницу журнала" />
+                </StackPanel>
+            </Border>
+
         </StackPanel>
     </ScrollViewer>
 </UserControl>

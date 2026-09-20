@@ -71,25 +71,26 @@
                     </WrapPanel>
                     <ListBox Grid.Row="1" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Targets}"
                              SelectedItem="{Binding SelectedTarget, Mode=TwoWay}" Background="Transparent"
+                             ItemContainerStyle="{StaticResource CompactRowItemStyle}"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Margin="8,7">
+                                <Grid Margin="4,2">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}" VerticalAlignment="Top"
+                                    <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}" VerticalAlignment="Center"
                                               ToolTip="Включить ресурс в фоновую проверку" />
-                                    <StackPanel Grid.Column="1" Margin="10,0,8,0">
+                                    <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
                                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding Name}" FontWeight="SemiBold" />
                                         <TextBlock Style="{StaticResource DimText}" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}" />
                                     </StackPanel>
-                                    <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Удалить" Padding="8,5"
+                                    <Button Grid.Column="2" Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
                                             Command="{Binding DataContext.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                             CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
-                                            ToolTip="Убрать пользовательский ресурс из мониторинга" />
+                                            ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" />
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>

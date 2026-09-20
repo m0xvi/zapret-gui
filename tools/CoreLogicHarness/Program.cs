@@ -156,8 +156,8 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 var strategies = StrategyParser.LoadAll(root);
                 Assert(strategies.Count == 1, "service.bat ошибочно попал в каталог стратегий");
                 var strategy = strategies[0];
-                Assert(strategy.Category == "FAKE TLS AUTO" && strategy.IsRecommended,
-                    "категория или рекомендация стратегии определены неверно");
+                Assert(strategy.Category == "FAKE TLS AUTO" && !strategy.IsRecommended,
+                    "категория определена неверно или стратегия предвзято помечена как рекомендуемая без проверки");
                 Assert(strategy.Args.Any(arg => arg.Contains("--dpi-desync=fake", StringComparison.Ordinal)),
                     "аргумент desync потерян");
                 Assert(strategy.Args.Any(arg => arg.Contains("{GameFilterUDP}", StringComparison.Ordinal)),

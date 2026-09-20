@@ -279,7 +279,7 @@
                                                         <ColumnDefinition Width="Auto" />
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
-                                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding CandidateName}" FontWeight="SemiBold" FontSize="11.5" />
+                                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding DisplayName}" FontWeight="SemiBold" FontSize="11.5" />
                                                         <TextBlock Style="{StaticResource DimText}" Text="{Binding ResultSummaryText}" FontSize="10.5" TextWrapping="Wrap" />
                                                     </StackPanel>
                                                     <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding CompletedAtText}" FontSize="10.5" />

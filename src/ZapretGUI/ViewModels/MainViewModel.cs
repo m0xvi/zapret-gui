@@ -67,6 +67,7 @@ namespace ZapretGui.ViewModels
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
             NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
+            NavigateActiveCheckCommand = new RelayCommand(NavigateToActiveCheck);
 
             Strategies.Refresh();
             Home.ReloadFromEngine();
@@ -147,8 +148,9 @@ namespace ZapretGui.ViewModels
             get
             {
                 var version = EngineService.ReadVersion(Settings.EnginePath);
-                if (string.IsNullOrWhiteSpace(version)) version = string.IsNullOrWhiteSpace(Settings.EngineVersion) ? "не установлен" : Settings.EngineVersion;
-                return version;
+                if (!string.IsNullOrWhiteSpace(version)) return version;
+                if (!string.IsNullOrWhiteSpace(Settings.EngineVersion)) return Settings.EngineVersion;
+                return EngineService.IsEngineReady(Settings.EnginePath) ? "установлен" : "не установлен";
             }
         }
 
@@ -223,6 +225,63 @@ namespace ZapretGui.ViewModels
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand NavigateStrategiesCommand { get; }
         public ICommand NavigateMonitoringCommand { get; }
+        public ICommand NavigateActiveCheckCommand { get; }
+
+        public bool IsAnyCheckRunning =>
+            Diagnostics.IsDpiRunning ||
+            DeepCheck.IsRunning ||
+            StrategiesPage.IsTestingAll ||
+            StrategiesPage.IsEvaluatingCandidates ||
+            Monitoring.IsBusy ||
+            Diagnostics.IsRunning;
+
+        public string ActiveCheckStatusText
+        {
+            get
+            {
+                if (Diagnostics.IsDpiRunning)
+                    return string.IsNullOrWhiteSpace(Diagnostics.DpiProgressPercentText) ? "Проверка DPI…" : $"DPI: {Diagnostics.DpiProgressPercentText}";
+                if (DeepCheck.IsRunning)
+                    return string.IsNullOrWhiteSpace(DeepCheck.ProgressPercentText) ? "Deep Check…" : $"Deep Check: {DeepCheck.ProgressPercentText}";
+                if (StrategiesPage.IsTestingAll)
+                    return string.IsNullOrWhiteSpace(StrategiesPage.TestProgressPercentText) ? "Тест стратегий…" : $"Тест: {StrategiesPage.TestProgressPercentText}";
+                if (StrategiesPage.IsEvaluatingCandidates)
+                    return string.IsNullOrWhiteSpace(StrategiesPage.CandidateEvaluationProgressPercentText) ? "Автоконструктор…" : $"Кандидаты: {StrategiesPage.CandidateEvaluationProgressPercentText}";
+                if (Diagnostics.IsRunning)
+                    return string.IsNullOrWhiteSpace(Diagnostics.ProgressPercentText) ? "Аудит системы…" : $"Аудит: {Diagnostics.ProgressPercentText}";
+                if (Monitoring.IsBusy)
+                    return string.IsNullOrWhiteSpace(Monitoring.ProgressPercentText) ? "Мониторинг…" : $"Мониторинг: {Monitoring.ProgressPercentText}";
+                return "Идёт проверка…";
+            }
+        }
+
+        private void NavigateToActiveCheck()
+        {
+            if (Diagnostics.IsDpiRunning)
+            {
+                Diagnostics.SelectedSubTab = 1;
+                Navigate("diagnostics");
+            }
+            else if (DeepCheck.IsRunning)
+            {
+                Diagnostics.SelectedSubTab = 2;
+                Navigate("diagnostics");
+            }
+            else if (StrategiesPage.IsTestingAll || StrategiesPage.IsEvaluatingCandidates)
+            {
+                Navigate("strategies");
+            }
+            else if (Diagnostics.IsRunning)
+            {
+                Diagnostics.SelectedSubTab = 3;
+                Navigate("diagnostics");
+            }
+            else if (Monitoring.IsBusy)
+            {
+                Diagnostics.SelectedSubTab = 0;
+                Navigate("diagnostics");
+            }
+        }
 
         /// <summary>Публичное уведомление об изменении свойства (для подстраниц).</summary>
         public void Notify(string propertyName) => Raise(propertyName);
@@ -245,6 +304,8 @@ namespace ZapretGui.ViewModels
             Raise(nameof(MonitoringSummaryText));
             Raise(nameof(MonitoringSummaryKey));
             Raise(nameof(MonitoringSummaryTooltip));
+            Raise(nameof(IsAnyCheckRunning));
+            Raise(nameof(ActiveCheckStatusText));
         }
 
         public void Navigate(string key)
@@ -328,6 +389,8 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(MonitoringSummaryText));
                 Raise(nameof(MonitoringSummaryKey));
                 Raise(nameof(MonitoringSummaryTooltip));
+                Raise(nameof(IsAnyCheckRunning));
+                Raise(nameof(ActiveCheckStatusText));
             }
             catch (Exception ex)
             {
