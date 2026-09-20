@@ -129,44 +129,56 @@ namespace ZapretGui.ViewModels
             if (IsRunningFullCheckCycle) return;
             IsRunningFullCheckCycle = true;
             FullCheckCompleted = false;
-            FullCheckStatusText = "Подготовка к комплексному тестированию всех стратегий…";
+            FullCheckStatusText = "Подготовка: проверка списков доменов и системных служб…";
             FullCheckProgressValue = 0;
             FullCheckProgressMax = 100;
             FullCheckProgressPercentText = "0%";
 
-            _main.Strategies.Refresh();
-            var total = _main.Strategies.Items.Count;
-            if (total == 0)
-            {
-                IsRunningFullCheckCycle = false;
-                _main.Home.ShowError("Стратегии не найдены. Проверьте папку движка.");
-                return;
-            }
-
-            FullCheckProgressMax = total;
-
-            var progress = new Progress<string>(text =>
-            {
-                FullCheckStatusText = text;
-                if (text.StartsWith("[", StringComparison.Ordinal) && text.Contains('/'))
-                {
-                    var endIdx = text.IndexOf(']');
-                    if (endIdx > 1)
-                    {
-                        var span = text.Substring(1, endIdx - 1);
-                        var parts = span.Split('/');
-                        if (parts.Length == 2 && int.TryParse(parts[0], out var current) && int.TryParse(parts[1], out var max))
-                        {
-                            FullCheckProgressValue = current;
-                            FullCheckProgressMax = max;
-                            FullCheckProgressPercentText = $"{(int)((double)current / Math.Max(1, max) * 100)}%";
-                        }
-                    }
-                }
-            });
-
             try
             {
+                // 1. Проверка и автоматическое наполнение списков доменов
+                DomainListUpdater.EnsureSeeded(Settings.EnginePath);
+                WinServices.EnsureTcpTimestamps();
+
+                // Попытка фонового обновления списков с GitHub
+                try
+                {
+                    await DomainListUpdater.UpdateAllAsync(Settings.EnginePath).ConfigureAwait(false);
+                }
+                catch { }
+
+                _main.Strategies.Refresh();
+                var total = _main.Strategies.Items.Count;
+                if (total == 0)
+                {
+                    IsRunningFullCheckCycle = false;
+                    _main.Home.ShowError("Стратегии не найдены. Проверьте папку движка.");
+                    return;
+                }
+
+                FullCheckProgressMax = total;
+
+                var progress = new Progress<string>(text =>
+                {
+                    FullCheckStatusText = text;
+                    if (text.StartsWith("[", StringComparison.Ordinal) && text.Contains('/'))
+                    {
+                        var endIdx = text.IndexOf(']');
+                        if (endIdx > 1)
+                        {
+                            var span = text.Substring(1, endIdx - 1);
+                            var parts = span.Split('/');
+                            if (parts.Length == 2 && int.TryParse(parts[0], out var current) && int.TryParse(parts[1], out var max))
+                            {
+                                FullCheckProgressValue = current;
+                                FullCheckProgressMax = max;
+                                FullCheckProgressPercentText = $"{(int)((double)current / Math.Max(1, max) * 100)}%";
+                            }
+                        }
+                    }
+                });
+
+                // 2. Полное тестирование всех стратегий каталога
                 await _main.StrategiesPage.TestAllAsync(progress).ConfigureAwait(true);
 
                 FullCheckProgressValue = FullCheckProgressMax;
@@ -174,7 +186,7 @@ namespace ZapretGui.ViewModels
                 FullCheckCompleted = true;
                 FullCheckStatusText = "Тестирование завершено! Формирую полный диагностический слепок…";
 
-                // Автоматический сбор и копирование отчёта в буфер обмена
+                // 3. Автоматический сбор и копирование отчёта в буфер обмена
                 var dump = ProviderTelemetryExporter.Collect(_main);
                 var md = ProviderTelemetryExporter.GenerateMarkdown(dump);
                 System.Windows.Clipboard.SetText(md);

@@ -399,13 +399,15 @@ namespace ZapretGui.Core
             return null;
         }
 
-        /// <summary>Создаёт пользовательские списки, если их нет (аналог load_user_lists из service.bat).</summary>
+        /// <summary>Создаёт пользовательские списки и гарантирует наполнение базовых списков доменов.</summary>
         public static void EnsureUserLists(string engineRoot)
         {
             try
             {
                 var lists = Path.Combine(engineRoot, "lists");
                 AppPaths.EnsureDir(lists);
+
+                DomainListUpdater.EnsureSeeded(engineRoot);
 
                 var ipsetExcludeUser = Path.Combine(lists, "ipset-exclude-user.txt");
                 if (!File.Exists(ipsetExcludeUser)) File.WriteAllText(ipsetExcludeUser, "203.0.113.113/32" + Environment.NewLine);
@@ -416,6 +418,20 @@ namespace ZapretGui.Core
                         "# Никогда не оставляйте этот файл пустым" + Environment.NewLine +
                         "# Добавляйте сюда свои домены (по одному в строке)" + Environment.NewLine +
                         "domain.example.abc" + Environment.NewLine);
+
+                var listYoutubeUser = Path.Combine(lists, "list-youtube-user.txt");
+                if (!File.Exists(listYoutubeUser))
+                    File.WriteAllText(listYoutubeUser,
+                        "# Пользовательские домены YouTube" + Environment.NewLine +
+                        "googlevideo.com" + Environment.NewLine +
+                        "i.ytimg.com" + Environment.NewLine);
+
+                var listDiscordUser = Path.Combine(lists, "list-discord-user.txt");
+                if (!File.Exists(listDiscordUser))
+                    File.WriteAllText(listDiscordUser,
+                        "# Пользовательские домены Discord" + Environment.NewLine +
+                        "cdn.discordapp.com" + Environment.NewLine +
+                        "gateway.discord.gg" + Environment.NewLine);
 
                 var listExcludeUser = Path.Combine(lists, "list-exclude-user.txt");
                 if (!File.Exists(listExcludeUser))

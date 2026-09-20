@@ -123,6 +123,11 @@ namespace ZapretGui
                             () => viewModel.Updates.EnsureEngineInstalledAsync()).Task.Unwrap();
                     }
 
+                    if (installed)
+                    {
+                        StrategyParser.EnsureUserLists(settings.EnginePath);
+                    }
+
                     if (installed && settings.AutoCheckEngineUpdates && !settings.SafeMode)
                         await window.Dispatcher.InvokeAsync(async () => await viewModel.Updates.CheckAsync());
 
