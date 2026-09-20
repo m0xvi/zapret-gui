@@ -104,11 +104,6 @@ namespace ZapretGui.ViewModels
         public double WindowOpacity => Math.Clamp(Settings.MiniOverlayOpacity / 100.0, 0.5, 1.0);
         public bool Topmost => Settings.MiniOverlayTopmost;
 
-        public ICommand ToggleBypassCommand { get; }
-        public ICommand ToggleGameModeCommand { get; }
-        public ICommand OpenMainWindowCommand { get; }
-        public ICommand CloseOverlayCommand { get; }
-
         public void Refresh()
         {
             Raise(nameof(IsRunning));
