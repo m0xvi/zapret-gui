@@ -41,13 +41,13 @@ namespace ZapretGui.ViewModels
             get
             {
                 var snap = _main.RealTimePing;
-                if (snap == null || !Settings.RealTimePingEnabled) return "RTT: —";
-                var fast = snap.Fastest;
-                return fast != null ? $"⚡ {fast.RttMs} мс ({fast.Target.Name})" : "RTT: —";
+                if (snap == null || !Settings.RealTimePingEnabled || !snap.HasData) return "RTT: —";
+                var avg = snap.AverageLatency;
+                return avg >= 0 ? $"⚡ {avg:0} мс" : "RTT: таймаут";
             }
         }
 
-        public string PingSeverityKey => _main.RealTimePing?.StatusSeverityKey ?? "Muted";
+        public string PingSeverityKey => _main.RealTimePing?.StatusKey ?? "Muted";
 
         public bool IsGameRunning => _main.IsGameRunning;
         public string ActiveGameName => _main.ActiveGameName ?? "";

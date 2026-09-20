@@ -199,7 +199,7 @@ namespace ZapretGui.Views
         {
             if (_tray == null) return;
             var status = _vm.Bypass.GetStatus();
-            var ping = _vm.RealTimePing?.Fastest != null ? $"{_vm.RealTimePing.Fastest.RttMs} мс" : null;
+            var ping = _vm.RealTimePing?.HasData == true ? _vm.RealTimePing.SummaryText : null;
             _tray.UpdateState(status.IsRunning, _vm.Settings.SelectedStrategy, status.StateText, ping, _vm.ActiveGameName, _vm.Settings.GameModeActive);
             _tray.PopulateStrategiesMenu(_vm.Strategies.Items, _vm.Settings.SelectedStrategy);
         }
