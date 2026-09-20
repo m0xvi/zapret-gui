@@ -88,7 +88,6 @@ namespace ZapretGui.Core
                 ("fake", "none", "www.google.com", "5", "badsum", false, "Fake TLS с фиксированным средним TTL (TTL=5)"),
                 ("fake", "none", "www.google.com", "4", "md5sig", false, "Fake TLS с TCP MD5 Signature fooling (md5sig) + TTL=4")
             };
-            };
 
         public static async Task<(bool Ok, string Message, SavedStrategyCandidate? Winner, List<AutoTunerStepResult> Results)> RunDeepAutoTuningAsync(
             string enginePath,
