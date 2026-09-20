@@ -3,21 +3,37 @@ using System.Linq;
 
 namespace ZapretGui.Core
 {
-    /// <summary>Чистая подстановка game filter перед запуском winws.exe.</summary>
+    /// <summary>Чистая подстановка game filter и TLS SNI перед запуском winws.exe.</summary>
     public static class BypassArgumentBuilder
     {
         public static List<string> Build(StrategyInfo strategy, GameFilterMode gameFilter)
         {
-            var tcp = gameFilter is GameFilterMode.TcpAndUdp or GameFilterMode.TcpOnly
-                ? "1024-65535" : "12";
-            var udp = gameFilter is GameFilterMode.TcpAndUdp or GameFilterMode.UdpOnly
-                ? "1024-65535" : "12";
+            return Build(strategy, gameFilter, null, null, null, null);
+        }
 
-            return strategy.Args
+        public static List<string> Build(
+            StrategyInfo strategy,
+            GameFilterMode gameFilter,
+            string? gameFilterProfileId = null,
+            string? customTcpPorts = null,
+            string? customUdpPorts = null,
+            string? sniOverride = null)
+        {
+            var tcp = GameFilterPortConfig.ResolveTcpPortString(gameFilter, gameFilterProfileId, customTcpPorts);
+            var udp = GameFilterPortConfig.ResolveUdpPortString(gameFilter, gameFilterProfileId, customUdpPorts);
+
+            var expandedArgs = strategy.Args
                 .Select(argument => argument
                     .Replace(StrategyParser.GameFilterTcpToken, tcp)
                     .Replace(StrategyParser.GameFilterUdpToken, udp))
                 .ToList();
+
+            if (!string.IsNullOrWhiteSpace(sniOverride))
+            {
+                expandedArgs = SniFakePoolManager.ApplySniOverride(expandedArgs, sniOverride);
+            }
+
+            return expandedArgs;
         }
     }
 }

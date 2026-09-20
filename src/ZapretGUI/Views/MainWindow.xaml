@@ -30,7 +30,8 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
-            <WrapPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center">
+            <WrapPanel Orientation="Horizontal" Margin="14,0,0,0" VerticalAlignment="Center"
+                       shell:WindowChrome.IsHitTestVisibleInChrome="True">
                 <Border Width="24" Height="24" CornerRadius="7" Background="{DynamicResource AccentBrush}">
                     <TextBlock Text="&#xE72E;" FontFamily="{DynamicResource IconFont}" FontSize="12"
                                Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
@@ -46,7 +47,61 @@
                                    ToolTip="{Binding Home.StatusText}" VerticalAlignment="Center" />
                     </WrapPanel>
                 </Border>
-                <Border Style="{StaticResource Badge}" Margin="8,0,0,0"
+                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="8,0,0,0"
+                        Command="{Binding NavigateStrategiesCommand}"
+                        ToolTip="{Binding ActiveStrategyTooltipText}">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Dot}"
+                                Background="{Binding ActiveStrategyKey, Converter={StaticResource SeverityBrush}}" />
+                        <TextBlock Text="⚡ " FontSize="10" Margin="4,0,0,0" Foreground="{DynamicResource AccentBrush}" />
+                        <TextBlock Text="{Binding ActiveStrategySummaryText}" FontSize="11.5" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                    </WrapPanel>
+                </Button>
+                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
+                        Command="{Binding NavigateMonitoringCommand}"
+                        ToolTip="{Binding MonitoringSummaryTooltip}">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Dot}"
+                                Background="{Binding MonitoringSummaryKey, Converter={StaticResource SeverityBrush}}" />
+                        <TextBlock Text="{Binding MonitoringSummaryText}" Margin="6,0,0,0" FontSize="11"
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                    </WrapPanel>
+                </Button>
+                <!-- Живой RTT пинг -->
+                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
+                        Command="{Binding NavigateMonitoringCommand}"
+                        Visibility="{Binding RealTimePingVisible, Converter={StaticResource BoolToVis}}"
+                        ToolTip="{Binding RealTimePingTooltip}">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Dot}"
+                                Background="{Binding RealTimePingStatusKey, Converter={StaticResource SeverityBrush}}" />
+                        <TextBlock Text="{Binding RealTimePingSummaryText}" Margin="6,0,0,0" FontSize="11"
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                    </WrapPanel>
+                </Button>
+                <!-- Бейдж активной игры -->
+                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
+                        Command="{Binding Home.ToggleGameModeCommand}"
+                        Visibility="{Binding IsGameRunning, Converter={StaticResource BoolToVis}}"
+                        ToolTip="Обнаружен игровой процесс. Нажмите, чтобы переключить игровой режим (пропуск UDP).">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Dot}" Background="{DynamicResource AccentBrush}" />
+                        <TextBlock Text="{Binding GameStatusBadgeText}" Margin="6,0,0,0" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                    </WrapPanel>
+                </Button>
+                <Button Style="{StaticResource SecondaryButton}" Padding="8,3" Margin="6,0,0,0"
+                        Command="{Binding NavigateActiveCheckCommand}"
+                        Visibility="{Binding IsAnyCheckRunning, Converter={StaticResource BoolToVis}}"
+                        ToolTip="В фоне выполняется проверка сети. Нажмите, чтобы перейти к выполняемой проверке.">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource BusySpinner}" Width="12" Height="12" BorderThickness="1.5" Margin="0,0,6,0" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ActiveCheckStatusText}" FontSize="11" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                    </WrapPanel>
+                </Button>
+                <Border Style="{StaticResource Badge}" Margin="6,0,0,0"
                         Background="{Binding ReadinessKey, Converter={StaticResource SoftSeverityBrush}}"
                         ToolTip="{Binding ReadinessDetails}">
                     <WrapPanel Orientation="Horizontal">
@@ -60,6 +115,9 @@
 
             <WrapPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <Button Style="{StaticResource IconButton}" Content="&#xE737;"
+                        Command="{Binding Home.OpenOverlayCommand}" ToolTip="Открыть компактный мини-виджет (HUD)"
+                        AutomationProperties.Name="Открыть HUD" />
                 <Button Style="{StaticResource IconButton}" Content="&#xE793;"
                         Command="{Binding ToggleThemeCommand}" ToolTip="Переключить тему (системная → тёмная → светлая)"
                         AutomationProperties.Name="Переключить тему" />
@@ -123,7 +181,8 @@
                                            TextTrimming="CharacterEllipsis" ToolTip="{Binding Home.EnginePathText}" />
                             </StackPanel>
                         </Border>
-                        <TextBlock Style="{StaticResource DimText}" Text="Zapret GUI 1.2.0 · лицензия MIT"
+                        <TextBlock Style="{StaticResource DimText}"
+                                   Text="{Binding AppVersion, StringFormat=Zapret GUI {0} · лицензия MIT}"
                                    HorizontalAlignment="Center" />
                     </StackPanel>
                 </Grid>

@@ -72,6 +72,27 @@ namespace ZapretGui.Core
         /// <summary>Выбранный канал движка.</summary>
         public bool UseGameFilterOnStart { get; set; }
 
+        /// <summary>Идентификатор выбранного профиля игрового фильтра и портов (discord_voice, steam_cs2, riot_games, all_broad, custom).</summary>
+        public string GameFilterProfileId { get; set; } = "discord_voice";
+
+        /// <summary>Кастомный диапазон TCP портов для GameFilter.</summary>
+        public string CustomGameFilterTcpPorts { get; set; } = "1024-65535";
+
+        /// <summary>Кастомный диапазон UDP портов для GameFilter.</summary>
+        public string CustomGameFilterUdpPorts { get; set; } = "50000-65535";
+
+        /// <summary>Пользовательские исключения портов.</summary>
+        public string CustomExcludedPorts { get; set; } = "";
+
+        /// <summary>Выбранный TLS SNI домен для desync-fake-tls (например, gosuslugi.ru, cloudflare.com).</summary>
+        public string SelectedFakeSni { get; set; } = "gosuslugi.ru";
+
+        /// <summary>Включить автоматическую ротацию TLS SNI при сбоях.</summary>
+        public bool AutoSniRotationEnabled { get; set; }
+
+        /// <summary>Пользовательский пул доменов для TLS SNI.</summary>
+        public List<string> CustomSniList { get; set; } = new();
+
         /// <summary>Пользователь попросил больше не спрашивать про найденный старый запуск запрета.</summary>
         public bool LegacyZapretDismissed { get; set; }
 
@@ -96,6 +117,27 @@ namespace ZapretGui.Core
         /// <summary>Включить фоновую проверку избранных ресурсов.</summary>
         public bool ResourceMonitoringEnabled { get; set; }
 
+        /// <summary>Включить сторожевой таймер (Watchdog) для автоматического контроля winws.exe.</summary>
+        public bool WatchdogEnabled { get; set; } = true;
+
+        /// <summary>Интервал проверки сторожевого таймера в секундах (5-120).</summary>
+        public int WatchdogIntervalSeconds { get; set; } = 15;
+
+        /// <summary>Автоматически перезапускать процесс winws / службу при сбое.</summary>
+        public bool WatchdogAutoRestart { get; set; } = true;
+
+        /// <summary>Уведомлять о восстановлении обхода через системный трей.</summary>
+        public bool WatchdogNotifyUser { get; set; } = true;
+
+        /// <summary>Отображать живой RTT пинг ключевых ресурсов (YouTube, Discord, GitHub) в шапке.</summary>
+        public bool RealTimePingEnabled { get; set; } = true;
+
+        /// <summary>Интервал живого пинга в секундах.</summary>
+        public int RealTimePingIntervalSeconds { get; set; } = 10;
+
+        /// <summary>Задержка автозапуска обхода при старте Windows в секундах (0-60).</summary>
+        public int StartupDelaySeconds { get; set; } = 5;
+
         /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.</summary>
         public bool AutoRecoverStrategy { get; set; } = true;
 
@@ -107,6 +149,42 @@ namespace ZapretGui.Core
 
         /// <summary>Ресурсы пользователя для фонового контроля.</summary>
         public List<MonitorTarget> MonitorTargets { get; set; } = new();
+
+        /// <summary>Включить автоматический мониторинг запущенных игр.</summary>
+        public bool GameDetectionEnabled { get; set; } = true;
+
+        /// <summary>Автоматически включать режим оптимизации для игр при обнаружении игры.</summary>
+        public bool AutoGameModeOnLaunch { get; set; } = true;
+
+        /// <summary>Игровой режим активен (облегчённая фильтрация и пропуск UDP).</summary>
+        public bool GameModeActive { get; set; }
+
+        /// <summary>Включить глобальные горячие клавиши Windows.</summary>
+        public bool GlobalHotkeysEnabled { get; set; } = true;
+
+        /// <summary>Горячая клавиша переключения обхода (по умолчанию Ctrl+Shift+Z).</summary>
+        public string HotkeyToggleBypass { get; set; } = "Ctrl+Shift+Z";
+
+        /// <summary>Горячая клавиша переключения игрового режима (по умолчанию Ctrl+Shift+G).</summary>
+        public string HotkeyToggleGameMode { get; set; } = "Ctrl+Shift+G";
+
+        /// <summary>Горячая клавиша открытия мини-виджета (по умолчанию Ctrl+Shift+O).</summary>
+        public string HotkeyToggleMiniOverlay { get; set; } = "Ctrl+Shift+O";
+
+        /// <summary>Координата X мини-виджета на экране (-1 = по умолчанию).</summary>
+        public double MiniOverlayLeft { get; set; } = -1;
+
+        /// <summary>Координата Y мини-виджета на экране (-1 = по умолчанию).</summary>
+        public double MiniOverlayTop { get; set; } = -1;
+
+        /// <summary>Прозрачность мини-виджета (50–100).</summary>
+        public int MiniOverlayOpacity { get; set; } = 95;
+
+        /// <summary>Мини-виджет поверх всех окон.</summary>
+        public bool MiniOverlayTopmost { get; set; } = true;
+
+        /// <summary>Флаг отображения мини-виджета вместо или рядом с главным окном.</summary>
+        public bool MiniOverlayEnabled { get; set; }
 
         /// <summary>Необязательный контекст провайдера для будущего подбора стратегий.</summary>
         public ProviderContext ProviderContext { get; set; } = new();

@@ -299,6 +299,37 @@
         </Setter>
     </Style>
 
+    <Style x:Key="SmallIconButton" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Width" Value="28" />
+        <Setter Property="Height" Value="28" />
+        <Setter Property="FontFamily" Value="{DynamicResource IconFont}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusVisual}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root" Background="{TemplateBinding Background}"
+                            CornerRadius="6">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource CardHoverBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.4" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="TitleBarButton" TargetType="Button">
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
@@ -725,6 +756,35 @@
         </Setter>
     </Style>
 
+    <Style x:Key="CompactRowItemStyle" TargetType="ListBoxItem">
+        <Setter Property="Padding" Value="10,6" />
+        <Setter Property="Margin" Value="0,0,0,4" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusVisual}" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListBoxItem">
+                    <Border x:Name="Root" Background="{DynamicResource CardBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                            CornerRadius="8" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource CardHoverBrush}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="LogItemStyle" TargetType="ListBoxItem">
         <Setter Property="Padding" Value="10,4" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
@@ -755,26 +815,19 @@
                                        Width="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
                                        HorizontalAlignment="Left" RadiusX="3" RadiusY="3">
                                 <Rectangle.RenderTransform>
-                                    <ScaleTransform CenterX="0" CenterY="0.5"
-                                                    ScaleX="{Binding Value, RelativeSource={RelativeSource TemplatedParent}, Converter={StaticResource ProgressScale}}" />
+                                    <ScaleTransform CenterX="0" CenterY="0.5">
+                                        <ScaleTransform.ScaleX>
+                                            <MultiBinding Converter="{StaticResource ProgressScale}">
+                                                <Binding Path="Value" RelativeSource="{RelativeSource TemplatedParent}" />
+                                                <Binding Path="Maximum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                                <Binding Path="Minimum" RelativeSource="{RelativeSource TemplatedParent}" />
+                                            </MultiBinding>
+                                        </ScaleTransform.ScaleX>
+                                    </ScaleTransform>
                                 </Rectangle.RenderTransform>
                             </Rectangle>
                         </Grid>
                     </Border>
-                    <ControlTemplate.Triggers>
-                        <Trigger Property="IsIndeterminate" Value="True">
-                            <Setter TargetName="PART_Indicator" Property="Opacity" Value="0.85" />
-                            <Trigger.EnterActions>
-                                <BeginStoryboard>
-                                    <Storyboard RepeatBehavior="Forever" AutoReverse="True">
-                                        <DoubleAnimation Storyboard.TargetName="PART_Indicator"
-                                                         Storyboard.TargetProperty="(UIElement.RenderTransform).(ScaleTransform.ScaleX)"
-                                                         From="0.08" To="0.55" Duration="0:0:0.65" />
-                                    </Storyboard>
-                                </BeginStoryboard>
-                            </Trigger.EnterActions>
-                        </Trigger>
-                    </ControlTemplate.Triggers>
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
@@ -881,13 +934,13 @@
 
     <!-- Элемент сегментированного переключателя -->
     <Style x:Key="SegmentItemStyle" TargetType="ListBoxItem">
-        <Setter Property="Padding" Value="8,7" />
+        <Setter Property="Padding" Value="12,7" />
         <Setter Property="Margin" Value="0" />
         <Setter Property="Cursor" Value="Hand" />
         <Setter Property="FocusVisualStyle" Value="{StaticResource KeyboardFocusVisual}" />
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
-        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="HorizontalContentAlignment" Value="Center" />
         <Setter Property="Template">
             <Setter.Value>
@@ -896,8 +949,8 @@
                             BorderBrush="Transparent" BorderThickness="1">
                         <TextBlock Text="{TemplateBinding Content}" Foreground="{TemplateBinding Foreground}"
                                    FontFamily="{TemplateBinding FontFamily}" FontSize="{TemplateBinding FontSize}"
-                                   FontWeight="{TemplateBinding FontWeight}" TextWrapping="Wrap" TextAlignment="Center"
-                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                   FontWeight="{TemplateBinding FontWeight}" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                                   TextAlignment="Center" HorizontalAlignment="Center" VerticalAlignment="Center" />
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="True">

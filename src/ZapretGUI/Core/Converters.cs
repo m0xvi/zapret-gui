@@ -73,19 +73,42 @@ namespace ZapretGui.Core
             => Binding.DoNothing;
     }
 
-    /// <summary>Переводит значение прогресса в долю ширины индикатора.</summary>
-    public sealed class ProgressScaleConverter : IValueConverter
+    /// <summary>Переводит значение прогресса в долю ширины индикатора (0.0..1.0).</summary>
+    public sealed class ProgressScaleConverter : IValueConverter, IMultiValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             var current = value is double d ? d : value is int i ? i : 0;
             var maximum = 100d;
             if (parameter is double p && p > 0) maximum = p;
-            return Math.Clamp(current / maximum, 0d, 1d);
+            return maximum <= 0 ? 0d : Math.Clamp(current / maximum, 0d, 1d);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
             => Binding.DoNothing;
+
+        public object Convert(object[] values, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (values != null && values.Length >= 2)
+            {
+                var current = values[0] is double d ? d : values[0] is int i ? i : 0d;
+                var maximum = values[1] is double max ? max : values[1] is int mi ? (double)mi : 100d;
+                var minimum = 0d;
+                if (values.Length >= 3)
+                {
+                    if (values[2] is double min) minimum = min;
+                    else if (values[2] is int minI) minimum = minI;
+                }
+
+                var range = maximum - minimum;
+                if (range <= 0) return 0d;
+                return Math.Clamp((current - minimum) / range, 0d, 1d);
+            }
+            return 0d;
+        }
+
+        public object[] ConvertBack(object value, Type[] targetTypes, object parameter, CultureInfo culture)
+            => Array.Empty<object>();
     }
 
     /// <summary>Подсвечивает карточку шага мастера, если её номер совпадает с текущим.</summary>
@@ -138,6 +161,20 @@ namespace ZapretGui.Core
         {
             var count = value is int i ? i : 0;
             return count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+            => Binding.DoNothing;
+    }
+
+    /// <summary>bool → AccentBrush (при true) или TextMutedBrush (при false).</summary>
+    public sealed class BoolToAccentBrushConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            var active = value is bool b && b;
+            var resource = active ? "AccentBrush" : "TextMutedBrush";
+            return Application.Current?.TryFindResource(resource) as Brush ?? (active ? Brushes.DodgerBlue : Brushes.Gray);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)

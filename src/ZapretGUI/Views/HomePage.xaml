@@ -17,10 +17,13 @@
                     <TextBlock Style="{StaticResource MutedText}"
                                Text="Запуск обхода, служба Windows, фильтры и состояние движка" />
                 </StackPanel>
-                <WrapPanel Grid.Column="1" MaxWidth="270" HorizontalAlignment="Right" VerticalAlignment="Top">
+                <WrapPanel Grid.Column="1" MaxWidth="420" HorizontalAlignment="Right" VerticalAlignment="Top">
                     <Button Style="{StaticResource SecondaryButton}" Content="Стратегии"
                             Command="{Binding OpenStrategiesCommand}"
                             ToolTip="Список стратегий обхода из .bat файлов движка: выбор, описание, запуск" />
+                    <Button Style="{StaticResource GhostButton}" Content="🎙️ Voice RTC" Margin="8,0,0,0"
+                            Command="{Binding OpenDiscordVoiceFixCommand}"
+                            ToolTip="Диагностика голосовых серверов Discord, очистка кэша и сброс сети в 1 клик" />
                     <Button Style="{StaticResource GhostButton}" Content="Диагностика" Margin="8,0,0,0"
                             Command="{Binding OpenDiagnosticsCommand}"
                             ToolTip="Проверка типичных проблем: права, службы, VPN, прокси, конфликты — с автоисправлением" />
@@ -102,14 +105,18 @@
                             </StackPanel>
 
                             <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="160" MaxWidth="220">
-                                <Button Style="{StaticResource SecondaryButton}" Command="{Binding InstallServiceCommand}"
-                                        MinHeight="38"
-                                        ToolTip="Установить службу Windows zapret или удалить её, если она уже установлена.">
-                                    <TextBlock Text="{Binding InstallServiceButtonText}" TextWrapping="Wrap" TextAlignment="Center" />
-                                </Button>
-                                <Button Style="{StaticResource GhostButton}" Content="Удалить службы"
-                                        Command="{Binding RemoveServiceCommand}" Margin="0,8,0,0"
-                                        ToolTip="Полностью удаляет службу zapret, останавливает winws.exe и убирает службы WinDivert" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Установить в службу"
+                                        Command="{Binding InstallServiceCommand}" MinHeight="38" Padding="14,8"
+                                        Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                                        ToolTip="Создать и запустить службу Windows zapret с выбранной стратегией" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Переустановить службу"
+                                        Command="{Binding ReinstallServiceCommand}" MinHeight="36" Padding="12,6" Margin="0,0,0,6"
+                                        Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}}"
+                                        ToolTip="Обновить параметры работающей службы на текущую выбранную стратегию" />
+                                <Button Style="{StaticResource DangerButton}" Content="Удалить службу"
+                                        Command="{Binding RemoveServiceCommand}" MinHeight="36" Padding="12,6"
+                                        Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}}"
+                                        ToolTip="Остановить и полностью удалить службу zapret и WinDivert" />
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -131,6 +138,50 @@
                         </Grid>
                     </Border>
 
+                    <!-- Игровой опыт и онлайн-игры -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ИГРОВОЙ ОПЫТ (UX &amp; GAMING)" />
+                                    <WrapPanel Orientation="Horizontal" Margin="0,2,0,0">
+                                        <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="0,0,8,0">
+                                            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Border Style="{StaticResource Dot}"
+                                                        Background="{Binding IsGameRunning, Converter={StaticResource SeverityBrush}}" />
+                                                <TextBlock Text="{Binding GameStatusBadgeText}" Style="{StaticResource BodyText}" FontSize="12" Margin="6,0,0,0" FontWeight="SemiBold" />
+                                            </WrapPanel>
+                                        </Border>
+                                        <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}">
+                                            <TextBlock Text="{Binding GameModeStatusText}" Style="{StaticResource DimText}" FontSize="12" />
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding GamingNetworkStatusText}" Margin="0,8,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                                <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center">
+                                    <Button Style="{StaticResource SecondaryButton}" Margin="0,0,8,0"
+                                            Command="{Binding ToggleGameModeCommand}"
+                                            ToolTip="Включить или выключить игровой режим (пропуск игрового UDP для минимального инпут-лага)">
+                                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="🎮 " FontSize="12" />
+                                            <TextBlock Text="Игровой режим" FontWeight="SemiBold" />
+                                        </WrapPanel>
+                                    </Button>
+                                    <Button Style="{StaticResource GhostButton}" Content="🗗 HUD Виджет" Margin="0,0,8,0"
+                                            Command="{Binding OpenOverlayCommand}"
+                                            ToolTip="Открыть плавающий компактный мини-виджет поверх экрана" />
+                                    <Button Style="{StaticResource GhostButton}" Content="Твики сети (TCP/IP)"
+                                            Command="{Binding ApplyGamingTweaksCommand}"
+                                            ToolTip="Отключить алгоритм Nagle (TCPNoDelay) и задержку ACK (TcpAckFrequency) для активного адаптера" />
+                                </WrapPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Фильтры -->
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
@@ -138,15 +189,15 @@
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" MinWidth="180" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel>
+                                <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                                     <TextBlock Style="{StaticResource BodyText}" Text="Игровой фильтр" FontWeight="SemiBold" />
-                                    <TextBlock Style="{StaticResource DimText}"
+                                    <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
                                                Text="Обработка портов выше 1023 (игры, сторонние сервисы). После изменения перезапустите обход." />
                                 </StackPanel>
-                                <controls:SegmentedControl Grid.Column="1" Width="220" MinWidth="160" MaxWidth="330" VerticalAlignment="Center"
+                                <controls:SegmentedControl Grid.Column="1" MinWidth="380" HorizontalAlignment="Right" VerticalAlignment="Center"
                                                            ItemsSource="{Binding GameFilterOptions}"
                                                            SelectedIndex="{Binding GameFilterIndex, Mode=TwoWay}"
                                                            ToolTip="Игровой фильтр (файл utils\game_filter.enabled): обрабатывать ли порты выше 1023 — игры, голосовые чаты, сторонние сервисы. TCP+UDP — максимум совместимости." />
@@ -156,15 +207,15 @@
 
                             <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" MinWidth="180" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <StackPanel>
+                                <StackPanel Margin="0,0,16,0" VerticalAlignment="Center">
                                     <TextBlock Style="{StaticResource BodyText}" Text="Фильтр ipset" FontWeight="SemiBold" />
-                                    <TextBlock Style="{StaticResource DimText}"
+                                    <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
                                                Text="loaded — проверять IP по списку, none — отключить фильтр, any — фильтровать любые IP." />
                                 </StackPanel>
-                                <controls:SegmentedControl Grid.Column="1" Width="220" MinWidth="160" MaxWidth="330" VerticalAlignment="Center"
+                                <controls:SegmentedControl Grid.Column="1" MinWidth="340" HorizontalAlignment="Right" VerticalAlignment="Center"
                                                            ItemsSource="{Binding IpsetOptions}"
                                                            SelectedIndex="{Binding IpsetIndex, Mode=TwoWay}"
                                                            ToolTip="Фильтр ipset проверяет IP-адреса по списку ipset-all.txt. loaded — проверять по списку (обычный режим), none — отключить фильтр, any — фильтровать любые IP (максимум обхода, выше нагрузка)." />
@@ -213,8 +264,11 @@
                                                    Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                                     </Grid>
                                     <TextBlock Style="{StaticResource MutedText}" Text="{Binding ConnectionProgressText}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
-                                    <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding ConnectionProgressValue}" Maximum="{Binding ConnectionProgressMaximum}"
-                                                 IsIndeterminate="{Binding ConnectionProgressIndeterminate}" Margin="0,8,0,0" />
+                                    <ProgressBar Style="{StaticResource ThinProgress}"
+                                                 Value="{Binding ConnectionProgressValue, Mode=OneWay}"
+                                                 Maximum="{Binding ConnectionProgressMaximum, Mode=OneWay}"
+                                                 IsIndeterminate="{Binding ConnectionProgressIndeterminate, Mode=OneWay}"
+                                                 Margin="0,8,0,0" />
                                 </StackPanel>
                             </Border>
                             <Button Style="{StaticResource SecondaryButton}" Content="Добавить адрес для проверки"
@@ -224,15 +278,21 @@
                             <ItemsControl ItemsSource="{Binding ConnectionTargets}" Margin="0,8,0,0">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid Margin="0,2,0,0">
+                                        <Grid Margin="0,2,0,2">
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" />
-                                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Удалить" Padding="5,2"
-                                                    Command="{Binding DataContext.RemoveConnectionTargetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                    CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" VerticalAlignment="Center" />
+                                            <WrapPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
+                                                       Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                                                <Button Style="{StaticResource SmallIconButton}" Content="&#xE70F;" Margin="0,0,4,0"
+                                                        Command="{Binding DataContext.EditConnectionTargetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}" ToolTip="Изменить адрес или название" />
+                                                <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
+                                                        Command="{Binding DataContext.RemoveConnectionTargetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                        CommandParameter="{Binding}" ToolTip="Удалить адрес из проверки соединения" />
+                                            </WrapPanel>
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>

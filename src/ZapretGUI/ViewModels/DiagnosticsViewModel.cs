@@ -63,6 +63,18 @@ namespace ZapretGui.ViewModels
             RunDpiCommand = new AsyncRelayCommand(RunDpiAsync, () => !IsRunning && !IsDpiRunning);
             CancelDpiCommand = new RelayCommand(CancelDpi, () => IsDpiRunning);
             OpenDpiCommand = new RelayCommand(() => _main.Navigate("dpi"));
+            SelectExpressTabCommand = new RelayCommand(() => SelectedSubTab = 0);
+            SelectDpiTabCommand = new RelayCommand(() => SelectedSubTab = 1);
+            SelectDeepCheckTabCommand = new RelayCommand(() => SelectedSubTab = 2);
+            SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 3);
+            SelectResultsTabCommand = new RelayCommand(() => SelectedSubTab = 4);
+            SelectVoiceRtcTabCommand = new RelayCommand(() => SelectedSubTab = 5);
+            RunVoiceRtcAuditCommand = new AsyncRelayCommand(RunVoiceRtcAuditAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
+            OptimizeDiscordVoiceCommand = new AsyncRelayCommand(OptimizeDiscordVoiceAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
+            CleanDiscordAndNetworkCommand = new AsyncRelayCommand(() => CleanDiscordAndNetworkAsync(false), () => !IsCleaningDiscord && !IsRunning);
+            CleanAndRestartDiscordCommand = new AsyncRelayCommand(() => CleanDiscordAndNetworkAsync(true), () => !IsCleaningDiscord && !IsRunning);
+            DeepNetworkResetCommand = new AsyncRelayCommand(DeepNetworkResetAsync, () => !IsCleaningDiscord && !IsRunning);
+            RefreshDiscordCacheStatusCommand = new RelayCommand(RefreshDiscordCacheStatus);
             ExportReportCommand = new RelayCommand(ExportReport,
                 () => HasResults || DpiResults.Count > 0 ||
                      DiagnosticsHistoryStore.LoadLastDiagnostics() != null ||
@@ -106,6 +118,183 @@ namespace ZapretGui.ViewModels
 
         public ObservableCollection<DiagnosticItem> Items { get; } = new();
 
+        private int _selectedSubTab;
+
+        public int SelectedSubTab
+        {
+            get => _selectedSubTab;
+            set
+            {
+                if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 5)))
+                {
+                    Raise(nameof(IsExpressTabSelected));
+                    Raise(nameof(IsDpiTabSelected));
+                    Raise(nameof(IsDeepCheckTabSelected));
+                    Raise(nameof(IsSystemTabSelected));
+                    Raise(nameof(IsResultsTabSelected));
+                    Raise(nameof(IsVoiceRtcTabSelected));
+
+                    if (_selectedSubTab == 3 || _selectedSubTab == 5)
+                    {
+                        RefreshDiscordCacheStatus();
+                    }
+                }
+            }
+        }
+
+        public bool IsExpressTabSelected
+        {
+            get => _selectedSubTab == 0;
+            set { if (value) SelectedSubTab = 0; }
+        }
+
+        public bool IsDpiTabSelected
+        {
+            get => _selectedSubTab == 1;
+            set { if (value) SelectedSubTab = 1; }
+        }
+
+        public bool IsDeepCheckTabSelected
+        {
+            get => _selectedSubTab == 2;
+            set { if (value) SelectedSubTab = 2; }
+        }
+
+        public bool IsSystemTabSelected
+        {
+            get => _selectedSubTab == 3;
+            set { if (value) SelectedSubTab = 3; }
+        }
+
+        public bool IsResultsTabSelected
+        {
+            get => _selectedSubTab == 4;
+            set { if (value) SelectedSubTab = 4; }
+        }
+
+        public bool IsVoiceRtcTabSelected
+        {
+            get => _selectedSubTab == 5;
+            set { if (value) SelectedSubTab = 5; }
+        }
+
+        public ObservableCollection<DiscordVoiceServerCheck> VoiceServers { get; } = new();
+
+        private bool _isVoiceRtcRunning;
+        private string _voiceRtcStatusText = "Проверка Voice RTC ещё не выполнялась";
+        private string _voiceRtcDiagnosisKey = "Muted";
+        private string _voiceRtcSummary = "Нажмите «Проверить Voice RTC», чтобы протестировать WebRTC/STUN подключение к голосовым серверам Discord.";
+        private string _voiceRtcRecommendation = "";
+        private string _voiceRtcCheckedAtText = "";
+        private DiscordVoiceRtcReport? _voiceRtcReport;
+
+        public bool IsVoiceRtcRunning
+        {
+            get => _isVoiceRtcRunning;
+            private set
+            {
+                if (Set(ref _isVoiceRtcRunning, value))
+                {
+                    (RunVoiceRtcAuditCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (OptimizeDiscordVoiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string VoiceRtcStatusText
+        {
+            get => _voiceRtcStatusText;
+            private set => Set(ref _voiceRtcStatusText, value);
+        }
+
+        public string VoiceRtcDiagnosisKey
+        {
+            get => _voiceRtcDiagnosisKey;
+            private set => Set(ref _voiceRtcDiagnosisKey, value);
+        }
+
+        public string VoiceRtcSummary
+        {
+            get => _voiceRtcSummary;
+            private set => Set(ref _voiceRtcSummary, value);
+        }
+
+        public string VoiceRtcRecommendation
+        {
+            get => _voiceRtcRecommendation;
+            private set => Set(ref _voiceRtcRecommendation, value);
+        }
+
+        public string VoiceRtcCheckedAtText
+        {
+            get => _voiceRtcCheckedAtText;
+            private set => Set(ref _voiceRtcCheckedAtText, value);
+        }
+
+        public bool HasVoiceRtcResults => VoiceServers.Count > 0;
+        public DiscordVoiceRtcReport? VoiceRtcReport
+        {
+            get => _voiceRtcReport;
+            private set => Set(ref _voiceRtcReport, value);
+        }
+
+        private bool _isCleaningDiscord;
+        private string _discordCleanStatusText = "Кэш не очищался в текущей сессии";
+        private string _discordCacheStatusText = "Определение размера кэша Discord…";
+        private bool _restartDiscordAfterClean;
+        private DiscordCleanSummary? _lastDiscordCleanSummary;
+
+        public bool IsCleaningDiscord
+        {
+            get => _isCleaningDiscord;
+            private set
+            {
+                if (Set(ref _isCleaningDiscord, value))
+                {
+                    (CleanDiscordAndNetworkCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (CleanAndRestartDiscordCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (DeepNetworkResetCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string DiscordCleanStatusText
+        {
+            get => _discordCleanStatusText;
+            private set => Set(ref _discordCleanStatusText, value);
+        }
+
+        public string DiscordCacheStatusText
+        {
+            get => _discordCacheStatusText;
+            private set => Set(ref _discordCacheStatusText, value);
+        }
+
+        public bool RestartDiscordAfterClean
+        {
+            get => _restartDiscordAfterClean;
+            set => Set(ref _restartDiscordAfterClean, value);
+        }
+
+        public DiscordCleanSummary? LastDiscordCleanSummary
+        {
+            get => _lastDiscordCleanSummary;
+            private set
+            {
+                if (Set(ref _lastDiscordCleanSummary, value))
+                {
+                    Raise(nameof(HasDiscordCleanSummary));
+                }
+            }
+        }
+
+        public bool HasDiscordCleanSummary => _lastDiscordCleanSummary != null;
+
+        public MonitoringViewModel Monitoring => _main.Monitoring;
+        public DeepCheckViewModel DeepCheck => _main.DeepCheck;
+        public HomeViewModel Home => _main.Home;
+        public MainViewModel Main => _main;
+
         public bool IsRunning
         {
             get => _isRunning;
@@ -130,31 +319,31 @@ namespace ZapretGui.ViewModels
         public double ProgressValue
         {
             get => _progressValue;
-            private set => Set(ref _progressValue, value);
+            set => Set(ref _progressValue, value);
         }
 
         public double ProgressMaximum
         {
             get => _progressMaximum;
-            private set => Set(ref _progressMaximum, value);
+            set => Set(ref _progressMaximum, value);
         }
 
         public bool ProgressIndeterminate
         {
             get => _progressIndeterminate;
-            private set => Set(ref _progressIndeterminate, value);
+            set => Set(ref _progressIndeterminate, value);
         }
 
         public string ProgressPercentText
         {
             get => _progressPercentText;
-            private set => Set(ref _progressPercentText, value);
+            set => Set(ref _progressPercentText, value);
         }
 
         public string ProgressText
         {
             get => _progressText;
-            private set => Set(ref _progressText, value);
+            set => Set(ref _progressText, value);
         }
 
         public string Summary
@@ -217,31 +406,31 @@ namespace ZapretGui.ViewModels
         public double DpiProgressValue
         {
             get => _dpiProgressValue;
-            private set => Set(ref _dpiProgressValue, value);
+            set => Set(ref _dpiProgressValue, value);
         }
 
         public double DpiProgressMaximum
         {
             get => _dpiProgressMaximum;
-            private set => Set(ref _dpiProgressMaximum, value);
+            set => Set(ref _dpiProgressMaximum, value);
         }
 
         public bool DpiProgressIndeterminate
         {
             get => _dpiProgressIndeterminate;
-            private set => Set(ref _dpiProgressIndeterminate, value);
+            set => Set(ref _dpiProgressIndeterminate, value);
         }
 
         public string DpiProgressText
         {
             get => _dpiProgressText;
-            private set => Set(ref _dpiProgressText, value);
+            set => Set(ref _dpiProgressText, value);
         }
 
         public string DpiProgressPercentText
         {
             get => _dpiProgressPercentText;
-            private set => Set(ref _dpiProgressPercentText, value);
+            set => Set(ref _dpiProgressPercentText, value);
         }
 
         public string DpiSummary
@@ -256,7 +445,12 @@ namespace ZapretGui.ViewModels
             private set => Set(ref _dpiSummaryKey, value);
         }
 
-        public string DpiLastCheckText { get; private set; } = "Проверка ещё не выполнялась";
+        private string _dpiLastCheckText = "Проверка ещё не выполнялась";
+        public string DpiLastCheckText
+        {
+            get => _dpiLastCheckText;
+            private set => Set(ref _dpiLastCheckText, value);
+        }
 
         public NetworkObservationSnapshot DpiObservation
         {
@@ -311,6 +505,18 @@ namespace ZapretGui.ViewModels
         public ICommand RunDpiCommand { get; }
         public ICommand CancelDpiCommand { get; }
         public ICommand OpenDpiCommand { get; }
+        public ICommand SelectExpressTabCommand { get; }
+        public ICommand SelectDpiTabCommand { get; }
+        public ICommand SelectDeepCheckTabCommand { get; }
+        public ICommand SelectSystemTabCommand { get; }
+        public ICommand SelectResultsTabCommand { get; }
+        public ICommand SelectVoiceRtcTabCommand { get; }
+        public ICommand RunVoiceRtcAuditCommand { get; }
+        public ICommand OptimizeDiscordVoiceCommand { get; }
+        public ICommand CleanDiscordAndNetworkCommand { get; }
+        public ICommand CleanAndRestartDiscordCommand { get; }
+        public ICommand DeepNetworkResetCommand { get; }
+        public ICommand RefreshDiscordCacheStatusCommand { get; }
         public ICommand FixItemCommand { get; }
         public ICommand ClearDiscordCacheCommand { get; }
         public ICommand ResetNetworkCommand { get; }
@@ -624,7 +830,7 @@ namespace ZapretGui.ViewModels
                 var comparison = await _main.Bypass.DiagnoseResourceAsync(comparisonTarget, ct);
                 var snapshot = await _main.Bypass.RunDpiCheckAsync(
                     string.IsNullOrWhiteSpace(DpiCustomHost) ? null : DpiCustomHost,
-                    progress, ct);
+                    progress, ct, maxTargets: 34);
                 snapshot.BypassComparison = comparison;
                 snapshot.Observation = NetworkObservationSnapshot.From(
                     snapshot.Results, comparison, snapshot.CreatedAt, snapshot.ControlResult);
@@ -806,29 +1012,109 @@ namespace ZapretGui.ViewModels
             return EngineService.ApplyHosts(check.TempFile);
         }
 
-        private void ClearDiscordCache()
+        public async Task CleanDiscordAndNetworkAsync(bool restartDiscord = false)
+        {
+            if (IsCleaningDiscord) return;
+
+            IsCleaningDiscord = true;
+            DiscordCleanStatusText = "Подготовка к очистке кэша Discord и сбросу сети…";
+            try
+            {
+                var progress = new Progress<string>(s => DiscordCleanStatusText = s);
+                var summary = await DiscordNetworkCleaner.CleanAsync(new DiscordCleanOptions
+                {
+                    CloseDiscordProcesses = true,
+                    RestartDiscordAfterClean = restartDiscord || RestartDiscordAfterClean,
+                    ResetNetworkStack = true
+                }, progress).ConfigureAwait(true);
+
+                LastDiscordCleanSummary = summary;
+                RefreshDiscordCacheStatus();
+
+                DiscordCleanStatusText = summary.Message;
+                SetMessage(summary.Message, summary.Ok ? "Success" : "Warning");
+                AppLog.Info($"[1-Клик Очистка Discord]: {summary.Message}");
+                _main.Home.ShowSuccess($"✅ {summary.Message}");
+            }
+            catch (Exception ex)
+            {
+                DiscordCleanStatusText = "Ошибка очистки: " + ex.Message;
+                SetMessage("Ошибка очистки кэша: " + ex.Message, "Danger");
+                AppLog.Error("Ошибка очистки кэша Discord", ex);
+            }
+            finally
+            {
+                IsCleaningDiscord = false;
+            }
+        }
+
+        public async Task DeepNetworkResetAsync()
         {
             var confirm = System.Windows.MessageBox.Show(
-                "Будут удалены локальные файлы кэша Discord. Сам Discord лучше закрыть заранее. Продолжить?",
-                "Очистка кэша Discord", System.Windows.MessageBoxButton.YesNo,
-                System.Windows.MessageBoxImage.Question);
+                "Будет выполнен глубокий сброс сетевого стека Windows:\n\n" +
+                "• netsh winsock reset (сброс каталога Winsock)\n" +
+                "• netsh int ip reset all (сброс стека TCP/IP)\n" +
+                "• netsh winhttp reset proxy (сброс прокси WinHTTP)\n" +
+                "• ipconfig /flushdns (сброс кэша DNS)\n" +
+                "• arp -d * (очистка ARP-таблицы)\n" +
+                "• nbtstat -R (сброс NetBIOS кэша)\n" +
+                "• netsh interface tcp set global timestamps=enabled\n\n" +
+                "После выполнения потребуется перезагрузка компьютера. Продолжить?",
+                "Глубокий сброс сетевого стека", System.Windows.MessageBoxButton.YesNo,
+                System.Windows.MessageBoxImage.Warning);
+
             if (confirm != System.Windows.MessageBoxResult.Yes) return;
 
-            var (ok, message) = EngineService.ClearDiscordCache();
-            SetMessage(message, ok ? "Success" : "Warning");
+            IsCleaningDiscord = true;
+            DiscordCleanStatusText = "Выполняется глубокий сброс сетевого стека Windows…";
+            try
+            {
+                var progress = new Progress<string>(s => DiscordCleanStatusText = s);
+                var report = await DiscordNetworkCleaner.DeepNetworkStackResetAsync(progress).ConfigureAwait(true);
+                DiscordCleanStatusText = "Сброс сети завершён. Рекомендуется перезагрузить ПК.";
+                SetMessage(string.Join("\n", report), "Warning");
+                AppLog.Info("[Deep Network Reset]:\n" + string.Join("\n", report));
+            }
+            catch (Exception ex)
+            {
+                DiscordCleanStatusText = "Ошибка сброса сети: " + ex.Message;
+                SetMessage("Ошибка сброса сети: " + ex.Message, "Danger");
+            }
+            finally
+            {
+                IsCleaningDiscord = false;
+            }
+        }
+
+        public void RefreshDiscordCacheStatus()
+        {
+            try
+            {
+                var (totalBytes, totalFiles, editions) = DiscordNetworkCleaner.GetDetailedCacheStatus();
+                if (editions.Count == 0 || totalFiles == 0)
+                {
+                    DiscordCacheStatusText = "Кэш Discord чист (0 файлов)";
+                }
+                else
+                {
+                    var editionNames = string.Join(", ", editions.Select(e => e.EditionName));
+                    DiscordCacheStatusText = $"Кэш Discord: {DiscordCacheDirectoryInfo.FormatBytes(totalBytes)} ({totalFiles} файлов) · {editionNames}";
+                }
+            }
+            catch
+            {
+                DiscordCacheStatusText = "Размер кэша неизвестен";
+            }
+        }
+
+        private void ClearDiscordCache()
+        {
+            _ = CleanDiscordAndNetworkAsync(false);
         }
 
         private void ResetNetwork()
         {
-            var confirm = System.Windows.MessageBox.Show(
-                "Будут выполнены команды:\n\nnetsh winsock reset\nnetsh int ip reset all\nnetsh winhttp reset proxy\nipconfig /flushdns\n\n" +
-                "После этого потребуется перезагрузка. Продолжить?",
-                "Сброс сетевых настроек", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
-
-            if (confirm != System.Windows.MessageBoxResult.Yes) return;
-
-            var report = DiagnosticsService.ResetNetwork();
-            SetMessage(string.Join(" · ", report), "Warning");
+            _ = DeepNetworkResetAsync();
         }
 
         private async Task RemoveServicesAsync()
@@ -874,6 +1160,102 @@ namespace ZapretGui.ViewModels
                 IsRunning = false;
             }
             await RunAsync();
+        }
+
+        public async Task RunVoiceRtcAuditAsync()
+        {
+            if (IsVoiceRtcRunning) return;
+            IsVoiceRtcRunning = true;
+            VoiceRtcStatusText = "Запуск проверки голосовых серверов Discord (WebRTC/STUN)…";
+            VoiceRtcDiagnosisKey = "Warning";
+            VoiceServers.Clear();
+
+            var progress = new Progress<string>(text => VoiceRtcStatusText = text);
+
+            try
+            {
+                var report = await DiscordVoiceRtcProber.RunFullVoiceAuditAsync(progress).ConfigureAwait(true);
+                VoiceRtcReport = report;
+                VoiceRtcSummary = report.SummaryText;
+                VoiceRtcDiagnosisKey = report.DiagnosisKey;
+                VoiceRtcRecommendation = report.RecommendationText;
+                VoiceRtcStatusText = $"Проверка завершена: {report.PassedCount}/{report.TotalCount} шлюзов доступны (пинг {report.AveragePingMs} мс)";
+                VoiceRtcCheckedAtText = "Проверено: " + report.CheckedAt.ToString("HH:mm:ss");
+
+                foreach (var s in report.Servers)
+                {
+                    VoiceServers.Add(s);
+                }
+
+                Raise(nameof(HasVoiceRtcResults));
+                if (report.OverallVoiceReady)
+                {
+                    _main.Home.ShowSuccess("✅ Голосовой стек Discord (RTC/UDP) полностью доступен!");
+                }
+                else
+                {
+                    _main.Home.ShowWarning("⚠️ Обнаружен сбой голосового подключения Discord (UDP WebRTC дропается ТСПУ).");
+                }
+            }
+            catch (Exception ex)
+            {
+                VoiceRtcStatusText = "Ошибка проверки: " + ex.Message;
+                VoiceRtcDiagnosisKey = "Danger";
+            }
+            finally
+            {
+                IsVoiceRtcRunning = false;
+                Raise(nameof(HasVoiceRtcResults));
+            }
+        }
+
+        public async Task OptimizeDiscordVoiceAsync()
+        {
+            if (IsVoiceRtcRunning) return;
+            IsVoiceRtcRunning = true;
+            VoiceRtcStatusText = "Применяю оптимизированную конфигурацию для Discord Voice…";
+
+            try
+            {
+                // 1. Гарантируем наполнение списков доменов
+                DomainListUpdater.EnsureSeeded(Settings.EnginePath);
+
+                // 2. Включаем поддержку TCP Timestamps
+                WinServices.EnsureTcpTimestamps();
+
+                // 3. Выбираем стратегию с поддержкой UDP desync (general (ALT9) или general (EXP))
+                var targetStrat = _main.Strategies.Find("general (ALT9)")
+                               ?? _main.Strategies.Find("general (EXP)")
+                               ?? _main.Strategies.Find("general (ALT13)")
+                               ?? _main.Strategies.Items.FirstOrDefault(s => s.UsesGameFilter || s.UsesFakeQuic);
+
+                if (targetStrat != null)
+                {
+                    _main.Settings.SelectedStrategy = targetStrat.Name;
+                    SettingsStore.Save(_main.Settings);
+                    await _main.StrategiesPage.ApplyStrategyAsync(targetStrat).ConfigureAwait(true);
+                }
+
+                // 4. Очищаем кэш Discord и сбрасываем DNS
+                EngineService.ClearDiscordCache();
+                DnsManagementService.FlushDnsCache();
+
+                VoiceRtcStatusText = "Оптимизация Discord Voice завершена! Перезапустите Discord и войдите в голосовой канал.";
+                VoiceRtcDiagnosisKey = "Success";
+                _main.Home.ShowSuccess("✅ Настройки для Discord Voice применены (стратегия " + (_main.Settings.SelectedStrategy ?? "ALT9") + ", UDP 50000-65535, кэш очищен).");
+
+                // Перепроверяем войс
+                await RunVoiceRtcAuditAsync().ConfigureAwait(true);
+            }
+            catch (Exception ex)
+            {
+                VoiceRtcStatusText = "Ошибка оптимизации: " + ex.Message;
+                VoiceRtcDiagnosisKey = "Danger";
+            }
+            finally
+            {
+                IsVoiceRtcRunning = false;
+            }
         }
 
         public void RefreshTheme()

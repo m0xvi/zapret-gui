@@ -23,34 +23,46 @@ namespace ZapretGui.Core
     /// <summary>Быстрая проверка доступности ресурсов (TCP-подключение + HTTPS-запрос).</summary>
     public static class ConnectionTester
     {
-        public static Task<List<ConnectionCheck>> RunAsync(CancellationToken ct = default)
-            => RunAsync(new[]
+        public static List<MonitorTarget> GetEffectiveTargets(AppSettings? settings = null)
+        {
+            var list = new List<MonitorTarget>
             {
                 // Набор шире прежних трёх ресурсов и ближе к standard mode
                 // из Flowseal test zapret.ps1: несколько независимых CDN/доменов.
                 MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"),
-                MonitorTarget.CreateBuiltIn("Discord CDN", "https://cdn.discordapp.com"),
-                MonitorTarget.CreateBuiltIn("Discord Gateway", "https://gateway.discord.gg"),
+                MonitorTarget.CreateBuiltIn("Discord CDN", "https://cdn.discordapp.com/favicon.ico"),
+                MonitorTarget.CreateBuiltIn("Discord Gateway", "https://gateway.discord.gg/"),
                 MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"),
-                MonitorTarget.CreateBuiltIn("YouTube image", "https://i.ytimg.com"),
-                MonitorTarget.CreateBuiltIn("Google", "https://www.google.com"),
+                MonitorTarget.CreateBuiltIn("YouTube image", "https://i.ytimg.com/generate_204"),
+                MonitorTarget.CreateBuiltIn("Google", "https://www.google.com/generate_204"),
                 MonitorTarget.CreateBuiltIn("Cloudflare", "https://www.cloudflare.com"),
                 MonitorTarget.CreateBuiltIn("GitHub (обновления)", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
-            }, ct);
+            };
+
+            if (settings?.MonitorTargets != null)
+            {
+                foreach (var custom in settings.MonitorTargets.Where(t => t.Enabled && !t.IsBuiltIn))
+                {
+                    if (!list.Any(x => x.Host.Equals(custom.Host, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        list.Add(custom);
+                    }
+                }
+            }
+
+            return list;
+        }
+
+        public static Task<List<ConnectionCheck>> RunAsync(CancellationToken ct = default)
+            => RunAsync(GetEffectiveTargets(), ct);
 
         public static Task<List<ConnectionCheck>> RunAsync(CancellationToken ct,
             IProgress<string>? progress)
-            => RunAsync(new[]
-            {
-                MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"),
-                MonitorTarget.CreateBuiltIn("Discord CDN", "https://cdn.discordapp.com"),
-                MonitorTarget.CreateBuiltIn("Discord Gateway", "https://gateway.discord.gg"),
-                MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"),
-                MonitorTarget.CreateBuiltIn("YouTube image", "https://i.ytimg.com"),
-                MonitorTarget.CreateBuiltIn("Google", "https://www.google.com"),
-                MonitorTarget.CreateBuiltIn("Cloudflare", "https://www.cloudflare.com"),
-                MonitorTarget.CreateBuiltIn("GitHub (обновления)", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
-            }, ct, progress);
+            => RunAsync(GetEffectiveTargets(), ct, progress);
+
+        public static Task<List<ConnectionCheck>> RunAsync(AppSettings? settings,
+            CancellationToken ct, IProgress<string>? progress)
+            => RunAsync(GetEffectiveTargets(settings), ct, progress);
 
         public static async Task<List<ConnectionCheck>> RunAsync(IEnumerable<MonitorTarget> targets,
             CancellationToken ct = default, IProgress<string>? progress = null)

@@ -118,6 +118,100 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Экспорт телеметрии и отчёта провайдера для настройки автоподбора -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПОРТ ТЕЛЕМЕТРИИ И ОТЧЁТА ПРОВАЙДЕРА" />
+                            <TextBlock Style="{StaticResource DimText}"
+                                       Text="Позволяет в 1 клик запустить полный цикл тестирования всех стратегий каталога, сформировать слепок сетевого окружения и скопировать готовый Markdown-отчёт в буфер обмена для отправки в чат."
+                                       TextWrapping="Wrap" Margin="0,4,0,0" />
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding TelemetrySummaryText}" />
+                                    <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0"
+                                               Text="Отчёт содержит полный срез: параметры ТСПУ оператора, работающие методы спуфинга (fooling ts, repeats, split-pos, badsum), скоринг и задержки по каждому ресурсу." TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Блок прогресса при выполнении полного цикла проверок -->
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0"
+                                    Visibility="{Binding IsRunningFullCheckCycle, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding FullCheckStatusText}" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding FullCheckProgressPercentText}" FontWeight="SemiBold" />
+                                    </Grid>
+                                    <ProgressBar Height="6" Margin="0,8,0,0"
+                                                 Minimum="0" Maximum="{Binding FullCheckProgressMax, Mode=OneWay}"
+                                                 Value="{Binding FullCheckProgressValue, Mode=OneWay}" />
+                                    <Button Style="{StaticResource GhostButton}" Content="Остановить проверку"
+                                            HorizontalAlignment="Right" Margin="0,8,0,0"
+                                            Command="{Binding CancelFullDiagnosticsCommand}" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Успешное завершение цикла проверок -->
+                            <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}"
+                                    BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,10,0,0"
+                                    Visibility="{Binding FullCheckCompleted, Converter={StaticResource BoolToVis}}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource SuccessBrush}"
+                                               FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold"
+                                               Text="Все проверки завершены! Слепок сформирован и скопирован в буфер обмена — просто нажмите Ctrl+V в чат."
+                                               VerticalAlignment="Center" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <WrapPanel Margin="0,12,0,0">
+                                <Button Style="{StaticResource PrimaryButton}"
+                                        Command="{Binding RunFullDiagnosticsAndExportCommand}"
+                                        Padding="16,8"
+                                        ToolTip="Запустить поочерёдное тестирование всех стратегий каталога, сформировать слепок и автоматически скопировать готовый Markdown-отчёт в буфер обмена">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xEC4A;" FontFamily="Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center" Margin="0,0,8,0" />
+                                        <TextBlock Text="⚡ Проверить все стратегии и скопировать отчёт" VerticalAlignment="Center" FontWeight="SemiBold" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource SecondaryButton}" Margin="10,0,0,0"
+                                        Command="{Binding CopyTelemetryMarkdownCommand}"
+                                        Padding="14,8"
+                                        ToolTip="Скопировать текущие результаты тестов и профиль провайдера в буфер обмена без повторного прогона">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Text="Скопировать текущий отчёт (Markdown)" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource SecondaryButton}" Margin="10,0,0,0"
+                                        Command="{Binding ExportTelemetryJsonCommand}"
+                                        Padding="14,8"
+                                        ToolTip="Сохранить структурированный JSON со всеми данными телеметрии">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xE896;" FontFamily="Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Text="Экспорт в JSON (.json)" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+
+                                <Button Style="{StaticResource GhostButton}" Margin="10,0,0,0"
+                                        Command="{Binding ExportTelemetryZipCommand}"
+                                        Padding="14,8"
+                                        ToolTip="Создать полный архив (.zip) с отчётом, JSON дампом и логами">
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Text="&#xED35;" FontFamily="Segoe MDL2 Assets" FontSize="14" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBlock Text="Диагностический пакет (.zip)" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ИНТЕРФЕЙС" />
@@ -127,7 +221,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <TextBlock Style="{StaticResource BodyText}" Text="Тема оформления" VerticalAlignment="Center" />
-                                <controls:SegmentedControl Grid.Column="1" HorizontalAlignment="Right" Width="220" MinWidth="160" MaxWidth="330"
+                                <controls:SegmentedControl Grid.Column="1" HorizontalAlignment="Right" MinWidth="280"
                                                            ItemsSource="{Binding ThemeOptions}"
                                                            SelectedIndex="{Binding ThemeIndex, Mode=TwoWay}"
                                                            ToolTip="Тёмная, светлая тема или как в системе (переключается на лету)" />
@@ -160,6 +254,11 @@
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать обход вместе с приложением"
                                       IsChecked="{Binding AutoStartBypass, Mode=TwoWay}"
                                       ToolTip="Запускать обход с выбранной стратегией сразу при старте приложения" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Отложенный автозапуск обхода (секунды для ожидания инициализации сети)" />
+                            <Slider Minimum="0" Maximum="30" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding StartupDelaySeconds, Mode=TwoWay}" ToolTip="От 0 до 30 секунд (рекомендуется 5-10 сек для Wi-Fi/DHCP)" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding StartupDelaySeconds, StringFormat={}{0} сек}" />
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Безопасный режим"
                                       Margin="0,10,0,0" IsChecked="{Binding SafeMode, Mode=TwoWay}"
                                       ToolTip="Не запускать обход автоматически и не выполнять автоматическую установку службы или сетевые изменения. Диагностика остаётся доступной." />
@@ -181,6 +280,125 @@
 
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="СТОРОЖЕВОЙ ТАЙМЕР И САМОКОНТРОЛЬ (WATCHDOG)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включить сторожевой таймер (Watchdog)"
+                                      IsChecked="{Binding WatchdogEnabled, Mode=TwoWay}"
+                                      ToolTip="Фоновый контроль процесса winws.exe и службы zapret" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Автоматически перезапускать процесс при падении"
+                                      Margin="0,10,0,0" IsChecked="{Binding WatchdogAutoRestart, Mode=TwoWay}"
+                                      IsEnabled="{Binding WatchdogEnabled}"
+                                      ToolTip="Мягко восстанавливать обход при внезапном закрытии winws.exe или службы" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Уведомлять о восстановлении через трей"
+                                      Margin="0,10,0,0" IsChecked="{Binding WatchdogNotifyUser, Mode=TwoWay}"
+                                      IsEnabled="{Binding WatchdogEnabled}"
+                                      ToolTip="Показывать всплывающее уведомление в системном трее при перезапуске" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Интервал проверки сторожа (секунды)" />
+                            <Slider Minimum="5" Maximum="60" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding WatchdogIntervalSeconds, Mode=TwoWay}"
+                                    IsEnabled="{Binding WatchdogEnabled}" ToolTip="От 5 до 60 секунд" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding WatchdogIntervalSeconds, StringFormat={}{0} сек}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="МОНИТОРИНГ ЗАДЕРЖКИ СЕТИ (RTT PING)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отображать живой RTT пинг в шапке окна"
+                                      IsChecked="{Binding RealTimePingEnabled, Mode=TwoWay}"
+                                      ToolTip="Периодический пинг до YouTube, Discord и GitHub в верхней панели окна" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Интервал живого пинга (секунды)" />
+                            <Slider Minimum="5" Maximum="60" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding RealTimePingIntervalSeconds, Mode=TwoWay}"
+                                    IsEnabled="{Binding RealTimePingEnabled}" ToolTip="От 5 до 60 секунд" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding RealTimePingIntervalSeconds, StringFormat={}{0} сек}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Игровой опыт и сетевые твики -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ИГРОВОЙ ОПЫТ И ОНЛАЙН-ИГРЫ (UX &amp; GAMING)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включить автоматический детектор запущенных игр"
+                                      IsChecked="{Binding GameDetectionEnabled, Mode=TwoWay}"
+                                      ToolTip="Отслеживать процессы популярных игр (CS2, Dota 2, Valorant, Apex, War Thunder, Genshin и др.)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Автоматически активировать игровой режим при запуске игры"
+                                      Margin="0,10,0,0" IsChecked="{Binding AutoGameModeOnLaunch, Mode=TwoWay}"
+                                      IsEnabled="{Binding GameDetectionEnabled}"
+                                      ToolTip="При запуске игры автоматически переключать zapret на режим пропуска UDP для защиты от лагов и скачков пинга" />
+                            <Border Style="{StaticResource Divider}" />
+                            <TextBlock Style="{StaticResource BodyText}" Text="Оптимизация сетевых задержек Windows (TCP/IP Gaming Tweaks)" FontWeight="SemiBold" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding GamingOptimizationStatusText}" Margin="0,3,0,0" TextWrapping="Wrap" />
+                            <WrapPanel Margin="0,10,0,0">
+                                <Button Style="{StaticResource SecondaryButton}" Content="Применить оптимизацию для игр"
+                                        Command="{Binding ApplyGamingTweaksCommand}"
+                                        ToolTip="Отключить алгоритм Nagle (TCPNoDelay = 1), задержку ACK (TcpAckFrequency = 1) и троттлинг сети" />
+                                <Button Style="{StaticResource GhostButton}" Content="Сбросить по умолчанию" Margin="8,0,0,0"
+                                        Command="{Binding RevertGamingTweaksCommand}"
+                                        ToolTip="Восстановить стандартные параметры сетевого стека Windows" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Глобальные горячие клавиши -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ГЛОБАЛЬНЫЕ ГОРЯЧИЕ КЛАВИШИ (HOTKEYS)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включить глобальные горячие клавиши"
+                                      IsChecked="{Binding GlobalHotkeysEnabled, Mode=TwoWay}"
+                                      ToolTip="Позволяет управлять обходом из любой игры или программы" />
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="160" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource BodyText}" Text="Включение / выключение Zapret" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleBypass, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding GlobalHotkeysEnabled}" ToolTip="Например: Ctrl+Shift+Z" />
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="160" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource BodyText}" Text="Переключение игрового режима" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleGameMode, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding GlobalHotkeysEnabled}" ToolTip="Например: Ctrl+Shift+G" />
+                            </Grid>
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="160" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource BodyText}" Text="Показать / скрыть HUD виджет" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleMiniOverlay, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding GlobalHotkeysEnabled}" ToolTip="Например: Ctrl+Shift+O" />
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Мини-виджет HUD -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="КОМПАКТНЫЙ МИНИ-ВИДЖЕТ (HUD OVERLAY)" />
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Виджет поверх всех окон (Topmost)"
+                                      IsChecked="{Binding MiniOverlayTopmost, Mode=TwoWay}"
+                                      ToolTip="Отображать плавающий HUD поверх игр и других окон" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                       Text="Прозрачность виджета (%)" />
+                            <Slider Minimum="50" Maximum="100" TickFrequency="5" IsSnapToTickEnabled="True"
+                                    Value="{Binding MiniOverlayOpacity, Mode=TwoWay}" ToolTip="От 50% до 100%" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding MiniOverlayOpacity, StringFormat={}{0}%}" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Открыть / показать HUD виджет"
+                                    Margin="0,10,0,0" HorizontalAlignment="Left"
+                                    Command="{Binding OpenOverlayCommand}"
+                                    ToolTip="Показать компактный полупрозрачный оверлей с быстрым управлением" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="АВТОПОДБОР СТРАТЕГИИ" />
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять все стратегии при первом запуске"
                                       IsChecked="{Binding AutoTestStrategiesOnFirstLaunch, Mode=TwoWay}"
@@ -190,6 +408,18 @@
                                       ToolTip="Перед проверкой стратегий проверить BFE, TCP timestamps, WinDivert и сетевые конфликты" />
                             <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
                                        Text="Проверка выполняется только один раз после установки движка. Повторить её можно вручную на странице «Стратегии»." />
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="МАСТЕР НАСТРОЙКИ" />
+                            <TextBlock Style="{StaticResource DimText}"
+                                       Text="Пошаговый мастер проверки прав, установки движка, диагностики и выбора первой стратегии." TextWrapping="Wrap" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Запустить мастер первого запуска заново"
+                                    Margin="0,10,0,0" HorizontalAlignment="Left"
+                                    Command="{Binding RerunFirstLaunchWizardCommand}"
+                                    ToolTip="Открыть пошаговый мастер настройки" />
                         </StackPanel>
                     </Border>
 

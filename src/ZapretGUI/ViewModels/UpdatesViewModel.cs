@@ -16,6 +16,7 @@ namespace ZapretGui.ViewModels
         private string _latestVersion = "";
         private GuiReleaseInfo? _guiRelease;
         private bool _guiUpdateAvailable;
+        private bool _guiChecked;
         private string _guiUpdateStatus = "Проверка обновлений GUI ещё не выполнялась";
         private string _releaseTitle = "";
         private string _releaseDate = "";
@@ -26,6 +27,7 @@ namespace ZapretGui.ViewModels
         private double _progress;
         private bool _indeterminate;
         private string _status = "Нажмите «Проверить обновления»";
+        private bool _hostsChecked;
         private string _hostsStatus = "Не проверялось";
         private bool _hostsNeedsUpdate;
         private string _hostsFile = "";
@@ -52,6 +54,7 @@ namespace ZapretGui.ViewModels
             UpdateIpsetCommand = new AsyncRelayCommand(UpdateIpsetAsync, () => !IsBusy);
             CheckHostsCommand = new AsyncRelayCommand(CheckHostsAsync, () => !IsBusy);
             ApplyHostsCommand = new RelayCommand(ApplyHosts, () => !IsBusy && _hostsFile.Length > 0);
+            UpdateHostsCommand = new AsyncRelayCommand(UpdateHostsAsync, () => !IsBusy);
             OpenReleasePageCommand = new RelayCommand(() => Shell.OpenUrl(string.IsNullOrEmpty(_releaseUrl) ? EngineService.RepoUrl + "/releases/latest" : _releaseUrl));
             OpenRepoCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl));
             OpenDownloadsPageCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl + "/releases/latest"));
@@ -99,8 +102,8 @@ namespace ZapretGui.ViewModels
         }
 
         public string GuiUpdateBadgeText => _guiRelease == null
-            ? "Проверка не выполнялась"
-            : GuiUpdateAvailable ? "Доступно обновление " + GuiLatestVersion : "Установлена актуальная версия";
+            ? (_guiChecked ? "Не удалось проверить" : "Проверка не выполнялась")
+            : (GuiUpdateAvailable ? "Доступно обновление " + GuiLatestVersion : "Установлена актуальная версия");
 
         public string GuiUpdateButtonText => GuiUpdateAvailable ? "Скачать и перезапустить" : "Обновление не требуется";
 
@@ -184,6 +187,7 @@ namespace ZapretGui.ViewModels
                     (UpdateIpsetCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (CheckHostsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (ApplyHostsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (UpdateHostsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (RollbackEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (CancelCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
@@ -193,14 +197,24 @@ namespace ZapretGui.ViewModels
         public double Progress
         {
             get => _progress;
-            set => Set(ref _progress, value);
+            set
+            {
+                if (Set(ref _progress, value))
+                    Raise(nameof(ProgressPercentText));
+            }
         }
 
         public bool Indeterminate
         {
             get => _indeterminate;
-            private set => Set(ref _indeterminate, value);
+            set
+            {
+                if (Set(ref _indeterminate, value))
+                    Raise(nameof(ProgressPercentText));
+            }
         }
+
+        public string ProgressPercentText => Indeterminate ? "" : $"{Progress:0}%";
 
         public bool ProgressVisible => IsBusy;
 
@@ -224,12 +238,16 @@ namespace ZapretGui.ViewModels
                 if (Set(ref _hostsNeedsUpdate, value))
                 {
                     Raise(nameof(HostsStatusKey));
+                    Raise(nameof(HostsIsUpToDate));
                     (ApplyHostsCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
 
-        public string HostsStatusKey => _hostsNeedsUpdate ? "Warning" : "Success";
+        public bool HostsIsUpToDate => _hostsChecked && !_hostsNeedsUpdate && HostsStatusKey == "Success";
+        public bool IpsetIsUpToDate => true;
+
+        public string HostsStatusKey => !_hostsChecked ? "Danger" : (_hostsNeedsUpdate ? "Warning" : "Success");
 
         public string Message
         {
@@ -297,6 +315,7 @@ namespace ZapretGui.ViewModels
         public ICommand UpdateIpsetCommand { get; }
         public ICommand CheckHostsCommand { get; }
         public ICommand ApplyHostsCommand { get; }
+        public ICommand UpdateHostsCommand { get; }
         public ICommand OpenReleasePageCommand { get; }
         public ICommand OpenRepoCommand { get; }
         public ICommand OpenDownloadsPageCommand { get; }
@@ -327,6 +346,7 @@ namespace ZapretGui.ViewModels
             if (IsBusy) return;
             IsBusy = true;
             Indeterminate = true;
+            _guiChecked = true;
             if (!silent) Status = "Проверяю обновление GUI на GitHub…";
             _cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
             try
@@ -341,6 +361,8 @@ namespace ZapretGui.ViewModels
                 {
                     GuiUpdateAvailable = false;
                     GuiUpdateStatus = "Не удалось получить релиз GUI. Обновление не выполнялось.";
+                    Raise(nameof(GuiUpdateBadgeText));
+                    Raise(nameof(GuiUpdateButtonText));
                     if (!silent) SetMessage(GuiUpdateStatus, "Warning");
                     return;
                 }
@@ -353,16 +375,20 @@ namespace ZapretGui.ViewModels
                     : GuiUpdateAvailable
                         ? $"Доступна версия {_guiRelease.Tag}. Перед заменой exe будет создана резервная копия."
                         : $"Установлена актуальная версия {GuiUpdateService.CurrentVersion}.";
+                Raise(nameof(GuiUpdateBadgeText));
+                Raise(nameof(GuiUpdateButtonText));
                 if (!silent) SetMessage(GuiUpdateStatus, GuiUpdateAvailable ? "Info" : "Success");
             }
             catch (OperationCanceledException)
             {
                 GuiUpdateStatus = "Проверка обновления GUI отменена.";
+                Raise(nameof(GuiUpdateBadgeText));
                 if (!silent) SetMessage(GuiUpdateStatus, "Warning");
             }
             catch (Exception ex)
             {
                 GuiUpdateStatus = "Ошибка проверки обновления GUI: " + ex.Message;
+                Raise(nameof(GuiUpdateBadgeText));
                 if (!silent) SetMessage(GuiUpdateStatus, "Warning");
             }
             finally
@@ -371,6 +397,8 @@ namespace ZapretGui.ViewModels
                 _cts = null;
                 IsBusy = false;
                 Indeterminate = false;
+                Raise(nameof(GuiUpdateBadgeText));
+                Raise(nameof(GuiUpdateButtonText));
             }
         }
 
@@ -847,11 +875,14 @@ namespace ZapretGui.ViewModels
             try
             {
                 var result = await EngineService.CheckHostsAsync();
+                _hostsChecked = true;
                 _hostsFile = result.TempFile;
                 HostsNeedsUpdate = result.NeedsUpdate;
                 HostsStatus = result.Ok
                     ? result.Message + $" (строк в файле репозитория: {result.LineCount})"
                     : result.Message;
+                Raise(nameof(HostsStatusKey));
+                Raise(nameof(HostsIsUpToDate));
                 SetMessage(result.NeedsUpdate
                     ? "Файл hosts требует обновления — нажмите «Применить обновление hosts». " +
                       "Починяет веб-версию Telegram и голосовой чат Discord."
@@ -875,6 +906,46 @@ namespace ZapretGui.ViewModels
             var (ok, message) = EngineService.ApplyHosts(_hostsFile);
             SetMessage(message, ok ? "Success" : "Danger");
             if (ok) HostsNeedsUpdate = false;
+        }
+
+        private async Task UpdateHostsAsync()
+        {
+            IsBusy = true;
+            Indeterminate = true;
+            Status = "Проверяю и обновляю файл hosts…";
+            try
+            {
+                var result = await EngineService.CheckHostsAsync();
+                _hostsChecked = true;
+                _hostsFile = result.TempFile;
+                HostsNeedsUpdate = result.NeedsUpdate;
+                HostsStatus = result.Ok
+                    ? result.Message + $" (строк в файле репозитория: {result.LineCount})"
+                    : result.Message;
+                Raise(nameof(HostsStatusKey));
+                Raise(nameof(HostsIsUpToDate));
+
+                if (!result.NeedsUpdate)
+                {
+                    SetMessage("Файл hosts уже актуален (записи GitHub в порядке).", "Success");
+                    return;
+                }
+
+                var confirm = System.Windows.MessageBox.Show(
+                    "Файл hosts требует обновления для GitHub/Discord. Применить обновления сейчас?",
+                    "Обновление hosts", System.Windows.MessageBoxButton.YesNo,
+                    System.Windows.MessageBoxImage.Question);
+                if (confirm != System.Windows.MessageBoxResult.Yes) return;
+
+                var (ok, message) = EngineService.ApplyHosts(_hostsFile);
+                SetMessage(message, ok ? "Success" : "Danger");
+                if (ok) HostsNeedsUpdate = false;
+            }
+            finally
+            {
+                IsBusy = false;
+                Indeterminate = false;
+            }
         }
 
         private void SetMessage(string message, string key)

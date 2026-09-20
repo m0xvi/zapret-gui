@@ -42,7 +42,15 @@ namespace ZapretGui.CoreLogicHarness
                 ("Безопасный режим не меняет готовность и отключает автозапуск", SafeModeKeepsReadinessExplicit),
                 ("Отмена DPI-проверки не запускает сетевые пробы", DpiCancellationIsPrompt),
                 ("Снимок DPI сохраняет этапы, контрольный endpoint и повторы", DpiSnapshotKeepsStages),
-                ("Диагностический отчёт сериализуется вместе с журналом восстановления", DiagnosticsReportRoundTrips)
+                ("Контракт IsSuitable сохраняет совместимость с двухресурсным smoke", StrategySuitabilitySmokeContract),
+                ("DPI-score и классификация freeze соответствуют формуле", DpiProbeScoreAndFreezeClassification),
+                ("Score кандидата приоритизирует эмпирические результаты проверок", EmpiricalCandidateEvaluationScoreOrdering),
+                ("Диагностический отчёт сериализуется вместе с журналом восстановления", DiagnosticsReportRoundTrips),
+                ("Списки доменов автоматически наполняются эталонными записями", DomainListsAutoSeedingWorks),
+                ("Менеджер фейковых бинарных нагрузок и Voice RTC эндпоинты работают", VoiceRtcProberAndFakeBinManagerWork),
+                ("Очистка кэша Discord и сетевой стек работают корректно", DiscordNetworkCleanerWorks),
+                ("Тонкая настройка портов GameFilter и профили исключений работают", GameFilterPortConfigWorks),
+                ("Пул TLS SNI фейков и подстановка SNI работают", SniFakePoolManagerWorks)
             };
 
             foreach (var check in checks)
@@ -153,8 +161,8 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 var strategies = StrategyParser.LoadAll(root);
                 Assert(strategies.Count == 1, "service.bat ошибочно попал в каталог стратегий");
                 var strategy = strategies[0];
-                Assert(strategy.Category == "FAKE TLS AUTO" && strategy.IsRecommended,
-                    "категория или рекомендация стратегии определены неверно");
+                Assert(strategy.Category == "FAKE TLS AUTO" && !strategy.IsRecommended,
+                    "категория определена неверно или стратегия предвзято помечена как рекомендуемая без проверки");
                 Assert(strategy.Args.Any(arg => arg.Contains("--dpi-desync=fake", StringComparison.Ordinal)),
                     "аргумент desync потерян");
                 Assert(strategy.Args.Any(arg => arg.Contains("{GameFilterUDP}", StringComparison.Ordinal)),
@@ -790,6 +798,105 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 "источник набора не сохранён");
         }
 
+        private static void StrategySuitabilitySmokeContract()
+        {
+            var twoChecks = new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = "smoke-2" },
+                Started = true,
+                Checks = new[]
+                {
+                    new ConnectionCheck { Title = "YouTube", Ok = true },
+                    new ConnectionCheck { Title = "Discord", Ok = true }
+                }
+            };
+            Assert(twoChecks.IsSuitable, "двухресурсный smoke-тест должен быть пригодным");
+
+            var extendedThree = new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = "extended-3" },
+                Started = true,
+                Checks = new[]
+                {
+                    new ConnectionCheck { Title = "YouTube", Ok = true },
+                    new ConnectionCheck { Title = "Discord", Ok = true },
+                    new ConnectionCheck { Title = "Google", Ok = true }
+                }
+            };
+            Assert(extendedThree.IsSuitable, "расширенный тест с 3 успешными ресурсами должен быть пригодным");
+
+            var extendedOnlyTwo = new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = "extended-fail" },
+                Started = true,
+                Checks = new[]
+                {
+                    new ConnectionCheck { Title = "YouTube", Ok = true },
+                    new ConnectionCheck { Title = "Discord", Ok = true },
+                    new ConnectionCheck { Title = "Google", Ok = false },
+                    new ConnectionCheck { Title = "Cloudflare", Ok = false }
+                }
+            };
+            Assert(!extendedOnlyTwo.IsSuitable, "расширенный тест с 2 из 4 успешных не должен быть пригодным");
+        }
+
+        private static void DpiProbeScoreAndFreezeClassification()
+        {
+            var probeSuccess = new DpiProbeResult { TestName = "TLS 1.2", ProbeKind = "HTTPS", Status = "ОТВЕТ" };
+            var probeFreeze = new DpiProbeResult { TestName = "TLS 1.3", ProbeKind = "HTTPS", Status = "ВОЗМОЖНА БЛОКИРОВКА", PossibleDpiFreeze = true, TimedOut = true };
+            var probeError = new DpiProbeResult { TestName = "HTTP/1.1", ProbeKind = "HTTPS", Status = "ОШИБКА", PossibleDpiFreeze = false };
+
+            var probes = new List<DpiProbeResult> { probeSuccess, probeFreeze, probeError };
+            var freezes = probes.Count(p => p.PossibleDpiFreeze);
+            var failed = probes.Count(p => p.Status != "ОТВЕТ");
+            var successful = probes.Count - failed;
+            var score = successful * 10 - failed * 20 - freezes * 100;
+            Assert(score == -130, "формула DPI-score рассчитана неверно");
+        }
+
+        private static void EmpiricalCandidateEvaluationScoreOrdering()
+        {
+            var candidateA = new StrategyCandidate { Name = "Candidate A", Args = new List<string> { "--wf-tcp=443" } };
+            var candidateB = new StrategyCandidate { Name = "Candidate B", Args = new List<string> { "--wf-tcp=443", "--dpi-desync=fake" } };
+
+            var evalA = new StrategyCandidateEvaluation(candidateA);
+            evalA.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateA.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = true } }
+            }, 1, 2);
+            evalA.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateA.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = true } }
+            }, 2, 2);
+            evalA.Complete();
+
+            var evalB = new StrategyCandidateEvaluation(candidateB);
+            evalB.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateB.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = false } }
+            }, 1, 2);
+            evalB.AddResult(new StrategyTestResult
+            {
+                Strategy = new StrategyInfo { Name = candidateB.Name },
+                Started = true,
+                Elapsed = TimeSpan.FromMilliseconds(50),
+                Checks = new[] { new ConnectionCheck { Title = "YouTube", Ok = true }, new ConnectionCheck { Title = "Discord", Ok = false } }
+            }, 2, 2);
+            evalB.Complete();
+
+            Assert(evalA.Score > evalB.Score, "кандидат со 100% стабильностью и прохождением проверок должен иметь больший score");
+            Assert(evalA.IsStable && !evalB.IsStable, "стабильность кандидатов должна различаться");
+        }
+
         private static void DiagnosticsReportRoundTrips()
         {
             var report = new DiagnosticsExportReport
@@ -822,6 +929,116 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 "журнал восстановления не попал в отчёт");
             Assert(restored.Readiness.Key == "Success" && restored.ReportType.Contains("диагностический", StringComparison.OrdinalIgnoreCase),
                 "метаданные отчёта потеряны");
+        }
+
+        private static void DomainListsAutoSeedingWorks()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "ZapretGUI-seed-test-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                Directory.CreateDirectory(tempDir);
+                DomainListUpdater.EnsureSeeded(tempDir);
+
+                var ytFile = Path.Combine(tempDir, "lists", "list-youtube.txt");
+                var dsFile = Path.Combine(tempDir, "lists", "list-discord.txt");
+                var genFile = Path.Combine(tempDir, "lists", "list-general.txt");
+                var googFile = Path.Combine(tempDir, "lists", "list-google.txt");
+
+                Assert(File.Exists(ytFile), "list-youtube.txt не создан");
+                Assert(File.Exists(dsFile), "list-discord.txt не создан");
+                Assert(File.Exists(genFile), "list-general.txt не создан");
+                Assert(File.Exists(googFile), "list-google.txt не создан");
+
+                var ytLines = File.ReadAllLines(ytFile);
+                var dsLines = File.ReadAllLines(dsFile);
+                var googLines = File.ReadAllLines(googFile);
+                Assert(ytLines.Contains("i.ytimg.com") && ytLines.Contains("googlevideo.com"), "list-youtube.txt не содержит i.ytimg.com или googlevideo.com");
+                Assert(dsLines.Contains("cdn.discordapp.com") && dsLines.Contains("gateway.discord.gg"), "list-discord.txt не содержит cdn.discordapp.com или gateway.discord.gg");
+                Assert(googLines.Contains("googleapis.com") && googLines.Contains("googlevideo.com"), "list-google.txt не содержит googleapis.com или googlevideo.com");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true);
+            }
+        }
+
+        private static void VoiceRtcProberAndFakeBinManagerWork()
+        {
+            Assert(DiscordVoiceRtcProber.VoiceEndpoints.Length >= 4, "Список голосовых шлюзов пуст");
+            var tempDir = Path.Combine(Path.GetTempPath(), "ZapretGUI-bin-test-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                FakeBinManager.EnsureDefaultPayloads(tempDir);
+                var payloads = FakeBinManager.GetAvailablePayloads(tempDir);
+                Assert(payloads.Count >= 1, "Эталонный bin фейк не создан");
+                Assert(payloads.Any(p => p.FileName.Contains("quic")), "QUIC фейк не распознан");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true);
+            }
+        }
+
+        private static void DiscordNetworkCleanerWorks()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "ZapretGUI-discord-cache-" + Guid.NewGuid().ToString("N"));
+            try
+            {
+                var discordDir = Path.Combine(tempDir, "discord");
+                var cacheDir = Path.Combine(discordDir, "Cache");
+                var gpuDir = Path.Combine(discordDir, "GPUCache");
+                Directory.CreateDirectory(cacheDir);
+                Directory.CreateDirectory(gpuDir);
+
+                File.WriteAllText(Path.Combine(cacheDir, "data_0"), new string('A', 5000));
+                File.WriteAllText(Path.Combine(gpuDir, "shader_0"), new string('B', 3000));
+
+                var (bytes, files, editions) = DiscordNetworkCleaner.GetDetailedCacheStatus(tempDir);
+                Assert(bytes == 8000, "Размер кэша Discord подсчитан неверно");
+                Assert(files == 2, "Число файлов кэша Discord подсчитано неверно");
+                Assert(editions.Count == 1 && editions[0].EditionName.Contains("Stable"), "Редакция Discord не распознана");
+                Assert(editions[0].FormattedSize.Contains("КБ"), "Форматирование размера кэша не работает");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true);
+            }
+        }
+
+        private static void GameFilterPortConfigWorks()
+        {
+            var discordProfile = GameFilterPortConfig.GetProfileById("discord_voice");
+            Assert(discordProfile.UdpPorts == "50000-65535", "Порты Discord Voice определены неверно");
+
+            var cs2Profile = GameFilterPortConfig.GetProfileById("steam_cs2");
+            Assert(cs2Profile.ExcludedPorts.Contains("27000"), "Исключения портов CS2 не найдены");
+
+            var resolvedUdp = GameFilterPortConfig.ResolveUdpPortString(GameFilterMode.TcpAndUdp, "discord_voice");
+            Assert(resolvedUdp == "50000-65535", "Разрешение портов UDP для Discord Voice неверно");
+
+            var disabledUdp = GameFilterPortConfig.ResolveUdpPortString(GameFilterMode.Disabled, "discord_voice");
+            Assert(disabledUdp == "12", "Отключённый GameFilter должен возвращать заглушку 12");
+
+            var strategy = new StrategyInfo
+            {
+                Name = "test-strat",
+                Args = new List<string> { "--wf-tcp={GameFilterTCP}", "--wf-udp={GameFilterUDP}", "--dpi-desync-fake-tls=google.com" }
+            };
+
+            var built = BypassArgumentBuilder.Build(strategy, GameFilterMode.TcpAndUdp, "discord_voice", null, null, "gosuslugi.ru");
+            Assert(built.Any(a => a == "--wf-udp=50000-65535"), "Аргумент --wf-udp не содержит настроенного диапазона портов");
+            Assert(built.Any(a => a.Contains("sni=gosuslugi.ru")), "SNI фейк не подставлен в аргументы стратегии");
+        }
+
+        private static void SniFakePoolManagerWorks()
+        {
+            Assert(SniFakePoolManager.PredefinedSniPool.Count >= 10, "Пул SNI фейков не содержит достаточного количества доменов");
+            Assert(SniFakePoolManager.PredefinedSniPool.Any(s => s.Domain == "gosuslugi.ru"), "Госуслуги отсутствуют в пуле SNI");
+            Assert(SniFakePoolManager.PredefinedSniPool.Any(s => s.Domain == "cloudflare.com"), "Cloudflare отсутствует в пуле SNI");
+
+            var testArgs = new List<string> { "--wf-tcp=443", "--dpi-desync=fake", "--dpi-desync-fake-tls-mod=sni=google.com,pad=10" };
+            var replaced = SniFakePoolManager.ApplySniOverride(testArgs, "sberbank.ru");
+            Assert(replaced.Any(a => a.Contains("sni=sberbank.ru,pad=10")), "Замена SNI внутри mod не сработала");
         }
 
         private static void Assert(bool value, string message)

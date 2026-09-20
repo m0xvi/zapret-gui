@@ -982,4 +982,157 @@ CI и что требует Windows runtime.
 - CI run и его статус;
 - что осталось проверить на Windows;
 - что merge в main не выполнялся без отдельного запроса пользователя.
+
+---
+
+### Итерация 2026-09-18 (Determinate Progress, Empirical Scoring & UI Polish)
+
+1. **Замена спиннеров и плейсхолдеров на честные детерминированные индикаторы:**
+   - `MonitoringPage.xaml` / `MonitoringViewModel.cs`: Добавлен детерминированный прогресс-бар `ProgressValue` / `ProgressMaximum` с расчётом `ProgressPercentText` и текстовым статусом по проверяемым ресурсам (`1 из N: Name…`).
+   - `StrategiesPage.xaml` / `StrategiesViewModel.cs`: Заменены спиннеры `BusySpinner` в блоках генерации и проверки кандидатов на структурированные индикаторы и детерминированный прогресс-бар `CandidateEvaluationProgressValue` / `CandidateEvaluationProgressMaximum` с процентами.
+   - `BypassController.cs` / `StrategiesViewModel.cs`: В `TestStrategyAsync` добавлен `IProgress<string>? progress`, транслирующий детальный прогресс подключения по 8 контрольным ресурсам из `ConnectionTester.RunAsync`.
+   - `UpdatesPage.xaml` / `UpdatesViewModel.cs`: В панели загрузки обновления движка спиннер заменён на статусную строку с процентом `ProgressPercentText` и `ThinProgress`.
+
+2. **Эмпирическая приоритизация рекомендаций:**
+   - В `StrategyCandidateEvaluation` подтверждена формула `Score = SuccessfulRepeats * 10000 + PassedChecks * 100 + (RepeatCount == 0 ? 0 : SuccessfulRepeats * 100 / RepeatCount) + LatencyScore`, где стабильность и эмпирические результаты проверок строго превалируют над эвристиками.
+   - Добавлен 33-й тест в `tools/CoreLogicHarness/Program.cs`: `Score кандидата приоритизирует эмпирические результаты проверок`.
+
+3. **Исправление ошибки двухсторонней привязки ProgressBar (v1.2.2):**
+   - В WPF `ProgressBar.Value` (наследуемый от `RangeBase.ValueProperty`) имеет `BindsTwoWayByDefault = true`.
+   - На всех страницах (`HomePage.xaml`, `DeepCheckPage.xaml`, `DiagnosticsPage.xaml`, `DpiPage.xaml`, `FirstLaunchPage.xaml`, `MonitoringPage.xaml`, `StrategiesPage.xaml`, `UpdatesPage.xaml`) ко всем привязкам `ProgressBar.Value`, `Maximum`, `IsIndeterminate` явно добавлен `Mode=OneWay`.
+   - Во всех ViewModels (`HomeViewModel`, `DeepCheckViewModel`, `DiagnosticsViewModel`, `FirstLaunchViewModel`, `MonitoringViewModel`, `StrategiesViewModel`, `UpdatesViewModel`) сеттеры прогресс-свойств сделаны открытыми (`public set => Set(ref ...)`), исключая исключения `InvalidOperationException` при запуске.
+   - В `tools/check_bindings.py` добавлен статический валидатор, требующий `Mode=OneWay` для всех привязок `ProgressBar`.
+   - Версия приложения обновлена до `1.2.2` в `ZapretGUI.csproj` и динамически выведена в `MainWindow.xaml`.
+
+4. **Верификация:**
+   - `python3 tools/check_bindings.py`: Проверено 16 XAML-файлов и 90 ключей ресурсов — 0 ошибок.
+   - `git diff --check`: 0 предупреждений по форматированию и пробелам.
+
+---
+
+### Итерация 2026-09-19 (v1.2.3 · Navigation Architecture, Domain/Game Lists UX & Unified Diagnostics)
+
+1. **Рефакторинг навигации и бокового меню:**
+   - Из постоянного бокового меню (`MainViewModel.NavItems`) удалён пункт «Первый запуск» (`first-run`). Мастер первого запуска отображается только при первом открытии приложения либо запускается по кнопке «Запустить мастер первого запуска заново» в настройках.
+   - Маршрутизация навигации: ссылки на старые диагностические ключи (`monitoring`, `dpi`, `deep-check`, `results`) прозрачно перенаправляются в объединённый раздел `DiagnosticsPage` с переключением на соответствующую подвкладку.
+
+2. **Чёткое разделение разделов приложения:**
+   - **Обновления (`UpdatesPage`):** Все инструменты обновления: движок zapret, списки ipset (любой/загруженный), файл hosts (GitHub/Discord) и самообновление GUI.
+   - **Списки (`UserListsPage`):** Управление пользовательскими и встроенными списками доменов (`list-general-user`, `list-discord-user`, `list-youtube-user`, `list-exclude-user`, `ipset-exclude-user`), режим фильтрации ipset (`Loaded`/`Any`/`None`) и режим игрового фильтра (`Disabled`/`TcpAndUdp`/`TcpOnly`/`UdpOnly`) с кнопкой перезапуска обхода в один клик.
+   - **Настройки (`SettingsPage`):** Исключительно параметры приложения (автозапуск, автообход, трей, подтверждения, темы, масштабирование, сброс кэша, сброс настроек и повторный запуск мастера настройки).
+   - **Проверка и диагностика (`DiagnosticsPage`):** Объединённый диагностический центр с 5 подвкладками:
+     1. `⚡ Экспресс (Мониторинг)`: фоновая проверка ключевых сервисов (YouTube, Discord) и выявление проблем.
+     2. `🌐 Проверка DPI (34 узла)`: все 34 узла DNS/TCP/HTTP/TLS Flowseal-проверки.
+     3. `🔬 Deep Check (Матрица)`: подбор параметров стратегии по многодоменной матрице.
+     4. `🛠 Аудит системы`: права Windows, службы, WinDivert, сеть, исправления в один клик.
+     5. `📊 Сводные результаты`: единый обзор статусов, история проверок и экспорт JSON/ZIP.
+
+3. **История тестирования стратегий (`StrategyEvaluationHistory`):**
+   - Добавлена очистка истории (`ClearHistoryCommand`, `StrategyEvaluationHistoryStore.Clear()`) с атомарной записью через временный файл.
+   - Потокобезопасное добавление записей в UI-коллекцию через `Application.Current.Dispatcher`.
+   - Вывод количества записей и карточек истории на странице стратегий.
+
+4. **Прогресс-бары с процентами:**
+   - Проверены и снабжены процентными индикаторами все прогресс-бары приложения (Express, DPI, Deep Check, Audit, Strategies, Updates, FirstLaunch, Home).
+   - Все привязки `ProgressBar` используют `Mode=OneWay` и открытые геттеры/сеттеры во ViewModels.
+
+5. **Версионирование и валидация:**
+   - Версия приложения обновлена до `1.2.3` в `ZapretGUI.csproj`.
+   - `python3 tools/check_bindings.py` проверил 16 XAML-файлов и 90 ресурсов — 0 ошибок.
+   - `git diff --check` — 0 ошибок форматирования.
+
+---
+
+### Итерация 2026-09-19 (v1.2.3 Update · High-Density Strategies View, Header Badges & Segmented Controls Fix)
+
+1. **Исправление сжатых кнопок переключателей (`SegmentedControl`):**
+   - В `SegmentItemStyle` (`Themes/Controls.xaml`) отключен перенос слов (`TextWrapping="NoWrap"`), добавлен `TextTrimming="CharacterEllipsis"` и скорректирован паддинг (`12,7`), исключая перенос букв на новые строки (как на скриншоте «Выкл ючен», «Тольк о TCP»).
+   - В `HomePage.xaml` убраны жёсткие ограничения ширины (`Width="220" MaxWidth="330"`) для игрового фильтра и ipset, заменены на `MinWidth="380"` / `MinWidth="340"` с `HorizontalAlignment="Right"`, благодаря чему на экранах любой ширины и в полноэкранном режиме кнопки отображаются просторно и пропорционально.
+   - В `SettingsPage.xaml` для переключателя темы задан `MinWidth="280"` с выравниванием по правому краю.
+
+2. **Компактное высокоплотное отображение стратегий (`StrategiesPage`):**
+   - Переработана разметка страницы стратегий на современный **двухколоночный Master-Detail layout**:
+     - **Левая колонка:** компактный список всех доступных стратегий со стилем `CompactRowItemStyle` (высота строк ~38-42px). Теперь на одном экране одновременно помещаются 12-16 стратегий без необходимости прокрутки через огромные карточки. Каждая строка содержит статус проверки, имя стратегии, бейдж категории, отметку «рекомендуется» и быстрые кнопки «Применить» и «Тест».
+     - **Правая колонка:** детальная панель выбранной стратегии — запуск/применение, проверка, установка в службу, копирование аргументов winws.exe, открытие .bat, нормализованные признаки, результаты тестов и сворачиваемая история проверок с кнопкой очистки.
+
+3. **Отображение активной стратегии и мониторинга узлов в верхней панели:**
+   - В верхний заголовок окна (`MainWindow.xaml`) рядом с индикатором статуса обхода добавлены интерактивные бейджи:
+     - **Активная стратегия:** отображает имя текущей запущенной стратегии (или выбранной стратегии по умолчанию со статусом) и по клику переходит в раздел «Стратегии».
+     - **Краткий мониторинг узлов:** статус доступности контрольных ресурсов (`5/5 OK` / `Предупреждение` / `Ошибка`) с подробным всплывающим тултипом по каждому ресурсу и переходом в «Мониторинг» по клику.
+   - Добавлены свойства `ActiveStrategySummaryText`, `ActiveStrategyKey`, `ActiveStrategyTooltipText`, `MonitoringSummaryText`, `MonitoringSummaryKey`, `MonitoringSummaryTooltip` и команды `NavigateStrategiesCommand`, `NavigateMonitoringCommand` в `MainViewModel`.
+
+---
+
+### Итерация 2026-09-20 (v1.2.4 Polish · Background Checks, Unbiased Recommendations, Engine Detection & Clean Icons)
+
+1. **Мастер первого запуска (`FirstLaunchPage` / `FirstLaunchViewModel`):**
+   - Селектор стратегии на 4-м шаге переведён на фирменный `Style="{StaticResource AppComboBox}"`.
+   - При смене шага мастера вызывается `RefreshStrategyList()`, который перечитывает актуальные `.bat` файлы и активирует кнопку «Проверить все стратегии».
+
+2. **Обновления (`UpdatesPage` / `UpdatesViewModel`):**
+   - Добавлены зелёные галочки (`&#xE73E;`) при актуальности файлов `ipset-all.txt` и `hosts`.
+   - Кнопки `[Проверить]` и `[Применить]` объединены в единое смарт-действие **«Обновить hosts»** (`UpdateHostsCommand`), проверяющее файл и применяющее актуальные записи.
+   - Устранены наезжающие и слипающиеся отступы между карточками «Списки и hosts», «Что нового» и «О программе».
+
+3. **История проверок и автоконструктор (`StrategyEvaluationHistory` / `StrategiesViewModel`):**
+   - Добавлено свойство `DisplayName` и информативный `ResultSummaryText` с выводом числа пройденных проверок, стабильности и времени отклика.
+   - Поля истории проверок отображаются с полными данными без пустых строк.
+
+4. **Фоновая работа и статусная строка проверок в шапке окна (`MainWindow.xaml` / `MainViewModel.cs`):**
+   - Проверки (DPI-тест 34 узлов, Deep Check матрица, проверка стратегий, аудит системы, мониторинг) выполняются в фоновых задачах и не прерываются при скрытии окна или переходе между вкладками.
+   - В верхнем статусном баре добавлен индикатор активной фоновой операции (`IsAnyCheckRunning`, `ActiveCheckStatusText`, спиннер и кнопка быстрого перехода).
+
+5. **Устранение предвзятых рекомендаций (`StrategyParser.cs` / `StrategyStore.cs`):**
+   - Полностью убрана жёсткая привязка `IsRecommended` к стратегии `general (FAKE TLS AUTO)`.
+   - Статус рекомендации присваивается исключительно по результатам реальных эмпирических проверок (`TestResult.IsSuitable == true`).
+
+6. **Определение версии движка и окно «О программе» (`EngineService.cs` / `AboutPage.xaml`):**
+   - В `EngineService.ReadVersion` добавлен опрос маркеров `.gui-engine-version`, `version.txt`, `service.bat`, `blockcheck.sh`, FileVersion `winws.exe` и проверка `IsEngineReady`, исключая ложный статус «не установлен».
+   - В `AboutPage.xaml` версия Zapret GUI привязана к динамическому `{Binding AppVersion}` (вместо статического 1.0.0).
+
+7. **Иконки действий в списках (`UserListsPage`, `MonitoringPage`, `DiagnosticsPage`):**
+   - Текстовые кнопки «Изменить» и «Удалить» заменены на компактные аккуратные иконки карандаша (`&#xE70F;`) и корзины (`&#xE74D;`) (`SmallIconButton`).
+   - Скруглены углы выделения элементов списков (`CompactRowItemStyle`).
+
+8. **Сохранение результатов проверок, исправление высоты истории и Deep Check (v1.2.4 Update):**
+   - В `StrategyStore` добавлен кэш `_cachedTestResults`: результаты тестов (`Passed`, `Warning`, `Failed`, бейджи и признаки) сохраняются при переключении/применении стратегий и не сбрасываются в «не проверено».
+   - Устранён баг сжатия истории проверок в 1 пиксель (заменён `Style="{StaticResource Divider}"` на `InnerCard` и `BorderThickness`), история отображается разборчивыми информативными карточками.
+   - Если hosts не проверялся, статус выводится красным (`Danger`), а зелёная галочка появляется только после фактической успешной проверки.
+   - В «Проверке соединения» на главной текстовые кнопки «Удалить» заменены на аккуратные правые иконки карандаша и корзины.
+   - Прогресс-бар `ThinProgress` переведён на точный расчёт `MultiBinding` (Value/Maximum/Minimum) без хаотичных колебаний.
+   - В Deep Check исправлено применение стратегии (`ApplyRecommendationAsync`), добавлена кнопка **«Добавить стратегию в список»** с пользовательским именем.
+   - На главной объединены кнопки службы: при установленной службе доступны аккуратные действия «Переустановить службу» и «Удалить службу».
+   - На странице «Обновления» убран блок «Что нового» и параметр pre-release версий.
+
+9. **Автозаполнение списков доменов и полный диагностический слепок (v1.4.0 Update):**
+   - Добавлен модуль `DefaultDomainLists.cs` с эталонными списками доменов YouTube (включая `googlevideo.com`, `i.ytimg.com`, `ytimg.com`, `yt3.ggpht.com`), Discord (включая `cdn.discordapp.com`, `gateway.discord.gg`, `discord.gg`, `discord.media`) и общих заблокированных сервисов.
+   - `DomainListUpdater.EnsureSeeded` и `StrategyParser.EnsureUserLists` гарантируют автоматическое первичное наполнение (auto-seeding) списков при их отсутствии или нулевом размере, предотвращая пропуск CDN/видео/голоса мимо фильтрации winws.
+   - Реализована функция фонового автообновления списков с официального репозитория `Flowseal/zapret-discord-youtube` при сохранении пользовательских исключений.
+   - В `SettingsViewModel` процедура `RunFullDiagnosticsAndExportAsync` проводит аудит состояния служб, активирует TCP Timestamps, актуализирует списки, прогоняет матрицу стратегий и сохраняет полный отчёт в буфер обмена.
+
+10. **Адаптивность к Flowseal 1.10.3+ и исправление потокобезопасности UI (v1.4.1 Update):**
+   - Устранено исключение `NotSupportedException: CollectionView does not support changes from a thread different from the Dispatcher thread` при фоновых проверках: все методы обновления `ObservableCollection` и вызовы `Refresh()` в `StrategyStore` и `StrategiesViewModel` теперь гарантированно выполняются на UI Dispatcher.
+   - Устранён ложный статус «Стратегии не найдены» в верхней панели состояния: `strategyCount` теперь не обнуляется при фоновом тесте.
+   - Добавлена полная поддержка Flowseal 1.10.3+: новый список `list-google.txt`, адаптивный парсер корневых каталогов `ResolveContentRoot`, чтение версий из `.service/version.txt` и `docs/version.txt`, поддержка стратегии `ALT13` и кастомных диапазонов GameFilter.
+
+11. **Устранение бесконечного «Подключения к RTC» и диагностика Discord Voice (v1.4.3 Update):**
+   - Добавлен специализированный зонд `DiscordVoiceRtcProber` (RFC 5389 STUN Binding / UDP WebRTC), выполняющий прямое тестирование голосовых шлюзов Discord (Роттердам, Франкфурт, Стокгольм, Мадрид) с замером задержки и потерь пакетов.
+   - Добавлен `FakeBinManager` для каталогизации и управления бинарными фейковыми нагрузками (`bin/*.bin`) для голосового трафика Discord и GameFilter UDP.
+   - В `DiagnosticsPage` добавлена вкладка **«🎙️ Discord Voice (RTC)»** с живым мониторингом голосовых серверов, кнопкой проверки и смарт-действием **«Применить фикс для Discord Voice»**.
+   - Улучшена функция `ClearDiscordCache`: теперь очищает кэш всех редакций Discord (Stable, Canary, PTB, Dev), удаляет GPU/Dawn/Blob кэши и сбрасывает DNS-кэш Windows.
+
+12. **Очистка кэша Discord и сетевого стека в 1 клик (v1.4.4 Update · Issues #10114, PR #16169, #15962):**
+   - Создан комплексный модуль `DiscordNetworkCleaner`, выполняющий остановку заблокированных процессов Discord, сканирование и удаление кэшей всех редакций (Stable, Canary, PTB, Dev: `Cache`, `GPUCache`, `DawnCache`, `Code Cache`, `Session Storage`, `IndexedDB`, `Network`, WebRTC логи) с расчётом освобождённого места в МБ.
+   - Автоматический сброс сетевого стека Windows: сброс кэша DNS (`ipconfig /flushdns`), очистка ARP-таблицы (`arp -d *`), NetBIOS (`nbtstat -R`), системного прокси WinHTTP и активация TCP Timestamps / Auto-Tuning.
+   - В `DiagnosticsPage` добавлена карточка «⚡ Очистка кэша Discord и сетевого стека в 1 клик» с опцией автоматического перезапуска Discord, глубокого сброса сетевого стека и подробным отчётом об освобождённом месте.
+   - На главной странице (`HomePage`) добавлен быстрый переход к фиксу Discord Voice RTC.
+
+13. **Исключение игровых портов GameFilter и пул TLS SNI фейков с автоподбором (v1.4.5 Update · PR #17165, #11565, #17063, #16507):**
+   - Разработан модуль `GameFilterPortConfig`: поддержка профилей портов (Discord Voice 50000-65535, Steam/CS2/Dota 2 с исключением 27000-27100, Riot Games/Valorant с исключением 5000-5500, Apex/EA, Roblox 49152-65535, кастомные диапазоны портов и исключений). В `UserListsPage` добавлена карточка тонкой настройки и кнопка «Применить настройки портов».
+   - Разработан модуль `SniFakePoolManager`: каталог высоконадежных TLS SNI доменов (Госуслуги, Сбербанк, ВТБ, Яндекс, ВКонтакте, Cloudflare, Fastly, Akamai, Wikipedia) и параллельный тестер TLS-рукопожатий против фильтров ТСПУ.
+   - На странице «Стратегии» (`StrategiesPage`) добавлена вкладка **«🌐 Пул TLS SNI»** с живым тестированием доменов, измерением задержки TLS, кнопкой **«⚡ Подобрать лучший SNI»** и опцией авторотации при падении качества связи.
+   - Обновлен `BypassArgumentBuilder`: безопасная подстановка диапазонов GameFilter и подмена `--dpi-desync-fake-tls-mod=sni=...` для всех стратегий.
+
+
+
 ```

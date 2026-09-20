@@ -22,6 +22,7 @@
             <core:ZoomedViewportConverter x:Key="ZoomedViewport" />
             <core:ProgressScaleConverter x:Key="ProgressScale" />
             <core:BypassStateBrushConverter x:Key="BypassBrush" />
+            <core:BoolToAccentBrushConverter x:Key="BoolToAccentBrush" />
             <BooleanToVisibilityConverter x:Key="BoolToVisibility" />
         </ResourceDictionary>
     </Application.Resources>

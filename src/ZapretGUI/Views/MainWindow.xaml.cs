@@ -16,6 +16,7 @@ namespace ZapretGui.Views
         private readonly MainViewModel _vm;
         private readonly Dictionary<string, UserControl> _pages = new();
         private TrayIcon? _tray;
+        private MiniOverlayWindow? _overlayWindow;
         private bool _reallyClosing;
 
         public MainWindow(MainViewModel viewModel)
@@ -37,15 +38,34 @@ namespace ZapretGui.Views
             _pages["dpi"] = new DpiPage(_vm.Diagnostics);
             _pages["logs"] = new LogsPage(_vm.Logs);
             _pages["user-lists"] = new UserListsPage(_vm.UserLists);
+            _pages["profiles"] = new ProfilesPage(_vm.Profiles);
             _pages["settings"] = new SettingsPage(_vm.SettingsPage);
             _pages["about"] = new AboutPage(_vm);
 
             _vm.NavChanged += ShowPage;
             ShowPage(_vm.SelectedNavKey);
 
+            Loaded += (_, __) =>
+            {
+                _vm.Hotkeys.Register(this);
+            };
+
+            _vm.RequestToggleOverlay += () => Dispatcher.Invoke(ToggleMiniOverlayWindow);
+
+            _vm.Home.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName is nameof(HomeViewModel.StatusText) or nameof(HomeViewModel.IsRunning) or nameof(HomeViewModel.IsGameRunning) or nameof(HomeViewModel.ActiveGameName))
+                {
+                    UpdateTrayStatus();
+                    _vm.MiniOverlay.Refresh();
+                }
+            };
+
             SetupTray();
             _vm.Monitoring.NotificationRequested += text => Dispatcher.Invoke(() =>
                 _tray?.ShowBalloon("Мониторинг ресурсов", text));
+            _vm.WatchdogNotificationRequested += text => Dispatcher.Invoke(() =>
+                _tray?.ShowBalloon("Zapret", text));
 
             if (_vm.Settings.FirstLaunchWizardCompleted &&
                 !_vm.Settings.SafeMode &&
@@ -55,12 +75,20 @@ namespace ZapretGui.Views
             {
                 Dispatcher.BeginInvoke(new Action(async () =>
                 {
+                    var delay = Math.Clamp(_vm.Settings.StartupDelaySeconds, 0, 60);
+                    if (delay > 0)
+                    {
+                        AppLog.Info($"[Startup] Отложенный запуск обхода: ожидание {delay} сек для инициализации сети...");
+                        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(delay));
+                    }
+
                     var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy);
                     if (strategy == null) return;
                     var result = await _vm.Bypass.StartAsync(strategy,
                         EngineService.GetGameFilterMode(_vm.Settings.EnginePath), _vm.Settings.ShowWinwsConsole);
                     _vm.Home.ShowInfo(result.Message);
                     _vm.Home.RefreshStatus();
+                    UpdateTrayStatus();
                     _tray?.ShowBalloon("Zapret GUI", result.Message);
                 }));
             }
@@ -116,16 +144,93 @@ namespace ZapretGui.Views
                         _tray?.ShowBalloon("Zapret GUI", result.Message);
                     }
                     _vm.Home.RefreshStatus();
+                    UpdateTrayStatus();
+                });
+                _tray.ToggleGameModeRequested += () => Dispatcher.Invoke(() =>
+                {
+                    _vm.ToggleGameMode();
+                    UpdateTrayStatus();
+                    _tray?.ShowBalloon("Игровой режим", _vm.Settings.GameModeActive
+                        ? "🎮 Игровой режим активирован (UDP трафик исключён)"
+                        : "🎮 Игровой режим отключён");
+                });
+                _tray.ToggleMiniOverlayRequested += () => Dispatcher.Invoke(ToggleMiniOverlayWindow);
+                _tray.SelectProfileRequested += profile => Dispatcher.Invoke(async () =>
+                {
+                    var (ok, msg) = await ProfileManager.ApplyProfileAsync(profile, _vm.Settings, _vm.Bypass, _vm.Strategies);
+                    _tray?.ShowBalloon("Профиль настроек", msg);
+                    _vm.Home.RefreshStatus();
+                    UpdateTrayStatus();
+                });
+                _tray.SelectStrategyRequested += name => Dispatcher.Invoke(async () =>
+                {
+                    var strat = _vm.Strategies.Find(name);
+                    if (strat != null)
+                    {
+                        _vm.Settings.SelectedStrategy = name;
+                        SettingsStore.Save(_vm.Settings);
+                        if (_vm.Bypass.GetStatus().IsRunning)
+                        {
+                            var res = await _vm.Bypass.StartAsync(strat,
+                                EngineService.GetGameFilterMode(_vm.Settings.EnginePath), _vm.Settings.ShowWinwsConsole);
+                            _tray?.ShowBalloon("Смена стратегии", res.Message);
+                        }
+                        _vm.Home.RefreshStatus();
+                        UpdateTrayStatus();
+                    }
+                });
+                _tray.SelectDnsRequested += profile => Dispatcher.Invoke(async () =>
+                {
+                    var res = await DnsManagementService.ApplyDnsProfileAsync(profile);
+                    _tray?.ShowBalloon("Безопасный DNS", res.Message);
+                });
+                _tray.OpenLogsRequested += () => Dispatcher.Invoke(() =>
+                {
+                    ShowFromTray();
+                    _vm.Navigate("logs");
                 });
                 _tray.ExitRequested += () => Dispatcher.Invoke(() =>
                 {
                     _reallyClosing = true;
                     Close();
                 });
+
+                UpdateTrayStatus();
             }
             catch (Exception ex)
             {
                 AppLog.Warn("Не удалось создать иконку в трее: " + ex.Message);
+            }
+        }
+
+        public void UpdateTrayStatus()
+        {
+            if (_tray == null) return;
+            var status = _vm.Bypass.GetStatus();
+            var ping = _vm.RealTimePing?.HasData == true ? _vm.RealTimePing.SummaryText : null;
+            _tray.UpdateState(status.IsRunning, _vm.Settings.SelectedStrategy, status.StateText, ping, _vm.ActiveGameName, _vm.Settings.GameModeActive);
+            _tray.PopulateStrategiesMenu(_vm.Strategies.Items, _vm.Settings.SelectedStrategy);
+            _tray.PopulateProfilesMenu(_vm.Profiles.Profiles);
+        }
+
+        public void ToggleMiniOverlayWindow()
+        {
+            if (_overlayWindow == null)
+            {
+                _overlayWindow = new MiniOverlayWindow(_vm.MiniOverlay);
+                _vm.MiniOverlay.RequestOpenMain += () => Dispatcher.Invoke(ShowFromTray);
+                _vm.MiniOverlay.RequestCloseOverlay += () => Dispatcher.Invoke(() => _overlayWindow?.Hide());
+            }
+
+            if (_overlayWindow.IsVisible)
+            {
+                _overlayWindow.Hide();
+            }
+            else
+            {
+                _overlayWindow.Show();
+                _overlayWindow.Activate();
+                _vm.MiniOverlay.Refresh();
             }
         }
 
@@ -326,6 +431,8 @@ namespace ZapretGui.Views
             }
 
             SettingsStore.Save(_vm.Settings);
+            _vm.Hotkeys.Unregister();
+            _overlayWindow?.CloseDirectly();
             _tray?.Dispose();
 
             if (Application.Current is App app) app.ShutdownApp();

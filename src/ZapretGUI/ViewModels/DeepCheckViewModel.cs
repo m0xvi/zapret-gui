@@ -42,16 +42,6 @@ namespace ZapretGui.ViewModels
         private string _candidateGenerationText = "";
         private CancellationTokenSource? _cts;
 
-        private sealed class StrategyDpiEvaluation
-        {
-            public StrategyInfo Strategy { get; init; } = new();
-            public DpiCheckSnapshot Snapshot { get; init; } = new();
-            public int Score { get; init; }
-            public int FreezeCount { get; init; }
-            public int FailedHttpsCount { get; init; }
-            public int SuccessfulHttpsCount { get; init; }
-        }
-
         public DeepCheckViewModel(MainViewModel main)
         {
             _main = main;
@@ -63,6 +53,8 @@ namespace ZapretGui.ViewModels
             ExportCommand = new RelayCommand(ExportReport, () => HasReport);
             SaveGeneratedCandidateCommand = new RelayCommand(SaveGeneratedCandidate,
                 _ => !IsRunning && GeneratedCandidate != null);
+            AddCustomStrategyToListCommand = new RelayCommand(AddCustomStrategyToList,
+                () => !IsRunning && (_recommendedStrategy != null || GeneratedCandidate != null));
         }
 
         public AppSettings Settings => _main.Settings;
@@ -89,25 +81,25 @@ namespace ZapretGui.ViewModels
         public double ProgressValue
         {
             get => _progressValue;
-            private set => Set(ref _progressValue, Math.Clamp(value, 0, 100));
+            set => Set(ref _progressValue, Math.Clamp(value, 0, 100));
         }
 
         public bool ProgressIndeterminate
         {
             get => _progressIndeterminate;
-            private set => Set(ref _progressIndeterminate, value);
+            set => Set(ref _progressIndeterminate, value);
         }
 
         public string ProgressPercentText
         {
             get => _progressPercentText;
-            private set => Set(ref _progressPercentText, value);
+            set => Set(ref _progressPercentText, value);
         }
 
         public string ProgressText
         {
             get => _progressText;
-            private set => Set(ref _progressText, value);
+            set => Set(ref _progressText, value);
         }
 
         public string Summary
@@ -138,7 +130,7 @@ namespace ZapretGui.ViewModels
         }
 
         public bool MessageVisible => !string.IsNullOrWhiteSpace(Message);
-        public bool HasReport => _report != null;
+        public bool HasReport => _report != null || Findings.Count > 0 || Metrics.Count > 0;
         public string SavedReportText => string.IsNullOrWhiteSpace(_savedReportPath)
             ? "Промежуточный JSON ещё не записан"
             : "Автосохранённый JSON: " + _savedReportPath;
@@ -215,6 +207,7 @@ namespace ZapretGui.ViewModels
         public ICommand CancelCommand { get; }
         public ICommand ApplyRecommendationCommand { get; }
         public ICommand SaveGeneratedCandidateCommand { get; }
+        public ICommand AddCustomStrategyToListCommand { get; }
         public ICommand ExportCommand { get; }
 
         private void SetProgress(double value, string text)
@@ -232,7 +225,7 @@ namespace ZapretGui.ViewModels
             {
                 var current = int.Parse(dpi.Groups[1].Value);
                 var total = Math.Max(1, int.Parse(dpi.Groups[2].Value));
-                SetProgress(65 + 25d * current / total,
+                SetProgress(65 + 5d * current / total,
                     dpi.Groups[3].Value.Length > 0 ? dpi.Groups[3].Value : "Проверяю DPI");
                 return;
             }
@@ -278,7 +271,7 @@ namespace ZapretGui.ViewModels
                 var repeat = int.Parse(candidate.Groups[3].Value);
                 var repeats = Math.Max(1, int.Parse(candidate.Groups[4].Value));
                 var done = (index - 1) * repeats + repeat;
-                SetProgress(90 + 9d * done / Math.Max(1, total * repeats), text);
+                SetProgress(88 + 11d * done / Math.Max(1, total * repeats), text);
                 return;
             }
 
@@ -1089,8 +1082,66 @@ namespace ZapretGui.ViewModels
             if (answer != System.Windows.MessageBoxResult.Yes) return;
 
             Message = "Применяю подтверждённую рекомендацию…";
-            await _main.StrategiesPage.ApplyStrategyAsync(strategy).ConfigureAwait(true);
-            Message = "Рекомендация применена. Проверьте состояние на странице «Обзор».";
+            var result = await _main.Bypass.StartAsync(strategy, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+            if (result.Ok)
+            {
+                Settings.SelectedStrategy = strategy.Name;
+                SettingsStore.Save(Settings);
+                _main.Home.ReloadFromEngine();
+                _main.RefreshReadiness();
+                _main.Home.RefreshStatus();
+                Message = $"Стратегия «{strategy.Name}» успешно запущена и активна.";
+            }
+            else
+            {
+                Message = $"Ошибка запуска стратегии «{strategy.Name}»: {result.Message}";
+            }
+        }
+
+        private void AddCustomStrategyToList()
+        {
+            var sourceStrategy = _recommendedStrategy;
+            var args = sourceStrategy?.Args ?? GeneratedCandidate?.Args ?? new List<string>();
+            var defaultName = sourceStrategy?.Name ?? GeneratedCandidate?.Name ?? "Моя стратегия (Deep Check)";
+
+            var dialog = new Views.InputDialog(
+                "Добавить стратегию в список",
+                "Введите пользовательское название для добавления стратегии в общий список:",
+                defaultName)
+            {
+                Owner = System.Windows.Application.Current?.MainWindow
+            };
+            if (dialog.ShowDialog() != true) return;
+            var customName = (dialog.Value ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(customName)) return;
+
+            var saved = new SavedStrategyCandidate
+            {
+                Name = customName,
+                SourceStrategy = sourceStrategy?.Name ?? "Deep Check",
+                MutationDescription = "Подобранная стратегия Deep Check",
+                Args = args.ToList()
+            };
+            StrategyCandidateStore.Save(saved);
+
+            if (Directory.Exists(Settings.EnginePath))
+            {
+                try
+                {
+                    var safeFileName = string.Join("_", customName.Split(Path.GetInvalidFileNameChars())) + ".bat";
+                    var batPath = Path.Combine(Settings.EnginePath, safeFileName);
+                    var batContent = $"@echo off\r\nstart \"zapret: %~n0\" /min \"%BIN%winws.exe\" {string.Join(" ", args)}\r\n";
+                    File.WriteAllText(batPath, batContent);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("Не удалось создать .bat файл: " + ex.Message);
+                }
+            }
+
+            _main.Strategies.Refresh();
+            _main.Home.ReloadFromEngine();
+            Message = $"Стратегия «{customName}» успешно добавлена в список всех стратегий.";
         }
 
         private void Cancel()
@@ -1104,6 +1155,10 @@ namespace ZapretGui.ViewModels
 
         private void ExportReport()
         {
+            if (_report == null && (Findings.Count > 0 || Metrics.Count > 0 || Recommendations.Count > 0 || !string.IsNullOrWhiteSpace(Summary)))
+            {
+                _report = BuildReport();
+            }
             if (_report == null) return;
             try
             {
@@ -1128,6 +1183,16 @@ namespace ZapretGui.ViewModels
             {
                 Message = "Не удалось сохранить отчёт: " + ex.Message;
             }
+        }
+
+        private sealed class StrategyDpiEvaluation
+        {
+            public StrategyInfo Strategy { get; init; } = new();
+            public DpiCheckSnapshot Snapshot { get; init; } = new();
+            public int Score { get; init; }
+            public int FreezeCount { get; init; }
+            public int FailedHttpsCount { get; init; }
+            public int SuccessfulHttpsCount { get; init; }
         }
     }
 }

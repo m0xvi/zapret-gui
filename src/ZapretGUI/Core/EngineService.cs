@@ -143,11 +143,13 @@ namespace ZapretGui.Core
 
         // ---------------------------------------------------------------- статус
 
-        /// <summary>Версия установленного движка: сначала маркер GUI, затем service.bat.</summary>
+        /// <summary>Версия установленного движка: маркер GUI, service.bat, version.txt, winws.exe или готовность файлов.</summary>
         public static string ReadVersion(string engineRoot)
         {
             try
             {
+                if (string.IsNullOrWhiteSpace(engineRoot) || !Directory.Exists(engineRoot)) return "";
+
                 var marker = AppPaths.VersionMarker(engineRoot);
                 if (File.Exists(marker))
                 {
@@ -155,12 +157,55 @@ namespace ZapretGui.Core
                     if (v.Length > 0) return v;
                 }
 
+                var versionTxt = Path.Combine(engineRoot, "version.txt");
+                if (File.Exists(versionTxt))
+                {
+                    var v = File.ReadAllText(versionTxt).Trim();
+                    if (v.Length > 0) return v;
+                }
+
+                var serviceVersionTxt = Path.Combine(engineRoot, ".service", "version.txt");
+                if (File.Exists(serviceVersionTxt))
+                {
+                    var v = File.ReadAllText(serviceVersionTxt).Trim();
+                    if (v.Length > 0) return v;
+                }
+
+                var docsVersionTxt = Path.Combine(engineRoot, "docs", "version.txt");
+                if (File.Exists(docsVersionTxt))
+                {
+                    var v = File.ReadAllText(docsVersionTxt).Trim();
+                    if (v.Length > 0) return v;
+                }
+
                 var serviceBat = Path.Combine(engineRoot, "service.bat");
                 if (File.Exists(serviceBat))
                 {
-                    var match = Regex.Match(File.ReadAllText(serviceBat), "LOCAL_VERSION=([^\"\\r\\n]+)");
-                    if (match.Success) return match.Groups[1].Value.Trim();
+                    var match = Regex.Match(File.ReadAllText(serviceBat), @"(?:LOCAL_VERSION|VERSION)\s*=\s*""?([^""\r\n]+)""?", RegexOptions.IgnoreCase);
+                    if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value)) return match.Groups[1].Value.Trim();
                 }
+
+                var blockcheck = Path.Combine(engineRoot, "blockcheck.sh");
+                if (File.Exists(blockcheck))
+                {
+                    var match = Regex.Match(File.ReadAllText(blockcheck), @"(?:LOCAL_VERSION|VERSION)\s*=\s*""?([^""\r\n]+)""?", RegexOptions.IgnoreCase);
+                    if (match.Success && !string.IsNullOrWhiteSpace(match.Groups[1].Value)) return match.Groups[1].Value.Trim();
+                }
+
+                var winws = Path.Combine(engineRoot, "bin", "winws.exe");
+                if (!File.Exists(winws)) winws = Path.Combine(engineRoot, "winws.exe");
+                if (File.Exists(winws))
+                {
+                    try
+                    {
+                        var info = System.Diagnostics.FileVersionInfo.GetVersionInfo(winws);
+                        var fv = info.ProductVersion ?? info.FileVersion;
+                        if (!string.IsNullOrWhiteSpace(fv) && fv != "0.0.0.0") return fv.Split('+')[0].Trim();
+                    }
+                    catch { }
+                }
+
+                if (IsEngineReady(engineRoot)) return "установлен";
             }
             catch { }
             return "";
@@ -724,14 +769,26 @@ namespace ZapretGui.Core
             throw new NotSupportedException("Неподдерживаемый формат архива: " + Path.GetFileName(archivePath));
         }
 
-        /// <summary>В архивах Flowseal всё лежит в подпапке вида zapret-discord-youtube-1.10.2.</summary>
+        /// <summary>В архивах Flowseal всё лежит в подпапке вида zapret-discord-youtube-1.10.x.</summary>
         private static string ResolveContentRoot(string extractedDirectory)
         {
             try
             {
-                var entries = Directory.GetFileSystemEntries(extractedDirectory);
-                if (entries.Length == 1 && Directory.Exists(entries[0]) && !entries[0].EndsWith("__MACOSX", StringComparison.OrdinalIgnoreCase))
-                    return entries[0];
+                if (File.Exists(Path.Combine(extractedDirectory, "bin", "winws.exe")))
+                    return extractedDirectory;
+
+                var dirs = Directory.GetDirectories(extractedDirectory)
+                    .Where(d => !Path.GetFileName(d).StartsWith("__MACOSX", StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+                if (dirs.Length == 1 && (File.Exists(Path.Combine(dirs[0], "bin", "winws.exe")) || Directory.Exists(Path.Combine(dirs[0], "bin"))))
+                    return dirs[0];
+
+                foreach (var dir in dirs)
+                {
+                    if (File.Exists(Path.Combine(dir, "bin", "winws.exe")))
+                        return dir;
+                }
             }
             catch { }
             return extractedDirectory;
@@ -1118,20 +1175,8 @@ namespace ZapretGui.Core
         {
             try
             {
-                var paths = new[]
-                {
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "discord", "Cache"),
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "discord", "Code Cache"),
-                    Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "discord", "GPUCache")
-                };
-
-                long total = 0;
-                foreach (var path in paths)
-                {
-                    if (!Directory.Exists(path)) continue;
-                    total += new DirectoryInfo(path).EnumerateFiles("*", SearchOption.AllDirectories).Sum(f => f.Length);
-                }
-                return total;
+                var (totalBytes, _, _) = DiscordNetworkCleaner.GetDetailedCacheStatus();
+                return totalBytes;
             }
             catch { return 0; }
         }
@@ -1140,27 +1185,17 @@ namespace ZapretGui.Core
         {
             try
             {
-                var discord = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "discord");
-                if (!Directory.Exists(discord)) return (false, "Папка Discord не найдена");
-
-                if (Shell.IsProcessRunning("Discord"))
-                    return (false, "Сначала закройте Discord — кэш занят приложением");
-
-                int removed = 0;
-                foreach (var name in new[] { "Cache", "Code Cache", "GPUCache" })
+                var summary = DiscordNetworkCleaner.CleanAsync(new DiscordCleanOptions
                 {
-                    var path = Path.Combine(discord, name);
-                    if (!Directory.Exists(path)) continue;
-                    foreach (var file in Directory.GetFiles(path, "*", SearchOption.AllDirectories))
-                    {
-                        try { File.Delete(file); removed++; } catch { }
-                    }
-                }
-                return (true, $"Очищено файлов кэша: {removed}");
+                    CloseDiscordProcesses = true,
+                    ResetNetworkStack = true
+                }).GetAwaiter().GetResult();
+
+                return (summary.Ok, summary.Message);
             }
             catch (Exception ex)
             {
-                return (false, "Не удалось очистить кэш: " + ex.Message);
+                return (false, "Не удалось очистить кэш Discord: " + ex.Message);
             }
         }
     }

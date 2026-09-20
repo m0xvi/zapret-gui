@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -44,6 +45,264 @@ namespace ZapretGui.ViewModels
             SaveProviderContextCommand = new RelayCommand(SaveProviderContext);
             ClearProviderContextCommand = new RelayCommand(ClearProviderContext);
             LookupProviderCommand = new AsyncRelayCommand(LookupProviderAsync, () => !IsProviderLookupBusy);
+            RerunFirstLaunchWizardCommand = new RelayCommand(RerunFirstLaunchWizard);
+            ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
+            RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
+            OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
+            RunFullDiagnosticsAndExportCommand = new AsyncRelayCommand(RunFullDiagnosticsAndExportAsync, () => !IsRunningFullCheckCycle);
+            CancelFullDiagnosticsCommand = new RelayCommand(CancelFullDiagnostics, () => IsRunningFullCheckCycle);
+            CopyTelemetryMarkdownCommand = new RelayCommand(CopyTelemetryMarkdown);
+            ExportTelemetryJsonCommand = new RelayCommand(ExportTelemetryJson);
+            ExportTelemetryZipCommand = new AsyncRelayCommand(ExportTelemetryZipAsync);
+            RefreshGamingOptimization();
+        }
+
+        public ICommand RunFullDiagnosticsAndExportCommand { get; }
+        public ICommand CancelFullDiagnosticsCommand { get; }
+        public ICommand CopyTelemetryMarkdownCommand { get; }
+        public ICommand ExportTelemetryJsonCommand { get; }
+        public ICommand ExportTelemetryZipCommand { get; }
+
+        private bool _isRunningFullCheckCycle;
+        public bool IsRunningFullCheckCycle
+        {
+            get => _isRunningFullCheckCycle;
+            private set
+            {
+                if (Set(ref _isRunningFullCheckCycle, value))
+                {
+                    (RunFullDiagnosticsAndExportCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelFullDiagnosticsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        private string _fullCheckStatusText = "";
+        public string FullCheckStatusText
+        {
+            get => _fullCheckStatusText;
+            private set => Set(ref _fullCheckStatusText, value);
+        }
+
+        private double _fullCheckProgressValue;
+        public double FullCheckProgressValue
+        {
+            get => _fullCheckProgressValue;
+            private set => Set(ref _fullCheckProgressValue, value);
+        }
+
+        private double _fullCheckProgressMax = 100;
+        public double FullCheckProgressMax
+        {
+            get => _fullCheckProgressMax;
+            private set => Set(ref _fullCheckProgressMax, value);
+        }
+
+        private string _fullCheckProgressPercentText = "0%";
+        public string FullCheckProgressPercentText
+        {
+            get => _fullCheckProgressPercentText;
+            private set => Set(ref _fullCheckProgressPercentText, value);
+        }
+
+        private bool _fullCheckCompleted;
+        public bool FullCheckCompleted
+        {
+            get => _fullCheckCompleted;
+            private set => Set(ref _fullCheckCompleted, value);
+        }
+
+        public string TelemetrySummaryText
+        {
+            get
+            {
+                var tested = _main.Strategies.Items.Count(s => s.TestState != StrategyTestState.NotTested);
+                var passed = _main.Strategies.Items.Count(s => s.IsRecommended || (s.TestResult != null && s.TestResult.PassedCount >= 6));
+                var prov = _main.Settings.ProviderContext?.Name;
+                var provText = string.IsNullOrWhiteSpace(prov) ? "Провайдер: авто/не указан" : $"Провайдер: {prov}";
+                return $"Протестировано стратегий: {tested}/{_main.Strategies.Items.Count} (Рабочих: {passed}) · {provText}";
+            }
+        }
+
+        private async Task RunFullDiagnosticsAndExportAsync()
+        {
+            if (IsRunningFullCheckCycle) return;
+            IsRunningFullCheckCycle = true;
+            FullCheckCompleted = false;
+            FullCheckStatusText = "Подготовка: проверка списков доменов и системных служб…";
+            FullCheckProgressValue = 0;
+            FullCheckProgressMax = 100;
+            FullCheckProgressPercentText = "0%";
+
+            try
+            {
+                // 1. Проверка и автоматическое наполнение списков доменов
+                DomainListUpdater.EnsureSeeded(Settings.EnginePath);
+                WinServices.EnsureTcpTimestamps();
+
+                // Попытка фонового обновления списков с GitHub
+                try
+                {
+                    await Task.Run(() => DomainListUpdater.UpdateAllAsync(Settings.EnginePath)).ConfigureAwait(true);
+                }
+                catch { }
+
+                if (System.Windows.Application.Current?.Dispatcher != null)
+                {
+                    await System.Windows.Application.Current.Dispatcher.InvokeAsync(() =>
+                    {
+                        _main.Strategies.Refresh();
+                        _main.StrategiesPage.Refresh();
+                        _main.RefreshReadiness();
+                    });
+                }
+                else
+                {
+                    _main.Strategies.Refresh();
+                    _main.StrategiesPage.Refresh();
+                    _main.RefreshReadiness();
+                }
+
+                var total = _main.Strategies.Items.Count;
+                if (total == 0)
+                {
+                    IsRunningFullCheckCycle = false;
+                    _main.Home.ShowError("Стратегии не найдены. Проверьте папку движка.");
+                    return;
+                }
+
+                FullCheckProgressMax = total;
+
+                var progress = new Progress<string>(text =>
+                {
+                    FullCheckStatusText = text;
+                    if (text.StartsWith("[", StringComparison.Ordinal) && text.Contains('/'))
+                    {
+                        var endIdx = text.IndexOf(']');
+                        if (endIdx > 1)
+                        {
+                            var span = text.Substring(1, endIdx - 1);
+                            var parts = span.Split('/');
+                            if (parts.Length == 2 && int.TryParse(parts[0], out var current) && int.TryParse(parts[1], out var max))
+                            {
+                                FullCheckProgressValue = current;
+                                FullCheckProgressMax = max;
+                                FullCheckProgressPercentText = $"{(int)((double)current / Math.Max(1, max) * 100)}%";
+                            }
+                        }
+                    }
+                });
+
+                // 2. Полное тестирование всех стратегий каталога
+                await _main.StrategiesPage.TestAllAsync(progress).ConfigureAwait(true);
+
+                FullCheckProgressValue = FullCheckProgressMax;
+                FullCheckProgressPercentText = "100%";
+                FullCheckCompleted = true;
+                FullCheckStatusText = "Тестирование завершено! Формирую полный диагностический слепок…";
+
+                // 3. Автоматический сбор и копирование отчёта в буфер обмена
+                var dump = ProviderTelemetryExporter.Collect(_main);
+                var md = ProviderTelemetryExporter.GenerateMarkdown(dump);
+                System.Windows.Clipboard.SetText(md);
+
+                Raise(nameof(TelemetrySummaryText));
+                _main.Home.ShowSuccess("✅ Все проверки завершены! Полный отчёт скопирован в буфер обмена (просто нажмите Ctrl+V в чат).");
+                Status = "Слепок сформирован и скопирован в буфер обмена (" + DateTime.Now.ToString("HH:mm:ss") + ")";
+                FullCheckStatusText = "Готово! Полный отчёт со всеми стратегиями скопирован в буфер обмена.";
+            }
+            catch (OperationCanceledException)
+            {
+                FullCheckStatusText = "Тестирование отменено пользователем.";
+            }
+            catch (Exception ex)
+            {
+                FullCheckStatusText = "Ошибка при выполнении проверок: " + ex.Message;
+                _main.Home.ShowError("Сбой цикла проверок: " + ex.Message);
+            }
+            finally
+            {
+                IsRunningFullCheckCycle = false;
+                Raise(nameof(TelemetrySummaryText));
+            }
+        }
+
+        private void CancelFullDiagnostics()
+        {
+            _main.StrategiesPage.CancelTestCommand.Execute(null);
+            FullCheckStatusText = "Отменяю тестирование…";
+        }
+
+        private void CopyTelemetryMarkdown()
+        {
+            try
+            {
+                var dump = ProviderTelemetryExporter.Collect(_main);
+                var md = ProviderTelemetryExporter.GenerateMarkdown(dump);
+                System.Windows.Clipboard.SetText(md);
+                _main.Home.ShowSuccess("Полный отчёт и телеметрия скопированы в буфер обмена! Вы можете вставить его в чат.");
+                Status = "Отчёт скопирован в буфер обмена (" + DateTime.Now.ToString("HH:mm:ss") + ")";
+            }
+            catch (Exception ex)
+            {
+                _main.Home.ShowError("Не удалось скопировать отчёт: " + ex.Message);
+            }
+        }
+
+        private void ExportTelemetryJson()
+        {
+            try
+            {
+                var dump = ProviderTelemetryExporter.Collect(_main);
+                var json = ProviderTelemetryExporter.GenerateJson(dump);
+                var dlg = new SaveFileDialog
+                {
+                    FileName = $"ZapretGUI_Telemetry_{DateTime.Now:yyyyMMdd_HHmm}.json",
+                    Filter = "JSON файлы (*.json)|*.json|Все файлы (*.*)|*.*",
+                    Title = "Сохранить полный снимок телеметрии"
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    File.WriteAllText(dlg.FileName, json, Encoding.UTF8);
+                    _main.Home.ShowSuccess("Телеметрия сохранена в файл: " + Path.GetFileName(dlg.FileName));
+                    Status = "Телеметрия сохранена в " + Path.GetFileName(dlg.FileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                _main.Home.ShowError("Ошибка экспорта JSON: " + ex.Message);
+            }
+        }
+
+        private async Task ExportTelemetryZipAsync()
+        {
+            try
+            {
+                var dlg = new SaveFileDialog
+                {
+                    FileName = $"ZapretGUI_Diagnostic_Package_{DateTime.Now:yyyyMMdd_HHmm}.zip",
+                    Filter = "ZIP архивы (*.zip)|*.zip|Все файлы (*.*)|*.*",
+                    Title = "Сохранить полный диагностический пакет"
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    var dump = ProviderTelemetryExporter.Collect(_main);
+                    var (ok, msg, _) = await ProviderTelemetryExporter.CreateDiagnosticZipArchiveAsync(dump, dlg.FileName);
+                    if (ok)
+                    {
+                        _main.Home.ShowSuccess("Диагностический пакет сохранён: " + Path.GetFileName(dlg.FileName));
+                        Status = "Пакет сохранён: " + Path.GetFileName(dlg.FileName);
+                    }
+                    else
+                    {
+                        _main.Home.ShowError(msg);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _main.Home.ShowError("Ошибка создания архива: " + ex.Message);
+            }
         }
 
         public AppSettings Settings => _main.Settings;
@@ -262,6 +521,59 @@ namespace ZapretGui.ViewModels
             set => _main.Monitoring.MonitoringIntervalMinutes = value;
         }
 
+        public bool WatchdogEnabled
+        {
+            get => Settings.WatchdogEnabled;
+            set
+            {
+                Settings.WatchdogEnabled = value;
+                OnSettingChanged();
+                if (value && !Settings.SafeMode) _main.Watchdog.Start();
+                else _main.Watchdog.Stop();
+            }
+        }
+
+        public int WatchdogIntervalSeconds
+        {
+            get => Settings.WatchdogIntervalSeconds;
+            set { Settings.WatchdogIntervalSeconds = Math.Clamp(value, 5, 120); OnSettingChanged(); }
+        }
+
+        public bool WatchdogAutoRestart
+        {
+            get => Settings.WatchdogAutoRestart;
+            set { Settings.WatchdogAutoRestart = value; OnSettingChanged(); }
+        }
+
+        public bool WatchdogNotifyUser
+        {
+            get => Settings.WatchdogNotifyUser;
+            set { Settings.WatchdogNotifyUser = value; OnSettingChanged(); }
+        }
+
+        public bool RealTimePingEnabled
+        {
+            get => Settings.RealTimePingEnabled;
+            set
+            {
+                Settings.RealTimePingEnabled = value;
+                OnSettingChanged();
+                _main.Notify(nameof(MainViewModel.RealTimePingVisible));
+            }
+        }
+
+        public int RealTimePingIntervalSeconds
+        {
+            get => Settings.RealTimePingIntervalSeconds;
+            set { Settings.RealTimePingIntervalSeconds = Math.Clamp(value, 3, 120); OnSettingChanged(); }
+        }
+
+        public int StartupDelaySeconds
+        {
+            get => Settings.StartupDelaySeconds;
+            set { Settings.StartupDelaySeconds = Math.Clamp(value, 0, 60); OnSettingChanged(); }
+        }
+
         /// <summary>Автозапуск приложения: планировщик задач (нужны права администратора).</summary>
         public bool RunAtStartup
         {
@@ -280,6 +592,130 @@ namespace ZapretGui.ViewModels
             private set => Set(ref _status, value);
         }
 
+        public bool GameDetectionEnabled
+        {
+            get => Settings.GameDetectionEnabled;
+            set
+            {
+                Settings.GameDetectionEnabled = value;
+                OnSettingChanged();
+                if (value) _main.GameDetector.Start();
+                else _main.GameDetector.Stop();
+            }
+        }
+
+        public bool AutoGameModeOnLaunch
+        {
+            get => Settings.AutoGameModeOnLaunch;
+            set { Settings.AutoGameModeOnLaunch = value; OnSettingChanged(); }
+        }
+
+        public bool GlobalHotkeysEnabled
+        {
+            get => Settings.GlobalHotkeysEnabled;
+            set { Settings.GlobalHotkeysEnabled = value; OnSettingChanged(); }
+        }
+
+        public string HotkeyToggleBypass
+        {
+            get => Settings.HotkeyToggleBypass;
+            set { Settings.HotkeyToggleBypass = value ?? "Ctrl+Shift+Z"; OnSettingChanged(); }
+        }
+
+        public string HotkeyToggleGameMode
+        {
+            get => Settings.HotkeyToggleGameMode;
+            set { Settings.HotkeyToggleGameMode = value ?? "Ctrl+Shift+G"; OnSettingChanged(); }
+        }
+
+        public string HotkeyToggleMiniOverlay
+        {
+            get => Settings.HotkeyToggleMiniOverlay;
+            set { Settings.HotkeyToggleMiniOverlay = value ?? "Ctrl+Shift+O"; OnSettingChanged(); }
+        }
+
+        public bool MiniOverlayTopmost
+        {
+            get => Settings.MiniOverlayTopmost;
+            set
+            {
+                Settings.MiniOverlayTopmost = value;
+                OnSettingChanged();
+                _main.MiniOverlay.Refresh();
+            }
+        }
+
+        public int MiniOverlayOpacity
+        {
+            get => Math.Clamp(Settings.MiniOverlayOpacity, 50, 100);
+            set
+            {
+                Settings.MiniOverlayOpacity = Math.Clamp(value, 50, 100);
+                OnSettingChanged();
+                _main.MiniOverlay.Refresh();
+                Raise(nameof(MiniOverlayOpacity));
+            }
+        }
+
+        private string _gamingOptimizationStatus = "";
+        private bool _gamingIsOptimized;
+        public string GamingOptimizationStatusText
+        {
+            get => _gamingOptimizationStatus;
+            private set => Set(ref _gamingOptimizationStatus, value);
+        }
+
+        public bool GamingIsOptimized
+        {
+            get => _gamingIsOptimized;
+            private set => Set(ref _gamingIsOptimized, value);
+        }
+
+        public ICommand ApplyGamingTweaksCommand { get; }
+        public ICommand RevertGamingTweaksCommand { get; }
+        public ICommand OpenOverlayCommand { get; }
+
+        public void RefreshGamingOptimization()
+        {
+            try
+            {
+                var opt = GamingNetworkOptimizer.CheckStatus();
+                GamingOptimizationStatusText = opt.Summary;
+                GamingIsOptimized = opt.IsOptimized;
+            }
+            catch
+            {
+                GamingOptimizationStatusText = "Параметры сети по умолчанию";
+                GamingIsOptimized = false;
+            }
+        }
+
+        private async Task ApplyGamingTweaksAsync()
+        {
+            if (!Shell.IsAdmin())
+            {
+                Status = "Для изменения сетевых параметров Windows требуются права администратора";
+                return;
+            }
+
+            var (ok, msg) = await GamingNetworkOptimizer.ApplyTweaksAsync();
+            Status = msg;
+            RefreshGamingOptimization();
+        }
+
+        private async Task RevertGamingTweaksAsync()
+        {
+            if (!Shell.IsAdmin())
+            {
+                Status = "Для изменения сетевых параметров Windows требуются права администратора";
+                return;
+            }
+
+            var (ok, msg) = await GamingNetworkOptimizer.RevertTweaksAsync();
+            Status = msg;
+            RefreshGamingOptimization();
+        }
+
         public string LastBackupText { get; }
 
         public string SettingsFilePath => AppPaths.SettingsFile;
@@ -296,6 +732,7 @@ namespace ZapretGui.ViewModels
         public ICommand ValidateEngineCommand { get; }
         public ICommand OpenRepoCommand { get; }
         public ICommand OpenHostsCommand { get; }
+        public ICommand RerunFirstLaunchWizardCommand { get; }
 
         public void Reload()
         {
@@ -331,6 +768,13 @@ namespace ZapretGui.ViewModels
             Raise(nameof(AutoRecoverStrategy));
             Raise(nameof(MonitorNotificationsEnabled));
             Raise(nameof(MonitoringIntervalMinutes));
+            Raise(nameof(WatchdogEnabled));
+            Raise(nameof(WatchdogIntervalSeconds));
+            Raise(nameof(WatchdogAutoRestart));
+            Raise(nameof(WatchdogNotifyUser));
+            Raise(nameof(RealTimePingEnabled));
+            Raise(nameof(RealTimePingIntervalSeconds));
+            Raise(nameof(StartupDelaySeconds));
             Raise(nameof(RunAtStartup));
             Raise(nameof(ProviderName));
             Raise(nameof(ProviderAsn));
@@ -580,6 +1024,19 @@ namespace ZapretGui.ViewModels
             Reload();
             ThemeService.Apply(_main.Settings.Theme);
             Status = "Настройки сброшены";
+        }
+
+        private void RerunFirstLaunchWizard()
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Запустить мастер первого запуска? Вы сможете снова пройти все шаги настройки по порядку.",
+                "Мастер настройки", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Question);
+            if (answer != System.Windows.MessageBoxResult.Yes) return;
+
+            _main.Settings.FirstLaunchWizardCompleted = false;
+            SettingsStore.Save(_main.Settings);
+            _main.FirstLaunch.Reset();
+            _main.Navigate("first-run");
         }
 
         private void ApplyAutostart(bool enabled)

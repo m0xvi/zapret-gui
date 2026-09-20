@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
+using System.Windows;
 using ZapretGui.Core;
 
 namespace ZapretGui.ViewModels
@@ -11,6 +12,8 @@ namespace ZapretGui.ViewModels
     public sealed class StrategyStore : ObservableObject
     {
         private readonly AppSettings _settings;
+        private readonly Dictionary<string, StrategyTestResult> _cachedTestResults = new(StringComparer.OrdinalIgnoreCase);
+        private readonly object _lock = new();
 
         public StrategyStore(AppSettings settings) => _settings = settings;
 
@@ -19,18 +22,74 @@ namespace ZapretGui.ViewModels
         public StrategyInfo? Find(string? name)
         {
             if (string.IsNullOrWhiteSpace(name)) return null;
-            return Items.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            lock (_lock)
+            {
+                return Items.FirstOrDefault(s => s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            }
         }
 
-        public StrategyInfo? Recommended => Items.FirstOrDefault(s => s.IsRecommended);
+        public StrategyInfo? Recommended
+        {
+            get
+            {
+                lock (_lock)
+                {
+                    return Items.FirstOrDefault(s => s.IsRecommended);
+                }
+            }
+        }
+
+        public void RecordTestResult(string name, StrategyTestResult result)
+        {
+            if (string.IsNullOrWhiteSpace(name) || result == null) return;
+            lock (_lock)
+            {
+                _cachedTestResults[name] = result;
+                var strategy = Find(name);
+                strategy?.SetTestResult(result);
+            }
+        }
 
         public void Refresh()
         {
-            var loaded = StrategyParser.LoadAll(_settings.EnginePath);
-            var saved = StrategyCandidateStore.Load();
-            Items.Clear();
-            foreach (var strategy in loaded) Items.Add(strategy);
-            foreach (var candidate in saved) Items.Add(candidate.ToStrategyInfo());
+            if (Application.Current?.Dispatcher != null && !Application.Current.Dispatcher.CheckAccess())
+            {
+                Application.Current.Dispatcher.Invoke(Refresh);
+                return;
+            }
+
+            lock (_lock)
+            {
+                // Сохраняем все текущие результаты проверок перед перезагрузкой
+                foreach (var item in Items)
+                {
+                    if (item.TestResult != null)
+                    {
+                        _cachedTestResults[item.Name] = item.TestResult;
+                    }
+                }
+
+                var loaded = StrategyParser.LoadAll(_settings.EnginePath);
+                var saved = StrategyCandidateStore.Load();
+                Items.Clear();
+                foreach (var strategy in loaded)
+                {
+                    if (_cachedTestResults.TryGetValue(strategy.Name, out var tr))
+                    {
+                        strategy.SetTestResult(tr);
+                    }
+                    Items.Add(strategy);
+                }
+                foreach (var candidate in saved)
+                {
+                    var sInfo = candidate.ToStrategyInfo();
+                    if (_cachedTestResults.TryGetValue(sInfo.Name, out var tr))
+                    {
+                        sInfo.SetTestResult(tr);
+                    }
+                    Items.Add(sInfo);
+                }
+            }
             Raise(nameof(Items));
             AppLog.Debug($"Найдено стратегий: {Items.Count}");
         }

@@ -42,12 +42,14 @@ namespace ZapretGui.ViewModels
 
             StartCommand = new AsyncRelayCommand(StartAsync, () => !IsRunning && HasStrategy && !IsBusy);
             StopCommand = new AsyncRelayCommand(StopAsync, () => IsRunning && !IsBusy);
-            ToggleBypassCommand = new AsyncRelayCommand(ToggleAsync, () => HasStrategy && !IsBusy);
+            ToggleBypassCommand = new AsyncRelayCommand(ToggleBypassAsync, () => HasStrategy && !IsBusy);
             ResolveLegacyCommand = new AsyncRelayCommand(ResolveLegacyFromBannerAsync, () => !IsBusy);
             InstallServiceCommand = new AsyncRelayCommand(InstallServiceAsync, () => (HasStrategy || ServiceInstalled) && !IsBusy);
+            ReinstallServiceCommand = new AsyncRelayCommand(ReinstallServiceAsync, () => HasStrategy && !IsBusy);
             RemoveServiceCommand = new AsyncRelayCommand(RemoveServiceAsync, () => ServiceInstalled && !IsBusy);
             TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync, () => !ConnectionBusy);
             AddConnectionTargetCommand = new RelayCommand(AddConnectionTarget);
+            EditConnectionTargetCommand = new RelayCommand(EditConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             RemoveConnectionTargetCommand = new RelayCommand(RemoveConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             CheckUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
             OpenDiagnosticsCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
@@ -56,11 +58,109 @@ namespace ZapretGui.ViewModels
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RestartAsAdminCommand = new RelayCommand(() => _main.RestartAsAdminCommand.Execute(null));
             ClearMessageCommand = new RelayCommand(() => Message = "");
+            ToggleGameModeCommand = new RelayCommand(() => _main.ToggleGameMode());
+            OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
+            ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
+            RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
+            OpenDiscordVoiceFixCommand = new RelayCommand(() =>
+            {
+                _main.Navigate("diagnostics");
+                _main.Diagnostics.SelectedSubTab = 5;
+            });
+            CleanDiscordAndNetworkCommand = new AsyncRelayCommand(async () =>
+            {
+                var summary = await DiscordNetworkCleaner.CleanAsync(new DiscordCleanOptions
+                {
+                    CloseDiscordProcesses = true,
+                    ResetNetworkStack = true
+                }).ConfigureAwait(true);
+
+                if (summary.Ok) ShowSuccess($"✅ {summary.Message}");
+                else ShowError(summary.Message);
+            });
+            RefreshGamingStatus();
         }
 
         public AppSettings Settings => _main.Settings;
         public BypassController Bypass => _main.Bypass;
         public StrategyStore Store => _main.Strategies;
+
+        public bool IsGameRunning => _main.IsGameRunning;
+        public string ActiveGameName => _main.ActiveGameName ?? "";
+        public string GameStatusBadgeText => _main.GameStatusBadgeText;
+        public bool GameModeActive => Settings.GameModeActive;
+        public string GameModeStatusText => Settings.GameModeActive
+            ? "Игровой режим ВКЛ (UDP порты исключены для минимального пинга)"
+            : "Игровой режим ВЫКЛ (обычная фильтрация)";
+
+        private string _gamingNetworkStatus = "";
+        private bool _gamingNetworkOptimized;
+        public string GamingNetworkStatusText
+        {
+            get => _gamingNetworkStatus;
+            private set => Set(ref _gamingNetworkStatus, value);
+        }
+        public bool GamingNetworkIsOptimized
+        {
+            get => _gamingNetworkOptimized;
+            private set => Set(ref _gamingNetworkOptimized, value);
+        }
+
+        public ICommand ToggleGameModeCommand { get; }
+        public ICommand OpenOverlayCommand { get; }
+        public ICommand ApplyGamingTweaksCommand { get; }
+        public ICommand RevertGamingTweaksCommand { get; }
+        public ICommand OpenDiscordVoiceFixCommand { get; }
+        public ICommand CleanDiscordAndNetworkCommand { get; }
+
+        public void RefreshGamingStatus()
+        {
+            try
+            {
+                var opt = GamingNetworkOptimizer.CheckStatus();
+                GamingNetworkStatusText = opt.Summary;
+                GamingNetworkIsOptimized = opt.IsOptimized;
+            }
+            catch
+            {
+                GamingNetworkStatusText = "Параметры сети по умолчанию";
+                GamingNetworkIsOptimized = false;
+            }
+
+            Raise(nameof(IsGameRunning));
+            Raise(nameof(ActiveGameName));
+            Raise(nameof(GameStatusBadgeText));
+            Raise(nameof(GameModeActive));
+            Raise(nameof(GameModeStatusText));
+        }
+
+        private async Task ApplyGamingTweaksAsync()
+        {
+            if (!Shell.IsAdmin())
+            {
+                ShowError("Для изменения сетевых параметров Windows требуются права администратора.");
+                return;
+            }
+
+            var (ok, msg) = await GamingNetworkOptimizer.ApplyTweaksAsync();
+            if (ok) ShowSuccess(msg);
+            else ShowError(msg);
+            RefreshGamingStatus();
+        }
+
+        private async Task RevertGamingTweaksAsync()
+        {
+            if (!Shell.IsAdmin())
+            {
+                ShowError("Для изменения сетевых параметров Windows требуются права администратора.");
+                return;
+            }
+
+            var (ok, msg) = await GamingNetworkOptimizer.RevertTweaksAsync();
+            if (ok) ShowSuccess(msg);
+            else ShowError(msg);
+            RefreshGamingStatus();
+        }
 
         public ObservableCollection<string> StrategyNames { get; } = new();
         public ObservableCollection<ConnectionCheck> ConnectionChecks { get; } = new();
@@ -76,6 +176,8 @@ namespace ZapretGui.ViewModels
         public string[] IpsetOptions { get; } = { "Списки (loaded)", "Отключён (none)", "Все IP (any)" };
 
         public bool IsRunning => _status.IsRunning;
+        public BypassStatus CurrentStatus => _status;
+        public string RunningStrategyName => _status.StrategyName;
         public bool ServiceInstalled => _status.ServiceState != ServiceState.NotInstalled;
         public string InstallServiceButtonText => ServiceInstalled
             ? "Служба уже установлена, удалить?"
@@ -173,31 +275,31 @@ namespace ZapretGui.ViewModels
         public double ConnectionProgressValue
         {
             get => _connectionProgressValue;
-            private set => Set(ref _connectionProgressValue, value);
+            set => Set(ref _connectionProgressValue, value);
         }
 
         public double ConnectionProgressMaximum
         {
             get => _connectionProgressMaximum;
-            private set => Set(ref _connectionProgressMaximum, value);
+            set => Set(ref _connectionProgressMaximum, value);
         }
 
         public bool ConnectionProgressIndeterminate
         {
             get => _connectionProgressIndeterminate;
-            private set => Set(ref _connectionProgressIndeterminate, value);
+            set => Set(ref _connectionProgressIndeterminate, value);
         }
 
         public string ConnectionProgressPercentText
         {
             get => _connectionProgressPercentText;
-            private set => Set(ref _connectionProgressPercentText, value);
+            set => Set(ref _connectionProgressPercentText, value);
         }
 
         public string ConnectionProgressText
         {
             get => _connectionProgressText;
-            private set => Set(ref _connectionProgressText, value);
+            set => Set(ref _connectionProgressText, value);
         }
 
         public string Message
@@ -303,9 +405,11 @@ namespace ZapretGui.ViewModels
         public ICommand ToggleBypassCommand { get; }
         public ICommand ResolveLegacyCommand { get; }
         public ICommand InstallServiceCommand { get; }
+        public ICommand ReinstallServiceCommand { get; }
         public ICommand RemoveServiceCommand { get; }
         public ICommand TestConnectionCommand { get; }
         public ICommand AddConnectionTargetCommand { get; }
+        public ICommand EditConnectionTargetCommand { get; }
         public ICommand RemoveConnectionTargetCommand { get; }
         public ICommand CheckUpdatesCommand { get; }
         public ICommand OpenDiagnosticsCommand { get; }
@@ -536,7 +640,7 @@ namespace ZapretGui.ViewModels
             _legacyCache = null;
         }
 
-        private async Task ToggleAsync()
+        public async Task ToggleBypassAsync()
         {
             if (IsRunning) await StopAsync();
             else await StartAsync();
@@ -634,6 +738,35 @@ namespace ZapretGui.ViewModels
             ShowInfo("Устанавливаю службу zapret…");
             try
             {
+                var result = await Bypass.InstallServiceAsync(strategy, CurrentGameFilter());
+                if (result.Ok) ShowSuccess(result.Message); else ShowError(result.Message);
+            }
+            finally
+            {
+                IsBusy = false;
+                RefreshStatus();
+            }
+        }
+
+        private async Task ReinstallServiceAsync()
+        {
+            var strategy = await ResolveLegacyAsync();
+            if (strategy == null) return;
+
+            if (!Shell.IsAdmin())
+            {
+                ShowError("Для переустановки службы нужны права администратора.");
+                return;
+            }
+
+            if (!Confirm("Переустановка службы", $"Служба zapret будет переустановлена со стратегией «{strategy.Name}». Продолжить?"))
+                return;
+
+            IsBusy = true;
+            ShowInfo("Переустанавливаю службу zapret…");
+            try
+            {
+                await Bypass.RemoveServiceAsync();
                 var result = await Bypass.InstallServiceAsync(strategy, CurrentGameFilter());
                 if (result.Ok) ShowSuccess(result.Message); else ShowError(result.Message);
             }
@@ -748,6 +881,37 @@ namespace ZapretGui.ViewModels
             SettingsStore.Save(Settings);
             NewConnectionAddress = "";
             ShowSuccess("Адрес добавлен в проверку соединения");
+        }
+
+        private void EditConnectionTarget(object? parameter)
+        {
+            if (parameter is not MonitorTarget target || target.IsBuiltIn) return;
+            var dialog = new Views.InputDialog(
+                "Изменить адрес",
+                "Укажите новый URL или домен для проверки:",
+                target.Url)
+            {
+                Owner = System.Windows.Application.Current?.MainWindow
+            };
+            if (dialog.ShowDialog() != true) return;
+            var updated = (dialog.Value ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(updated)) return;
+
+            if (!MonitorTarget.TryCreate(updated, target.Name, out var newTarget, out var error) || newTarget == null)
+            {
+                ShowWarning(error);
+                return;
+            }
+
+            var index = ConnectionTargets.IndexOf(target);
+            if (index >= 0)
+            {
+                ConnectionTargets[index] = newTarget;
+                var sIndex = Settings.MonitorTargets.FindIndex(t => t.Id == target.Id || t.Host.Equals(target.Host, StringComparison.OrdinalIgnoreCase));
+                if (sIndex >= 0) Settings.MonitorTargets[sIndex] = newTarget;
+                SettingsStore.Save(Settings);
+                ShowSuccess("Адрес проверки обновлён");
+            }
         }
 
         private void RemoveConnectionTarget(object? parameter)

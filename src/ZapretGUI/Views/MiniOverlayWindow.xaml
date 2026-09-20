@@ -1,0 +1,125 @@
+<Window x:Class="ZapretGui.Views.MiniOverlayWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Zapret GUI HUD" Height="104" Width="380"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        ResizeMode="NoResize" ShowInTaskbar="False"
+        Topmost="{Binding Topmost, Mode=OneWay}"
+        Opacity="{Binding WindowOpacity, Mode=OneWay}"
+        MouseLeftButtonDown="Window_MouseLeftButtonDown"
+        Closing="Window_Closing"
+        Cursor="SizeAll"
+        TextOptions.TextFormattingMode="Ideal" UseLayoutRounding="True" SnapsToDevicePixels="True">
+
+    <Border Background="{DynamicResource CardBrush}"
+            BorderBrush="{DynamicResource AccentBrush}"
+            BorderThickness="1.5"
+            CornerRadius="14"
+            Padding="14,10"
+            Margin="6">
+        <Border.Effect>
+            <DropShadowEffect BlurRadius="16" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.55" />
+        </Border.Effect>
+
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Кнопка Вкл/Выкл питания (Компактная кнопка 46x46) -->
+            <Button Grid.Column="0" Command="{Binding ToggleBypassCommand}"
+                    ToolTip="Включить / остановить обход Zapret"
+                    Width="46" Height="46" Cursor="Hand"
+                    VerticalAlignment="Center" Margin="0,0,12,0">
+                <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                        <Grid>
+                            <!-- Подсветка при работе -->
+                            <Ellipse x:Name="MiniGlow" Margin="-4"
+                                     Fill="{Binding BypassStateKey, Converter={StaticResource SeverityBrush}}"
+                                     Opacity="0.22"
+                                     Visibility="{Binding IsRunning, Converter={StaticResource BoolToVis}}" />
+                            <!-- Круглая кнопка -->
+                            <Border x:Name="MiniRing" CornerRadius="23"
+                                    Background="{DynamicResource ElevatedBrush}"
+                                    BorderBrush="{Binding BypassStateKey, Converter={StaticResource SeverityBrush}}"
+                                    BorderThickness="2">
+                                <TextBlock Text="&#xE7E8;" FontFamily="{DynamicResource IconFont}" FontSize="20"
+                                           Foreground="{Binding BypassStateKey, Converter={StaticResource SeverityBrush}}"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="MiniRing" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Button.Template>
+            </Button>
+
+            <!-- Центральный инфо-блок -->
+            <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                <!-- Строка 1: Статус -->
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <Border Style="{StaticResource Dot}"
+                            Background="{Binding BypassStateKey, Converter={StaticResource SeverityBrush}}"
+                            Margin="0,0,6,0" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}" FontWeight="SemiBold"
+                               FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                </WrapPanel>
+
+                <!-- Строка 2: Стратегия со стрелками быстрой смены -->
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,0,4">
+                    <Button Style="{StaticResource SmallIconButton}" Content="&#xE76B;" Width="18" Height="18" FontSize="9"
+                            Command="{Binding PrevStrategyCommand}"
+                            ToolTip="Предыдущая стратегия обхода" Margin="0,0,4,0" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding StrategyName}" Style="{StaticResource DimText}" FontSize="11" FontWeight="SemiBold"
+                               TextTrimming="CharacterEllipsis" MaxWidth="155" VerticalAlignment="Center" />
+                    <Button Style="{StaticResource SmallIconButton}" Content="&#xE76C;" Width="18" Height="18" FontSize="9"
+                            Command="{Binding NextStrategyCommand}"
+                            ToolTip="Следующая стратегия обхода" Margin="4,0,0,0" VerticalAlignment="Center" />
+                </WrapPanel>
+
+                <!-- Строка 3: Бейджи пинга и игры -->
+                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <!-- RTT пинг -->
+                    <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="0,0,6,0" Padding="6,2">
+                        <TextBlock Text="{Binding PingText}" FontSize="10" FontWeight="SemiBold"
+                                   Foreground="{Binding PingSeverityKey, Converter={StaticResource SeverityBrush}}" />
+                    </Border>
+                    <!-- Бейдж игры -->
+                    <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}" Padding="6,2"
+                            Visibility="{Binding IsGameRunning, Converter={StaticResource BoolToVis}}">
+                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="10"
+                                       Foreground="{DynamicResource AccentBrush}" Margin="0,0,4,0" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ActiveGameName}" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis" MaxWidth="90" VerticalAlignment="Center" />
+                        </WrapPanel>
+                    </Border>
+                </WrapPanel>
+            </StackPanel>
+
+            <!-- Кнопки действий справа -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="8,0,0,0">
+                <!-- Игровой режим -->
+                <Button Style="{StaticResource SmallIconButton}" Margin="0,0,4,0"
+                        Command="{Binding ToggleGameModeCommand}"
+                        Content="&#xE7FC;"
+                        Foreground="{Binding GameModeActive, Converter={StaticResource BoolToAccentBrush}}"
+                        ToolTip="{Binding GameModeStatusText}" />
+                <!-- Развернуть главное окно -->
+                <Button Style="{StaticResource SmallIconButton}" Content="&#xE8A7;" Margin="0,0,4,0"
+                        Command="{Binding OpenMainWindowCommand}"
+                        ToolTip="Развернуть главное окно Zapret GUI" />
+                <!-- Скрыть виджет -->
+                <Button Style="{StaticResource SmallIconButton}" Content="&#xE8BB;"
+                        Command="{Binding CloseOverlayCommand}"
+                        ToolTip="Скрыть мини-виджет (доступен в трее)" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>

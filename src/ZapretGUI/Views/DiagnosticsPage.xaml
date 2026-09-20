@@ -4,155 +4,823 @@
              Background="Transparent">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                   PanningMode="VerticalOnly" Padding="0,0,4,0">
-    <Grid Margin="24,20,20,26">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="*" />
-        </Grid.RowDefinitions>
+        <Grid Margin="24,20,20,26">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
 
-        <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
-            </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                <TextBlock Style="{StaticResource DisplayText}" Text="Диагностика" />
-                <TextBlock Style="{StaticResource MutedText}"
-                           Text="Проверка типичных причин, из-за которых обход не работает (аналог Run Diagnostics из service.bat)" />
-            </StackPanel>
-            <WrapPanel Grid.Column="1" MaxWidth="440" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Button Style="{StaticResource PrimaryButton}" Content="Запустить диагностику" Command="{Binding RunCommand}"
-                        ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
-                <Button Style="{StaticResource SecondaryButton}" Content="Открыть проверку DPI" Margin="8,0,0,0"
-                        Command="{Binding OpenDpiCommand}"
-                        ToolTip="Перейти к отдельной проверке DNS, TCP и TLS" />
-                <Button Style="{StaticResource GhostButton}" Content="Экспорт JSON" Margin="8,0,0,0"
-                        Command="{Binding ExportReportCommand}"
-                        ToolTip="Сохранить полный диагностический отчёт без секретов и без сетевых запросов" />
-                <Button Style="{StaticResource GhostButton}" Content="Экспорт ZIP" Margin="8,0,0,0"
-                        Command="{Binding ExportArchiveCommand}"
-                        ToolTip="Сохранить ZIP с отдельными файлами diagnostics.json, application.log и памяткой" />
+            <!-- Верхний заголовок и глобальный экспорт -->
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <TextBlock Style="{StaticResource DisplayText}" Text="Проверка и диагностика" />
+                    <TextBlock Style="{StaticResource MutedText}"
+                               Text="Единый центр проверки доступности, DPI-метрик, глубокого анализа сети и системных компонентов." TextWrapping="Wrap" />
+                </StackPanel>
+                <WrapPanel Grid.Column="1" MaxWidth="440" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <Button Style="{StaticResource GhostButton}" Content="Экспорт JSON"
+                            Command="{Binding ExportReportCommand}"
+                            ToolTip="Сохранить полный диагностический отчёт без секретов и без сетевых запросов" />
+                    <Button Style="{StaticResource GhostButton}" Content="Экспорт ZIP" Margin="8,0,0,0"
+                            Command="{Binding ExportArchiveCommand}"
+                            ToolTip="Сохранить ZIP с отдельными файлами diagnostics.json, application.log и памяткой" />
+                </WrapPanel>
+            </Grid>
+
+            <!-- Переключатель вкладок -->
+            <WrapPanel Grid.Row="1" Margin="0,14,0,14">
+                <ToggleButton Style="{StaticResource ChipToggle}" Content="⚡ Экспресс (Мониторинг)"
+                              IsChecked="{Binding IsExpressTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
+                <ToggleButton Style="{StaticResource ChipToggle}" Content="🌐 Проверка DPI (34 узла)"
+                              IsChecked="{Binding IsDpiTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
+                <ToggleButton Style="{StaticResource ChipToggle}" Content="🎙️ Discord Voice (RTC)"
+                              IsChecked="{Binding IsVoiceRtcTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
+                <ToggleButton Style="{StaticResource ChipToggle}" Content="🔬 Deep Check (Матрица)"
+                              IsChecked="{Binding IsDeepCheckTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
+                <ToggleButton Style="{StaticResource ChipToggle}" Content="🛠 Аудит системы"
+                              IsChecked="{Binding IsSystemTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
+                <ToggleButton Style="{StaticResource ChipToggle}" Content="📊 Сводные результаты"
+                              IsChecked="{Binding IsResultsTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
             </WrapPanel>
-        </Grid>
 
-        <StackPanel Grid.Row="1" Margin="0,16,0,12">
-            <Border CornerRadius="10" Padding="14,11" Background="{Binding SummaryKey, Converter={StaticResource SoftSeverityBrush}}">
-                <StackPanel>
-                    <Grid>
+            <!-- Содержимое активной вкладки -->
+            <StackPanel Grid.Row="2">
+
+                <!-- ==================== ВКЛАДКА 0: ЭКСПРЕСС / МОНИТОРИНГ ==================== -->
+                <StackPanel Visibility="{Binding IsExpressTabSelected, Converter={StaticResource BoolToVis}}">
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПРЕСС-ПРОВЕРКА РЕСУРСОВ" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="Проверяет ключевые сервисы (YouTube, Discord и др.) и выявляет источник проблемы: блокировка провайдера или недоступность сервера." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Проверить сейчас"
+                                        Command="{Binding Monitoring.CheckAllCommand}"
+                                        ToolTip="Проверить все включённые ресурсы без остановки обхода" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Определить причину" Margin="8,0,0,0"
+                                        Command="{Binding Monitoring.DiagnoseCommand}"
+                                        ToolTip="Сравнить ресурс без обхода и с текущей стратегией" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Статус и прогресс экспресс-проверки -->
+                    <Border CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
+                            Background="{Binding Monitoring.MessageKey, Converter={StaticResource SoftSeverityBrush}}"
+                            Visibility="{Binding Monitoring.MessageVisible, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.Message}" TextWrapping="Wrap" />
+                    </Border>
+
+                    <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
+                            Background="{DynamicResource ElevatedBrush}"
+                            Visibility="{Binding Monitoring.ProgressVisible, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <Grid>
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.ProgressText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.ProgressPercentText}" HorizontalAlignment="Right"
+                                           Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
+                            </Grid>
+                            <ProgressBar Style="{StaticResource ThinProgress}"
+                                         Value="{Binding Monitoring.ProgressValue, Mode=OneWay}"
+                                         Maximum="{Binding Monitoring.ProgressMaximum, Mode=OneWay}"
+                                         IsIndeterminate="False" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
+                            Background="{Binding Monitoring.DiagnosisKey, Converter={StaticResource SoftSeverityBrush}}"
+                            Visibility="{Binding Monitoring.DiagnosisVisible, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.DiagnosisText}" TextWrapping="Wrap" />
+                    </Border>
+
+                    <!-- Список ресурсов экспресс-мониторинга -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <WrapPanel Orientation="Horizontal" Margin="8,4,8,12">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ОТСЛЕЖИВАЕМЫЕ РЕСУРСЫ" VerticalAlignment="Center" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Monitoring.LastCheckText}" Margin="14,0,0,0" VerticalAlignment="Center" />
+                            </WrapPanel>
+                            <ListBox Grid.Row="1" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Monitoring.Targets}"
+                                     SelectedItem="{Binding Monitoring.SelectedTarget, Mode=TwoWay}" Background="Transparent"
+                                     ItemContainerStyle="{StaticResource CompactRowItemStyle}"
+                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="4,2">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}" VerticalAlignment="Center"
+                                                      ToolTip="Включить ресурс в фоновую проверку" />
+                                            <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Name}" FontWeight="SemiBold" />
+                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
+                                                    Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                                                    ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </Grid>
+                    </Border>
+
+                    <!-- Управление ресурсами и результаты -->
+                    <Grid Margin="0,12,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Summary}" FontWeight="SemiBold" />
-                        <TextBlock Grid.Column="1" Style="{StaticResource BodyText}" Text="{Binding ProgressPercentText}"
-                                   Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
-                                   Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
+
+                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="0,0,8,0">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="УПРАВЛЕНИЕ РЕСУРСАМИ" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Добавить ресурс в мониторинг" Margin="0,8,0,0"
+                                        Command="{Binding Monitoring.AddResourceCommand}"
+                                        ToolTip="Добавить ресурс в список фоновой проверки" />
+                                <Button Style="{StaticResource GhostButton}" Content="Добавить выбранный домен в обход" Margin="0,8,0,0"
+                                        Command="{Binding Monitoring.AddToBypassListCommand}"
+                                        ToolTip="Добавить домен в lists\list-general-user.txt. После этого перезапустите обход." />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Grid.Column="1" Margin="8,0,0,0">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="ПОСЛЕДНИЕ РЕЗУЛЬТАТЫ" />
+                                <ItemsControl ItemsSource="{Binding Monitoring.Results}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Style="{StaticResource InnerCard}" Margin="0,4,0,0">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Target.Name}" FontWeight="SemiBold" />
+                                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" TextWrapping="Wrap" />
+                                                    </StackPanel>
+                                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding StatusText}"
+                                                               Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </Border>
                     </Grid>
-                    <TextBlock Style="{StaticResource DimText}" Text="{Binding LastSavedText}" Margin="0,4,0,0" />
-                    <TextBlock Style="{StaticResource DimText}" Text="{Binding ProgressText}"
-                               Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
-                    <ProgressBar Style="{StaticResource ThinProgress}" Value="{Binding ProgressValue}" Maximum="{Binding ProgressMaximum}"
-                                 IsIndeterminate="{Binding ProgressIndeterminate}" Height="7" Margin="0,8,0,0"
-                                 Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
-            </Border>
 
-            <Border CornerRadius="10" Padding="14,11" Margin="0,10,0,0"
-                    Background="{Binding MessageKey, Converter={StaticResource SoftSeverityBrush}}"
-                    Visibility="{Binding MessageVisible, Converter={StaticResource BoolToVis}}">
-                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message}" />
-            </Border>
-        </StackPanel>
+                <!-- ==================== ВКЛАДКА 1: ПРОВЕРКА DPI (34 УЗЛА) ==================== -->
+                <StackPanel Visibility="{Binding IsDpiTabSelected, Converter={StaticResource BoolToVis}}">
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="СЕТЕВАЯ ПРОВЕРКА DPI (34 УЗЛА)" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="Проверка DNS, TCP, HTTP/1.1, TLS 1.2 и TLS 1.3 на 34 тестовых endpoint-ах для выявления типа фильтрации трафика." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Запустить проверку DPI"
+                                        Command="{Binding RunDpiCommand}"
+                                        Visibility="{Binding DpiProgressVisible, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                                        ToolTip="Запустить DPI-проверку по 34 тестовым узлам" />
+                                <Button Style="{StaticResource DangerButton}" Content="Остановить"
+                                        Command="{Binding CancelDpiCommand}"
+                                        Visibility="{Binding DpiProgressVisible, Converter={StaticResource BoolToVis}}"
+                                        ToolTip="Прервать текущую проверку и восстановить состояние обхода" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
 
-        <StackPanel Grid.Row="2">
-            <Border Style="{StaticResource Card}" Padding="8">
-                <ListBox Style="{StaticResource PlainListBox}" ItemsSource="{Binding Items}"
-                         ScrollViewer.VerticalScrollBarVisibility="Auto" Background="Transparent">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <Grid Margin="8,8,8,8">
+                    <!-- Статус и прогресс DPI -->
+                    <Border CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
+                            Background="{Binding DpiSummaryKey, Converter={StaticResource SoftSeverityBrush}}">
+                        <StackPanel>
+                            <Grid>
                                 <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <Border Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"
-                                        Background="{Binding SeverityKey, Converter={StaticResource SoftSeverityBrush}}">
-                                    <TextBlock Text="{Binding Icon}" FontSize="12" FontWeight="Bold"
-                                               Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontWeight="SemiBold" />
-                                    <TextBlock Style="{StaticResource MutedText}" Text="{Binding Details}" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding FixHint}" Margin="0,4,0,0"
-                                               Foreground="{DynamicResource WarningBrush}"
-                                               Visibility="{Binding FixHint, Converter={StaticResource StringToVis}}" />
-                                    <Button Style="{StaticResource SecondaryButton}" Content="{Binding FixLabel}"
-                                            HorizontalAlignment="Left" Margin="0,8,0,0" Padding="14,6"
-                                            Visibility="{Binding HasAutoFix, Converter={StaticResource BoolToVis}}"
-                                            Command="{Binding DataContext.FixItemCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                            CommandParameter="{Binding}"
-                                            ToolTip="Приложение выполнит исправление само, без ручных команд" />
-                                </StackPanel>
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding DpiSummary}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource BodyText}" Text="{Binding DpiProgressPercentText}"
+                                           Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" Margin="10,0,0,0"
+                                           Visibility="{Binding DpiProgressVisible, Converter={StaticResource BoolToVis}}" />
                             </Grid>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Border>
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiLastCheckText}" Margin="0,4,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiSuiteSourceText}" Margin="0,3,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiProgressText}" Margin="0,4,0,0"
+                                       Visibility="{Binding DpiProgressVisible, Converter={StaticResource BoolToVis}}" TextTrimming="CharacterEllipsis" />
+                            <ProgressBar Style="{StaticResource ThinProgress}" Height="7" Margin="0,8,0,0"
+                                         Value="{Binding DpiProgressValue, Mode=OneWay}"
+                                         Maximum="{Binding DpiProgressMaximum, Mode=OneWay}"
+                                         IsIndeterminate="{Binding DpiProgressIndeterminate, Mode=OneWay}"
+                                         Visibility="{Binding DpiProgressVisible, Converter={StaticResource BoolToVis}}" />
+                        </StackPanel>
+                    </Border>
 
-            <StackPanel>
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource SectionText}" Text="ИСПРАВЛЕНИЯ В ОДИН КЛИК" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="Восстановить обход"
-                                Command="{Binding RecoverBypassCommand}" HorizontalAlignment="Stretch"
-                                ToolTip="Остановить зависший обход, проверить timestamps и повторно запустить диагностику" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="Полностью удалить службы" Margin="0,8,0,0"
-                                Command="{Binding RemoveServicesCommand}" HorizontalAlignment="Stretch"
-                                ToolTip="Удаляет службу zapret, останавливает winws.exe и убирает службы WinDivert" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="Включить TCP timestamps" Margin="0,8,0,0"
-                                Command="{Binding FixTimestampsCommand}"
-                                ToolTip="Выполнить netsh interface tcp set global timestamps=enabled (нужно части стратегий)" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="Очистить кэш Discord" Margin="0,8,0,0"
-                                Command="{Binding ClearDiscordCacheCommand}"
-                                ToolTip="Удалить файлы кэша Discord (сам Discord нужно закрыть)" />
-                        <Button Style="{StaticResource DangerButton}" Content="Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
-                                Command="{Binding ResetNetworkCommand}"
-                                ToolTip="netsh winsock reset, netsh int ip reset all, netsh winhttp reset proxy, ipconfig /flushdns" />
-                    </StackPanel>
-                </Border>
+                    <!-- Параметры хоста -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ПОЛЬЗОВАТЕЛЬСКИЙ ХОСТ (НЕОБЯЗАТЕЛЬНО)" />
+                            <TextBox Style="{StaticResource InputBox}" Margin="0,6,0,0"
+                                     Text="{Binding DpiCustomHost, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Необязательно: один собственный HTTPS-хост для проверки вместо общего набора узлов" />
+                        </StackPanel>
+                    </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource SectionText}" Text="ФАЙЛЫ И ПАПКИ" />
-                        <Button Style="{StaticResource GhostButton}" Content="Открыть hosts в блокноте"
-                                HorizontalAlignment="Left" Command="{Binding OpenHostsCommand}"
-                                ToolTip="Открыть системный файл hosts в блокноте" />
-                        <Button Style="{StaticResource GhostButton}" Content="Открыть папку движка"
-                                HorizontalAlignment="Left" Command="{Binding OpenEngineFolderCommand}"
-                                ToolTip="Открыть папку движка в проводнике" />
-                        <Button Style="{StaticResource GhostButton}" Content="Параметры сети Windows"
-                                HorizontalAlignment="Left" Command="{Binding OpenSystemNetworkCommand}"
-                                ToolTip="Открыть параметры сети Windows" />
-                    </StackPanel>
-                </Border>
+                    <!-- Признаки сети и прямое сравнение -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ПРИЗНАКИ СЕТИ И СРАВНЕНИЕ С ОБХОДОМ" />
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding DpiObservationText}" TextWrapping="Wrap" />
 
-                <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource SectionText}" Text="РЕКОМЕНДАЦИИ" />
-                        <TextBlock Style="{StaticResource MutedText}"
-                                   Text="• Включите безопасный DNS (DoH) в браузере или Windows 11." />
-                        <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
-                                   Text="• Держите включённым только один обход DPI — второй сломает первый." />
-                        <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
-                                   Text="• Добавьте папку движка в исключения антивируса (WinDivert)." />
-                        <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
-                                   Text="• Если ничего не помогает — сбросьте сеть и перезагрузитесь." />
-                    </StackPanel>
-                </Border>
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0"
+                                    Visibility="{Binding DpiComparisonVisible, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ПРЯМОЕ СОЕДИНЕНИЕ И ОБХОД" />
+                                    <TextBlock Style="{StaticResource MutedText}" Text="{Binding DpiBypassComparison.Summary}" TextWrapping="Wrap" />
+                                    <WrapPanel Orientation="Horizontal" Margin="0,5,0,0">
+                                        <TextBlock Style="{StaticResource DimText}" Text="Уровень: " />
+                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiBypassComparison.Level}" />
+                                        <TextBlock Style="{StaticResource DimText}" Text=" · уверенность: " />
+                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiBypassComparison.Confidence}" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0"
+                                    Visibility="{Binding DpiControlVisible, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="КОНТРОЛЬНЫЙ ENDPOINT" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiControlResult.DisplayName}" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiControlAttemptText}" />
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Результаты по endpoint-ам -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПО ТЕСТОВЫМ УЗЛАМ (DPI-SUITE)" />
+                            <ItemsControl ItemsSource="{Binding DpiResults}" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Style="{StaticResource InnerCard}" Margin="0,3,0,0" Padding="8">
+                                            <StackPanel>
+                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding DisplayName}" TextTrimming="CharacterEllipsis" />
+                                                <ItemsControl ItemsSource="{Binding Probes}">
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Grid Margin="0,3,0,0">
+                                                                <Grid.ColumnDefinitions>
+                                                                    <ColumnDefinition Width="Auto" />
+                                                                    <ColumnDefinition Width="*" />
+                                                                </Grid.ColumnDefinitions>
+                                                                <Border Style="{StaticResource Dot}" Width="7" Height="7"
+                                                                        Background="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
+                                                                <StackPanel Grid.Column="1" Margin="7,0,0,0">
+                                                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding TestName}" />
+                                                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Details}" />
+                                                                </StackPanel>
+                                                            </Grid>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ==================== ВКЛАДКА: DISCORD VOICE (RTC / WebRTC) ==================== -->
+                <StackPanel Visibility="{Binding IsVoiceRtcTabSelected, Converter={StaticResource BoolToVis}}">
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ГОЛОСОВОЙ СТЕК DISCORD (RTC / WebRTC / UDP)" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="Диагностика голосовых шлюзов Discord (Роттердам, Франкфурт, Стокгольм и др.), измерение RTT, проверка прохождения UDP-пакетов сквозь ТСПУ и устранение зависания «Подключение к RTC»." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Проверить Voice RTC"
+                                        Command="{Binding RunVoiceRtcAuditCommand}"
+                                        ToolTip="Отправить STUN/UDP тестовые пакеты на все голосовые серверы Discord" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Применить фикс для Discord Voice" Margin="8,0,0,0"
+                                        Command="{Binding OptimizeDiscordVoiceCommand}"
+                                        ToolTip="Активировать проверенную стратегию для UDP 50000-65535 и очистить кэш Discord" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Панель: Очистка кэша Discord и сетевого стека в 1 клик -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="⚡ ОЧИСТКА КЭША DISCORD И СЕТЕВОГО СТЕКА (1 КЛИК)" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding DiscordCacheStatusText}" Margin="0,2,0,0" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Обновить размер"
+                                        Command="{Binding RefreshDiscordCacheStatusCommand}"
+                                        ToolTip="Пересчитать размер кэша всех установленных версий Discord" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,8,0,0" TextWrapping="Wrap"
+                                       Text="Закрывает процессы Discord, удаляет медиа/RTC-кэш, шейдеры GPU, сбрасывает DNS-кэш, ARP-таблицу шлюзов и включает TCP Timestamps для WinDivert. Устраняет зависания «Подключение к RTC» и «Маршрут не найден»." />
+
+                            <WrapPanel Margin="0,12,0,0">
+                                <Button Style="{StaticResource PrimaryButton}" Content="⚡ Очистить кэш и сбросить сеть (1 клик)"
+                                        Command="{Binding CleanDiscordAndNetworkCommand}"
+                                        ToolTip="Закрыть Discord, очистить кэш всех редакций, сбросить DNS/ARP и включить TCP Timestamps" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="🔄 Очистить и перезапустить Discord" Margin="8,0,0,0"
+                                        Command="{Binding CleanAndRestartDiscordCommand}"
+                                        ToolTip="Выполнить очистку кэша и сети, а затем автоматически запустить Discord" />
+                                <Button Style="{StaticResource DangerButton}" Content="🧹 Глубокий сброс сетевого стека" Margin="8,0,0,0"
+                                        Command="{Binding DeepNetworkResetCommand}"
+                                        ToolTip="Полный сброс Winsock, TCP/IP стека, WinHTTP прокси, DNS и ARP (потребуется перезагрузка)" />
+                            </WrapPanel>
+
+                            <!-- Прогресс выполнения очистки -->
+                            <Border CornerRadius="8" Padding="12,10" Margin="0,10,0,0"
+                                    Background="{DynamicResource ElevatedBrush}"
+                                    Visibility="{Binding IsCleaningDiscord, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding DiscordCleanStatusText}" FontWeight="SemiBold" />
+                                    <ProgressBar Style="{StaticResource ThinProgress}" IsIndeterminate="True" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <!-- Отчёт о последней очистке -->
+                            <Border CornerRadius="8" Padding="12,10" Margin="0,10,0,0"
+                                    Background="{DynamicResource SuccessSoftBrush}"
+                                    Visibility="{Binding HasDiscordCleanSummary, Converter={StaticResource BoolToVis}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Grid.Column="0">
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding LastDiscordCleanSummary.Message}" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextWrapping="Wrap" />
+                                        <WrapPanel Margin="0,4,0,0">
+                                            <TextBlock Style="{StaticResource DimText}" Text="Освобождено: " />
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastDiscordCleanSummary.FreedBytesText}" FontWeight="Bold" Margin="0,0,12,0" />
+                                            <TextBlock Style="{StaticResource DimText}" Text="Удалено файлов: " />
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastDiscordCleanSummary.DeletedFiles}" FontWeight="Bold" Margin="0,0,12,0" />
+                                            <TextBlock Style="{StaticResource DimText}" Text="Закрыто процессов: " />
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastDiscordCleanSummary.TerminatedProcesses}" FontWeight="Bold" />
+                                        </WrapPanel>
+                                    </StackPanel>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding LastDiscordCleanSummary.CleanedAtText}" VerticalAlignment="Top" />
+                                </Grid>
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Статус и вердикт Voice RTC -->
+                    <Border CornerRadius="10" Padding="14,12" Margin="0,12,0,0"
+                            Background="{Binding VoiceRtcDiagnosisKey, Converter={StaticResource SoftSeverityBrush}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0">
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding VoiceRtcSummary}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding VoiceRtcRecommendation}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+                            <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding VoiceRtcCheckedAtText}" Margin="12,0,0,0" VerticalAlignment="Top" />
+                        </Grid>
+                    </Border>
+
+                    <!-- Индикатор выполнения -->
+                    <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
+                            Background="{DynamicResource ElevatedBrush}"
+                            Visibility="{Binding IsVoiceRtcRunning, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding VoiceRtcStatusText}" FontWeight="SemiBold" />
+                            <ProgressBar Style="{StaticResource ThinProgress}" IsIndeterminate="True" Margin="0,8,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Список проверенных голосовых шлюзов -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПРОВЕРКИ ГОЛОСОВЫХ ШЛЮЗОВ (UDP / STUN)" />
+                            
+                            <ItemsControl ItemsSource="{Binding VoiceServers}" Margin="0,8,0,0">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border CornerRadius="8" Padding="12,10" Margin="0,0,0,6"
+                                                Background="{DynamicResource ElevatedBrush}">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding ServerName}" FontWeight="SemiBold" />
+                                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding StatusDetails}" Margin="0,2,0,0" />
+                                                </StackPanel>
+                                                <Border Grid.Column="1" CornerRadius="6" Padding="8,4" VerticalAlignment="Center"
+                                                        Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}">
+                                                    <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="11"
+                                                               Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
+                                                </Border>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ==================== ВКЛАДКА 2: DEEP CHECK (МАТРИЦА) ==================== -->
+                <StackPanel Visibility="{Binding IsDeepCheckTabSelected, Converter={StaticResource BoolToVis}}">
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="DEEP CHECK · ПОДБОР СТРАТЕГИИ" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="Глубокое тестирование стратегий по матрице тестовых целей и выявление наиболее устойчивой комбинации параметров." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Запустить Deep Check"
+                                        Command="{Binding DeepCheck.RunCommand}"
+                                        ToolTip="Проверить условия, сеть и стратегии по матрице" />
+                                <Button Style="{StaticResource DangerButton}" Content="Остановить" Margin="8,0,0,0"
+                                        Command="{Binding DeepCheck.CancelCommand}"
+                                        Visibility="{Binding DeepCheck.ProgressVisible, Converter={StaticResource BoolToVis}}" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Статус и прогресс Deep Check -->
+                    <Border CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
+                            Background="{Binding DeepCheck.SummaryKey, Converter={StaticResource SoftSeverityBrush}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding DeepCheck.Summary}" FontWeight="SemiBold" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding DeepCheck.LastCheckText}" Margin="0,4,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding DeepCheck.SavedReportText}" Margin="0,4,0,0" TextWrapping="Wrap" />
+                            <Grid Margin="0,4,0,0" Visibility="{Binding DeepCheck.ProgressVisible, Converter={StaticResource BoolToVis}}">
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding DeepCheck.ProgressText}" TextTrimming="CharacterEllipsis" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding DeepCheck.ProgressPercentText}" HorizontalAlignment="Right"
+                                           Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
+                            </Grid>
+                            <ProgressBar Style="{StaticResource ThinProgress}"
+                                         Value="{Binding DeepCheck.ProgressValue, Mode=OneWay}" Maximum="100"
+                                         IsIndeterminate="{Binding DeepCheck.ProgressIndeterminate, Mode=OneWay}" Height="7" Margin="0,8,0,0"
+                                         Visibility="{Binding DeepCheck.ProgressVisible, Converter={StaticResource BoolToVis}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
+                            Background="{Binding DeepCheck.SummaryKey, Converter={StaticResource SoftSeverityBrush}}"
+                            Visibility="{Binding DeepCheck.MessageVisible, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding DeepCheck.Message}" TextWrapping="Wrap" />
+                    </Border>
+
+                    <!-- Рекомендации и найденная стратегия -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                            Visibility="{Binding DeepCheck.HasRecommendations, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="РЕКОМЕНДОВАННАЯ СТРАТЕГИЯ" />
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding DeepCheck.RecommendedStrategyText}" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource MonoText}" Text="{Binding DeepCheck.RecommendedStrategyArgs}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                       Visibility="{Binding DeepCheck.RecommendedStrategyArgs, Converter={StaticResource StringToVis}}" />
+                            <WrapPanel Orientation="Horizontal" Margin="0,10,0,0">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Применить найденную стратегию"
+                                        Command="{Binding DeepCheck.ApplyRecommendationCommand}"
+                                        Visibility="{Binding DeepCheck.RecommendationCanBeApplied, Converter={StaticResource BoolToVis}}"
+                                        ToolTip="Запустить стратегию с подтверждённым успехом" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Добавить стратегию в список" Margin="8,0,0,0"
+                                        Command="{Binding DeepCheck.AddCustomStrategyToListCommand}"
+                                        ToolTip="Сохранить подобранную стратегию с вашим названием в общий список стратегий" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Метрики измерений -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                            Visibility="{Binding DeepCheck.HasMetrics, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="МЕТРИКИ ИЗМЕРЕНИЙ" />
+                            <ItemsControl ItemsSource="{Binding DeepCheck.Metrics}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}" Padding="0,8,0,8">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="190" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" TextWrapping="Wrap" />
+                                                <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Value}" Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" TextWrapping="Wrap" />
+                                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" Margin="0,2,0,0" TextWrapping="Wrap" />
+                                                </StackPanel>
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Результаты условий и ограничений -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                            Visibility="{Binding DeepCheck.HasFindings, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПРОВЕРКИ СЕТИ" />
+                            <ItemsControl ItemsSource="{Binding DeepCheck.Findings}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,7,0,7">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"
+                                                    Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}">
+                                                <TextBlock Text="{Binding Icon}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                                <WrapPanel>
+                                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontWeight="SemiBold" />
+                                                    <Border Style="{StaticResource Badge}" Margin="8,0,0,0">
+                                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding Category}" />
+                                                    </Border>
+                                                </WrapPanel>
+                                                <TextBlock Style="{StaticResource MutedText}" Text="{Binding Details}" Margin="0,3,0,0" TextWrapping="Wrap" />
+                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Recommendation}" Margin="0,3,0,0" TextWrapping="Wrap"
+                                                           Foreground="{DynamicResource WarningBrush}"
+                                                           Visibility="{Binding Recommendation, Converter={StaticResource StringToVis}}" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ==================== ВКЛАДКА 3: АУДИТ СИСТЕМЫ ==================== -->
+                <StackPanel Visibility="{Binding IsSystemTabSelected, Converter={StaticResource BoolToVis}}">
+                    <Border Style="{StaticResource Card}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,12,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="АУДИТ СИСТЕМЫ И ПРАВ" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="Проверка прав администратора, файлов движка, служб Windows, драйвера WinDivert и сетевых конфликтов." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Запустить аудит"
+                                        Command="{Binding RunCommand}"
+                                        ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
+                            </WrapPanel>
+                        </Grid>
+                    </Border>
+
+                    <!-- Статус аудита системы -->
+                    <Border CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
+                            Background="{Binding SummaryKey, Converter={StaticResource SoftSeverityBrush}}">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Summary}" FontWeight="SemiBold" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource BodyText}" Text="{Binding ProgressPercentText}"
+                                           Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
+                                           Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastSavedText}" Margin="0,4,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding ProgressText}"
+                                       Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
+                            <ProgressBar Style="{StaticResource ThinProgress}"
+                                         Value="{Binding ProgressValue, Mode=OneWay}"
+                                         Maximum="{Binding ProgressMaximum, Mode=OneWay}"
+                                         IsIndeterminate="{Binding ProgressIndeterminate, Mode=OneWay}"
+                                         Height="7" Margin="0,8,0,0"
+                                         Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
+                            Background="{Binding MessageKey, Converter={StaticResource SoftSeverityBrush}}"
+                            Visibility="{Binding MessageVisible, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message}" />
+                    </Border>
+
+                    <!-- Список проверок аудита -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
+                        <ListBox Style="{StaticResource PlainListBox}" ItemsSource="{Binding Items}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto" Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="8,8,8,8">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"
+                                                Background="{Binding SeverityKey, Converter={StaticResource SoftSeverityBrush}}">
+                                            <TextBlock Text="{Binding Icon}" FontSize="12" FontWeight="Bold"
+                                                       Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontWeight="SemiBold" />
+                                            <TextBlock Style="{StaticResource MutedText}" Text="{Binding Details}" />
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding FixHint}" Margin="0,4,0,0"
+                                                       Foreground="{DynamicResource WarningBrush}"
+                                                       Visibility="{Binding FixHint, Converter={StaticResource StringToVis}}" />
+                                            <Button Style="{StaticResource SecondaryButton}" Content="{Binding FixLabel}"
+                                                    HorizontalAlignment="Left" Margin="0,8,0,0" Padding="14,6"
+                                                    Visibility="{Binding HasAutoFix, Converter={StaticResource BoolToVis}}"
+                                                    Command="{Binding DataContext.FixItemCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="Приложение выполнит исправление само, без ручных команд" />
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Border>
+
+                    <!-- Исправления в один клик -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ИСПРАВЛЕНИЯ В ОДИН КЛИК" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Восстановить обход"
+                                    Command="{Binding RecoverBypassCommand}" HorizontalAlignment="Stretch"
+                                    ToolTip="Остановить зависший обход, проверить timestamps и повторно запустить диагностику" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Полностью удалить службы" Margin="0,8,0,0"
+                                    Command="{Binding RemoveServicesCommand}" HorizontalAlignment="Stretch"
+                                    ToolTip="Удаляет службу zapret, останавливает winws.exe и убирает службы WinDivert" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Включить TCP timestamps" Margin="0,8,0,0"
+                                    Command="{Binding FixTimestampsCommand}"
+                                    ToolTip="Выполнить netsh interface tcp set global timestamps=enabled" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="⚡ Очистить кэш Discord и сбросить сеть (1 клик)" Margin="0,8,0,0"
+                                    Command="{Binding CleanDiscordAndNetworkCommand}"
+                                    ToolTip="Закрыть Discord, удалить кэш всех версий, сбросить DNS/ARP и включить TCP Timestamps" />
+                            <Button Style="{StaticResource DangerButton}" Content="🧹 Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
+                                    Command="{Binding ResetNetworkCommand}"
+                                    ToolTip="netsh winsock reset, netsh int ip reset all, netsh winhttp reset proxy, ipconfig /flushdns" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Быстрый доступ к системным инструментам -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМНЫЕ ФАЙЛЫ И ПАРАМЕТРЫ" />
+                            <Button Style="{StaticResource GhostButton}" Content="Открыть hosts в блокноте"
+                                    HorizontalAlignment="Left" Command="{Binding OpenHostsCommand}"
+                                    ToolTip="Открыть системный файл hosts в блокноте" />
+                            <Button Style="{StaticResource GhostButton}" Content="Открыть папку движка"
+                                    HorizontalAlignment="Left" Command="{Binding OpenEngineFolderCommand}"
+                                    ToolTip="Открыть папку движка в проводнике" />
+                            <Button Style="{StaticResource GhostButton}" Content="Параметры сети Windows"
+                                    HorizontalAlignment="Left" Command="{Binding OpenSystemNetworkCommand}"
+                                    ToolTip="Открыть параметры сети Windows" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
+                <!-- ==================== ВКЛАДКА 4: СВОДНЫЕ РЕЗУЛЬТАТЫ ==================== -->
+                <StackPanel Visibility="{Binding IsResultsTabSelected, Converter={StaticResource BoolToVis}}">
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="СВОДНЫЙ ОТЧЁТ И СОХРАНЁННЫЕ ДАННЫЕ" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Text="Единый обзор текущего состояния системы, истории проверок и экспорт диагностических пакетов." TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Карточки состояния модулей -->
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Экспресс / Мониторинг статус -->
+                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПРЕСС-ПРОВЕРКА" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.LastCheckText}" FontWeight="SemiBold" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к мониторингу" Margin="0,10,0,0"
+                                        Command="{Binding SelectExpressTabCommand}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- DPI статус -->
+                        <Border Style="{StaticResource Card}" Grid.Column="1" Margin="6,0,0,0">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="DPI-ПРОВЕРКА" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding DpiLastCheckText}" FontWeight="SemiBold" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding DpiSummary}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к проверке DPI" Margin="0,10,0,0"
+                                        Command="{Binding SelectDpiTabCommand}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- Deep Check статус -->
+                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="0,0,6,0">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="DEEP CHECK" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding DeepCheck.LastCheckText}" FontWeight="SemiBold" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding DeepCheck.Summary}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к Deep Check" Margin="0,10,0,0"
+                                        Command="{Binding SelectDeepCheckTabCommand}" />
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Аудит системы статус -->
+                        <Border Style="{StaticResource Card}" Grid.Column="1" Margin="6,0,0,0">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="АУДИТ СИСТЕМЫ" />
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding LastSavedText}" FontWeight="SemiBold" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Summary}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к аудиту" Margin="0,10,0,0"
+                                        Command="{Binding SelectSystemTabCommand}" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+
+                    <!-- Экспорт пакетов -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПОРТ ДИАГНОСТИЧЕСКИХ ДАННЫХ" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Text="Все диагностические отчёты формируются локально без сетевых запросов и не содержат персональных данных или паролей." TextWrapping="Wrap" />
+                            <WrapPanel Margin="0,12,0,0">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Экспортировать diagnostics.json"
+                                        Command="{Binding ExportReportCommand}"
+                                        ToolTip="Полный структурированный отчёт о системе, DPI и проверках" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Экспортировать ZIP-архив" Margin="10,0,0,0"
+                                        Command="{Binding ExportArchiveCommand}"
+                                        ToolTip="Архив с отчётом, журналами приложения и инструкцией" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+
             </StackPanel>
-        </StackPanel>
-    </Grid>
+        </Grid>
     </ScrollViewer>
 </UserControl>
