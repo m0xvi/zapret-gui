@@ -59,12 +59,12 @@ namespace ZapretGui.Core
                 // Контролируем процесс только если обход был запущен
                 if (status.State == BypassState.RunningStandalone)
                 {
-                    if (status.ProcessId > 0)
+                    if (status.Pid is int pid && pid > 0)
                     {
                         var dead = false;
                         try
                         {
-                            var proc = Process.GetProcessById(status.ProcessId);
+                            var proc = Process.GetProcessById(pid);
                             if (proc.HasExited) dead = true;
                         }
                         catch (ArgumentException)
@@ -80,8 +80,7 @@ namespace ZapretGui.Core
                 }
                 else if (status.State == BypassState.RunningService)
                 {
-                    var serviceState = WinServices.GetState(WinServices.ZapretService);
-                    if (serviceState != ServiceState.Running)
+                    if (status.ServiceState != ServiceState.Running)
                     {
                         await HandleCrashAsync(status.ServiceStrategy, isService: true);
                     }
