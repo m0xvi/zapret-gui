@@ -84,16 +84,16 @@ namespace ZapretGui.ViewModels
             _evaluationHistory = StrategyEvaluationHistoryStore.Load();
 
             Categories = new[] { "Все категории", "FAKE TLS AUTO", "ALT", "SIMPLE FAKE", "БАЗОВАЯ", "EXP", "АВТОКОНСТРУКТОР" };
-            SubTabs = new[] { "Каталог стратегий", "Конструктор параметров", "Контрольные адреса" };
+            SubTabs = new[] { "Каталог стратегий", "Конструктор параметров", "Умный автоподбор", "Контрольные адреса" };
 
             // Инициализация контрольных адресов
             TargetEndpoints = new ObservableCollection<MonitorTarget>(main.Settings.MonitorTargets);
 
             RunCommand = new AsyncRelayCommand(RunAsync,
-                parameter => (parameter is StrategyInfo || Selected != null) && !IsBusy && !IsTestingAll && !IsGeneratingCandidates && !IsEvaluatingCandidates);
+                parameter => (parameter is StrategyInfo || Selected != null) && !IsBusy && !IsTestingAll && !IsGeneratingCandidates && !IsEvaluatingCandidates && !IsAutoTuningRunning);
             InstallServiceCommand = new AsyncRelayCommand(InstallServiceAsync, () => Selected != null && !IsBusy && !IsTestingAll && !IsGeneratingCandidates);
-            TestStrategyCommand = new AsyncRelayCommand(TestStrategyAsync, _ => !IsTestingAll && !IsBusy && !IsGeneratingCandidates && !IsEvaluatingCandidates);
-            TestAllCommand = new AsyncRelayCommand(_ => TestAllAsync(), _ => !IsTestingAll && !IsBusy && !IsGeneratingCandidates && !IsEvaluatingCandidates && Store.Items.Count > 0);
+            TestStrategyCommand = new AsyncRelayCommand(TestStrategyAsync, _ => !IsTestingAll && !IsBusy && !IsGeneratingCandidates && !IsEvaluatingCandidates && !IsAutoTuningRunning);
+            TestAllCommand = new AsyncRelayCommand(_ => TestAllAsync(), _ => !IsTestingAll && !IsBusy && !IsGeneratingCandidates && !IsEvaluatingCandidates && !IsAutoTuningRunning && Store.Items.Count > 0);
             CancelTestCommand = new RelayCommand(() => _testCts?.Cancel(), () => IsTestingAll);
             OpenBatCommand = new RelayCommand(() => { if (Selected != null) Shell.OpenInNotepad(Selected.FullPath); });
             CopyArgsCommand = new RelayCommand(CopyArgs, () => Selected != null);
@@ -104,9 +104,14 @@ namespace ZapretGui.ViewModels
             ApplyBestRecommendedCommand = new AsyncRelayCommand(ApplyBestRecommendedAsync, () => BestEmpiricalStrategy != null && !IsBusy && !IsTestingAll);
 
             // Команды конструктора параметров
-            BuilderTestCommand = new AsyncRelayCommand(BuilderTestAsync, () => !IsBusy && !IsTestingAll);
+            BuilderTestCommand = new AsyncRelayCommand(BuilderTestAsync, () => !IsBusy && !IsTestingAll && !IsAutoTuningRunning);
             BuilderSaveCommand = new RelayCommand(BuilderSave, () => !string.IsNullOrWhiteSpace(BuilderStrategyName));
-            BuilderApplyCommand = new AsyncRelayCommand(BuilderApplyAsync, () => !IsBusy && !IsTestingAll && !string.IsNullOrWhiteSpace(BuilderStrategyName));
+            BuilderApplyCommand = new AsyncRelayCommand(BuilderApplyAsync, () => !IsBusy && !IsTestingAll && !IsAutoTuningRunning && !string.IsNullOrWhiteSpace(BuilderStrategyName));
+
+            // Команды умного автоподбора
+            StartSmartAutoTuningCommand = new AsyncRelayCommand(StartSmartAutoTuningAsync, () => !IsAutoTuningRunning && !IsBusy && !IsTestingAll);
+            CancelSmartAutoTuningCommand = new RelayCommand(CancelSmartAutoTuning, () => IsAutoTuningRunning);
+            ApplyWinnerStrategyCommand = new AsyncRelayCommand(ApplyWinnerStrategyAsync, () => WinnerCandidate != null && !IsBusy && !IsAutoTuningRunning);
 
             // Команды контрольных адресов
             AddTargetCommand = new RelayCommand(AddTarget, () => !string.IsNullOrWhiteSpace(NewTargetUrl));
@@ -153,6 +158,7 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(IsCatalogTabVisible));
                     Raise(nameof(IsBuilderTabVisible));
+                    Raise(nameof(IsAutoTunerTabVisible));
                     Raise(nameof(IsTargetsTabVisible));
                 }
             }
@@ -160,10 +166,158 @@ namespace ZapretGui.ViewModels
 
         public bool IsCatalogTabVisible => SelectedSubTabIndex == 0;
         public bool IsBuilderTabVisible => SelectedSubTabIndex == 1;
-        public bool IsTargetsTabVisible => SelectedSubTabIndex == 2;
+        public bool IsAutoTunerTabVisible => SelectedSubTabIndex == 2;
+        public bool IsTargetsTabVisible => SelectedSubTabIndex == 3;
 
         public AppSettings Settings => _main.Settings;
         public BypassController Bypass => _main.Bypass;
+
+        // ------------------------------------------------------------------ Умный глубокий автоподбор
+        private bool _isAutoTuningRunning;
+        private string _autoTuningStatusText = "Готов к запуску глубокого автоподбора";
+        private double _autoTuningProgressValue;
+        private double _autoTuningProgressMaximum = 12;
+        private string _autoTuningProgressPercentText = "0%";
+        private SavedStrategyCandidate? _winnerCandidate;
+        private CancellationTokenSource? _autoTuningCts;
+
+        public ObservableCollection<AutoTunerStepResult> AutoTuningResults { get; } = new();
+
+        public bool IsAutoTuningRunning
+        {
+            get => _isAutoTuningRunning;
+            private set
+            {
+                if (Set(ref _isAutoTuningRunning, value))
+                {
+                    (StartSmartAutoTuningCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelSmartAutoTuningCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplyWinnerStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string AutoTuningStatusText
+        {
+            get => _autoTuningStatusText;
+            private set => Set(ref _autoTuningStatusText, value);
+        }
+
+        public double AutoTuningProgressValue
+        {
+            get => _autoTuningProgressValue;
+            private set => Set(ref _autoTuningProgressValue, value);
+        }
+
+        public double AutoTuningProgressMaximum
+        {
+            get => _autoTuningProgressMaximum;
+            private set => Set(ref _autoTuningProgressMaximum, value);
+        }
+
+        public string AutoTuningProgressPercentText
+        {
+            get => _autoTuningProgressPercentText;
+            private set => Set(ref _autoTuningProgressPercentText, value);
+        }
+
+        public SavedStrategyCandidate? WinnerCandidate
+        {
+            get => _winnerCandidate;
+            private set
+            {
+                if (Set(ref _winnerCandidate, value))
+                {
+                    Raise(nameof(HasWinnerCandidate));
+                    Raise(nameof(WinnerCandidateTitle));
+                    (ApplyWinnerStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public bool HasWinnerCandidate => WinnerCandidate != null;
+        public string WinnerCandidateTitle => WinnerCandidate != null
+            ? $"🏆 Лучший результат: {WinnerCandidate.DisplayName}"
+            : "";
+
+        public ICommand StartSmartAutoTuningCommand { get; }
+        public ICommand CancelSmartAutoTuningCommand { get; }
+        public ICommand ApplyWinnerStrategyCommand { get; }
+
+        private async Task StartSmartAutoTuningAsync()
+        {
+            if (IsAutoTuningRunning) return;
+            IsAutoTuningRunning = true;
+            AutoTuningResults.Clear();
+            WinnerCandidate = null;
+            AutoTuningStatusText = "Запуск глубокого многопроходного автоподбора…";
+            AutoTuningProgressValue = 0;
+            AutoTuningProgressMaximum = SmartStrategyAutoTuner.Hypotheses.Count;
+            AutoTuningProgressPercentText = "0%";
+            _autoTuningCts = new CancellationTokenSource();
+
+            var progress = new Progress<AutoTunerProgress>(p =>
+            {
+                AutoTuningProgressValue = p.CurrentStep;
+                AutoTuningProgressMaximum = p.TotalSteps;
+                AutoTuningProgressPercentText = p.TotalSteps > 0 ? $"{(int)((double)p.CurrentStep / p.TotalSteps * 100)}%" : "0%";
+                AutoTuningStatusText = p.StatusMessage;
+            });
+
+            try
+            {
+                var (ok, msg, winner, results) = await SmartStrategyAutoTuner.RunDeepAutoTuningAsync(
+                    Store.Folder,
+                    _main.Bypass,
+                    TargetEndpoints,
+                    _main.Settings.ProviderContext,
+                    progress,
+                    step => Application.Current?.Dispatcher?.Invoke(() => AutoTuningResults.Insert(0, step)),
+                    _autoTuningCts.Token);
+
+                AutoTuningStatusText = msg;
+                WinnerCandidate = winner;
+
+                if (ok && winner != null)
+                {
+                    Refresh();
+                    _main.Home.ShowSuccess($"Подобран оптимальный пресет: {winner.DisplayName}");
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                AutoTuningStatusText = "Автоподбор отменён пользователем.";
+            }
+            catch (Exception ex)
+            {
+                AutoTuningStatusText = "Ошибка автоподбора: " + ex.Message;
+            }
+            finally
+            {
+                IsAutoTuningRunning = false;
+            }
+        }
+
+        private void CancelSmartAutoTuning()
+        {
+            _autoTuningCts?.Cancel();
+        }
+
+        private async Task ApplyWinnerStrategyAsync()
+        {
+            if (WinnerCandidate == null) return;
+            var strat = WinnerCandidate.ToStrategyInfo();
+            Settings.SelectedStrategy = strat.Name;
+            SettingsStore.Save(Settings);
+
+            if (_main.Bypass.GetStatus().IsRunning)
+            {
+                await _main.Bypass.StartAsync(strat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+            }
+
+            _main.Home.RefreshStatus();
+            _main.Home.ShowSuccess($"Стратегия «{strat.Name}» установлена как основная и применена.");
+        }
 
         // ------------------------------------------------------------------ Интеллектуальный подбор
         public StrategyInfo? BestEmpiricalStrategy

@@ -15,6 +15,13 @@ namespace ZapretGui.ViewModels
         public event Action? RequestOpenMain;
         public event Action? RequestCloseOverlay;
 
+        public ICommand ToggleBypassCommand { get; }
+        public ICommand ToggleGameModeCommand { get; }
+        public ICommand OpenMainWindowCommand { get; }
+        public ICommand CloseOverlayCommand { get; }
+        public ICommand NextStrategyCommand { get; }
+        public ICommand PrevStrategyCommand { get; }
+
         public MiniOverlayViewModel(MainViewModel main)
         {
             _main = main;
@@ -23,6 +30,32 @@ namespace ZapretGui.ViewModels
             ToggleGameModeCommand = new RelayCommand(ToggleGameMode);
             OpenMainWindowCommand = new RelayCommand(() => RequestOpenMain?.Invoke());
             CloseOverlayCommand = new RelayCommand(() => RequestCloseOverlay?.Invoke());
+            NextStrategyCommand = new AsyncRelayCommand(() => CycleStrategyAsync(true));
+            PrevStrategyCommand = new AsyncRelayCommand(() => CycleStrategyAsync(false));
+        }
+
+        public async Task CycleStrategyAsync(bool forward)
+        {
+            var list = _main.Strategies.Items;
+            if (list.Count == 0) return;
+
+            var current = Settings.SelectedStrategy;
+            var index = list.FindIndex(s => string.Equals(s.Name, current, StringComparison.OrdinalIgnoreCase));
+            if (index < 0) index = 0;
+            else if (forward) index = (index + 1) % list.Count;
+            else index = (index - 1 + list.Count) % list.Count;
+
+            var nextStrat = list[index];
+            Settings.SelectedStrategy = nextStrat.Name;
+            SettingsStore.Save(Settings);
+
+            if (_main.Bypass.GetStatus().IsRunning)
+            {
+                await _main.Bypass.StartAsync(nextStrat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+            }
+
+            _main.Home.RefreshStatus();
+            Refresh();
         }
 
         public AppSettings Settings => _main.Settings;
