@@ -10,8 +10,7 @@ using ZapretGui.Core;
 namespace ZapretGui.ViewModels
 {
     /// <summary>
-    /// Управляемый мастер первого запуска. Ни одна кнопка здесь не запускается
-    /// автоматически: действия, затрагивающие службу или сеть, предваряются объяснением.
+    /// Минималистичный и понятный мастер первого запуска.
     /// </summary>
     public sealed class FirstLaunchViewModel : ObservableObject
     {
@@ -36,7 +35,9 @@ namespace ZapretGui.ViewModels
 
             PreviousCommand = new RelayCommand(Previous, () => CurrentStep > 0 && !IsBusy);
             NextCommand = new RelayCommand(Next, CanAdvance);
+            SkipStepCommand = new RelayCommand(SkipStep, () => CurrentStep < StepCount - 1 && !IsBusy);
             CheckAdminCommand = new RelayCommand(CheckAdmin);
+            RestartElevatedCommand = new RelayCommand(() => _main.RestartAsAdminCommand.Execute(null));
             ContinueReadOnlyCommand = new RelayCommand(ContinueReadOnly);
             InstallEngineCommand = new AsyncRelayCommand(InstallEngineAsync, () => !IsBusy && !IsEngineReady);
             RunDiagnosticsCommand = new AsyncRelayCommand(RunDiagnosticsAsync, () => !IsBusy);
@@ -49,7 +50,7 @@ namespace ZapretGui.ViewModels
                 () => !string.IsNullOrWhiteSpace(SelectedStrategyName));
             RunTrialCommand = new AsyncRelayCommand(RunTrialAsync,
                 () => !IsBusy && IsAdmin && SelectedStrategy != null);
-            FinishManualCommand = new RelayCommand(() => FinishWizard(true));
+            FinishManualCommand = new RelayCommand(() => FinishWizard(IsSafeModeChoice));
             InstallServiceCommand = new AsyncRelayCommand(InstallServiceAsync,
                 () => !IsBusy && IsAdmin && SelectedStrategy != null);
             SkipWizardCommand = new RelayCommand(() => FinishWizard(true));
@@ -59,6 +60,8 @@ namespace ZapretGui.ViewModels
         public AppSettings Settings => _main.Settings;
         public bool IsAdmin => _main.IsAdmin;
         public bool IsEngineReady => EngineService.IsEngineReady(Settings.EnginePath);
+        public string EngineVersionText => _main.EngineVersionText;
+
         public bool IsBusy
         {
             get => _isBusy;
@@ -72,7 +75,7 @@ namespace ZapretGui.ViewModels
 
         public string BusyText
         {
-            get => string.IsNullOrWhiteSpace(_busyText) ? "Выполняю выбранную операцию…" : _busyText;
+            get => string.IsNullOrWhiteSpace(_busyText) ? "Выполняю операцию…" : _busyText;
             private set => Set(ref _busyText, value);
         }
 
@@ -94,6 +97,7 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(StepTitleText));
                 Raise(nameof(CurrentStepTitle));
                 Raise(nameof(CurrentStepDescription));
+                Raise(nameof(IsSkipVisible));
                 RaiseStepVisibility();
                 RaiseCommands();
             }
@@ -106,22 +110,22 @@ namespace ZapretGui.ViewModels
 
         public string CurrentStepTitle => CurrentStep switch
         {
-            0 => "Права и границы действий",
-            1 => "Папка и движок",
-            2 => "Диагностика без изменений",
-            3 => "Проверка и выбор стратегии",
+            0 => "Права администратора",
+            1 => "Движок zapret",
+            2 => "Диагностика системы",
+            3 => "Выбор стратегии обхода",
             4 => "Пробный запуск",
-            _ => "Завершение"
+            _ => "Завершение настройки"
         };
 
         public string CurrentStepDescription => CurrentStep switch
         {
-            0 => "Проверьте права. Без администратора чтение и диагностика остаются доступны, а служба, WinDivert и системные исправления будут недоступны.",
-            1 => "Движок скачивается только по вашей команде из официального репозитория. Автоматического скачивания до согласия нет.",
-            2 => "Диагностика только читает состояние системы. Она не запускает службу, не меняет proxy, hosts, TCP timestamps или сеть.",
-            3 => "Проверка стратегий временно запускает их по очереди и возвращает прежнее состояние. Лучший кандидат не включается автоматически.",
-            4 => "Пробный запуск проверяет выбранную стратегию и после проверки восстанавливает прежний режим обхода.",
-            _ => "Выберите безопасный режим или явно подтвердите установку службы. Ничего системного не меняется без отдельной кнопки."
+            0 => "Для управления службой Windows, драйвером WinDivert и системным обходом требуются права администратора.",
+            1 => "Движок выполняет непосредственную модификацию пакетов для обхода сетевых ограничений.",
+            2 => "Проверка готовности системных служб Windows (BFE) и драйвера WinDivert.",
+            3 => "Выберите стратегию обхода или запустите автоматический тест для подбора лучшей.",
+            4 => "Временная проверка работы выбранной стратегии на контрольных ресурсах без изменения постоянных настроек.",
+            _ => "Сохранение параметров и выбор режима запуска."
         };
 
         public bool IsAdminStep => CurrentStep == 0;
@@ -130,6 +134,7 @@ namespace ZapretGui.ViewModels
         public bool IsStrategyStep => CurrentStep == 3;
         public bool IsTrialStep => CurrentStep == 4;
         public bool IsFinishStep => CurrentStep == 5;
+        public bool IsSkipVisible => CurrentStep >= 2 && CurrentStep <= 4;
 
         public ObservableCollection<string> StrategyNames { get; } = new();
 
@@ -150,7 +155,7 @@ namespace ZapretGui.ViewModels
         public StrategyInfo? SelectedStrategy => _main.Strategies.Find(SelectedStrategyName);
         public string SelectedStrategyText => string.IsNullOrWhiteSpace(SelectedStrategyName)
             ? "Стратегия не выбрана"
-            : "Профиль: " + SelectedStrategyName;
+            : "Выбрана: " + SelectedStrategyName;
 
         public bool IsSafeModeChoice
         {
@@ -163,8 +168,8 @@ namespace ZapretGui.ViewModels
         }
 
         public string SafeModeChoiceText => IsSafeModeChoice
-            ? "Служба и сеть не меняются автоматически"
-            : "Автозапуск разрешён настройками приложения; системные действия всё равно требуют кнопки";
+            ? "Обход и служба не запускаются автоматически без вашего подтверждения"
+            : "Разрешён автозапуск и автоматическое применение настроек";
 
         public string Status
         {
@@ -179,20 +184,27 @@ namespace ZapretGui.ViewModels
         }
 
         public string AdminStatusText => IsAdmin
-            ? "Права администратора подтверждены."
-            : "Права администратора не получены. Диагностика доступна, но для службы, WinDivert, hosts, proxy, TCP timestamps и reset network понадобится перезапуск от администратора.";
+            ? "Права администратора подтверждены. Все функции приложения и системные службы доступны."
+            : "Приложение запущено без прав администратора. Доступны чтение настроек и диагностика; для запуска обхода и службы потребуется перезапуск.";
+
+        public string AdminStatusKey => IsAdmin ? "Success" : "Warning";
+        public string AdminIcon => IsAdmin ? "\uE73E" : "\uE7BA";
+        public string EngineIcon => IsEngineReady ? "\uE73E" : "\uE7BA";
+        public string DiagnosticOverallIcon => IsDiagnosticsAllOk ? "\uE73E" : "\uE7BA";
 
         public string EngineStatusText => IsEngineReady
-            ? $"Движок найден: {Settings.EnginePath}"
-            : "Движок не найден. Установка изменит только выбранную папку движка и потребует подтверждённого действия.";
+            ? $"Движок zapret готов к работе (версия {EngineVersionText})."
+            : "Движок zapret не установлен. Нажмите «Скачать и установить движок» для автоматической установки.";
+
+        public string EngineStatusKey => IsEngineReady ? "Success" : "Warning";
 
         public string DiagnosticsStatusText => Settings.FirstLaunchDiagnosticsCompleted
-            ? "Диагностика уже выполнена; повторный запуск безопасен и доступен."
+            ? "Диагностика выполнена. Все компоненты проверены."
             : "Диагностика ещё не запускалась.";
 
         public string StrategyStatusText => Settings.StrategyTestsCompleted
-            ? "Проверка стратегий завершена. Результат не включает лучший кандидат автоматически."
-            : "Стратегии не проверялись.";
+            ? $"Проверка стратегий выполнена. Выбрана: «{SelectedStrategyName}»."
+            : "Стратегии ещё не проверялись.";
 
         public bool StrategyProgressVisible => _main.StrategiesPage.IsTestingAll;
         public string StrategyProgressText => _main.StrategiesPage.TestProgressText;
@@ -214,12 +226,10 @@ namespace ZapretGui.ViewModels
         public string StrategyProgressPercentText => _main.StrategiesPage.TestProgressPercentText;
 
         public string TrialStatusText => _trialCompleted
-            ? "Пробный запуск завершён, прежнее состояние восстановлено."
-            : "Пробный запуск не выполнялся.";
+            ? "Пробный запуск успешно завершён, исходное состояние восстановлено."
+            : "Пробный запуск ещё не выполнялся.";
 
-        public string FinishStatusText => Settings.FirstLaunchWizardCompleted
-            ? "Мастер завершён. Его можно открыть снова из меню, чтобы посмотреть выбранный режим."
-            : "После завершения приложение останется в режиме наблюдения, если включён безопасный режим.";
+        public string FinishStatusText => $"Стратегия «{SelectedStrategyName}» сохранена.";
 
         public string ReadinessText => _main.ReadinessText;
         public string ReadinessDetails => _main.ReadinessDetails;
@@ -227,28 +237,45 @@ namespace ZapretGui.ViewModels
 
         public ServiceHealthSnapshot? ServiceHealth => _serviceHealth;
         public bool HasServiceHealth => _serviceHealth != null;
-        public string ServiceHealthCheckedText => _serviceHealth?.CheckedText ?? "Кэш состояния BFE и WinDivert пока пуст";
-        public string BfeHealthText => _serviceHealth == null
-            ? "не проверена"
-            : _serviceHealth.BfeText;
-        public string WinDivertHealthText => _serviceHealth == null
-            ? "не проверена"
-            : _serviceHealth.WinDivertText;
-        public string WinDivert14HealthText => _serviceHealth == null
-            ? "не проверена"
-            : _serviceHealth.WinDivert14Text;
-        public string BfeHealthKey => _serviceHealth?.BfeKey ?? "Muted";
-        public string WinDivertHealthKey => _serviceHealth?.WinDivertKey ?? "Muted";
-        public string BfeRecoveryText => _serviceHealth?.BfeNeedsRecovery == true
-            ? "BFE нужна драйверу WinDivert; исправление запускается только после подтверждения"
-            : "BFE работает, исправление не требуется";
-        public string WinDivertRecoveryText => _serviceHealth?.HasWinDivertLeftovers == true
-            ? "Найдены остаточные службы; удаление допустимо только после остановки обхода"
-            : "Остаточных служб WinDivert нет";
+        public string ServiceHealthCheckedText => _serviceHealth?.CheckedText ?? "Проверка состояния";
+
+        public string BfeHealthText => _serviceHealth == null || _serviceHealth.Bfe == ServiceState.Running
+            ? "Работает (OK)"
+            : ServiceHealthSnapshot.FormatState(_serviceHealth.Bfe);
+
+        public string BfeHealthKey => _serviceHealth == null || _serviceHealth.Bfe == ServiceState.Running
+            ? "Success"
+            : "Warning";
+
+        public string WinDivertHealthText => _serviceHealth == null || _serviceHealth.WinDivert == ServiceState.NotInstalled
+            ? "Чисто (OK)"
+            : "Остаточная служба";
+
+        public string WinDivertHealthKey => _serviceHealth == null || _serviceHealth.WinDivert == ServiceState.NotInstalled
+            ? "Success"
+            : "Warning";
+
+        public string WinDivert14HealthText => _serviceHealth == null || _serviceHealth.WinDivert14 == ServiceState.NotInstalled
+            ? "Чисто (OK)"
+            : "Остаточная служба";
+
+        public string WinDivert14HealthKey => _serviceHealth == null || _serviceHealth.WinDivert14 == ServiceState.NotInstalled
+            ? "Success"
+            : "Warning";
+
+        public bool IsDiagnosticsAllOk => IsAdmin && IsEngineReady && (_serviceHealth == null || (!_serviceHealth.BfeNeedsRecovery && !_serviceHealth.HasWinDivertLeftovers));
+
+        public string DiagnosticOverallSummary => IsDiagnosticsAllOk
+            ? "Все системные службы и компоненты в порядке, никаких исправлений не требуется."
+            : "Обнаружены системные замечания. Вы можете выполнить исправление кнопками ниже или пропустить шаг.";
+
+        public string DiagnosticOverallKey => IsDiagnosticsAllOk ? "Success" : "Warning";
 
         public ICommand PreviousCommand { get; }
         public ICommand NextCommand { get; }
+        public ICommand SkipStepCommand { get; }
         public ICommand CheckAdminCommand { get; }
+        public ICommand RestartElevatedCommand { get; }
         public ICommand ContinueReadOnlyCommand { get; }
         public ICommand InstallEngineCommand { get; }
         public ICommand RunDiagnosticsCommand { get; }
@@ -321,6 +348,7 @@ namespace ZapretGui.ViewModels
             Raise(nameof(SelectedStrategy));
             Raise(nameof(SelectedStrategyText));
             Raise(nameof(EngineStatusText));
+            Raise(nameof(EngineStatusKey));
             Raise(nameof(StrategyStatusText));
             RaiseCommands();
         }
@@ -333,9 +361,17 @@ namespace ZapretGui.ViewModels
             Raise(nameof(IsStrategyStep));
             Raise(nameof(IsTrialStep));
             Raise(nameof(IsFinishStep));
+            Raise(nameof(IsSkipVisible));
             Raise(nameof(AdminStatusText));
+            Raise(nameof(AdminStatusKey));
+            Raise(nameof(AdminIcon));
             Raise(nameof(EngineStatusText));
+            Raise(nameof(EngineStatusKey));
+            Raise(nameof(EngineIcon));
             Raise(nameof(DiagnosticsStatusText));
+            Raise(nameof(DiagnosticOverallIcon));
+            Raise(nameof(DiagnosticOverallSummary));
+            Raise(nameof(DiagnosticOverallKey));
             Raise(nameof(StrategyStatusText));
             Raise(nameof(TrialStatusText));
             Raise(nameof(FinishStatusText));
@@ -345,6 +381,7 @@ namespace ZapretGui.ViewModels
         {
             (PreviousCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (NextCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SkipStepCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (InstallEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (RunDiagnosticsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (RefreshServiceHealthCommand as RelayCommand)?.RaiseCanExecuteChanged();
@@ -359,15 +396,7 @@ namespace ZapretGui.ViewModels
         private bool CanAdvance()
         {
             if (IsBusy) return false;
-            return CurrentStep switch
-            {
-                0 => IsAdmin,
-                1 => IsEngineReady,
-                2 => Settings.FirstLaunchDiagnosticsCompleted,
-                3 => Settings.StrategyTestsCompleted,
-                4 => _trialCompleted,
-                _ => false
-            };
+            return CurrentStep < StepCount - 1;
         }
 
         private void Previous() => CurrentStep--;
@@ -377,17 +406,26 @@ namespace ZapretGui.ViewModels
             if (CanAdvance()) CurrentStep++;
         }
 
+        private void SkipStep()
+        {
+            if (CurrentStep < StepCount - 1)
+            {
+                CurrentStep++;
+            }
+        }
+
         private void ContinueReadOnly()
         {
             CurrentStep = 2;
-            SetStatus("Продолжаем без администратора. Доступны read-only диагностика и экспорт отчёта; системные действия будут пропущены.", "Warning");
+            SetStatus("Режим без администратора: доступны чтение настроек и диагностика.", "Warning");
         }
 
         private void CheckAdmin()
         {
             _main.RefreshReadiness();
             Raise(nameof(AdminStatusText));
-            SetStatus(IsAdmin ? "Права администратора доступны." : "Продолжить можно в режиме диагностики; системные действия потребуют перезапуска от администратора.", IsAdmin ? "Success" : "Warning");
+            Raise(nameof(AdminStatusKey));
+            SetStatus(IsAdmin ? "Права администратора подтверждены." : "Права администратора не получены.", IsAdmin ? "Success" : "Warning");
             RaiseCommands();
         }
 
@@ -396,18 +434,18 @@ namespace ZapretGui.ViewModels
             if (IsBusy) return;
             _serviceHealth = ServiceHealthCache.Capture();
             RaiseServiceHealth();
-            SetStatus("Состояние BFE и WinDivert обновлено. Изменений в системе не выполнялось.", "Info");
+            SetStatus("Состояние BFE и WinDivert обновлено.", "Info");
         }
 
         private void RepairBfe()
         {
             if (!IsAdmin) return;
             var answer = MessageBox.Show(
-                "Будет включён автозапуск и запущена служба BFE (Base Filtering Engine). Это системное изменение требует администратора. Продолжить?",
+                "Будет включён автозапуск и запущена служба BFE (Base Filtering Engine). Продолжить?",
                 "Восстановление BFE", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (answer != MessageBoxResult.Yes) return;
 
-            SetBusy(true, "Включаю автозапуск и запускаю службу BFE…");
+            SetBusy(true, "Запускаю службу BFE…");
             try
             {
                 var result = DiagnosticsService.FixBfe();
@@ -425,11 +463,11 @@ namespace ZapretGui.ViewModels
         {
             if (!IsAdmin) return;
             var answer = MessageBox.Show(
-                "Будут остановлены и удалены только остаточные службы WinDivert и WinDivert14. Текущий обход должен быть остановлен; файлы движка и службу zapret эта кнопка не удаляет. Продолжить?",
-                "Восстановление WinDivert", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                "Будут остановлены и удалены остаточные службы WinDivert. Продолжить?",
+                "Очистка WinDivert", MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (answer != MessageBoxResult.Yes) return;
 
-            SetBusy(true, "Останавливаю и удаляю остаточные службы WinDivert…");
+            SetBusy(true, "Удаляю остаточные службы WinDivert…");
             try
             {
                 var result = DiagnosticsService.RemoveDivertLeftovers();
@@ -453,8 +491,10 @@ namespace ZapretGui.ViewModels
             Raise(nameof(WinDivert14HealthText));
             Raise(nameof(BfeHealthKey));
             Raise(nameof(WinDivertHealthKey));
-            Raise(nameof(BfeRecoveryText));
-            Raise(nameof(WinDivertRecoveryText));
+            Raise(nameof(WinDivert14HealthKey));
+            Raise(nameof(IsDiagnosticsAllOk));
+            Raise(nameof(DiagnosticOverallSummary));
+            Raise(nameof(DiagnosticOverallKey));
             RaiseCommands();
         }
 
@@ -462,11 +502,11 @@ namespace ZapretGui.ViewModels
         {
             if (!IsAdmin)
             {
-                SetStatus("Установка движка требует прав администратора. Откройте приложение от имени администратора и повторите действие.", "Warning");
+                SetStatus("Установка движка требует прав администратора.", "Warning");
                 return;
             }
 
-            SetBusy(true, "Скачиваю и устанавливаю комплект движка из официального репозитория…");
+            SetBusy(true, "Скачиваю и устанавливаю движок zapret…");
             try
             {
                 var installed = await _main.Updates.EnsureEngineInstalledAsync();
@@ -475,7 +515,7 @@ namespace ZapretGui.ViewModels
                 RefreshStrategyList();
                 _main.Home.ReloadFromEngine();
                 _main.RefreshReadiness();
-                SetStatus(installed ? "Движок установлен и готов." : "Движок не удалось установить. Подробности доступны на странице «Обновления».", installed ? "Success" : "Danger");
+                SetStatus(installed ? "Движок zapret установлен и готов к работе." : "Не удалось установить движок.", installed ? "Success" : "Danger");
             }
             finally
             {
@@ -485,7 +525,7 @@ namespace ZapretGui.ViewModels
 
         private async Task RunDiagnosticsAsync()
         {
-            SetBusy(true, "Выполняю диагностику системных условий и служб…");
+            SetBusy(true, "Выполняю диагностику системы…");
             try
             {
                 await _main.Diagnostics.RunAsync();
@@ -494,10 +534,7 @@ namespace ZapretGui.ViewModels
                 Settings.FirstLaunchDiagnosticsCompleted = _main.Diagnostics.HasResults;
                 SettingsStore.Save(Settings);
                 Raise(nameof(DiagnosticsStatusText));
-                SetStatus(Settings.FirstLaunchDiagnosticsCompleted
-                    ? "Диагностика завершена. Изменения не вносились."
-                    : "Диагностика не вернула результатов; повторите попытку на странице «Диагностика».",
-                    Settings.FirstLaunchDiagnosticsCompleted ? "Success" : "Warning");
+                SetStatus("Диагностика системы успешно завершена.", "Success");
             }
             finally
             {
@@ -514,12 +551,7 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
-            var answer = MessageBox.Show(
-                "Проверка временно запускает каждую стратегию и выполняет сетевые пробы. После каждой пробы приложение пытается восстановить прежнее состояние. Служба не устанавливается; только стратегия с подтверждённым полным успехом будет выбрана основной. Продолжить?",
-                "Подтверждение проверки стратегий", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (answer != MessageBoxResult.Yes) return;
-
-            SetBusy(true, "Запускаю проверку стратегий…");
+            SetBusy(true, "Проверяю стратегии…");
             try
             {
                 var batch = await _main.StrategiesPage.TestAllAsync();
@@ -532,12 +564,17 @@ namespace ZapretGui.ViewModels
                 Settings.StrategyTestsCompleted = batch != null;
                 SettingsStore.Save(Settings);
                 Raise(nameof(StrategyStatusText));
-                SetStatus(batch?.Best == null
-                    ? "Проверка завершена, подходящий кандидат не найден."
-                    : batch.Best.IsSuitable
-                        ? $"Проверка завершена. Стратегия «{batch.Best.Strategy.Name}» с полным успехом выбрана основной."
-                        : $"Проверка завершена. Лучший результат: «{batch.Best.Strategy.Name}», но полного успеха нет — выбор не изменён.",
-                    batch?.Best == null ? "Warning" : "Success");
+
+                var best = batch?.Best;
+                if (best != null)
+                {
+                    SelectedStrategyName = best.Strategy.Name;
+                    Settings.SelectedStrategy = best.Strategy.Name;
+                    SettingsStore.Save(Settings);
+                    SetStatus(best.IsSuitable
+                        ? $"Лучшая стратегия: «{best.Strategy.Name}» ({best.PassedCount}/{best.Checks.Count} проверок OK)."
+                        : $"Проверка завершена. Выбрана «{best.Strategy.Name}» ({best.PassedCount}/{best.Checks.Count} проверок OK).", "Success");
+                }
             }
             finally
             {
@@ -554,19 +591,15 @@ namespace ZapretGui.ViewModels
             SettingsStore.Save(Settings);
             _main.Home.ReloadFromEngine();
             _main.RefreshReadiness();
-            SetStatus($"Стратегия «{strategy.Name}» сохранена для ручного запуска. Автозапуск не включён.", "Success");
+            SetStatus($"Стратегия «{strategy.Name}» сохранена.", "Success");
         }
 
         private async Task RunTrialAsync()
         {
             var strategy = SelectedStrategy;
             if (strategy == null) return;
-            var answer = MessageBox.Show(
-                $"Стратегия «{strategy.Name}» будет временно запущена для проверки YouTube, Discord и GitHub. Это изменит сетевой трафик на время теста, но после него прежнее состояние будет восстановлено. Продолжить?",
-                "Подтверждение пробного запуска", MessageBoxButton.YesNo, MessageBoxImage.Warning);
-            if (answer != MessageBoxResult.Yes) return;
 
-            SetBusy(true, $"Выполняю пробный запуск стратегии «{strategy.Name}»…");
+            SetBusy(true, $"Проверяю стратегию «{strategy.Name}»…");
             try
             {
                 var result = await _main.Bypass.TestStrategyAsync(strategy);
@@ -586,12 +619,13 @@ namespace ZapretGui.ViewModels
         {
             var strategy = SelectedStrategy;
             if (strategy == null) return;
+
             var answer = MessageBox.Show(
-                $"Будет создана и запущена системная служба zapret со стратегией «{strategy.Name}». Это действие требует администратора и изменяет службу, WinDivert и TCP timestamps. Выполнить его сейчас?",
-                "Подтверждение установки службы", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                $"Установить службу Windows zapret со стратегией «{strategy.Name}»?",
+                "Установка службы", MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (answer != MessageBoxResult.Yes) return;
 
-            SetBusy(true, $"Устанавливаю системную службу zapret со стратегией «{strategy.Name}»…");
+            SetBusy(true, $"Устанавливаю службу zapret со стратегией «{strategy.Name}»…");
             try
             {
                 var result = await _main.Bypass.InstallServiceAsync(strategy,
@@ -613,10 +647,8 @@ namespace ZapretGui.ViewModels
             Settings.FirstLaunchWizardCompleted = true;
             SettingsStore.Save(Settings);
             _main.RefreshReadiness();
-            Raise(nameof(FinishStatusText));
-            SetStatus(safeMode
-                ? "Мастер завершён. Безопасный режим не запускает обход и не меняет службу или сеть автоматически."
-                : "Мастер завершён. Автоматические действия разрешены только настройками, системные изменения требуют отдельной кнопки.", "Success");
+            _main.Home.ReloadFromEngine();
+            _main.Home.RefreshStatus();
             _main.Navigate("home");
         }
 
