@@ -404,7 +404,32 @@
                             <!-- Название стратегии -->
                             <TextBlock Style="{StaticResource DimText}" Text="НАЗВАНИЕ СТРАТЕГИИ" />
                             <TextBox Style="{StaticResource SearchBox}" Text="{Binding BuilderStrategyName, UpdateSourceTrigger=PropertyChanged}"
-                                     Margin="0,4,0,10" ToolTip="Имя стратегии для сохранения в каталог" />
+                                     Margin="0,4,0,4" ToolTip="Имя стратегии для сохранения в каталог — без расширения .bat" />
+                            <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,0,0,6"
+                                       Text="{Binding BuilderNameValidationText}" Foreground="{DynamicResource WarningBrush}"
+                                       Visibility="{Binding BuilderNameValidationText, Converter={StaticResource StringToVis}}" TextWrapping="Wrap"/>
+                            <Grid Margin="0,0,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Button Style="{StaticResource GhostButton}" Content="⬇ Загрузить из выбранной в каталоге" Padding="8,3" FontSize="11"
+                                        Command="{Binding LoadBuilderFromSelectedCommand}" ToolTip="Скопировать параметры выбранной стратегии из каталога в конструктор" />
+                                <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="→ правите и сохраняете как новую" VerticalAlignment="Center" Margin="8,0,0,0" FontSize="11" Opacity="0.7"/>
+                            </Grid>
+
+                            <!-- Пресеты — быстрый старт -->
+                            <TextBlock Style="{StaticResource DimText}" Text="БЫСТРЫЙ ПРЕСЕТ (ШАБЛОН)" />
+                            <Grid Margin="0,4,0,10">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Style="{StaticResource AppComboBox}" ItemsSource="{Binding BuilderPresets}" DisplayMemberPath="DisplayText"
+                                          SelectedItem="{Binding SelectedBuilderPreset, Mode=TwoWay}" ToolTip="Готовые шаблоны: стандарт, агрессивный, лёгкий, игровой" />
+                                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Применить" Margin="6,0,0,0" Padding="10,3" FontSize="11"
+                                        Command="{Binding ApplyBuilderPresetCommand}" ToolTip="Заполнить форму выбранным пресетом"/>
+                            </Grid>
 
                             <!-- Режим расщепления и Split Pos -->
                             <Grid Margin="0,0,0,10">
@@ -472,21 +497,41 @@
                     <!-- ПРАВАЯ КОЛОНКА: Предпросмотр аргументов, тест и сохранение -->
                     <Border Grid.Column="1" Style="{StaticResource Card}" Margin="6,0,0,0" Padding="16,14">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="СГЕНЕРИРОВАННЫЕ АРГУМЕНТЫ WINWS" />
-                            <Border Style="{StaticResource InnerCard}" Padding="10,8" Margin="0,6,0,12" Background="{DynamicResource ElevatedBrush}">
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource SectionText}" Text="СГЕНЕРИРОВАННЫЕ АРГУМЕНТЫ WINWS" VerticalAlignment="Center"/>
+                                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding BuilderArgsCountText}" FontSize="11" VerticalAlignment="Center" Margin="0,0,6,0"/>
+                                    <Button Style="{StaticResource GhostButton}" Content="⎘ Копировать" Padding="6,2" FontSize="11"
+                                            Command="{Binding CopyBuilderArgsCommand}" ToolTip="Скопировать строку аргументов в буфер"/>
+                                </StackPanel>
+                            </Grid>
+                            <Border Style="{StaticResource InnerCard}" Padding="10,8" Margin="0,0,0,12" Background="{DynamicResource ElevatedBrush}">
                                 <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" MaxHeight="140">
                                     <TextBlock Style="{StaticResource MonoText}" Text="{Binding BuilderGeneratedArgsPreview}" TextWrapping="Wrap" FontSize="11" />
                                 </ScrollViewer>
                             </Border>
+                            <!-- Чипы аргументов для наглядности -->
+                            <WrapPanel Margin="0,0,0,12">
+                                <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}" Margin="0,0,4,4" Visibility="{Binding BuilderHasArgs, Converter={StaticResource BoolToVis}}"><TextBlock Text="{Binding BuilderDesyncMode, StringFormat='desync={0}'}" FontSize="10" Foreground="{DynamicResource AccentBrush}"/></Border>
+                                <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="0,0,4,4"><TextBlock Text="{Binding BuilderSplitPos, StringFormat='split-pos={0}'}" FontSize="10"/></Border>
+                                <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="0,0,4,4"><TextBlock Text="{Binding BuilderFakeSni, StringFormat='sni={0}'}" FontSize="10"/></Border>
+                                <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="0,0,4,4"><TextBlock Text="{Binding BuilderTtl, StringFormat='ttl={0}'}" FontSize="10"/></Border>
+                                <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="0,0,4,4"><TextBlock Text="{Binding BuilderFooling, StringFormat='fooling={0}'}" FontSize="10"/></Border>
+                            </WrapPanel>
 
                             <TextBlock Style="{StaticResource SectionText}" Text="ДЕЙСТВИЯ И ТЕСТИРОВАНИЕ" />
+                            <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,2,0,8" TextWrapping="Wrap" Text="Протестируйте параметры без сохранения — временный winws проверит контрольные адреса, затем восстановит прежний обход."/>
                             <WrapPanel Margin="0,8,0,10">
                                 <Button Style="{StaticResource SecondaryButton}" Content="Протестировать параметры"
                                         Command="{Binding BuilderTestCommand}"
                                         ToolTip="Временно запустить процесс winws с этими параметрами и проверить соединение" />
                                 <Button Style="{StaticResource PrimaryButton}" Content="Сохранить в каталог" Margin="8,0,0,0"
                                         Command="{Binding BuilderSaveCommand}"
-                                        ToolTip="Сохранить эти параметры как собственную стратегию" />
+                                        ToolTip="Сохранить эти параметры как собственную стратегию в папку candidates" />
                                 <Button Style="{StaticResource GhostButton}" Content="Применить сейчас" Margin="8,0,0,0"
                                         Command="{Binding BuilderApplyCommand}"
                                         ToolTip="Сохранить и сразу запустить постоянный обход с этими параметрами" />

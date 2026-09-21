@@ -16,6 +16,23 @@ using ZapretGui.Core;
 
 namespace ZapretGui.ViewModels
 {
+    public sealed class BuilderPreset
+    {
+        public string Id { get; init; } = "";
+        public string Name { get; init; } = "";
+        public string Description { get; init; } = "";
+        public string DesyncMode { get; init; } = "";
+        public string SplitPos { get; init; } = "";
+        public string FakeSni { get; init; } = "";
+        public string Ttl { get; init; } = "";
+        public string Fooling { get; init; } = "";
+        public bool UseMultisplit { get; init; }
+        public bool UseGameUdp { get; init; }
+        public bool UseHostlist { get; init; }
+        public bool UseIpSet { get; init; }
+        public string DisplayText => $"{Name} — {Description}";
+    }
+
     public sealed class StrategiesViewModel : ObservableObject
     {
         private readonly MainViewModel _main;
@@ -67,6 +84,7 @@ namespace ZapretGui.ViewModels
         private bool _builderUseIpSet = true;
         private string _builderTestStatus = "";
         private string _builderTestStatusKey = "Info";
+        private BuilderPreset? _selectedBuilderPreset;
 
         // Контрольные адреса
         private string _newTargetName = "";
@@ -104,9 +122,22 @@ namespace ZapretGui.ViewModels
             ApplyBestRecommendedCommand = new AsyncRelayCommand(ApplyBestRecommendedAsync, () => BestEmpiricalStrategy != null && !IsBusy && !IsTestingAll);
 
             // Команды конструктора параметров
+            BuilderPresets = new List<BuilderPreset>
+            {
+                new() { Id="preset-standard", Name="Стандарт", Description="fake,split2 + Google SNI, multisplit — баланс скорости и обхода", DesyncMode="fake,split2", SplitPos="midsld", FakeSni="www.google.com", Ttl="auto", Fooling="badsum", UseMultisplit=true, UseGameUdp=true, UseHostlist=true, UseIpSet=true },
+                new() { Id="preset-aggressive", Name="Агрессивный", Description="disorder2 + sniext, TTL 2 — для строгих ТСПУ", DesyncMode="disorder2", SplitPos="sniext", FakeSni="www.microsoft.com", Ttl="2", Fooling="badsum,ts", UseMultisplit=true, UseGameUdp=true, UseHostlist=true, UseIpSet=true },
+                new() { Id="preset-light", Name="Лёгкий", Description="только fake — минимальная нагрузка, для слабых ТСПУ", DesyncMode="fake", SplitPos="none", FakeSni="www.cloudflare.com", Ttl="auto", Fooling="none", UseMultisplit=false, UseGameUdp=false, UseHostlist=true, UseIpSet=false },
+                new() { Id="preset-gaming", Name="Игровой", Description="split2 + UDP 50000-65535 — голос Discord и игры", DesyncMode="split2", SplitPos="1", FakeSni="yandex.ru", Ttl="auto", Fooling="badseq", UseMultisplit=true, UseGameUdp=true, UseHostlist=true, UseIpSet=true },
+            };
+            SelectedBuilderPreset = BuilderPresets[0];
+
             BuilderTestCommand = new AsyncRelayCommand(BuilderTestAsync, () => !IsBusy && !IsTestingAll && !IsAutoTuningRunning);
-            BuilderSaveCommand = new RelayCommand(BuilderSave, () => !string.IsNullOrWhiteSpace(BuilderStrategyName));
-            BuilderApplyCommand = new AsyncRelayCommand(BuilderApplyAsync, () => !IsBusy && !IsTestingAll && !IsAutoTuningRunning && !string.IsNullOrWhiteSpace(BuilderStrategyName));
+            BuilderSaveCommand = new RelayCommand(BuilderSave, () => !string.IsNullOrWhiteSpace(BuilderStrategyName) && IsBuilderNameValid);
+            BuilderApplyCommand = new AsyncRelayCommand(BuilderApplyAsync, () => !IsBusy && !IsTestingAll && !IsAutoTuningRunning && !string.IsNullOrWhiteSpace(BuilderStrategyName) && IsBuilderNameValid);
+            ApplyBuilderPresetCommand = new RelayCommand(() => { if (SelectedBuilderPreset != null) ApplyBuilderPreset(SelectedBuilderPreset); });
+            LoadBuilderFromSelectedCommand = new RelayCommand(LoadBuilderFromSelected, () => Selected != null);
+            CopyBuilderArgsCommand = new RelayCommand(CopyBuilderArgs, () => BuilderGeneratedArgs.Count > 0);
+
 
             // Команды умного автоподбора
             StartSmartAutoTuningCommand = new AsyncRelayCommand(StartSmartAutoTuningAsync, () => !IsAutoTuningRunning && !IsBusy && !IsTestingAll);
@@ -492,6 +523,8 @@ namespace ZapretGui.ViewModels
             {
                 if (Set(ref _builderStrategyName, value ?? ""))
                 {
+                    Raise(nameof(BuilderNameValidationText));
+                    Raise(nameof(IsBuilderNameValid));
                     (BuilderSaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (BuilderApplyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
@@ -552,6 +585,32 @@ namespace ZapretGui.ViewModels
             set { if (Set(ref _builderUseIpSet, value)) RaiseBuilderPreview(); }
         }
 
+        public List<BuilderPreset> BuilderPresets { get; }
+        public BuilderPreset? SelectedBuilderPreset
+        {
+            get => _selectedBuilderPreset;
+            set => Set(ref _selectedBuilderPreset, value);
+        }
+
+        public string BuilderNameValidationText
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(BuilderStrategyName)) return "Укажите имя файла (без .bat)";
+                var invalid = Path.GetInvalidFileNameChars();
+                if (BuilderStrategyName.IndexOfAny(invalid) >= 0) return "Имя содержит недопустимые символы";
+                if (BuilderStrategyName.Length > 40) return "Имя слишком длинное (до 40 символов)";
+                if (Store.Items.Any(s => s.Name.Equals(BuilderStrategyName, StringComparison.OrdinalIgnoreCase))) return "Стратегия с таким именем уже существует — будет перезаписана";
+                return "";
+            }
+        }
+
+        public bool IsBuilderNameValid => string.IsNullOrWhiteSpace(BuilderNameValidationText) || BuilderNameValidationText.Contains("будет перезаписана");
+
+        public ICommand ApplyBuilderPresetCommand { get; }
+        public ICommand LoadBuilderFromSelectedCommand { get; }
+        public ICommand CopyBuilderArgsCommand { get; }
+
         public List<string> BuilderGeneratedArgs => VisualStrategyBuilder.BuildArgs(
             Settings.EnginePath, BuilderDesyncMode, BuilderSplitPos, BuilderFakeSni, BuilderTtl,
             BuilderFooling, BuilderUseMultisplit, BuilderUseGameUdp, BuilderUseHostlist, BuilderUseIpSet);
@@ -578,6 +637,58 @@ namespace ZapretGui.ViewModels
         {
             Raise(nameof(BuilderGeneratedArgs));
             Raise(nameof(BuilderGeneratedArgsPreview));
+            Raise(nameof(BuilderArgsCountText));
+            Raise(nameof(BuilderHasArgs));
+        }
+
+        public string BuilderArgsCountText => $"{BuilderGeneratedArgs.Count} аргументов · {BuilderGeneratedArgsPreview.Length} символов";
+        public bool BuilderHasArgs => BuilderGeneratedArgs.Count > 0;
+
+        private void ApplyBuilderPreset(BuilderPreset preset)
+        {
+            BuilderDesyncMode = preset.DesyncMode;
+            BuilderSplitPos = preset.SplitPos;
+            BuilderFakeSni = preset.FakeSni;
+            BuilderTtl = preset.Ttl;
+            BuilderFooling = preset.Fooling;
+            BuilderUseMultisplit = preset.UseMultisplit;
+            BuilderUseGameUdp = preset.UseGameUdp;
+            BuilderUseHostlist = preset.UseHostlist;
+            BuilderUseIpSet = preset.UseIpSet;
+            BuilderTestStatus = $"Применён пресет «{preset.Name}»: {preset.Description}";
+            BuilderTestStatusKey = "Info";
+        }
+
+        private void LoadBuilderFromSelected()
+        {
+            if (Selected == null) return;
+            var s = Selected;
+            BuilderStrategyName = s.Name + "_copy";
+            // Пытаемся угадать параметры из Args
+            var args = string.Join(" ", s.Args);
+            if (args.Contains("disorder2")) BuilderDesyncMode = "disorder2";
+            else if (args.Contains("fake,split2")) BuilderDesyncMode = "fake,split2";
+            else if (args.Contains("split2")) BuilderDesyncMode = "split2";
+            else if (args.Contains("fake")) BuilderDesyncMode = "fake";
+            if (args.Contains("sniext")) BuilderSplitPos = "sniext";
+            else if (args.Contains("midsld")) BuilderSplitPos = "midsld";
+            foreach (var sni in BuilderFakeSnis)
+            {
+                if (sni != "none" && args.Contains(sni)) { BuilderFakeSni = sni; break; }
+            }
+            BuilderTestStatus = $"Параметры загружены из «{s.Name}» — отредактируйте и сохраните как новую стратегию";
+            BuilderTestStatusKey = "Info";
+        }
+
+        private void CopyBuilderArgs()
+        {
+            try
+            {
+                System.Windows.Clipboard.SetText(BuilderGeneratedArgsPreview);
+                BuilderTestStatus = "Аргументы скопированы в буфер обмена";
+                BuilderTestStatusKey = "Success";
+            }
+            catch (Exception ex) { BuilderTestStatus = "Не удалось скопировать: " + ex.Message; BuilderTestStatusKey = "Danger"; }
         }
 
         // ------------------------------------------------------------------ Управление контрольными адресами
