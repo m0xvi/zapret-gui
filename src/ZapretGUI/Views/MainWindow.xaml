@@ -107,7 +107,7 @@
                 <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
                         Background="{Binding ReadinessKey, Converter={StaticResource SoftSeverityBrush}}"
                         Command="{Binding NavigateDiagnosticsCommand}"
-                        ToolTip="{Binding ReadinessDetails} — нажмите, чтобы открыть аудит системы и исправить проблемы">
+                        ToolTip="{Binding ReadinessDetails, StringFormat={}{0} — нажмите, чтобы открыть аудит системы и исправить проблемы}">
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource Dot}"
                                 Background="{Binding ReadinessKey, Converter={StaticResource SeverityBrush}}" />
