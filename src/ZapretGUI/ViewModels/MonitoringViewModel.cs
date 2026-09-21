@@ -332,6 +332,28 @@ namespace ZapretGui.ViewModels
             MessageKey = "Warning";
             var before = _main.Bypass.GetStatus();
 
+            // P0 1.7.0: сначала пробуем профиль, привязанный к текущей сети / любой подходящий профиль
+            if (Settings.AutoSwitchProfileOnFailure && Settings.AutoSwitchProfileOnNetworkChange)
+            {
+                try
+                {
+                    var switched = await _main.ProfileAutoSwitch.TrySwitchOnFailureAsync(target, before);
+                    if (switched)
+                    {
+                        _main.Home.RefreshStatus();
+                        _main.Profiles.RefreshNetwork();
+                        Message = $"📶 Автопрофиль применён для восстановления «{target.Name}»";
+                        MessageKey = "Success";
+                        if (Settings.MonitorNotificationsEnabled) NotificationRequested?.Invoke(Message);
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Debug("[Monitoring] Ошибка автопрофиля при сбое: " + ex.Message);
+                }
+            }
+
             if (target.IsGame)
             {
                 await RecoverGameStrategyAsync(target, before);

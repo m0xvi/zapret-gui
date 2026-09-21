@@ -188,6 +188,21 @@ namespace ZapretGui.Core
 
         /// <summary>Необязательный контекст провайдера для будущего подбора стратегий.</summary>
         public ProviderContext ProviderContext { get; set; } = new();
+
+        /// <summary>Автоматически переключать профиль при смене сети (SSID/шлюз).</summary>
+        public bool AutoSwitchProfileOnNetworkChange { get; set; }
+
+        /// <summary>Автоматически переключать профиль при диагностированном сбое стратегии (требует AutoRecoverStrategy).</summary>
+        public bool AutoSwitchProfileOnFailure { get; set; }
+
+        /// <summary>Последний отпечаток сети, для которого уже применялся профиль (защита от зацикливания).</summary>
+        public string LastNetworkFingerprint { get; set; } = "";
+
+        /// <summary>Id профиля, применённого последним автопереключением.</summary>
+        public string LastAutoSwitchedProfileId { get; set; } = "";
+
+        /// <summary>Время последнего автопереключения профиля.</summary>
+        public DateTime? LastAutoSwitchTime { get; set; }
     }
 
     /// <summary>Загрузка/сохранение settings.json.</summary>

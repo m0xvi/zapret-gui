@@ -29,6 +29,17 @@ namespace ZapretGui.Core
         public DateTime? LastAppliedAt { get; set; }
         public bool IsBuiltIn { get; set; }
 
+        /// <summary>Отпечаток сети, к которой привязан профиль (SSID + шлюз + интерфейс). Пусто — не привязан.</summary>
+        public string NetworkFingerprint { get; set; } = "";
+        /// <summary>Человекочитаемое имя сети (SSID или интерфейс + шлюз).</summary>
+        public string NetworkDisplayName { get; set; } = "";
+        /// <summary>Когда профиль был привязан к сети.</summary>
+        public DateTime? NetworkBoundAt { get; set; }
+
+        public bool IsNetworkBound => !string.IsNullOrWhiteSpace(NetworkFingerprint);
+
+        public string NetworkBadgeText => IsNetworkBound ? $"📶 {NetworkDisplayName}" : "Не привязан к сети";
+
         public string SummaryText
         {
             get
@@ -133,6 +144,13 @@ namespace ZapretGui.Core
             {
                 AppLog.Error("[Profiles] Не удалось сохранить profiles.json: " + ex.Message);
             }
+        }
+
+        public static UserProfile? FindProfileForNetwork(IEnumerable<UserProfile> profiles, string fingerprint)
+        {
+            if (string.IsNullOrWhiteSpace(fingerprint)) return null;
+            return profiles.FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.NetworkFingerprint)
+                && p.NetworkFingerprint.Equals(fingerprint, StringComparison.OrdinalIgnoreCase));
         }
 
         public static UserProfile CreateFromCurrentSettings(AppSettings settings, string name, string description = "")

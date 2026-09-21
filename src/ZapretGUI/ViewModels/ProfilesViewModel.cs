@@ -18,6 +18,9 @@ namespace ZapretGui.ViewModels
         private string _statusText = "Готово к работе";
         private string _statusKey = "Info";
         private bool _isBusy;
+        private string _currentNetworkDisplay = "";
+        private string _currentNetworkFingerprint = "";
+        private string _autoSwitchStatus = "";
 
         public ProfilesViewModel(MainViewModel main)
         {
@@ -36,7 +39,12 @@ namespace ZapretGui.ViewModels
             RefreshBackupHistoryCommand = new RelayCommand(RefreshBackupHistory);
             CleanSystemCommand = new AsyncRelayCommand(CleanSystemAsync, () => !IsBusy);
 
+            BindToCurrentNetworkCommand = new RelayCommand(BindSelectedToCurrentNetwork, () => SelectedProfile != null);
+            UnbindNetworkCommand = new RelayCommand(UnbindSelectedNetwork, () => SelectedProfile != null && SelectedProfile.IsNetworkBound);
+            RefreshNetworkCommand = new RelayCommand(RefreshNetwork);
+
             Reload();
+            RefreshNetwork();
         }
 
         public AppSettings Settings => _main.Settings;
@@ -81,6 +89,8 @@ namespace ZapretGui.ViewModels
                     (DuplicateProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (DeleteProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (ExportProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (BindToCurrentNetworkCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (UnbindNetworkCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -125,6 +135,53 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        public string CurrentNetworkDisplay
+        {
+            get => _currentNetworkDisplay;
+            private set => Set(ref _currentNetworkDisplay, value);
+        }
+
+        public string CurrentNetworkFingerprint
+        {
+            get => _currentNetworkFingerprint;
+            private set => Set(ref _currentNetworkFingerprint, value);
+        }
+
+        public string AutoSwitchStatus
+        {
+            get => _autoSwitchStatus;
+            private set => Set(ref _autoSwitchStatus, value);
+        }
+
+        public bool AutoSwitchOnNetworkChange
+        {
+            get => Settings.AutoSwitchProfileOnNetworkChange;
+            set
+            {
+                if (Settings.AutoSwitchProfileOnNetworkChange == value) return;
+                Settings.AutoSwitchProfileOnNetworkChange = value;
+                SettingsStore.Save(Settings);
+                Raise(nameof(AutoSwitchOnNetworkChange));
+                StatusText = value ? "Автопереключение профилей при смене сети включено" : "Автопереключение при смене сети выключено";
+                StatusKey = "Success";
+                _main.NotifyAutoSwitchChanged();
+            }
+        }
+
+        public bool AutoSwitchOnFailure
+        {
+            get => Settings.AutoSwitchProfileOnFailure;
+            set
+            {
+                if (Settings.AutoSwitchProfileOnFailure == value) return;
+                Settings.AutoSwitchProfileOnFailure = value;
+                SettingsStore.Save(Settings);
+                Raise(nameof(AutoSwitchOnFailure));
+                StatusText = value ? "Автопереключение при сбое стратегии включено" : "Автопереключение при сбое выключено";
+                StatusKey = "Success";
+            }
+        }
+
         public ICommand ApplyProfileCommand { get; }
         public ICommand CreateProfileFromCurrentCommand { get; }
         public ICommand DuplicateProfileCommand { get; }
@@ -137,6 +194,9 @@ namespace ZapretGui.ViewModels
         public ICommand DeleteBackupCommand { get; }
         public ICommand RefreshBackupHistoryCommand { get; }
         public ICommand CleanSystemCommand { get; }
+        public ICommand BindToCurrentNetworkCommand { get; }
+        public ICommand UnbindNetworkCommand { get; }
+        public ICommand RefreshNetworkCommand { get; }
 
         public void Reload()
         {
@@ -217,6 +277,9 @@ namespace ZapretGui.ViewModels
                 RealTimePingEnabled = SelectedProfile.RealTimePingEnabled,
                 ProviderName = SelectedProfile.ProviderName,
                 ProviderAsn = SelectedProfile.ProviderAsn,
+                NetworkFingerprint = "",
+                NetworkDisplayName = "",
+                NetworkBoundAt = null,
                 CreatedAt = DateTime.UtcNow,
                 IsBuiltIn = false
             };
@@ -372,6 +435,64 @@ namespace ZapretGui.ViewModels
             {
                 IsBusy = false;
             }
+        }
+
+        public void RefreshNetwork()
+        {
+            try
+            {
+                var id = NetworkDetector.GetCurrentIdentity();
+                CurrentNetworkDisplay = id.DisplayName;
+                CurrentNetworkFingerprint = id.Fingerprint;
+                AutoSwitchStatus = _main.ProfileAutoSwitch?.LastReason ?? "Готов к отслеживанию сети";
+                Raise(nameof(CurrentNetworkDisplay));
+                Raise(nameof(CurrentNetworkFingerprint));
+                Raise(nameof(AutoSwitchStatus));
+            }
+            catch (Exception ex)
+            {
+                CurrentNetworkDisplay = "Ошибка: " + ex.Message;
+            }
+        }
+
+        private void BindSelectedToCurrentNetwork()
+        {
+            if (SelectedProfile == null) return;
+            var id = NetworkDetector.GetCurrentIdentity();
+            if (!id.IsValid)
+            {
+                StatusText = "Не удалось определить текущую сеть для привязки";
+                StatusKey = "Danger";
+                return;
+            }
+            SelectedProfile.NetworkFingerprint = id.Fingerprint;
+            SelectedProfile.NetworkDisplayName = id.DisplayName;
+            SelectedProfile.NetworkBoundAt = DateTime.UtcNow;
+            ProfileManager.SaveProfiles(Profiles);
+            RefreshNetwork();
+            Raise(nameof(SelectedProfile));
+            (UnbindNetworkCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            StatusText = $"Профиль «{SelectedProfile.Name}» привязан к сети «{id.DisplayName}»";
+            StatusKey = "Success";
+            // Обновляем отображение в списке
+            var idx = Profiles.IndexOf(SelectedProfile);
+            if (idx >= 0) { Profiles[idx] = SelectedProfile; }
+            Reload();
+            SelectedProfile = Profiles.FirstOrDefault(p => p.Id == SelectedProfile.Id);
+        }
+
+        private void UnbindSelectedNetwork()
+        {
+            if (SelectedProfile == null || !SelectedProfile.IsNetworkBound) return;
+            SelectedProfile.NetworkFingerprint = "";
+            SelectedProfile.NetworkDisplayName = "";
+            SelectedProfile.NetworkBoundAt = null;
+            ProfileManager.SaveProfiles(Profiles);
+            Raise(nameof(SelectedProfile));
+            (UnbindNetworkCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            StatusText = $"Привязка профиля «{SelectedProfile.Name}» к сети снята";
+            StatusKey = "Info";
+            Reload();
         }
     }
 }

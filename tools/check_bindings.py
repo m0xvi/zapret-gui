@@ -37,6 +37,7 @@ PAGE_VM = {
     "FirstLaunchPage": ["FirstLaunchViewModel"],
     "MonitoringPage": ["MonitoringViewModel"],
     "UserListsPage": ["UserListsViewModel"],
+    "ProfilesPage": ["ProfilesViewModel"],
     "LogsPage": ["LogsViewModel"],
     "SettingsPage": ["SettingsViewModel"],
     "AboutPage": ["MainViewModel"],
@@ -48,6 +49,7 @@ ITEM_TYPES = {
     "UpdatesPage": ["EngineConsistencyItem", "EngineBackupInfo"],
     "HomePage": ["ConnectionCheck", "MonitorTarget"],
     "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord", "StrategySwitchRecord", "MonitorTarget", "AutoTunerStepResult", "SniTestResult", "SniCandidate"],
+    "ProfilesPage": ["UserProfile", "BackupArchiveInfo"],
     "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult", "MonitorTarget", "ResourceProbeResult", "DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "DiscordVoiceServerCheck"],
     "UserListsPage": ["GameFilterProfile", "DnsProfile"],
     "DpiPage": ["DpiTargetResult", "DpiProbeResult"],
@@ -60,7 +62,7 @@ ITEM_TYPES = {
 # Типы, для которых второй сегмент не проверяем
 SKIP_SECOND = {
     "string", "bool", "int", "double", "ICommand", "AppSettings", "void", "",
-    "ObservableCollection<string>", "ObservableCollection<MonitorTarget>", "ObservableCollection<ConnectionCheck>", "ObservableCollection<EngineBackupInfo>", "ObservableCollection<LogEntry>", "ObservableCollection<GameFilterProfile>", "ObservableCollection<DnsProfile>", "List<string>", "ICollectionView",
+    "ObservableCollection<string>", "ObservableCollection<MonitorTarget>", "ObservableCollection<ConnectionCheck>", "ObservableCollection<EngineBackupInfo>", "ObservableCollection<LogEntry>", "ObservableCollection<GameFilterProfile>", "ObservableCollection<DnsProfile>", "ObservableCollection<UserProfile>", "ObservableCollection<BackupArchiveInfo>", "List<string>", "ICollectionView",
 }
 
 

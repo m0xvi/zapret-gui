@@ -54,6 +54,68 @@
             <!-- ===================== ВКЛАДКА 0: ПРОФИЛИ ===================== -->
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsProfilesTabVisible, Converter={StaticResource BoolToVis}}">
 
+                <!-- Автопереключение по сети — P0 1.7.0 -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,16" Padding="16">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                                <TextBlock Text="&#xE8AF;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SectionText}" Text="АВТОПЕРЕКЛЮЧЕНИЕ ПО СЕТИ" Margin="0,0,0,1"/>
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="Автоматический выбор профиля при смене Wi-Fi / сети или при сбое стратегии"/>
+                            </StackPanel>
+                            <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="↻ Обновить" Padding="10,6" FontSize="11"
+                                    Command="{Binding RefreshNetworkCommand}" ToolTip="Перечитать текущую сеть (SSID, шлюз, интерфейс)" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Border Style="{StaticResource InnerCard}" Margin="0,12,0,10">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Текущая сеть:" Margin="0,2,0,2" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding CurrentNetworkDisplay}" TextWrapping="Wrap" Margin="0,2,0,2"/>
+                                </Grid>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Отпечаток:" Margin="0,2,0,2" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" FontSize="11" Text="{Binding CurrentNetworkFingerprint}" TextWrapping="Wrap" Opacity="0.8" Margin="0,2,0,2"/>
+                                </Grid>
+                                <Border Style="{StaticResource Divider}" Margin="0,10,0,10"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" Style="{StaticResource SwitchCheckBox}" Content="При смене сети" IsChecked="{Binding AutoSwitchOnNetworkChange, Mode=TwoWay}" ToolTip="Автоматически применять привязанный профиль при смене Wi-Fi / проводной сети" Margin="0,0,8,0"/>
+                                    <CheckBox Grid.Column="1" Style="{StaticResource SwitchCheckBox}" Content="При сбое стратегии" IsChecked="{Binding AutoSwitchOnFailure, Mode=TwoWay}" ToolTip="При диагностированном сбое стратегии попробовать привязанный к сети профиль" Margin="8,0,0,0"/>
+                                </Grid>
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding AutoSwitchStatus}" Margin="0,8,0,0" TextWrapping="Wrap" Visibility="{Binding AutoSwitchStatus, Converter={StaticResource StringToVis}}"/>
+                            </StackPanel>
+                        </Border>
+
+                        <WrapPanel>
+                            <Button Style="{StaticResource SecondaryButton}" Content="📌 Привязать выбранный к текущей сети" Padding="12,6" FontSize="11.5"
+                                    Command="{Binding BindToCurrentNetworkCommand}" ToolTip="Сохранить текущую сеть (SSID/шлюз) в выбранный профиль — он будет включаться автоматически"/>
+                            <Button Style="{StaticResource GhostButton}" Content="✕ Отвязать" Margin="8,0,0,0" Padding="12,6" FontSize="11.5"
+                                    Command="{Binding UnbindNetworkCommand}" ToolTip="Снять привязку профиля к сети"/>
+                        </WrapPanel>
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Text="Подсказка: создайте отдельные профили для «Домашний Wi-Fi» и «Мобильный интернет», привяжите каждый к своей сети — переключение произойдёт в фоне через ~30с после смены сети (cooldown 60с)."/>
+                    </StackPanel>
+                </Border>
+
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="320" />
@@ -145,6 +207,8 @@
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
                                     </Grid.RowDefinitions>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="160" />
@@ -166,7 +230,14 @@
                                     <!-- Режим игры -->
                                     <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource DimText}" Text="Игровой режим:" Margin="0,3,0,3" />
                                     <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource BodyText}"
-                                               Text="{Binding GameModeActive, Converter={StaticResource BoolToAccentBrush}}" Margin="0,3,0,3" />
+                                               Text="{Binding GameModeActive}" Margin="0,3,0,3" />
+
+                                    <!-- Привязка к сети -->
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource DimText}" Text="Привязка к сети:" Margin="0,3,0,3" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding NetworkBadgeText}" Margin="0,3,0,3" />
+
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource DimText}" Text="Сеть:" Margin="0,3,0,3" Visibility="{Binding IsNetworkBound, Converter={StaticResource BoolToVis}}"/>
+                                    <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource DimText}" FontSize="11" Text="{Binding NetworkDisplayName}" TextWrapping="Wrap" Margin="0,3,0,3" Visibility="{Binding IsNetworkBound, Converter={StaticResource BoolToVis}}"/>
                                 </Grid>
                             </Border>
 

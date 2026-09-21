@@ -32,6 +32,7 @@ namespace ZapretGui.ViewModels
         public event Action? RequestToggleOverlay;
 
         public WatchdogService Watchdog { get; }
+        public ProfileAutoSwitchService ProfileAutoSwitch { get; }
         public RealTimePingSnapshot? RealTimePing { get; private set; }
         public GameDetectionService GameDetector { get; }
         public GlobalHotkeyService Hotkeys { get; }
@@ -122,6 +123,25 @@ namespace ZapretGui.ViewModels
             if (settings.WatchdogEnabled && !settings.SafeMode)
             {
                 Watchdog.Start();
+            }
+
+            ProfileAutoSwitch = new ProfileAutoSwitchService(settings, () => Bypass, () => Strategies);
+            ProfileAutoSwitch.StatusChanged += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Profiles.RefreshNetwork();
+                Raise(nameof(AutoSwitchNetworkStatus));
+            });
+            ProfileAutoSwitch.ProfileSwitched += (profile, identity) => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Home.RefreshStatus();
+                Profiles.Reload();
+                Profiles.RefreshNetwork();
+                Raise(nameof(ActiveStrategySummaryText));
+                WatchdogNotificationRequested?.Invoke($"📶 Автопрофиль «{profile.Name}» применён для сети «{identity.DisplayName}»");
+            });
+            if ((settings.AutoSwitchProfileOnNetworkChange || settings.AutoSwitchProfileOnFailure) && !settings.SafeMode)
+            {
+                ProfileAutoSwitch.Start();
             }
 
             NavItems = new ObservableCollection<NavItem>
@@ -309,6 +329,9 @@ namespace ZapretGui.ViewModels
         public string RealTimePingSummaryText => RealTimePing?.SummaryText ?? "RTT: проверка…";
         public string RealTimePingStatusKey => RealTimePing?.StatusKey ?? "Muted";
         public string RealTimePingTooltip => RealTimePing?.TooltipText ?? "Живой мониторинг сетевой задержки (RTT)…";
+
+        public string AutoSwitchNetworkStatus => ProfileAutoSwitch?.CurrentIdentity?.DisplayName ?? "Сеть не определена";
+        public string AutoSwitchLastReason => ProfileAutoSwitch?.LastReason ?? "";
 
         public ICommand ToggleThemeCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
@@ -557,11 +580,24 @@ namespace ZapretGui.ViewModels
             RequestToggleOverlay?.Invoke();
         }
 
+        public void NotifyAutoSwitchChanged()
+        {
+            if (Settings.AutoSwitchProfileOnNetworkChange || Settings.AutoSwitchProfileOnFailure)
+                ProfileAutoSwitch?.Start();
+            else
+                ProfileAutoSwitch?.Stop();
+            Profiles?.RefreshNetwork();
+            Raise(nameof(AutoSwitchNetworkStatus));
+            Raise(nameof(AutoSwitchLastReason));
+        }
+
         /// <summary>Вызывается при выходе: остановка обхода, если так настроено.</summary>
         public async System.Threading.Tasks.Task ShutdownAsync()
         {
             _timer.Stop();
             Monitoring.Stop();
+            ProfileAutoSwitch?.Stop();
+            ProfileAutoSwitch?.Dispose();
             GameDetector.Dispose();
             Hotkeys.Dispose();
             if (Settings.StopBypassOnExit && Bypass.GetStatus().IsRunning)
