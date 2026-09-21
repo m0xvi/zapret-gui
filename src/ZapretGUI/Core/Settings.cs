@@ -186,6 +186,15 @@ namespace ZapretGui.Core
         /// <summary>Флаг отображения мини-виджета вместо или рядом с главным окном.</summary>
         public bool MiniOverlayEnabled { get; set; }
 
+        /// <summary>Пользовательские DNS-профили (дополнительно к встроенным).</summary>
+        public List<DnsProfile> CustomDnsProfiles { get; set; } = new();
+
+        /// <summary>Результат последней проверки подмены DNS.</summary>
+        public string LastDnsHijackSummary { get; set; } = "";
+
+        /// <summary>Время последней проверки подмены DNS.</summary>
+        public DateTime? LastDnsHijackCheckedAt { get; set; }
+
         /// <summary>Необязательный контекст провайдера для будущего подбора стратегий.</summary>
         public ProviderContext ProviderContext { get; set; } = new();
 
@@ -229,6 +238,7 @@ namespace ZapretGui.Core
                         if (string.IsNullOrWhiteSpace(loaded.GuiRepo)) loaded.GuiRepo = GuiUpdateService.DefaultRepository;
                         loaded.MonitorTargets ??= new List<MonitorTarget>();
                         loaded.ProviderContext ??= new ProviderContext();
+                        loaded.CustomDnsProfiles ??= new List<DnsProfile>();
                         return loaded;
                     }
                 }

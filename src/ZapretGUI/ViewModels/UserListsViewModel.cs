@@ -48,6 +48,10 @@ namespace ZapretGui.ViewModels
         private string _dnsTestStatusText = "";
         private string _dnsTestStatusKey = "Info";
         private bool _isTestingDns;
+        private DnsHijackReport? _hijackReport;
+        private bool _isCheckingHijack;
+        private string _hijackSummary = "";
+        private string _hijackSummaryKey = "Info";
 
         public UserListsViewModel(MainViewModel main)
         {
@@ -143,6 +147,8 @@ namespace ZapretGui.ViewModels
             ResetDnsToDhcpCommand = new AsyncRelayCommand(ResetDnsToDhcpAsync);
             TestDnsServerCommand = new AsyncRelayCommand(TestDnsServerAsync, () => !IsTestingDns);
             RefreshCurrentDnsCommand = new RelayCommand(RefreshCurrentDns);
+            CheckHijackCommand = new AsyncRelayCommand(CheckHijackAsync, () => !IsCheckingHijack);
+            ApplySecureDnsCommand = new AsyncRelayCommand(ApplySecureDnsAsync, () => HijackReport?.HasHijack == true);
             ApplyGameFilterPortsCommand = new AsyncRelayCommand(ApplyGameFilterPortsAsync);
 
             RefreshCurrentDns();
@@ -498,6 +504,58 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        public DnsHijackReport? HijackReport
+        {
+            get => _hijackReport;
+            private set
+            {
+                if (Set(ref _hijackReport, value))
+                {
+                    Raise(nameof(HijackReportVisible));
+                    Raise(nameof(HijackSummary));
+                    Raise(nameof(HijackSummaryKey));
+                    (ApplySecureDnsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public bool HijackReportVisible => HijackReport != null;
+
+        public string HijackSummary
+        {
+            get => _hijackSummary;
+            private set => Set(ref _hijackSummary, value);
+        }
+
+        public string HijackSummaryKey
+        {
+            get => _hijackSummaryKey;
+            private set => Set(ref _hijackSummaryKey, value);
+        }
+
+        public bool IsCheckingHijack
+        {
+            get => _isCheckingHijack;
+            private set
+            {
+                if (Set(ref _isCheckingHijack, value))
+                {
+                    (CheckHijackCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    Raise(nameof(IsCheckingHijack));
+                }
+            }
+        }
+
+        public string HijackCheckedAtText
+        {
+            get
+            {
+                if (Settings.LastDnsHijackCheckedAt == null) return "Ещё не проверялось";
+                return $"Последняя проверка: {Settings.LastDnsHijackCheckedAt:dd.MM.yyyy HH:mm} · {Settings.LastDnsHijackSummary}";
+            }
+        }
+
+
         public ICommand AddEntryCommand { get; }
         public ICommand QuickAddDomainCommand { get; }
         public ICommand EditEntryCommand { get; }
@@ -522,6 +580,8 @@ namespace ZapretGui.ViewModels
         public ICommand ResetDnsToDhcpCommand { get; }
         public ICommand TestDnsServerCommand { get; }
         public ICommand RefreshCurrentDnsCommand { get; }
+        public ICommand CheckHijackCommand { get; }
+        public ICommand ApplySecureDnsCommand { get; }
 
         private bool FilterEntry(object item)
         {
@@ -1012,6 +1072,49 @@ namespace ZapretGui.ViewModels
             {
                 IsTestingDns = false;
             }
+        }
+
+        private async Task CheckHijackAsync()
+        {
+            if (IsCheckingHijack) return;
+            IsCheckingHijack = true;
+            HijackSummary = "Проверяю DNS на подмену (сравнение системный vs Cloudflare DoH)…";
+            HijackSummaryKey = "Info";
+            try
+            {
+                var progress = new Progress<string>(msg => HijackSummary = msg);
+                var report = await DnsManagementService.CheckHijackAsync(progress);
+                HijackReport = report;
+                HijackSummary = report.Summary;
+                HijackSummaryKey = report.StatusKey;
+                Settings.LastDnsHijackSummary = report.Summary;
+                Settings.LastDnsHijackCheckedAt = DateTime.Now;
+                SettingsStore.Save(Settings);
+                Raise(nameof(HijackCheckedAtText));
+            }
+            catch (Exception ex)
+            {
+                HijackSummary = "Ошибка проверки подмены: " + ex.Message;
+                HijackSummaryKey = "Danger";
+            }
+            finally
+            {
+                IsCheckingHijack = false;
+            }
+        }
+
+        private async Task ApplySecureDnsAsync()
+        {
+            if (HijackReport == null || !HijackReport.HasHijack) return;
+            var cloudflare = DnsManagementService.PredefinedProfiles.FirstOrDefault(p => p.Id == "cloudflare");
+            if (cloudflare == null) return;
+            DnsTestStatusText = "Обнаружена подмена — применяю защищённый Cloudflare DNS…";
+            DnsTestStatusKey = "Warning";
+            var res = await DnsManagementService.ApplyDnsProfileAsync(cloudflare);
+            DnsTestStatusText = res.Message;
+            DnsTestStatusKey = res.Ok ? "Success" : "Danger";
+            RefreshCurrentDns();
+            if (res.Ok) SelectedDnsProfile = cloudflare;
         }
 
         private void RaiseCommands()
