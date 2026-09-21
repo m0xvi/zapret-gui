@@ -33,6 +33,11 @@ namespace ZapretGui.ViewModels
         private string _searchText = "";
         private string _quickDomainInput = "";
         private int _selectedSubTabIndex;
+        private bool _hasUnsavedChanges;
+        private List<string> _originalEntries = new();
+        private string? _editingEntry;
+        private string _editingText = "";
+        private HashSet<string> _duplicateSet = new(StringComparer.OrdinalIgnoreCase);
         private bool _isUpdatingLists;
         private string _domainListUpdateResultText = "";
         private string _domainListUpdateResultKey = "Info";
@@ -114,17 +119,21 @@ namespace ZapretGui.ViewModels
             EntriesView = CollectionViewSource.GetDefaultView(Entries);
             EntriesView.Filter = FilterEntry;
 
-            AddEntryCommand = new RelayCommand(AddEntry);
-            QuickAddDomainCommand = new RelayCommand(QuickAddDomain, () => !string.IsNullOrWhiteSpace(QuickDomainInput));
-            EditEntryCommand = new RelayCommand(EditEntry);
-            RemoveEntryCommand = new RelayCommand(RemoveEntry, _ => SelectedEntry != null);
-            SortEntriesCommand = new RelayCommand(SortEntries, () => Entries.Count > 1);
-            DeduplicateEntriesCommand = new RelayCommand(DeduplicateEntries, () => Entries.Count > 0);
+            AddEntryCommand = new RelayCommand(AddEntry, () => CanEditCurrentList);
+            QuickAddDomainCommand = new RelayCommand(QuickAddDomain, () => !string.IsNullOrWhiteSpace(QuickDomainInput) && CanEditCurrentList);
+            EditEntryCommand = new RelayCommand(EditEntry, _ => CanEditCurrentList);
+            RemoveEntryCommand = new RelayCommand(RemoveEntry, _ => SelectedEntry != null && CanEditCurrentList);
+            SortEntriesCommand = new RelayCommand(SortEntries, () => Entries.Count > 1 && CanEditCurrentList);
+            DeduplicateEntriesCommand = new RelayCommand(DeduplicateEntries, () => Entries.Count > 0 && CanEditCurrentList);
             OpenInNotepadCommand = new RelayCommand(() => Shell.OpenInNotepad(ListPath));
             ExportListCommand = new RelayCommand(ExportList, () => Entries.Count > 0);
-            ImportListCommand = new RelayCommand(ImportList);
-            SaveCommand = new RelayCommand(Save);
+            ImportListCommand = new RelayCommand(ImportList, () => CanEditCurrentList);
+            SaveCommand = new RelayCommand(Save, () => HasUnsavedChanges && CanEditCurrentList);
+            CancelChangesCommand = new RelayCommand(CancelChanges, () => HasUnsavedChanges);
             ReloadCommand = new RelayCommand(LoadEntries);
+            StartInlineEditCommand = new RelayCommand(StartInlineEdit, p => p is string && CanEditCurrentList);
+            CommitEditCommand = new RelayCommand(CommitInlineEdit, () => IsEditing && !string.IsNullOrWhiteSpace(EditingText));
+            CancelEditCommand = new RelayCommand(CancelInlineEdit, () => IsEditing);
             OpenFolderCommand = new RelayCommand(() => Shell.OpenFolder(ListsFolder));
             RestartBypassCommand = new AsyncRelayCommand(RestartBypassAsync);
             UpdateListsFromGithubCommand = new AsyncRelayCommand(UpdateListsFromGithubAsync, () => !IsUpdatingLists);
@@ -199,6 +208,71 @@ namespace ZapretGui.ViewModels
                 return filtered == total ? $"Всего: {total}" : $"Показано: {filtered} из {total}";
             }
         }
+
+        public bool HasUnsavedChanges
+        {
+            get => _hasUnsavedChanges;
+            private set
+            {
+                if (Set(ref _hasUnsavedChanges, value))
+                {
+                    Raise(nameof(SaveVisible));
+                    (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public bool SaveVisible => HasUnsavedChanges;
+        public bool IsBuiltInList => SelectedListKey.StartsWith("built-in", StringComparison.OrdinalIgnoreCase);
+        public bool CanEditCurrentList => !IsBuiltInList;
+
+        public string? EditingEntry
+        {
+            get => _editingEntry;
+            set
+            {
+                if (Set(ref _editingEntry, value))
+                {
+                    Raise(nameof(IsEditing));
+                    (CommitEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string EditingText
+        {
+            get => _editingText;
+            set
+            {
+                if (Set(ref _editingText, value ?? ""))
+                    (CommitEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        public bool IsEditing => !string.IsNullOrEmpty(EditingEntry);
+
+        public string FileInfoText
+        {
+            get
+            {
+                try
+                {
+                    if (!File.Exists(ListPath)) return "Файл ещё не создан";
+                    var info = new FileInfo(ListPath);
+                    return $"{info.Length} байт · изменён {info.LastWriteTime:dd.MM.yyyy HH:mm} · {Entries.Count} строк";
+                }
+                catch { return ""; }
+            }
+        }
+
+        public int DuplicateCount => _duplicateSet.Count;
+        public int InvalidCount => Entries.Count(e => !IsValidListEntry(e));
+
+        public bool HasDuplicates => DuplicateCount > 0;
+        public bool HasInvalid => InvalidCount > 0;
+
 
         public string[] GameFilterOptions { get; } = { "Выключен (только стандартные порты)", "TCP + UDP (игры и сервисы, порты > 1023)", "Только TCP", "Только UDP" };
         public string[] IpsetOptions { get; } = { "По списку ipset-all.txt (рекомендуется)", "Все IP / Any (максимальный охват)", "Без фильтрации IP / None (все адреса)" };
@@ -321,6 +395,18 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(SelectedList));
                 Raise(nameof(ListPath));
                 Raise(nameof(HasEntries));
+                Raise(nameof(IsBuiltInList));
+                Raise(nameof(CanEditCurrentList));
+                Raise(nameof(FileInfoText));
+                (AddEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (QuickAddDomainCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (EditEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (RemoveEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (SortEntriesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (DeduplicateEntriesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (ImportListCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (StartInlineEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
 
@@ -422,11 +508,15 @@ namespace ZapretGui.ViewModels
         public ICommand ExportListCommand { get; }
         public ICommand ImportListCommand { get; }
         public ICommand SaveCommand { get; }
+        public ICommand CancelChangesCommand { get; }
         public ICommand ReloadCommand { get; }
         public ICommand OpenFolderCommand { get; }
         public ICommand RestartBypassCommand { get; }
         public ICommand UpdateListsFromGithubCommand { get; }
         public ICommand ApplyGameFilterPortsCommand { get; }
+        public ICommand StartInlineEditCommand { get; }
+        public ICommand CommitEditCommand { get; }
+        public ICommand CancelEditCommand { get; }
 
         public ICommand ApplyDnsProfileCommand { get; }
         public ICommand ResetDnsToDhcpCommand { get; }
@@ -440,10 +530,54 @@ namespace ZapretGui.ViewModels
             return str.IndexOf(SearchText.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        public bool IsValidListEntry(string entry)
+        {
+            if (string.IsNullOrWhiteSpace(entry)) return false;
+            var s = entry.Trim();
+            if (s.Length < 3 || s.Length > 253) return false;
+            if (s.Contains(' ') || s.Contains('\t')) return false;
+            // Разрешаем домены, IP, префиксы с * и / для сетей
+            if (s.StartsWith(".") || s.EndsWith(".") || s.Contains("..")) return false;
+            // Только допустимые символы
+            foreach (var ch in s)
+            {
+                if (char.IsLetterOrDigit(ch) || ch == '.' || ch == '-' || ch == '_' || ch == '*' || ch == '/' || ch == ':') continue;
+                return false;
+            }
+            return true;
+        }
+
+        public bool IsDuplicate(string entry)
+        {
+            return _duplicateSet.Contains(entry);
+        }
+
+        private void RebuildDuplicateSet()
+        {
+            _duplicateSet = Entries.GroupBy(e => e.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            Raise(nameof(DuplicateCount));
+            Raise(nameof(HasDuplicates));
+            Raise(nameof(InvalidCount));
+            Raise(nameof(HasInvalid));
+        }
+
+        private void MarkDirty()
+        {
+            var isDirty = !_originalEntries.SequenceEqual(Entries, StringComparer.OrdinalIgnoreCase);
+            HasUnsavedChanges = isDirty;
+            RebuildDuplicateSet();
+            Raise(nameof(FileInfoText));
+            Raise(nameof(HasUnsavedChanges));
+        }
+
         private void LoadEntries()
         {
             Entries.Clear();
             SelectedEntry = null;
+            EditingEntry = null;
             try
             {
                 if (File.Exists(ListPath))
@@ -453,9 +587,14 @@ namespace ZapretGui.ViewModels
                                  .Where(line => line.Length > 0))
                         Entries.Add(line);
                 }
-                Status = Entries.Count == 0
-                    ? "Список пуст. Добавьте первый домен через поле ввода."
-                    : $"Записей: {Entries.Count}. Файл: {SelectedList.FileName}";
+                _originalEntries = Entries.ToList();
+                HasUnsavedChanges = false;
+                Status = IsBuiltInList
+                    ? $"Встроенный список (только чтение): {Entries.Count} записей."
+                    : Entries.Count == 0
+                        ? "Список пуст. Добавьте первый домен через поле ввода."
+                        : $"Записей: {Entries.Count}. Файл: {SelectedList.FileName}";
+                RebuildDuplicateSet();
             }
             catch (Exception ex)
             {
@@ -463,14 +602,22 @@ namespace ZapretGui.ViewModels
             }
             Raise(nameof(HasEntries));
             Raise(nameof(CountText));
+            Raise(nameof(FileInfoText));
             RaiseCommands();
         }
 
         private void QuickAddDomain()
         {
+            if (!CanEditCurrentList) return;
             if (string.IsNullOrWhiteSpace(QuickDomainInput)) return;
             var clean = CleanDomain(QuickDomainInput);
             if (string.IsNullOrWhiteSpace(clean)) return;
+
+            if (!IsValidListEntry(clean))
+            {
+                Status = $"«{clean}» имеет недопустимый формат (разрешены a-z, 0-9, . - _ * / :).";
+                return;
+            }
 
             if (Entries.Any(entry => entry.Equals(clean, StringComparison.OrdinalIgnoreCase)))
             {
@@ -481,6 +628,8 @@ namespace ZapretGui.ViewModels
             Entries.Insert(0, clean);
             SelectedEntry = clean;
             QuickDomainInput = "";
+            MarkDirty();
+            // Автосохранение для быстрого ввода остаётся, но помечаем как dirty → сразу сохраняем
             Save();
             Status = $"Домен «{clean}» успешно добавлен и сохранён в {SelectedList.FileName}!";
             Raise(nameof(HasEntries));
@@ -502,6 +651,7 @@ namespace ZapretGui.ViewModels
 
         private void AddEntry()
         {
+            if (!CanEditCurrentList) return;
             var dialog = new InputDialog(
                 "Добавить запись в список",
                 "Введите домен или IP-адрес:")
@@ -512,6 +662,11 @@ namespace ZapretGui.ViewModels
 
             var value = CleanDomain(dialog.Value);
             if (string.IsNullOrWhiteSpace(value)) return;
+            if (!IsValidListEntry(value))
+            {
+                Status = $"«{value}» — недопустимый формат.";
+                return;
+            }
             if (Entries.Any(entry => entry.Equals(value, StringComparison.OrdinalIgnoreCase)))
             {
                 Status = "Такая запись уже есть в текущем списке.";
@@ -520,6 +675,7 @@ namespace ZapretGui.ViewModels
 
             Entries.Add(value);
             SelectedEntry = value;
+            MarkDirty();
             Status = "Запись добавлена в редактор. Нажмите «Сохранить список».";
             Raise(nameof(HasEntries));
             Raise(nameof(CountText));
@@ -528,8 +684,16 @@ namespace ZapretGui.ViewModels
 
         private void EditEntry(object? parameter)
         {
+            if (!CanEditCurrentList) return;
             var oldValue = parameter as string ?? SelectedEntry;
             if (string.IsNullOrWhiteSpace(oldValue)) return;
+
+            // Если уже редактируем inline — используем его, иначе диалог
+            if (IsEditing && EditingEntry == oldValue)
+            {
+                EditingText = oldValue;
+                return;
+            }
 
             var dialog = new InputDialog(
                 "Изменить запись",
@@ -542,6 +706,11 @@ namespace ZapretGui.ViewModels
 
             var newValue = CleanDomain(dialog.Value);
             if (string.IsNullOrWhiteSpace(newValue)) return;
+            if (!IsValidListEntry(newValue))
+            {
+                Status = $"«{newValue}» — недопустимый формат.";
+                return;
+            }
             if (Entries.Any(entry => !entry.Equals(oldValue, StringComparison.OrdinalIgnoreCase) &&
                                      entry.Equals(newValue, StringComparison.OrdinalIgnoreCase)))
             {
@@ -553,15 +722,19 @@ namespace ZapretGui.ViewModels
             if (index < 0) return;
             Entries[index] = newValue;
             SelectedEntry = newValue;
+            MarkDirty();
             Status = "Запись изменена в редакторе. Нажмите «Сохранить список».";
         }
 
         private void RemoveEntry(object? parameter)
         {
+            if (!CanEditCurrentList) return;
             var value = parameter as string ?? SelectedEntry;
             if (string.IsNullOrWhiteSpace(value)) return;
+            if (EditingEntry == value) CancelInlineEdit();
             Entries.Remove(value);
             SelectedEntry = null;
+            MarkDirty();
             Status = $"Запись «{value}» удалена из редактора. Нажмите «Сохранить список».";
             Raise(nameof(HasEntries));
             Raise(nameof(CountText));
@@ -570,14 +743,17 @@ namespace ZapretGui.ViewModels
 
         private void SortEntries()
         {
+            if (!CanEditCurrentList) return;
             var sorted = Entries.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList();
             Entries.Clear();
             foreach (var s in sorted) Entries.Add(s);
+            MarkDirty();
             Status = "Список отсортирован по алфавиту (A-Z). Нажмите «Сохранить список».";
         }
 
         private void DeduplicateEntries()
         {
+            if (!CanEditCurrentList) return;
             var initial = Entries.Count;
             var distinct = Entries
                 .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -588,6 +764,7 @@ namespace ZapretGui.ViewModels
             Entries.Clear();
             foreach (var s in distinct) Entries.Add(s);
             var removed = initial - distinct.Count;
+            MarkDirty();
             Status = removed > 0
                 ? $"Удалено дубликатов и пустых строк: {removed}. Нажмите «Сохранить список»."
                 : "Дубликатов не найдено.";
@@ -615,6 +792,7 @@ namespace ZapretGui.ViewModels
 
         private void ImportList()
         {
+            if (!CanEditCurrentList) return;
             try
             {
                 var dialog = new OpenFileDialog
@@ -624,8 +802,12 @@ namespace ZapretGui.ViewModels
                 if (dialog.ShowDialog() != true) return;
 
                 var added = 0;
-                foreach (var line in File.ReadLines(dialog.FileName).Select(CleanDomain).Where(s => s.Length > 0))
+                var skippedInvalid = 0;
+                foreach (var raw in File.ReadLines(dialog.FileName))
                 {
+                    var line = CleanDomain(raw);
+                    if (line.Length == 0) continue;
+                    if (!IsValidListEntry(line)) { skippedInvalid++; continue; }
                     if (!Entries.Any(e => e.Equals(line, StringComparison.OrdinalIgnoreCase)))
                     {
                         Entries.Add(line);
@@ -633,7 +815,8 @@ namespace ZapretGui.ViewModels
                     }
                 }
 
-                Status = $"Импортировано {added} новых записей. Нажмите «Сохранить список».";
+                if (added > 0) MarkDirty();
+                Status = $"Импортировано {added} новых записей{(skippedInvalid>0? $", пропущено невалидных: {skippedInvalid}":"")}. {(added>0?"Нажмите «Сохранить список».":"")}";
                 Raise(nameof(HasEntries));
                 Raise(nameof(CountText));
                 RaiseCommands();
@@ -646,16 +829,81 @@ namespace ZapretGui.ViewModels
 
         private void Save()
         {
+            if (IsBuiltInList) return;
             try
             {
                 Directory.CreateDirectory(ListsFolder);
+                // Валидация перед сохранением: отфильтруем пустые, проверим формат
+                var invalid = Entries.Where(e => !IsValidListEntry(e)).ToList();
+                if (invalid.Count > 0)
+                {
+                    Status = $"Есть невалидные записи ({invalid.Count}): {string.Join(", ", invalid.Take(3))}{(invalid.Count>3?"…":"")} — исправьте перед сохранением.";
+                    return;
+                }
                 File.WriteAllLines(ListPath, Entries);
+                _originalEntries = Entries.ToList();
+                HasUnsavedChanges = false;
+                RebuildDuplicateSet();
                 Status = $"Список «{SelectedList.FileName}» успешно сохранён ({Entries.Count} записей). Перезапустите обход для применения.";
+                Raise(nameof(FileInfoText));
             }
             catch (Exception ex)
             {
                 Status = "Не удалось сохранить список: " + ex.Message;
             }
+        }
+
+        private void CancelChanges()
+        {
+            Entries.Clear();
+            foreach (var s in _originalEntries) Entries.Add(s);
+            HasUnsavedChanges = false;
+            EditingEntry = null;
+            RebuildDuplicateSet();
+            Status = "Несохранённые изменения отменены.";
+            Raise(nameof(HasEntries));
+            Raise(nameof(CountText));
+            Raise(nameof(FileInfoText));
+            RaiseCommands();
+        }
+
+        private void StartInlineEdit(object? parameter)
+        {
+            if (!CanEditCurrentList) return;
+            var value = parameter as string ?? SelectedEntry;
+            if (string.IsNullOrWhiteSpace(value)) return;
+            EditingEntry = value;
+            EditingText = value;
+        }
+
+        private void CommitInlineEdit()
+        {
+            if (!IsEditing || string.IsNullOrWhiteSpace(EditingText)) return;
+            var oldValue = EditingEntry!;
+            var newValue = CleanDomain(EditingText);
+            if (string.IsNullOrWhiteSpace(newValue) || !IsValidListEntry(newValue))
+            {
+                Status = $"«{EditingText}» — недопустимый формат.";
+                return;
+            }
+            if (!oldValue.Equals(newValue, StringComparison.OrdinalIgnoreCase) &&
+                Entries.Any(e => !e.Equals(oldValue, StringComparison.OrdinalIgnoreCase) && e.Equals(newValue, StringComparison.OrdinalIgnoreCase)))
+            {
+                Status = "Такая запись уже есть в списке.";
+                return;
+            }
+            var idx = Entries.IndexOf(oldValue);
+            if (idx >= 0) Entries[idx] = newValue;
+            EditingEntry = null;
+            SelectedEntry = newValue;
+            MarkDirty();
+            Status = "Запись изменена. Нажмите «Сохранить список».";
+        }
+
+        private void CancelInlineEdit()
+        {
+            EditingEntry = null;
+            EditingText = "";
         }
 
         private async Task ApplyGameFilterPortsAsync()
@@ -775,6 +1023,10 @@ namespace ZapretGui.ViewModels
             (SortEntriesCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (DeduplicateEntriesCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ExportListCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (CancelChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (ImportListCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (StartInlineEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
     }
 }

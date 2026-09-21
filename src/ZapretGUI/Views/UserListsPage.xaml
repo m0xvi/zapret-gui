@@ -85,11 +85,12 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
                     <!-- Строка быстрого добавления домена и утилиты -->
-                    <Grid Grid.Row="0" Margin="0,0,0,10">
+                    <Grid Grid.Row="0" Margin="0,0,0,10" IsEnabled="{Binding CanEditCurrentList}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -119,8 +120,44 @@
                         </WrapPanel>
                     </Grid>
 
+                    <!-- Баннеры состояния -->
+                    <StackPanel Grid.Row="1" Margin="0,0,0,8">
+                        <Border Padding="10,8" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+                                Visibility="{Binding IsBuiltInList, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
+                            <TextBlock Style="{StaticResource BodyText}" Text="🔒 Встроенный список Flowseal — только чтение. Редактируйте пользовательскую копию (list-*-user.txt)." TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold"/>
+                        </Border>
+
+                        <Border Padding="10,8" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+                                Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource BodyText}" Text="⚠ Есть несохранённые изменения" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}"/>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Нажмите «Сохранить» чтобы записать на диск, или «Отменить» чтобы откатить." FontSize="11"/>
+                                </StackPanel>
+                                <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <Button Style="{StaticResource PrimaryButton}" Content="💾 Сохранить" Command="{Binding SaveCommand}" ToolTip="Записать список на диск"/>
+                                    <Button Style="{StaticResource GhostButton}" Content="Отменить" Margin="6,0,0,0" Command="{Binding CancelChangesCommand}" ToolTip="Отменить несохранённые правки"/>
+                                </WrapPanel>
+                            </Grid>
+                        </Border>
+
+                        <WrapPanel Visibility="{Binding HasDuplicates, Converter={StaticResource BoolToVis}}" Margin="0,0,0,4">
+                            <Border Style="{StaticResource Badge}" Background="{DynamicResource WarningSoftBrush}"><TextBlock Text="{Binding DuplicateCount, StringFormat='Дубликатов: {0}'}" Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold"/></Border>
+                            <TextBlock Style="{StaticResource DimText}" Text="— нажмите «Очистить дубликаты»" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </WrapPanel>
+                        <WrapPanel Visibility="{Binding HasInvalid, Converter={StaticResource BoolToVis}}">
+                            <Border Style="{StaticResource Badge}" Background="{DynamicResource DangerSoftBrush}"><TextBlock Text="{Binding InvalidCount, StringFormat='Невалидных: {0}'}" Foreground="{DynamicResource DangerBrush}" FontWeight="SemiBold"/></Border>
+                            <TextBlock Style="{StaticResource DimText}" Text="— исправьте записи" Margin="6,0,0,0" VerticalAlignment="Center"/>
+                        </WrapPanel>
+                    </StackPanel>
+
+
                     <!-- Поиск по списку и статусная строка -->
-                    <Grid Grid.Row="1" Margin="0,0,0,8">
+                    <Grid Grid.Row="2" Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="220" />
                             <ColumnDefinition Width="*" />
@@ -135,15 +172,18 @@
                                        Visibility="{Binding SearchText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
                         </Grid>
 
-                        <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding Status}"
-                                   VerticalAlignment="Center" Margin="12,0,0,0" TextTrimming="CharacterEllipsis" />
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Style="{StaticResource DimText}" Text=" · " Visibility="{Binding FileInfoText, Converter={StaticResource StringToVis}}" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding FileInfoText}" Opacity="0.8" FontSize="11" />
+                        </StackPanel>
 
                         <TextBlock Grid.Column="2" Style="{StaticResource DimText}" Text="{Binding CountText}"
                                    VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold" />
                     </Grid>
 
                     <!-- Таблица / Список записей -->
-                    <ListBox Grid.Row="2" Style="{StaticResource PlainListBox}" Background="Transparent"
+                    <ListBox Grid.Row="3" Style="{StaticResource PlainListBox}" Background="Transparent"
                              ItemsSource="{Binding EntriesView}"
                              SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
                              ItemContainerStyle="{StaticResource CompactRowItemStyle}"
