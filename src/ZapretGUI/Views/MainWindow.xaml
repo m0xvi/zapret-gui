@@ -255,39 +255,91 @@
                 </Border.Effect>
                 <StackPanel>
                     <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-                        <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource AccentBrush}" Margin="0,0,10,0">
-                            <TextBlock Text="&#xE895;" FontFamily="{DynamicResource IconFont}" FontSize="16"
-                                       Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Border Width="34" Height="34" CornerRadius="9" Margin="0,0,10,0">
+                            <Border.Style>
+                                <Style TargetType="Border">
+                                    <Setter Property="Background" Value="{DynamicResource AccentBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Updates.GuiUpdateHasError}" Value="True">
+                                            <Setter Property="Background" Value="{DynamicResource WarningBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Border.Style>
+                            <TextBlock FontFamily="{DynamicResource IconFont}" FontSize="16"
+                                       Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock">
+                                        <Setter Property="Text" Value="&#xE895;" />
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding Updates.GuiUpdateHasError}" Value="True">
+                                                <Setter Property="Text" Value="&#xE7BA;" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
                         </Border>
-                        <TextBlock Text="Обновление Zapret GUI" FontSize="16" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="Обновление Zapret GUI" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding Updates.GuiUpdateHasError}" Value="True">
+                                            <Setter Property="Text" Value="Ошибка обновления GUI" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
                     </WrapPanel>
-                    <TextBlock Text="{Binding Updates.Status}" Margin="0,14,0,0" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
-                               HorizontalAlignment="Center" TextAlignment="Center" />
-                    <TextBlock Text="{Binding Updates.GuiUpdateStatus}" Margin="0,4,0,0" TextWrapping="Wrap"
-                               Foreground="{DynamicResource TextMutedBrush}" FontSize="11.5"
-                               HorizontalAlignment="Center" TextAlignment="Center" />
-                    <Grid Margin="0,18,0,0">
-                        <ProgressBar Height="10" Minimum="0" Maximum="100"
-                                     Value="{Binding Updates.Progress, Mode=OneWay}"
-                                     IsIndeterminate="{Binding Updates.Indeterminate, Mode=OneWay}"
-                                     Style="{StaticResource ThinProgress}" />
-                    </Grid>
-                    <TextBlock Margin="0,10,0,0" HorizontalAlignment="Center"
-                               Visibility="{Binding Updates.Indeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
-                        <Run Text="{Binding Updates.Progress, Mode=OneWay, StringFormat={}{0:0}%}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
-                    </TextBlock>
-                    <TextBlock Text="Подготовка — проверка SHA-256…"
-                               Margin="0,10,0,0" HorizontalAlignment="Center"
-                               Foreground="{DynamicResource TextMutedBrush}" FontSize="11"
-                               Visibility="{Binding Updates.Indeterminate, Converter={StaticResource BoolToVis}}" />
-                    <TextBlock Text="Не закрывайте приложение — после загрузки оно автоматически перезапустится"
-                               Margin="0,12,0,0" TextWrapping="Wrap" TextAlignment="Center"
-                               Foreground="{DynamicResource TextMutedBrush}" FontSize="11" />
-                    <Button Style="{StaticResource GhostButton}" Content="Отмена" Margin="0,14,0,0"
-                            HorizontalAlignment="Center" Command="{Binding Updates.CancelCommand}"
-                            ToolTip="Прервать загрузку обновления GUI" />
+                    <!-- Секция прогресса — скрывается при ошибке -->
+                    <StackPanel Visibility="{Binding Updates.GuiUpdateProgressVisible, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding Updates.Status}" Margin="0,14,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" TextAlignment="Center" />
+                        <TextBlock Text="{Binding Updates.GuiUpdateStatus}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource TextMutedBrush}" FontSize="11.5"
+                                   HorizontalAlignment="Center" TextAlignment="Center" />
+                        <Grid Margin="0,18,0,0">
+                            <ProgressBar Height="10" Minimum="0" Maximum="100"
+                                         Value="{Binding Updates.Progress, Mode=OneWay}"
+                                         IsIndeterminate="{Binding Updates.Indeterminate, Mode=OneWay}"
+                                         Style="{StaticResource ThinProgress}" />
+                        </Grid>
+                        <TextBlock Margin="0,10,0,0" HorizontalAlignment="Center"
+                                   Visibility="{Binding Updates.Indeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                            <Run Text="{Binding Updates.Progress, Mode=OneWay, StringFormat={}{0:0}%}" FontSize="28" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                        </TextBlock>
+                        <TextBlock Text="Подготовка — проверка SHA-256…"
+                                   Margin="0,10,0,0" HorizontalAlignment="Center"
+                                   Foreground="{DynamicResource TextMutedBrush}" FontSize="11"
+                                   Visibility="{Binding Updates.Indeterminate, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Text="Не закрывайте приложение — после загрузки оно автоматически перезапустится"
+                                   Margin="0,12,0,0" TextWrapping="Wrap" TextAlignment="Center"
+                                   Foreground="{DynamicResource TextMutedBrush}" FontSize="11" />
+                        <Button Style="{StaticResource GhostButton}" Content="Отмена" Margin="0,14,0,0"
+                                HorizontalAlignment="Center" Command="{Binding Updates.CancelCommand}"
+                                ToolTip="Прервать загрузку обновления GUI" />
+                    </StackPanel>
+                    <!-- Секция ошибки — видима только при ошибке -->
+                    <StackPanel Margin="0,14,0,0" Visibility="{Binding Updates.GuiUpdateErrorVisible, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding Updates.GuiUpdateErrorText}" TextWrapping="Wrap" TextAlignment="Center"
+                                   Foreground="{DynamicResource TextBrush}" FontSize="12" />
+                        <TextBlock Text="{Binding Updates.GuiUpdateStatus}" Margin="0,6,0,0" TextWrapping="Wrap" TextAlignment="Center"
+                                   Foreground="{DynamicResource TextMutedBrush}" FontSize="11"
+                                   Visibility="{Binding Updates.GuiUpdateErrorText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
+                        <WrapPanel HorizontalAlignment="Center" Margin="0,16,0,0">
+                            <Button Style="{StaticResource PrimaryButton}" Content="Повторить" Padding="14,6" Margin="0,0,8,0"
+                                    Command="{Binding Updates.RetryGuiUpdateCommand}" ToolTip="Повторить загрузку обновления" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Скачать вручную" Padding="14,6" Margin="0,0,8,0"
+                                    Command="{Binding Updates.OpenManualGuiDownloadCommand}" ToolTip="Открыть страницу релиза на GitHub" />
+                            <Button Style="{StaticResource GhostButton}" Content="Закрыть" Padding="14,6"
+                                    Command="{Binding Updates.DismissGuiUpdateErrorCommand}" ToolTip="Скрыть это сообщение" />
+                        </WrapPanel>
+                        <TextBlock Text="Резервная копия предыдущего exe хранится в %APPDATA%\\ZapretGUI\\gui-backup" Margin="0,10,0,0" TextWrapping="Wrap" TextAlignment="Center"
+                                   Foreground="{DynamicResource TextMutedBrush}" FontSize="10" />
+                    </StackPanel>
                 </StackPanel>
             </Border>
         </Border>

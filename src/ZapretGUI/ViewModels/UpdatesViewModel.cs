@@ -25,6 +25,8 @@ namespace ZapretGui.ViewModels
         private bool _updateAvailable;
         private bool _isBusy;
         private bool _isGuiUpdating;
+        private bool _guiUpdateHasError;
+        private string _guiUpdateErrorText = "";
         private double _progress;
         private bool _indeterminate;
         private string _status = "Нажмите «Проверить обновления»";
@@ -61,6 +63,9 @@ namespace ZapretGui.ViewModels
             OpenDownloadsPageCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl + "/releases/latest"));
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             CancelCommand = new RelayCommand(() => _cts?.Cancel(), () => IsBusy);
+            RetryGuiUpdateCommand = new AsyncRelayCommand(RetryGuiUpdateAsync, () => !IsBusy || GuiUpdateHasError);
+            OpenManualGuiDownloadCommand = new RelayCommand(() => Shell.OpenUrl(GuiUpdateManualUrl));
+            DismissGuiUpdateErrorCommand = new RelayCommand(() => { IsGuiUpdating = false; GuiUpdateHasError = false; GuiUpdateErrorText = ""; }, () => GuiUpdateHasError);
             OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
             RefreshEngineBackups();
             RefreshConsistency();
@@ -205,11 +210,47 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(IsGuiUpdating));
                     Raise(nameof(GuiUpdateOverlayVisible));
+                    Raise(nameof(GuiUpdateErrorVisible));
+                    Raise(nameof(GuiUpdateProgressVisible));
                 }
             }
         }
 
         public bool GuiUpdateOverlayVisible => IsGuiUpdating;
+
+        public bool GuiUpdateHasError
+        {
+            get => _guiUpdateHasError;
+            private set
+            {
+                if (Set(ref _guiUpdateHasError, value))
+                {
+                    Raise(nameof(GuiUpdateHasError));
+                    Raise(nameof(GuiUpdateErrorVisible));
+                    Raise(nameof(GuiUpdateProgressVisible));
+                    (DismissGuiUpdateErrorCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (RetryGuiUpdateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string GuiUpdateErrorText
+        {
+            get => _guiUpdateErrorText;
+            private set
+            {
+                if (Set(ref _guiUpdateErrorText, value))
+                {
+                    Raise(nameof(GuiUpdateErrorText));
+                    Raise(nameof(GuiUpdateErrorVisible));
+                }
+            }
+        }
+
+        public bool GuiUpdateErrorVisible => IsGuiUpdating && GuiUpdateHasError;
+        public bool GuiUpdateProgressVisible => IsGuiUpdating && !GuiUpdateHasError;
+
+        public string GuiUpdateManualUrl => _guiRelease?.HtmlUrl ?? EngineService.RepoUrl + "/releases/latest";
 
         public double Progress
         {
@@ -338,6 +379,9 @@ namespace ZapretGui.ViewModels
         public ICommand OpenDownloadsPageCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand CancelCommand { get; }
+        public ICommand RetryGuiUpdateCommand { get; }
+        public ICommand OpenManualGuiDownloadCommand { get; }
+        public ICommand DismissGuiUpdateErrorCommand { get; }
         public ICommand OpenLogsCommand { get; }
 
         private readonly ObservableCollection<ReleaseAsset> _assets = new();
@@ -421,56 +465,107 @@ namespace ZapretGui.ViewModels
 
         private async Task UpdateGuiAsync()
         {
+            AppLog.Info("[GuiUpdate] Пользователь инициировал обновление GUI");
             if (_guiRelease == null || !GuiUpdateAvailable)
             {
+                Status = "Проверяю доступное обновление GUI перед скачиванием…";
                 await CheckGuiUpdateAsync();
-                if (_guiRelease == null || !GuiUpdateAvailable) return;
+                if (_guiRelease == null)
+                {
+                    var msg = "Не удалось получить информацию о релизе GUI. Проверьте соединение и попробуйте ещё раз или скачайте вручную.";
+                    GuiUpdateStatus = msg;
+                    SetMessage(msg, "Warning");
+                    System.Windows.MessageBox.Show(msg + "\n\nОткроется страница релизов.", "Обновление GUI", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    Shell.OpenUrl(EngineService.RepoUrl + "/releases/latest");
+                    return;
+                }
+                if (!GuiUpdateAvailable)
+                {
+                    var msg = _guiRelease.PortableAsset == null
+                        ? "В последнем релизе нет проверяемого portable EXE с SHA-256. Попробуйте скачать вручную."
+                        : $"Установлена актуальная версия {GuiUpdateService.CurrentVersion} (последняя { _guiRelease.Tag}).";
+                    GuiUpdateStatus = msg;
+                    SetMessage(msg, _guiRelease.PortableAsset == null ? "Warning" : "Success");
+                    if (_guiRelease.PortableAsset == null)
+                        System.Windows.MessageBox.Show(msg, "Обновление GUI", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                    return;
+                }
             }
 
             var confirmation = System.Windows.MessageBox.Show(
                 $"Скачать Zapret GUI {_guiRelease.Tag} и перезапустить приложение?\n\n" +
-                "Файл будет проверен по SHA-256 из GitHub API. Текущий exe сохранится в резервной копии.",
+                "Файл будет проверен по SHA-256 из GitHub API. Текущий exe сохранится в резервной копии.\n" +
+                "После загрузки появится UAC — нажмите «Да» для применения обновления.",
                 "Обновление Zapret GUI", System.Windows.MessageBoxButton.YesNo,
                 System.Windows.MessageBoxImage.Information);
             if (confirmation != System.Windows.MessageBoxResult.Yes) return;
 
+            // Сбрасываем предыдущую ошибку и показываем оверлей сразу
+            GuiUpdateHasError = false;
+            GuiUpdateErrorText = "";
             IsGuiUpdating = true;
             IsBusy = true;
             Progress = 0;
             Indeterminate = true;
-            Status = "Скачиваю безопасное обновление GUI…";
+            Status = "Подготавливаю безопасное обновление GUI…";
+            GuiUpdateStatus = $"Начинаю загрузку {_guiRelease.Tag}…";
+            AppLog.Info($"[GuiUpdate] Начинаю DownloadAndSchedule для {_guiRelease.Tag} из {_guiRelease.PortableAsset?.DownloadUrl}");
             _cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
             try
             {
                 var result = await GuiUpdateService.DownloadAndScheduleAsync(
                     _guiRelease, new Progress<ProgressInfo>(ApplyProgress), _cts.Token);
                 GuiUpdateStatus = result.Message;
+                // Сообщение в ленте Обновлений
                 SetMessage(result.Message, result.Ok ? "Success" : "Danger");
+                AppLog.Info("[GuiUpdate] DownloadAndSchedule результат: " + result.Message + " Ok=" + result.Ok);
                 if (result.Ok)
                 {
                     Status = "Обновление подготовлено. Перезапускаю приложение…";
+                    GuiUpdateStatus = result.Message;
                     Progress = 100;
                     Indeterminate = false;
-                    await Task.Delay(1200);
+                    // Даём пользователю увидеть 100% и затем закрываем
+                    await Task.Delay(1500);
+                    AppLog.Info("[GuiUpdate] Перезапускаю приложение после успешного планирования");
                     if (System.Windows.Application.Current is App app) app.ShutdownApp();
                     else System.Windows.Application.Current?.Shutdown();
+                    // IsGuiUpdating остаётся true до завершения процесса, чтобы оверлей не моргнул
                 }
                 else
                 {
-                    IsGuiUpdating = false;
+                    // Оставляем оверлей с ошибкой, чтобы пользователь видел что произошло
+                    GuiUpdateHasError = true;
+                    GuiUpdateErrorText = result.Message;
+                    Status = "Не удалось подготовить обновление";
+                    // Также показываем MessageBox для явности, если оверлей не заметен
+                    System.Windows.MessageBox.Show(result.Message + "\n\nПопробуйте ещё раз или скачайте вручную со страницы релиза.", "Обновление GUI — ошибка", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                GuiUpdateStatus = "Загрузка обновления GUI отменена.";
-                SetMessage(GuiUpdateStatus, "Warning");
-                IsGuiUpdating = false;
+                var msg = ex.Message.Contains("UAC") || ex.Message.Contains("администратора")
+                    ? ex.Message
+                    : "Загрузка обновления GUI отменена.";
+                GuiUpdateStatus = msg;
+                GuiUpdateHasError = true;
+                GuiUpdateErrorText = msg;
+                Status = "Обновление отменено";
+                SetMessage(msg, "Warning");
+                AppLog.Warn("[GuiUpdate] Отменено: " + msg);
+                if (msg.Contains("UAC") || msg.Contains("администратора"))
+                    System.Windows.MessageBox.Show(msg, "Обновление GUI — требуются права", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
-                GuiUpdateStatus = "Ошибка обновления GUI: " + ex.Message;
-                SetMessage(GuiUpdateStatus, "Danger");
-                IsGuiUpdating = false;
+                var msg = "Ошибка обновления GUI: " + ex.Message;
+                GuiUpdateStatus = msg;
+                GuiUpdateHasError = true;
+                GuiUpdateErrorText = msg + "\n" + (ex.InnerException?.Message ?? "");
+                Status = "Ошибка обновления";
+                SetMessage(msg, "Danger");
+                AppLog.Error("[GuiUpdate] Ошибка: " + ex.ToString());
+                System.Windows.MessageBox.Show(msg + "\n\nПопробуйте ещё раз или скачайте вручную.", "Обновление GUI — ошибка", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
             finally
             {
@@ -478,9 +573,24 @@ namespace ZapretGui.ViewModels
                 _cts = null;
                 IsBusy = false;
                 Indeterminate = false;
-                // IsGuiUpdating остаётся true до перезапуска при успехе, чтобы оверлей не моргнул
-                if (!IsGuiUpdating) { }
+                // При ошибке оставляем IsGuiUpdating=true чтобы оверлей с ошибкой оставался видимым
+                // Скрытие — только по кнопке Отмена/Закрыть или при успехе после Shutdown
+                if (GuiUpdateHasError)
+                {
+                    // Обновляем CanExecute для Retry
+                    (RetryGuiUpdateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
             }
+        }
+
+        private async Task RetryGuiUpdateAsync()
+        {
+            // Сброс ошибки и повтор
+            GuiUpdateHasError = false;
+            GuiUpdateErrorText = "";
+            IsGuiUpdating = false;
+            await Task.Delay(200);
+            await UpdateGuiAsync();
         }
 
         public async Task CheckAsync()
