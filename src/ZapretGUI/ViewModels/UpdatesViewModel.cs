@@ -930,7 +930,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             Indeterminate = true;
             Status = "Останавливаю обход перед откатом движка…";
-            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Откат движка", Status, backup.FolderName, 0, true, false)); } catch {}
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Откат движка", Status, backup.DisplayText, 0, true, false)); } catch {}
             var before = _main.Bypass.GetStatus();
             _cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
             try
@@ -1000,7 +1000,7 @@ namespace ZapretGui.ViewModels
             Indeterminate = info.IsIndeterminate;
             if (!info.IsIndeterminate) Progress = info.Percent;
             Status = info.Status;
-            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(info.Status, info.Details ?? "", info.IsIndeterminate ? (double?)null : info.Percent, info.IsIndeterminate)); } catch {}
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(info.Status, "", info.IsIndeterminate ? (double?)null : info.Percent, info.IsIndeterminate)); } catch {}
         }
 
         private async Task UpdateIpsetAsync()
