@@ -132,7 +132,7 @@ namespace ZapretGui.ViewModels
                 Profiles.RefreshNetwork();
                 Raise(nameof(AutoSwitchNetworkStatus));
             });
-            ScheduleService = new BypassScheduleService(settings, () => Bypass, () => Strategies);
+            ScheduleService = new BypassScheduleService(settings, () => Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended);
             ScheduleService.StatusChanged += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
             {
                 Home.RefreshStatus();

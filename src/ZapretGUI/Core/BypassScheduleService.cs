@@ -12,18 +12,18 @@ namespace ZapretGui.Core
     {
         private readonly AppSettings _settings;
         private readonly Func<BypassController> _bypassFactory;
-        private readonly Func<StrategyStore> _storeFactory;
+        private readonly Func<StrategyInfo?> _strategyFactory;
         private readonly Timer _timer;
         private DateTime _lastStartTrigger = DateTime.MinValue;
         private DateTime _lastStopTrigger = DateTime.MinValue;
 
         public event Action<string>? StatusChanged;
 
-        public BypassScheduleService(AppSettings settings, Func<BypassController> bypassFactory, Func<StrategyStore> storeFactory)
+        public BypassScheduleService(AppSettings settings, Func<BypassController> bypassFactory, Func<StrategyInfo?> strategyFactory)
         {
             _settings = settings;
             _bypassFactory = bypassFactory;
-            _storeFactory = storeFactory;
+            _strategyFactory = strategyFactory;
             _timer = new Timer(TimeSpan.FromSeconds(30).TotalMilliseconds);
             _timer.Elapsed += async (_, _) => await TickAsync();
             _timer.AutoReset = true;
@@ -73,7 +73,7 @@ namespace ZapretGui.Core
                     _lastStartTrigger = now;
                     AppLog.Info($"[Schedule] Авто-старт обхода по расписанию {start:hh\\:mm}");
                     StatusChanged?.Invoke($"Расписание: старт {start:hh\\:mm}");
-                    var strat = _storeFactory().Find(_settings.SelectedStrategy) ?? _storeFactory().Recommended;
+                    var strat = _strategyFactory();
                     if (strat != null)
                     {
                         var res = _settings.ScheduleUseService
