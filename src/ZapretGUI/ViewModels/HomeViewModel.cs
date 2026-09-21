@@ -31,6 +31,18 @@ namespace ZapretGui.ViewModels
         private DateTime _lastLegacyCheck = DateTime.MinValue;
         private LegacyInstallInfo? _legacyCache;
         private string _newConnectionAddress = "";
+        // ---- Быстрая проверка «Проверить всё» ----
+        private bool _isFullCheckRunning;
+        private string _fullCheckStatusText = "";
+        private string _fullCheckAdviceText = "";
+        private string _fullCheckSummaryText = "";
+        private string _fullCheckSummaryKey = "Info";
+        private double _fullCheckProgressValue;
+        private double _fullCheckProgressMaximum = 1;
+        private bool _fullCheckProgressIndeterminate = true;
+        private string _fullCheckProgressPercentText = "";
+        private StrategyInfo? _recommendedStrategy;
+        private CancellationTokenSource? _fullCheckCts;
 
         public HomeViewModel(MainViewModel main)
         {
@@ -78,6 +90,9 @@ namespace ZapretGui.ViewModels
                 if (summary.Ok) ShowSuccess($"✅ {summary.Message}");
                 else ShowError(summary.Message);
             });
+            RunFullCheckCommand = new AsyncRelayCommand(RunFullCheckAsync, () => !IsFullCheckRunning && !IsBusy && HasStrategy);
+            CancelFullCheckCommand = new RelayCommand(CancelFullCheck, () => IsFullCheckRunning);
+            ApplyRecommendedStrategyCommand = new AsyncRelayCommand(ApplyRecommendedStrategyAsync, () => HasRecommendedStrategy && !IsBusy);
             RefreshGamingStatus();
         }
 
@@ -302,6 +317,77 @@ namespace ZapretGui.ViewModels
             set => Set(ref _connectionProgressText, value);
         }
 
+        // ---- Свойства «Проверить всё» ----
+        public bool IsFullCheckRunning
+        {
+            get => _isFullCheckRunning;
+            private set
+            {
+                if (Set(ref _isFullCheckRunning, value))
+                {
+                    Raise(nameof(FullCheckResultVisible));
+                    Raise(nameof(HasRecommendedStrategy));
+                    (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelFullCheckCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplyRecommendedStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    Raise(nameof(IsFullCheckRunning));
+                }
+            }
+        }
+
+        public string FullCheckStatusText
+        {
+            get => _fullCheckStatusText;
+            private set => Set(ref _fullCheckStatusText, value);
+        }
+
+        public string FullCheckAdviceText
+        {
+            get => _fullCheckAdviceText;
+            private set => Set(ref _fullCheckAdviceText, value);
+        }
+
+        public string FullCheckSummaryText
+        {
+            get => _fullCheckSummaryText;
+            private set => Set(ref _fullCheckSummaryText, value);
+        }
+
+        public string FullCheckSummaryKey
+        {
+            get => _fullCheckSummaryKey;
+            private set => Set(ref _fullCheckSummaryKey, value);
+        }
+
+        public double FullCheckProgressValue
+        {
+            get => _fullCheckProgressValue;
+            private set => Set(ref _fullCheckProgressValue, value);
+        }
+
+        public double FullCheckProgressMaximum
+        {
+            get => _fullCheckProgressMaximum;
+            private set => Set(ref _fullCheckProgressMaximum, value);
+        }
+
+        public bool FullCheckProgressIndeterminate
+        {
+            get => _fullCheckProgressIndeterminate;
+            private set => Set(ref _fullCheckProgressIndeterminate, value);
+        }
+
+        public string FullCheckProgressPercentText
+        {
+            get => _fullCheckProgressPercentText;
+            private set => Set(ref _fullCheckProgressPercentText, value);
+        }
+
+        public bool FullCheckResultVisible => !string.IsNullOrWhiteSpace(FullCheckSummaryText);
+        public bool HasRecommendedStrategy => _recommendedStrategy != null;
+        public string RecommendedStrategyName => _recommendedStrategy?.Name ?? "";
+        public StrategyInfo? RecommendedStrategy => _recommendedStrategy;
+
         public string Message
         {
             get => _message;
@@ -418,6 +504,9 @@ namespace ZapretGui.ViewModels
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
         public ICommand ClearMessageCommand { get; }
+        public ICommand RunFullCheckCommand { get; }
+        public ICommand CancelFullCheckCommand { get; }
+        public ICommand ApplyRecommendedStrategyCommand { get; }
 
         // ------------------------------------------------------------------ логика
 
@@ -495,6 +584,9 @@ namespace ZapretGui.ViewModels
             (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (RemoveServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (TestConnectionCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (CancelFullCheckCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (ApplyRecommendedStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private StrategyInfo? Current()
@@ -920,6 +1012,155 @@ namespace ZapretGui.ViewModels
             Settings.MonitorTargets.Remove(target);
             ConnectionTargets.Remove(target);
             SettingsStore.Save(Settings);
+        }
+
+        public void CancelFullCheck()
+        {
+            _fullCheckCts?.Cancel();
+            FullCheckStatusText = "Отменяю проверку…";
+        }
+
+        private async Task ApplyRecommendedStrategyAsync()
+        {
+            if (_recommendedStrategy == null) return;
+            SelectedStrategyName = _recommendedStrategy.Name;
+            Settings.SelectedStrategy = _recommendedStrategy.Name;
+            SettingsStore.Save(Settings);
+            ReloadFromEngine();
+            ShowSuccess($"Стратегия «{_recommendedStrategy.Name}» выбрана как основная");
+            // Попробовать запустить, если права есть
+            if (Shell.IsAdmin())
+            {
+                await StartAsync();
+            }
+        }
+
+        public async Task RunFullCheckAsync()
+        {
+            if (IsFullCheckRunning) return;
+            if (!HasStrategy)
+            {
+                ShowError("Стратегии не найдены — скачайте движок на странице «Обновления»");
+                return;
+            }
+
+            IsFullCheckRunning = true;
+            _fullCheckCts = new CancellationTokenSource();
+            FullCheckSummaryText = "";
+            FullCheckAdviceText = "";
+            FullCheckSummaryKey = "Info";
+            _recommendedStrategy = null;
+            Raise(nameof(HasRecommendedStrategy));
+            Raise(nameof(RecommendedStrategyName));
+            FullCheckStatusText = "Шаг 1/4: проверяю систему и движок…";
+            FullCheckProgressValue = 0;
+            FullCheckProgressMaximum = 4;
+            FullCheckProgressIndeterminate = false;
+            FullCheckProgressPercentText = "0%";
+
+            try
+            {
+                // Шаг 1: системная диагностика (без лишнего UI шума)
+                FullCheckStatusText = "Шаг 1/4: аудит системы (BFE, WinDivert, права)…";
+                FullCheckProgressValue = 0;
+                try
+                {
+                    await _main.Diagnostics.RunAsync();
+                    var diagSummary = _main.Diagnostics.Summary ?? "";
+                    var diagKey = _main.Diagnostics.SummaryKey ?? "Info";
+                    if (diagKey == "Danger") FullCheckAdviceText = "⚠️ Найдены критичные системные проблемы — откройте «Проверка → Аудит системы» и нажмите «Исправить». ";
+                    else if (diagKey == "Warning") FullCheckAdviceText = "⚠️ Есть предупреждения в аудите системы — рекомендуем исправить перед подбором. ";
+                    else FullCheckAdviceText = "✅ Система в порядке. ";
+                }
+                catch (Exception ex)
+                {
+                    FullCheckAdviceText = $"Не удалось выполнить аудит системы: {ex.Message}. ";
+                }
+                _fullCheckCts.Token.ThrowIfCancellationRequested();
+                FullCheckProgressValue = 1;
+                FullCheckProgressPercentText = "25%";
+
+                // Шаг 2: проверка соединения (ваши хосты + YouTube/Discord)
+                FullCheckStatusText = "Шаг 2/4: проверяю доступность сайтов…";
+                ConnectionChecks.Clear();
+                var connResults = await ConnectionTester.RunAsync(ConnectionTargets, _fullCheckCts.Token, null);
+                foreach (var r in connResults) ConnectionChecks.Add(r);
+                var failedConn = connResults.Count(r => !r.Ok);
+                if (failedConn == 0) FullCheckAdviceText += "Сайты доступны. ";
+                else if (failedConn == connResults.Count) FullCheckAdviceText += $"Ни один сайт не открылся ({failedConn}/{connResults.Count}) — проверьте, запущен ли обход и DNS. ";
+                else FullCheckAdviceText += $"Часть сайтов недоступна ({failedConn}/{connResults.Count}) — это нормально, стратегия должна это исправить. ";
+                _fullCheckCts.Token.ThrowIfCancellationRequested();
+                FullCheckProgressValue = 2;
+                FullCheckProgressPercentText = "50%";
+
+                // Шаг 3: подбор стратегии — прогоняем все 22 стратегии
+                FullCheckStatusText = "Шаг 3/4: тестирую стратегии (1–2 минуты, не закрывайте окно)…";
+                var batch = await _main.StrategiesPage.TestAllAsync(new Progress<string>(s =>
+                {
+                    // Прокидываем прогресс стратегий в наш общий прогресс-текст
+                    if (!string.IsNullOrWhiteSpace(s)) FullCheckStatusText = $"Шаг 3/4: {s}";
+                }));
+                if (batch == null || batch.Cancelled)
+                {
+                    FullCheckSummaryText = "Проверка стратегий отменена";
+                    FullCheckSummaryKey = "Warning";
+                    return;
+                }
+                var best = batch.Best;
+                if (best == null)
+                {
+                    FullCheckSummaryText = "Не удалось протестировать стратегии — попробуйте ещё раз";
+                    FullCheckSummaryKey = "Warning";
+                    FullCheckAdviceText += "Стратегии не дали результата. Попробуйте обновить движок или проверить антивирус.";
+                    return;
+                }
+                _recommendedStrategy = best.Strategy;
+                Raise(nameof(HasRecommendedStrategy));
+                Raise(nameof(RecommendedStrategyName));
+                FullCheckProgressValue = 3;
+                FullCheckProgressPercentText = "75%";
+                _fullCheckCts.Token.ThrowIfCancellationRequested();
+
+                // Шаг 4: итог и подсказки
+                FullCheckStatusText = "Шаг 4/4: формирую рекомендации…";
+                if (best.IsSuitable)
+                {
+                    FullCheckSummaryText = $"Готово! Рекомендована стратегия «{best.Strategy.Name}» — {best.PassedCount}/{best.Checks.Count} проверок OK, задержка {best.AverageLatencyMs} мс. Нажмите «Применить».";
+                    FullCheckSummaryKey = "Success";
+                    FullCheckAdviceText += $"Обратите внимание: стратегия «{best.Strategy.Name}» показала лучший результат из {batch.Results.Count} проверенных. Если позже появятся проблемы — смените её в «Стратегиях» или включите «Игры».";
+                    ShowSuccess(FullCheckSummaryText);
+                }
+                else
+                {
+                    FullCheckSummaryText = $"Лучший кандидат «{best.Strategy.Name}» прошёл только {best.PassedCount}/{best.Checks.Count} проверок — попробуйте его, но будьте готовы сменить стратегию.";
+                    FullCheckSummaryKey = "Warning";
+                    FullCheckAdviceText += "Ни одна стратегия не прошла идеально. Попробуйте другую группу (ALT / FAKE TLS AUTO), проверьте «Фильтры» и убедитесь, что антивирус не блокирует WinDivert.";
+                    ShowWarning(FullCheckSummaryText);
+                }
+                FullCheckProgressValue = 4;
+                FullCheckProgressPercentText = "100%";
+                FullCheckStatusText = "Готово";
+            }
+            catch (OperationCanceledException)
+            {
+                FullCheckSummaryText = "Проверка отменена пользователем";
+                FullCheckSummaryKey = "Warning";
+                FullCheckStatusText = "Отменено";
+            }
+            catch (Exception ex)
+            {
+                FullCheckSummaryText = "Ошибка при проверке: " + ex.Message;
+                FullCheckSummaryKey = "Danger";
+                FullCheckStatusText = "Ошибка";
+                ShowError(FullCheckSummaryText);
+            }
+            finally
+            {
+                IsFullCheckRunning = false;
+                FullCheckProgressIndeterminate = false;
+                _fullCheckCts?.Dispose();
+                _fullCheckCts = null;
+            }
         }
 
         private async Task<string> SafeLatestAsync()

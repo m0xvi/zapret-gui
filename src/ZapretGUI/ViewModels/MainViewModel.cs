@@ -147,6 +147,8 @@ namespace ZapretGui.ViewModels
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
             RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
+            NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
+            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 3; Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
             NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
             NavigateActiveCheckCommand = new RelayCommand(NavigateToActiveCheck);
@@ -311,6 +313,8 @@ namespace ZapretGui.ViewModels
         public ICommand ToggleThemeCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
+        public ICommand NavigateHomeCommand { get; }
+        public ICommand NavigateDiagnosticsCommand { get; }
         public ICommand NavigateStrategiesCommand { get; }
         public ICommand NavigateMonitoringCommand { get; }
         public ICommand NavigateActiveCheckCommand { get; }

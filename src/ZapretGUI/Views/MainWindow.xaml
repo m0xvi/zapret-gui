@@ -38,15 +38,17 @@
                 </Border>
                 <TextBlock Text="Zapret GUI" Margin="10,0,0,0" FontSize="13" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
-                <Border Style="{StaticResource Badge}" Margin="12,0,0,0">
-                    <WrapPanel Orientation="Horizontal">
+                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="12,0,0,0"
+                        Command="{Binding NavigateHomeCommand}"
+                        ToolTip="Состояние обхода — нажмите, чтобы перейти к тумблеру включения на странице Обзор">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource Dot}"
                                 Background="{Binding Home.BypassStateKey, Converter={StaticResource SeverityBrush}}" />
                         <TextBlock Text="{Binding Home.StatusText}" Margin="7,0,0,0" FontSize="11.5"
                                    Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"
                                    ToolTip="{Binding Home.StatusText}" VerticalAlignment="Center" />
                     </WrapPanel>
-                </Border>
+                </Button>
                 <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="8,0,0,0"
                         Command="{Binding NavigateStrategiesCommand}"
                         ToolTip="{Binding ActiveStrategyTooltipText}">
@@ -58,7 +60,29 @@
                                    Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
                     </WrapPanel>
                 </Button>
-                <!-- Мониторинг и RTT перенесены внутрь страниц для ясности шапки — шапка показывает только критичное -->
+                <!-- Метрики хостов — кликабельно: ведёт к настройке списка хостов (Экспресс-проверка) -->
+                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
+                        Command="{Binding NavigateMonitoringCommand}"
+                        ToolTip="{Binding MonitoringSummaryTooltip}">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Dot}"
+                                Background="{Binding MonitoringSummaryKey, Converter={StaticResource SeverityBrush}}" />
+                        <TextBlock Text="{Binding MonitoringSummaryText}" Margin="6,0,0,0" FontSize="11"
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                    </WrapPanel>
+                </Button>
+                <!-- Живой RTT пинг — кликабельно: настройка интервала RTT -->
+                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
+                        Command="{Binding NavigateMonitoringCommand}"
+                        Visibility="{Binding RealTimePingVisible, Converter={StaticResource BoolToVis}}"
+                        ToolTip="{Binding RealTimePingTooltip}">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Border Style="{StaticResource Dot}"
+                                Background="{Binding RealTimePingStatusKey, Converter={StaticResource SeverityBrush}}" />
+                        <TextBlock Text="{Binding RealTimePingSummaryText}" Margin="6,0,0,0" FontSize="11"
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                    </WrapPanel>
+                </Button>
                 <!-- Бейдж активной игры -->
                 <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
                         Command="{Binding Home.ToggleGameModeCommand}"
@@ -80,16 +104,17 @@
                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                     </WrapPanel>
                 </Button>
-                <Border Style="{StaticResource Badge}" Margin="6,0,0,0"
+                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
                         Background="{Binding ReadinessKey, Converter={StaticResource SoftSeverityBrush}}"
-                        ToolTip="{Binding ReadinessDetails}">
-                    <WrapPanel Orientation="Horizontal">
+                        Command="{Binding NavigateDiagnosticsCommand}"
+                        ToolTip="{Binding ReadinessDetails} — нажмите, чтобы открыть аудит системы и исправить проблемы">
+                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource Dot}"
                                 Background="{Binding ReadinessKey, Converter={StaticResource SeverityBrush}}" />
                         <TextBlock Text="{Binding ReadinessText}" Margin="7,0,0,0" FontSize="11"
                                    Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                     </WrapPanel>
-                </Border>
+                </Button>
             </WrapPanel>
 
             <WrapPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"

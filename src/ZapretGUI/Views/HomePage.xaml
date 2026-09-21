@@ -66,95 +66,6 @@
                 </Grid>
             </Border>
 
-            <!-- Порядок действий — явные ссылки на инструменты (единый стиль с Настройками) -->
-            <Border Style="{StaticResource Card}" Margin="0,14,0,0" Padding="16,14">
-                <StackPanel>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="Auto" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Top">
-                            <TextBlock Text="&#xE9CE;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                        </Border>
-                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                            <TextBlock Style="{StaticResource SectionText}" Text="ПОРЯДОК ДЕЙСТВИЙ" Margin="0,0,0,2" />
-                            <TextBlock Style="{StaticResource DimText}" Text="Нажмите по порядку — каждая ссылка ведёт прямо в нужный инструмент. Делайте слева направо." TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Grid>
-                    <StackPanel Margin="0,14,0,0">
-                        <Border Style="{StaticResource InnerCard}" Padding="12,10" Margin="0,0,0,8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource AccentBrush}" VerticalAlignment="Center">
-                                    <TextBlock Text="1" Foreground="{DynamicResource OnAccentBrush}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Проверьте обновления движка" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="Скачайте свежий zapret, если версия устарела или движок не установлен." TextWrapping="Wrap" FontSize="11" />
-                                </StackPanel>
-                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Обновления →" VerticalAlignment="Center" Command="{Binding CheckUpdatesCommand}" ToolTip="Перейти к проверке обновлений движка" />
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource InnerCard}" Padding="12,10" Margin="0,0,0,8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource InfoBrush}" VerticalAlignment="Center">
-                                    <TextBlock Text="2" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Запустите диагностику системы" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="Находит конфликты VPN/прокси, службы WinDivert и предлагает «Исправить» в 1 клик." TextWrapping="Wrap" FontSize="11" />
-                                </StackPanel>
-                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Диагностика →" VerticalAlignment="Center" Command="{Binding OpenDiagnosticsCommand}" ToolTip="Открыть единый центр проверки" />
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource InnerCard}" Padding="12,10" Margin="0,0,0,8">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Center">
-                                    <TextBlock Text="3" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Подберите рабочую стратегию" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="Нажмите «Проверить все» — приложение тестирует 22 стратегии и подсвечивает зелёным работающие." TextWrapping="Wrap" FontSize="11" />
-                                </StackPanel>
-                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Стратегии →" VerticalAlignment="Center" Command="{Binding OpenStrategiesCommand}" ToolTip="Открыть каталог стратегий" />
-                            </Grid>
-                        </Border>
-                        <Border Style="{StaticResource InnerCard}" Padding="12,10">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="14" Background="{DynamicResource WarningBrush}" VerticalAlignment="Center">
-                                    <TextBlock Text="4" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Включите обход и проверьте сайты" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="Нажмите круглую кнопку — зелёное свечение = работает. Ниже проверьте YouTube/Discord." TextWrapping="Wrap" FontSize="11" />
-                                </StackPanel>
-                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Проверить ↓" VerticalAlignment="Center" Command="{Binding TestConnectionCommand}" ToolTip="Запустить проверку YouTube/Discord/GitHub ниже" />
-                            </Grid>
-                        </Border>
-                    </StackPanel>
-                    <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" Text="После 4 шагов: если что-то не работает — вернитесь к диагностике, попробуйте другую стратегию или смените фильтр в карточке «Фильтры» ниже." TextWrapping="Wrap" FontSize="11" />
-                </StackPanel>
-            </Border>
 
             <StackPanel Margin="0,16,0,0">
 
@@ -209,6 +120,84 @@
                                         ToolTip="Остановить и полностью удалить службу zapret и WinDivert" />
                             </StackPanel>
                         </Grid>
+                    </Border>
+
+                    <!-- Быстрая настройка: Проверить всё — главный сценарий первого запуска (1 клик) -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentBrush}" VerticalAlignment="Top">
+                                    <TextBlock Text="&#xE9D5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРАЯ НАСТРОЙКА — 1 КЛИК" Margin="0,0,0,2" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="Проверит всё по очереди и подберёт подходящую стратегию. Если захотите — потом сами покопайтесь в настройках." TextWrapping="Wrap" FontSize="11" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Style="{StaticResource Badge}" Background="{DynamicResource CardBrush}" VerticalAlignment="Top" Visibility="{Binding HasRecommendedStrategy, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Style="{StaticResource DimText}" Text="ГОТОВО" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
+                                </Border>
+                            </Grid>
+                            <TextBlock Style="{StaticResource MutedText}" Margin="0,10,0,0" TextWrapping="Wrap"
+                                       Text="Мастер выполнит четыре шага: проверит систему (BFE, WinDivert, права), протестирует доступность ваших сайтов (YouTube, Discord и свои), переберёт 22 стратегии и подскажет, на что обратить внимание." />
+                            <WrapPanel Margin="0,12,0,0" Visibility="{Binding IsFullCheckRunning, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                                <Button Style="{StaticResource PrimaryButton}" Content="✨ Проверить всё и подобрать стратегию" Padding="18,9" MinHeight="40"
+                                        Command="{Binding RunFullCheckCommand}"
+                                        ToolTip="Запустить все проверки по очереди: система → соединение → подбор стратегии. Займёт 1–2 минуты." />
+                                <Button Style="{StaticResource GhostButton}" Content="Открыть мастер" Margin="8,0,0,0" Padding="14,7"
+                                        Command="{Binding OpenFirstLaunchCommand}" VerticalAlignment="Center"
+                                        ToolTip="Открыть мастер первого запуска — там можно добавить свои сайты и пропустить шаги" />
+                            </WrapPanel>
+                            <Button Style="{StaticResource DangerButton}" Content="Отменить проверку" Margin="0,12,0,0" Padding="14,7" HorizontalAlignment="Left"
+                                    Command="{Binding CancelFullCheckCommand}"
+                                    Visibility="{Binding IsFullCheckRunning, Converter={StaticResource BoolToVis}}"
+                                    ToolTip="Прервать текущий полный тест" />
+                            <!-- Прогресс полного теста -->
+                            <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0"
+                                    Visibility="{Binding IsFullCheckRunning, Converter={StaticResource BoolToVis}}"
+                                    Background="{DynamicResource CardBrush}">
+                                <StackPanel>
+                                    <Grid>
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding FullCheckStatusText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" Margin="0,0,60,0" />
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding FullCheckProgressPercentText}" HorizontalAlignment="Right"
+                                                   Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding FullCheckAdviceText}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                               Visibility="{Binding FullCheckAdviceText, Converter={StaticResource StringToVis}}" />
+                                    <ProgressBar Style="{StaticResource ThinProgress}" Height="7" Margin="0,8,0,0"
+                                                 Value="{Binding FullCheckProgressValue, Mode=OneWay}"
+                                                 Maximum="{Binding FullCheckProgressMaximum, Mode=OneWay}"
+                                                 IsIndeterminate="{Binding FullCheckProgressIndeterminate, Mode=OneWay}" />
+                                </StackPanel>
+                            </Border>
+                            <!-- Результат и рекомендация -->
+                            <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0"
+                                    Background="{Binding FullCheckSummaryKey, Converter={StaticResource SoftSeverityBrush}}"
+                                    Visibility="{Binding FullCheckResultVisible, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding FullCheckSummaryText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding FullCheckAdviceText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                               Visibility="{Binding FullCheckAdviceText, Converter={StaticResource StringToVis}}" />
+                                    <WrapPanel Margin="0,10,0,0" Visibility="{Binding HasRecommendedStrategy, Converter={StaticResource BoolToVis}}">
+                                        <Border Style="{StaticResource Badge}" Background="{DynamicResource SuccessSoftBrush}" Margin="0,0,8,0">
+                                            <WrapPanel Orientation="Horizontal">
+                                                <TextBlock Text="⚡ " FontSize="11" Foreground="{DynamicResource SuccessBrush}" />
+                                                <TextBlock Text="{Binding RecommendedStrategyName}" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" />
+                                            </WrapPanel>
+                                        </Border>
+                                        <Button Style="{StaticResource PrimaryButton}" Content="Применить эту стратегию" Padding="14,7"
+                                                Command="{Binding ApplyRecommendedStrategyCommand}"
+                                                ToolTip="Сделать рекомендованную стратегию основной и запустить её" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" TextWrapping="Wrap" FontSize="11"
+                                       Text="Подсказка: после автоподбора вы можете вручную сменить фильтры, списки и стратегию — всё остаётся настраиваемым." />
+                        </StackPanel>
                     </Border>
 
                     <!-- Конфликт со старым запретом -->
