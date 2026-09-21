@@ -1104,16 +1104,15 @@ namespace ZapretGui.ViewModels
             Message = $"Запускаю стратегию «{target.Name}»…";
             try
             {
-                var wasRunning = Bypass.GetStatus().IsRunning;
                 var mode = EngineService.GetGameFilterMode(Store.Folder);
-                var result = wasRunning
-                    ? await Bypass.SwitchToStrategyAsync(target, mode, Settings.ShowWinwsConsole)
-                    : await Bypass.StartAsync(target, mode, Settings.ShowWinwsConsole);
+                // P2 1.6.10: централизованная логика применения (admin/legacy/switch уже внутри Bypass, но используем сервис для консистентности)
+                var result = await StrategyApplicationService.ApplyAsync(Bypass, target, mode, Settings.ShowWinwsConsole);
                 if (result.Ok)
                 {
                     Settings.SelectedStrategy = target.Name;
                     SettingsStore.Save(Settings);
                     _main.Home.RefreshStatus();
+                    RefreshRunButton();
                     Message = result.Message.Length > 0 ? result.Message : $"Стратегия «{target.Name}» успешно запущена";
                 }
                 else

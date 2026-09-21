@@ -206,6 +206,9 @@ namespace ZapretGui.ViewModels
             : "Установить в службу";
         public string ServiceToggleStatusText => ServiceInstalled ? "Автозапуск включён" : "Автозапуск выключен";
         public bool IsServiceToggleOn => ServiceInstalled;
+        public bool IsServicePending => StrategyApplicationService.IsServicePending(_status.ServiceState);
+        public string ServicePendingText => StrategyApplicationService.ServicePendingText(_status.ServiceState);
+        public bool IsServiceToggleEnabled => !IsBusy && !IsServicePending;
         public bool HasStrategy => Store.Items.Count > 0;
         public string StatusText => _status.StateText;
         public string StatusKey => _status.State switch
@@ -283,7 +286,11 @@ namespace ZapretGui.ViewModels
             get => _isBusy;
             private set
             {
-                if (Set(ref _isBusy, value)) RaiseCommands();
+                if (Set(ref _isBusy, value))
+                {
+                    Raise(nameof(IsServiceToggleEnabled));
+                    RaiseCommands();
+                }
             }
         }
 
@@ -606,6 +613,9 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ServiceInstalled));
             Raise(nameof(ServiceToggleStatusText));
             Raise(nameof(IsServiceToggleOn));
+            Raise(nameof(IsServicePending));
+            Raise(nameof(ServicePendingText));
+            Raise(nameof(IsServiceToggleEnabled));
             Raise(nameof(InstallServiceButtonText));
             Raise(nameof(StatusText));
             Raise(nameof(StatusKey));
@@ -860,6 +870,11 @@ namespace ZapretGui.ViewModels
 
         private async Task ToggleServiceAsync()
         {
+            if (IsServicePending)
+            {
+                ShowWarning(ServicePendingText + " Подождите завершения перехода.");
+                return;
+            }
             if (ServiceInstalled) await RemoveServiceAsync();
             else await InstallServiceAsync();
         }

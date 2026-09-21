@@ -125,14 +125,23 @@
                                         <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
                                             <TextBlock Text="Служба Windows" Style="{StaticResource SectionText}" FontSize="11" Margin="0,0,0,2" />
                                             <TextBlock Text="{Binding ServiceToggleStatusText}" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" />
+                                            <TextBlock Text="{Binding ServicePendingText}" Style="{StaticResource DimText}" FontSize="10" Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,2,0,0"
+                                                       Visibility="{Binding IsServicePending, Converter={StaticResource BoolToVis}}" />
                                         </StackPanel>
-                                        <CheckBox Grid.Column="1" Style="{StaticResource SwitchCheckBox}" VerticalAlignment="Center" Margin="0,0,0,0"
-                                                  IsChecked="{Binding ServiceInstalled, Mode=OneWay}" Command="{Binding ToggleServiceCommand}"
-                                                  ToolTip="Включить/выключить автозапуск как службу Windows (требуются права администратора)" Content="" />
+                                        <Grid Grid.Column="1" VerticalAlignment="Center">
+                                            <CheckBox Style="{StaticResource SwitchCheckBox}" VerticalAlignment="Center" Margin="0,0,0,0"
+                                                      IsChecked="{Binding ServiceInstalled, Mode=OneWay}" Command="{Binding ToggleServiceCommand}"
+                                                      IsEnabled="{Binding IsServiceToggleEnabled}"
+                                                      ToolTip="Включить/выключить автозапуск как службу Windows (требуются права администратора)" Content=""
+                                                      Visibility="{Binding IsServicePending, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                                            <Border Style="{StaticResource BusySpinner}" Width="18" Height="18" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                                    Visibility="{Binding IsServicePending, Converter={StaticResource BoolToVis}}" />
+                                        </Grid>
                                     </Grid>
                                 </Border>
                                 <Button Style="{StaticResource SecondaryButton}" Content="Обновить службу" Padding="10,6" FontSize="11.5" Margin="0,8,0,0" MinHeight="32"
                                         Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}}"
+                                        IsEnabled="{Binding IsServiceToggleEnabled}"
                                         Command="{Binding ReinstallServiceCommand}"
                                         ToolTip="Применить текущую стратегию и фильтры к уже установленной службе" />
                                 <TextBlock Style="{StaticResource DimText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding ServiceText}" TextWrapping="Wrap"
