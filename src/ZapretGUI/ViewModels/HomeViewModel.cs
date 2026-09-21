@@ -826,7 +826,10 @@ namespace ZapretGui.ViewModels
             ShowInfo("Запускаю обход…");
             try
             {
+                var prev = Bypass.GetStatus().ServiceStrategy ?? Bypass.GetStatus().StrategyName ?? "";
                 var result = await Bypass.StartAsync(strategy, CurrentGameFilter(), Settings.ShowWinwsConsole);
+                var modeText = Bypass.GetStatus().ServiceState == ServiceState.Running ? "служба" : "процесс";
+                StrategySwitchHistoryStore.TryAppend(new StrategySwitchRecord { StrategyName = strategy.Name, PreviousStrategyName = prev, Source = "запуск", Mode = modeText, Success = result.Ok, Message = result.Message });
                 if (result.Ok)
                 {
                     ShowSuccess(result.Message);
@@ -1130,10 +1133,14 @@ namespace ZapretGui.ViewModels
             var strat = _recommendedStrategy;
             var mode = CurrentGameFilter();
             var status = Bypass.GetStatus();
+            var prev = status.ServiceStrategy ?? status.StrategyName ?? "";
             if (status.IsRunning && Shell.IsAdmin())
             {
                 var res = await Bypass.SwitchToStrategyAsync(strat, mode, Settings.ShowWinwsConsole);
-                if (res.Ok) ShowSuccess(res.Message);
+                var ok = res.Ok;
+                var modeText = Bypass.GetStatus().ServiceState == ServiceState.Running ? "служба" : "процесс";
+                StrategySwitchHistoryStore.TryAppend(new StrategySwitchRecord { StrategyName = strat.Name, PreviousStrategyName = prev, Source = "быстрая настройка", Mode = modeText, Success = ok, Message = res.Message });
+                if (ok) ShowSuccess(res.Message);
                 else ShowError(res.Message);
             }
             SelectedStrategyName = strat.Name;
@@ -1141,7 +1148,6 @@ namespace ZapretGui.ViewModels
             SettingsStore.Save(Settings);
             ReloadFromEngine();
             if (!status.IsRunning) ShowSuccess($"Стратегия «{strat.Name}» выбрана как основная");
-            // Попробовать запустить, если права есть и был выключен
             if (!status.IsRunning && Shell.IsAdmin())
             {
                 await StartAsync();

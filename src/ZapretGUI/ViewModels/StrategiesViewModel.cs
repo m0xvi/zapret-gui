@@ -131,6 +131,7 @@ namespace ZapretGui.ViewModels
             ExportCandidateReportCommand = new RelayCommand(ExportCandidateReport,
                 () => CandidateEvaluations.Count > 0 || EvaluationHistory.Count > 0);
             ClearHistoryCommand = new RelayCommand(ClearHistory, () => EvaluationHistory.Count > 0);
+            ClearSwitchHistoryCommand = new RelayCommand(ClearSwitchHistory, () => SwitchHistory.Count > 0);
             SaveCandidateCommand = new RelayCommand(SaveCandidate, () => CandidatePreview != null);
             RunSavedCandidateCommand = new AsyncRelayCommand(RunSavedCandidateAsync,
                 () => CandidatePreview != null && IsCandidatePreviewSaved && !IsBusy && !IsTestingAll && !IsGeneratingCandidates && !IsEvaluatingCandidates);
@@ -146,6 +147,7 @@ namespace ZapretGui.ViewModels
 
             foreach (var saved in StrategyCandidateStore.Load()) SavedCandidates.Add(saved);
             foreach (var record in _evaluationHistory.Take(50)) EvaluationHistory.Add(record);
+            foreach (var rec in StrategySwitchHistoryStore.Load().Take(20)) SwitchHistory.Add(rec);
         }
 
         public StrategyStore Store => _main.Strategies;
@@ -609,6 +611,7 @@ namespace ZapretGui.ViewModels
         public ObservableCollection<StrategyCandidateEvaluation> CandidateEvaluations { get; } = new();
         public ObservableCollection<SavedStrategyCandidate> SavedCandidates { get; } = new();
         public ObservableCollection<StrategyEvaluationHistoryRecord> EvaluationHistory { get; } = new();
+        public ObservableCollection<StrategySwitchRecord> SwitchHistory { get; } = new();
 
         public StrategyCandidate? CandidatePreview
         {
@@ -745,6 +748,10 @@ namespace ZapretGui.ViewModels
         public string EvaluationHistoryCountText => EvaluationHistory.Count == 0
             ? "История пуста"
             : $"Записей в истории: {EvaluationHistory.Count}";
+
+        public string SwitchHistoryCountText => SwitchHistory.Count == 0
+            ? "Переключений пока нет"
+            : $"Последних переключений: {SwitchHistory.Count}";
 
         public string SearchText
         {
@@ -1000,6 +1007,7 @@ namespace ZapretGui.ViewModels
         public ICommand CancelCandidateEvaluationCommand { get; }
         public ICommand ExportCandidateReportCommand { get; }
         public ICommand ClearHistoryCommand { get; }
+        public ICommand ClearSwitchHistoryCommand { get; }
 
         // ------------------------------------------------------------------ логика
 
@@ -1107,16 +1115,19 @@ namespace ZapretGui.ViewModels
                 var mode = EngineService.GetGameFilterMode(Store.Folder);
                 // P2 1.6.10: централизованная логика применения (admin/legacy/switch уже внутри Bypass, но используем сервис для консистентности)
                 var result = await StrategyApplicationService.ApplyAsync(Bypass, target, mode, Settings.ShowWinwsConsole);
+                var prev = CurrentRunningName();
                 if (result.Ok)
                 {
                     Settings.SelectedStrategy = target.Name;
                     SettingsStore.Save(Settings);
                     _main.Home.RefreshStatus();
                     RefreshRunButton();
+                    AppendSwitchHistory(target.Name, prev, "вручную", true, result.Message);
                     Message = result.Message.Length > 0 ? result.Message : $"Стратегия «{target.Name}» успешно запущена";
                 }
                 else
                 {
+                    AppendSwitchHistory(target.Name, prev, "вручную", false, result.Message);
                     Message = result.Message;
                 }
             }
@@ -1207,6 +1218,7 @@ namespace ZapretGui.ViewModels
                         SettingsStore.Save(Settings);
                         _main.Home.RefreshStatus();
                         RefreshRunButton();
+                        AppendSwitchHistory(Selected.Name, runningName, "сделать основной", true, res.Message);
                         Message = $"«{Selected.Name}» установлена как основная и сразу применена";
                         return;
                     }
@@ -1526,6 +1538,36 @@ namespace ZapretGui.ViewModels
             Raise(nameof(EvaluationHistoryCountText));
             (ClearHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
             Message = "История проверок очищена";
+        }
+
+        private void AppendSwitchHistory(string strategyName, string previousName, string source, bool success, string message)
+        {
+            var mode = Bypass.GetStatus().ServiceState == ServiceState.Running ? "служба" : Bypass.GetStatus().IsRunning ? "процесс" : "выкл";
+            var rec = new StrategySwitchRecord
+            {
+                StrategyName = strategyName,
+                PreviousStrategyName = previousName,
+                Source = source,
+                Mode = mode,
+                Success = success,
+                Message = message ?? ""
+            };
+            StrategySwitchHistoryStore.TryAppend(rec);
+            System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                SwitchHistory.Insert(0, rec);
+                while (SwitchHistory.Count > 20) SwitchHistory.RemoveAt(SwitchHistory.Count - 1);
+                Raise(nameof(SwitchHistoryCountText));
+                (ClearSwitchHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            });
+        }
+
+        public void ClearSwitchHistory()
+        {
+            StrategySwitchHistoryStore.Clear();
+            SwitchHistory.Clear();
+            Raise(nameof(SwitchHistoryCountText));
+            (ClearSwitchHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private void BuildCandidatePreview()
