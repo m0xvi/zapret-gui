@@ -32,6 +32,7 @@ namespace ZapretGui.ViewModels
         private string? _selectedEntry;
         private string _searchText = "";
         private string _quickDomainInput = "";
+        private string _bulkPasteText = "";
         private int _selectedSubTabIndex;
         private bool _hasUnsavedChanges;
         private List<string> _originalEntries = new();
@@ -127,6 +128,7 @@ namespace ZapretGui.ViewModels
 
             ClearSearchCommand = new RelayCommand(() => SearchText = "");
             CopyFingerprintHintCommand = new RelayCommand(() => { try { System.Windows.Clipboard.SetText(ListPath); Status = $"Путь скопирован: {ListPath}"; } catch {} });
+            BulkAddCommand = new RelayCommand(BulkAdd, () => !string.IsNullOrWhiteSpace(BulkPasteText) && CanEditCurrentList);
 
             AddEntryCommand = new RelayCommand(AddEntry, () => CanEditCurrentList);
             QuickAddDomainCommand = new RelayCommand(QuickAddDomain, () => !string.IsNullOrWhiteSpace(QuickDomainInput) && CanEditCurrentList);
@@ -211,6 +213,29 @@ namespace ZapretGui.ViewModels
                 {
                     (QuickAddDomainCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
+            }
+        }
+
+        public string BulkPasteText
+        {
+            get => _bulkPasteText;
+            set
+            {
+                if (Set(ref _bulkPasteText, value ?? ""))
+                {
+                    (BulkAddCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    Raise(nameof(BulkLineCountText));
+                }
+            }
+        }
+
+        public string BulkLineCountText
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(BulkPasteText)) return "Вставьте список доменов (по одному в строке)";
+                var lines = BulkPasteText.Split(new[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries).Length;
+                return $"{lines} строк готово к добавлению";
             }
         }
 
@@ -573,6 +598,7 @@ namespace ZapretGui.ViewModels
 
         public ICommand ClearSearchCommand { get; }
         public ICommand CopyFingerprintHintCommand { get; }
+        public ICommand BulkAddCommand { get; }
         public ICommand AddEntryCommand { get; }
         public ICommand QuickAddDomainCommand { get; }
         public ICommand EditEntryCommand { get; }
@@ -716,6 +742,26 @@ namespace ZapretGui.ViewModels
             Raise(nameof(HasEntries));
             Raise(nameof(CountText));
             RaiseCommands();
+        }
+
+        private void BulkAdd()
+        {
+            if (!CanEditCurrentList || string.IsNullOrWhiteSpace(BulkPasteText)) return;
+            var lines = BulkPasteText.Split(new[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
+            var added = 0; var skipped = 0; var invalid = 0;
+            foreach (var raw in lines)
+            {
+                var clean = CleanDomain(raw);
+                if (string.IsNullOrWhiteSpace(clean)) { skipped++; continue; }
+                if (!IsValidListEntry(clean)) { invalid++; continue; }
+                if (Entries.Any(e => e.Equals(clean, StringComparison.OrdinalIgnoreCase))) { skipped++; continue; }
+                Entries.Add(clean);
+                added++;
+            }
+            if (added > 0) { MarkDirty(); Save(); }
+            BulkPasteText = "";
+            Status = $"Пачкой добавлено {added}, пропущено дубликатов {skipped}, невалидных {invalid} — {(added>0?"сохранено":"")}.";
+            Raise(nameof(HasEntries)); Raise(nameof(CountText)); RaiseCommands();
         }
 
         private static string CleanDomain(string input)

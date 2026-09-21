@@ -212,6 +212,24 @@ namespace ZapretGui.Core
 
         /// <summary>Время последнего автопереключения профиля.</summary>
         public DateTime? LastAutoSwitchTime { get; set; }
+
+        /// <summary>Использовать targets.txt из utils как доп цели при проверке стратегий.</summary>
+        public bool UseTargetsTxtForStrategyTest { get; set; } = true;
+
+        /// <summary>Расписание обхода: включить авто-старт/стоп.</summary>
+        public bool ScheduleEnabled { get; set; }
+
+        /// <summary>Время авто-старта обхода (HH:mm).</summary>
+        public string ScheduleStartTime { get; set; } = "09:00";
+
+        /// <summary>Время авто-стопа обхода (HH:mm).</summary>
+        public string ScheduleStopTime { get; set; } = "23:00";
+
+        /// <summary>Дни недели для расписания, битовая маска 1=Пн ... 64=Вс (127 = ежедневно).</summary>
+        public int ScheduleDaysMask { get; set; } = 127;
+
+        /// <summary>При расписании: оставлять службу (true) или процесс.</summary>
+        public bool ScheduleUseService { get; set; } = true;
     }
 
     /// <summary>Загрузка/сохранение settings.json.</summary>

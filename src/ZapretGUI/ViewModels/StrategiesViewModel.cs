@@ -692,6 +692,38 @@ namespace ZapretGui.ViewModels
         }
 
         // ------------------------------------------------------------------ Управление контрольными адресами
+        public bool UseTargetsTxtForStrategyTest
+        {
+            get => Settings.UseTargetsTxtForStrategyTest;
+            set
+            {
+                if (Settings.UseTargetsTxtForStrategyTest == value) return;
+                Settings.UseTargetsTxtForStrategyTest = value;
+                SettingsStore.Save(Settings);
+                Raise(nameof(UseTargetsTxtForStrategyTest));
+                Raise(nameof(TargetsTxtCountText));
+                Raise(nameof(TargetsTxtStatusText));
+                Raise(nameof(EffectiveTargetCountText));
+            }
+        }
+
+        public int TargetsTxtCount => TargetsTxtLoader.Exists(Settings.EnginePath) ? TargetsTxtLoader.Count(Settings.EnginePath) : 0;
+        public string TargetsTxtCountText => TargetsTxtCount == 0 ? "targets.txt не найден" : $"{TargetsTxtCount} доменов из targets.txt";
+        public string TargetsTxtStatusText => UseTargetsTxtForStrategyTest
+            ? (TargetsTxtCount == 0 ? "Файл utils/targets.txt не найден в папке движка" : $"Будет проверено дополнительно {TargetsTxtCount} HTTP-целей из utils/targets.txt (как в zapret.ps1) + ваши адреса")
+            : "Доп-цели из targets.txt отключены";
+        public int EffectiveTargetCount => ConnectionTester.GetEffectiveTargets(Settings).Count;
+        public string EffectiveTargetCountText => $"Итого контрольных целей: {EffectiveTargetCount} (базовые 8 + targets.txt {TargetsTxtCount} + ваши)";
+
+        public void RefreshTargetsTxtInfo()
+        {
+            Raise(nameof(TargetsTxtCount));
+            Raise(nameof(TargetsTxtCountText));
+            Raise(nameof(TargetsTxtStatusText));
+            Raise(nameof(EffectiveTargetCount));
+            Raise(nameof(EffectiveTargetCountText));
+        }
+
         public ObservableCollection<MonitorTarget> TargetEndpoints { get; }
 
         public string NewTargetName
@@ -1166,6 +1198,7 @@ namespace ZapretGui.ViewModels
             Raise(nameof(RunButtonText));
             Raise(nameof(RunButtonTooltip));
             Raise(nameof(IsRunSwitchMode));
+            RefreshTargetsTxtInfo();
         }
 
         private void ReloadTargetEndpoints()

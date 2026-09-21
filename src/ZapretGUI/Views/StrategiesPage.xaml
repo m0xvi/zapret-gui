@@ -827,6 +827,14 @@
                         <TextBlock Style="{StaticResource SectionText}" Text="КОНТРОЛЬНЫЕ СЕРВИСЫ И ЭНДПОИНТЫ ДЛЯ ПРОВЕРКИ" />
                         <TextBlock Style="{StaticResource MutedText}"
                                    Text="Эти ресурсы проверяются при тестировании любой стратегии. Добавьте свои любимые сервисы, игры или сайты для точной оценки." Margin="0,2,0,10" />
+                        <Border Style="{StaticResource InnerCard}" Margin="0,0,0,10" Padding="12,10">
+                            <StackPanel>
+                                <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Расширять проверку целями из utils/targets.txt (Flowseal)" IsChecked="{Binding UseTargetsTxtForStrategyTest, Mode=TwoWay}" ToolTip="Если включено — к базовым 8 добавляются HTTP-цели из utils/targets.txt движка (Discord, YouTube, Google, Cloudflare из remotes, как в zapret.ps1)" />
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,6,0,0" Text="{Binding TargetsTxtStatusText}" TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,4,0,0" Text="{Binding EffectiveTargetCountText}" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
+                                <TextBlock Style="{StaticResource DimText}" FontSize="10" Margin="0,4,0,0" Text="Путь: utils/targets.txt в папке движка; PING-only строки пропускаются, берутся только https://." Opacity="0.7" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Border>
 
                         <Grid Margin="0,4,0,14">
                             <Grid.ColumnDefinitions>

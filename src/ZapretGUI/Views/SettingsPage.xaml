@@ -278,6 +278,59 @@
                                   IsChecked="{Binding AutoDiagnoseOnFirstLaunch, Mode=TwoWay}" />
                     </StackPanel>
                 </Border>
+
+                <!-- Расписание обхода — таймер/дни -->
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" VerticalAlignment="Top">
+                                <TextBlock Text="&#xE823;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SectionText}" Text="РАСПИСАНИЕ ОБХОДА (ТАЙМЕР/ДНИ)" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Автоматический старт и стоп в заданные часы — например, ночью отключать, утром включать." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <CheckBox Grid.Column="2" Style="{StaticResource SwitchCheckBox}" Content="" IsChecked="{Binding ScheduleEnabled, Mode=TwoWay}" ToolTip="Включить расписание" VerticalAlignment="Center" />
+                        </Grid>
+                        <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Visibility="{Binding ScheduleEnabled, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="12" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource DimText}" Text="СТАРТ (HH:MM)" />
+                                        <TextBox Style="{StaticResource InputBox}" Margin="0,4,0,0" Text="{Binding ScheduleStartTime, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например 09:00" />
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="2">
+                                        <TextBlock Style="{StaticResource DimText}" Text="СТОП (HH:MM)" />
+                                        <TextBox Style="{StaticResource InputBox}" Margin="0,4,0,0" Text="{Binding ScheduleStopTime, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например 23:00" />
+                                    </StackPanel>
+                                </Grid>
+                                <TextBlock Style="{StaticResource DimText}" Text="ДНИ НЕДЕЛИ" Margin="0,12,0,4" />
+                                <WrapPanel Orientation="Horizontal">
+                                    <CheckBox Style="{StaticResource CheckBoxApp}" Content="Пн" IsChecked="{Binding ScheduleDayMonday, Mode=TwoWay}" Margin="0,0,10,0" />
+                                    <CheckBox Style="{StaticResource CheckBoxApp}" Content="Вт" IsChecked="{Binding ScheduleDayTuesday, Mode=TwoWay}" Margin="0,0,10,0" />
+                                    <CheckBox Style="{StaticResource CheckBoxApp}" Content="Ср" IsChecked="{Binding ScheduleDayWednesday, Mode=TwoWay}" Margin="0,0,10,0" />
+                                    <CheckBox Style="{StaticResource CheckBoxApp}" Content="Чт" IsChecked="{Binding ScheduleDayThursday, Mode=TwoWay}" Margin="0,0,10,0" />
+                                    <CheckBox Style="{StaticResource CheckBoxApp}" Content="Пт" IsChecked="{Binding ScheduleDayFriday, Mode=TwoWay}" Margin="0,0,10,0" />
+                                    <CheckBox Style="{StaticResource CheckBoxApp}" Content="Сб" IsChecked="{Binding ScheduleDaySaturday, Mode=TwoWay}" Margin="0,0,10,0" />
+                                    <CheckBox Style="{StaticResource CheckBoxApp}" Content="Вс" IsChecked="{Binding ScheduleDaySunday, Mode=TwoWay}" />
+                                </WrapPanel>
+                                <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать как службу (автозапуск)" Margin="0,12,0,0" IsChecked="{Binding ScheduleUseService, Mode=TwoWay}" ToolTip="Если включено — старт через службу Windows, иначе как процесс" />
+                                <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="{Binding ScheduleSummary, StringFormat='Текущее: {0}'}" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Text="Подсказка: оставляйте запас 1–2 минуты — проверка идёт каждые 30с, срабатывание в пределах минуты от заданного времени." TextWrapping="Wrap" Opacity="0.8" />
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <!-- ===================== ВКЛАДКА 2: СЕТЬ ===================== -->

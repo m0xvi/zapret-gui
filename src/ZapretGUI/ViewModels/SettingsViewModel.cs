@@ -557,6 +557,46 @@ namespace ZapretGui.ViewModels
             set { Settings.AutoDiagnoseOnFirstLaunch = value; OnSettingChanged(); }
         }
 
+        public bool ScheduleEnabled
+        {
+            get => Settings.ScheduleEnabled;
+            set { Settings.ScheduleEnabled = value; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleEnabled)); Raise(nameof(ScheduleSummary)); Status = value ? "Расписание включено" : "Расписание выключено"; }
+        }
+
+        public string ScheduleStartTime
+        {
+            get => Settings.ScheduleStartTime;
+            set { if (System.TimeSpan.TryParse(value, out _)) { Settings.ScheduleStartTime = value; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleStartTime)); Raise(nameof(ScheduleSummary)); } }
+        }
+
+        public string ScheduleStopTime
+        {
+            get => Settings.ScheduleStopTime;
+            set { if (System.TimeSpan.TryParse(value, out _)) { Settings.ScheduleStopTime = value; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleStopTime)); Raise(nameof(ScheduleSummary)); } }
+        }
+
+        public int ScheduleDaysMask
+        {
+            get => Settings.ScheduleDaysMask;
+            set { Settings.ScheduleDaysMask = value & 127; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleDaysMask)); Raise(nameof(ScheduleSummary)); Raise(nameof(ScheduleDayMonday)); Raise(nameof(ScheduleDayTuesday)); Raise(nameof(ScheduleDayWednesday)); Raise(nameof(ScheduleDayThursday)); Raise(nameof(ScheduleDayFriday)); Raise(nameof(ScheduleDaySaturday)); Raise(nameof(ScheduleDaySunday)); }
+        }
+
+        public bool ScheduleDayMonday { get => (ScheduleDaysMask & 1) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 1) : (ScheduleDaysMask & ~1); } }
+        public bool ScheduleDayTuesday { get => (ScheduleDaysMask & 2) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 2) : (ScheduleDaysMask & ~2); } }
+        public bool ScheduleDayWednesday { get => (ScheduleDaysMask & 4) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 4) : (ScheduleDaysMask & ~4); } }
+        public bool ScheduleDayThursday { get => (ScheduleDaysMask & 8) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 8) : (ScheduleDaysMask & ~8); } }
+        public bool ScheduleDayFriday { get => (ScheduleDaysMask & 16) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 16) : (ScheduleDaysMask & ~16); } }
+        public bool ScheduleDaySaturday { get => (ScheduleDaysMask & 32) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 32) : (ScheduleDaysMask & ~32); } }
+        public bool ScheduleDaySunday { get => (ScheduleDaysMask & 64) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 64) : (ScheduleDaysMask & ~64); } }
+
+        public bool ScheduleUseService
+        {
+            get => Settings.ScheduleUseService;
+            set { Settings.ScheduleUseService = value; SettingsStore.Save(Settings); Raise(nameof(ScheduleUseService)); Status = value ? "Расписание: служба" : "Расписание: процесс"; }
+        }
+
+        public string ScheduleSummary => _main.ScheduleService?.Describe() ?? (ScheduleEnabled ? $"{ScheduleStartTime} → {ScheduleStopTime}" : "выключено");
+
         public bool ResourceMonitoringEnabled
         {
             get => _main.Monitoring.ResourceMonitoringEnabled;
@@ -843,6 +883,11 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ProviderCheckedAtText));
             Raise(nameof(ProviderContextText));
             Raise(nameof(HasProviderContext));
+            Raise(nameof(ScheduleEnabled));
+            Raise(nameof(ScheduleStartTime));
+            Raise(nameof(ScheduleStopTime));
+            Raise(nameof(ScheduleDaysMask));
+            Raise(nameof(ScheduleSummary));
         }
 
         private void SaveProviderContext()
@@ -965,6 +1010,11 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ProviderCheckedAtText));
             Raise(nameof(ProviderContextText));
             Raise(nameof(HasProviderContext));
+            Raise(nameof(ScheduleEnabled));
+            Raise(nameof(ScheduleStartTime));
+            Raise(nameof(ScheduleStopTime));
+            Raise(nameof(ScheduleDaysMask));
+            Raise(nameof(ScheduleSummary));
         }
 
         private void BrowseEnginePath()

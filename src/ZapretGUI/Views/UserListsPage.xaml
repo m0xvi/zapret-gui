@@ -120,6 +120,23 @@
                         </WrapPanel>
                     </Grid>
 
+                    <!-- Пачка: массовая вставка доменов -->
+                    <Border Margin="0,0,0,10" Padding="12,10" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Visibility="{Binding CanEditCurrentList, Converter={StaticResource BoolToVis}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="МАССОВАЯ ВСТАВКА (ПАЧКОЙ)" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding BulkLineCountText}" Margin="0,2,0,6" FontSize="11" />
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding BulkPasteText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="90" MinHeight="48" ToolTip="Вставьте много доменов — каждый с новой строки (поддерживает https://, пробелы обрежутся). Пустые и дубликаты пропускаются." />
+                            </StackPanel>
+                            <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Добавить пачкой" Margin="10,0,0,0" VerticalAlignment="Bottom" Padding="14,7"
+                                    Command="{Binding BulkAddCommand}" ToolTip="Разобрать строки, почистить, проверить формат и сохранить в файл" />
+                        </Grid>
+                    </Border>
+
                     <!-- Баннеры состояния -->
                     <StackPanel Grid.Row="1" Margin="0,0,0,8">
                         <Border Padding="10,8" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"

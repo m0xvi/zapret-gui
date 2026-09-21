@@ -33,6 +33,7 @@ namespace ZapretGui.ViewModels
 
         public WatchdogService Watchdog { get; }
         public ProfileAutoSwitchService ProfileAutoSwitch { get; }
+        public BypassScheduleService ScheduleService { get; }
         public RealTimePingSnapshot? RealTimePing { get; private set; }
         public GameDetectionService GameDetector { get; }
         public GlobalHotkeyService Hotkeys { get; }
@@ -131,6 +132,14 @@ namespace ZapretGui.ViewModels
                 Profiles.RefreshNetwork();
                 Raise(nameof(AutoSwitchNetworkStatus));
             });
+            ScheduleService = new BypassScheduleService(settings, () => Bypass, () => Strategies);
+            ScheduleService.StatusChanged += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Home.RefreshStatus();
+                WatchdogNotificationRequested?.Invoke(msg);
+                Raise(nameof(ScheduleSummaryText));
+            });
+            if (settings.ScheduleEnabled && !settings.SafeMode) ScheduleService.Start();
             ProfileAutoSwitch.ProfileSwitched += (profile, identity) => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
             {
                 Home.RefreshStatus();
@@ -332,6 +341,12 @@ namespace ZapretGui.ViewModels
 
         public string AutoSwitchNetworkStatus => ProfileAutoSwitch?.CurrentIdentity?.DisplayName ?? "Сеть не определена";
         public string AutoSwitchLastReason => ProfileAutoSwitch?.LastReason ?? "";
+        public string ScheduleSummaryText => ScheduleService?.Describe() ?? "расписание выключено";
+        public void NotifyScheduleChanged()
+        {
+            if (Settings.ScheduleEnabled && !Settings.SafeMode) ScheduleService?.Restart(); else ScheduleService?.Stop();
+            Raise(nameof(ScheduleSummaryText));
+        }
 
         public ICommand ToggleThemeCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
@@ -596,6 +611,8 @@ namespace ZapretGui.ViewModels
         {
             _timer.Stop();
             Monitoring.Stop();
+            ScheduleService?.Stop();
+            ScheduleService?.Dispose();
             ProfileAutoSwitch?.Stop();
             ProfileAutoSwitch?.Dispose();
             GameDetector.Dispose();
