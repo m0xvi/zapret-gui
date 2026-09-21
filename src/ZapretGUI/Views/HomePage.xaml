@@ -149,6 +149,25 @@
                                 <TextBlock Style="{StaticResource MutedText}" Margin="0,10,0,0" TextWrapping="Wrap"
                                            Text="4 шага за 1–2 минуты: система → сайты → 22 стратегии → подсказка." />
 
+                                <!-- Гейт готовности: показываем, если приложение не готово -->
+                                <Border Margin="0,10,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+                                        Visibility="{Binding ReadinessActionVisible, Converter={StaticResource BoolToVis}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Text="&#xE7BA;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
+                                        <StackPanel Grid.Column="1" Margin="8,0,8,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Сначала проверьте готовность" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" />
+                                            <TextBlock Text="{Binding ReadinessDetails}" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Исправить" Padding="12,6" MinHeight="30" VerticalAlignment="Center"
+                                                Command="{Binding OpenDiagnosticsCommand}" ToolTip="Открыть диагностику и исправить проблемы (BFE, прокси, VPN)" />
+                                    </Grid>
+                                </Border>
+
                                 <!-- Исходные действия — видны только когда нет ни прогресса, ни результата -->
                                 <WrapPanel Margin="0,12,0,0" Visibility="{Binding IsQuickSetupIdle, Converter={StaticResource BoolToVis}}">
                                     <Button Style="{StaticResource PrimaryButton}" Content="✨ Проверить всё и подобрать стратегию" Padding="18,9" MinHeight="40"
@@ -338,6 +357,20 @@
                         </Grid>
                     </Border>
 
+                    <!-- Продвинутые — свёрнуто по умолчанию: фильтры + проверка (P0 1.6.7) -->
+                    <Expander Margin="0,16,0,0" IsExpanded="False" Background="Transparent" BorderThickness="0">
+                        <Expander.Header>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,10,0">
+                                    <TextBlock Text="&#xE9D9;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Продвинутые настройки" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="12.5" />
+                                    <TextBlock Text="Фильтры, списки и проверка соединения — можно не открывать" Style="{StaticResource DimText}" FontSize="11" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Expander.Header>
+                        <StackPanel Margin="0,8,0,0">
                     <!-- Фильтры — продвинутая настройка, свёрнутая визуально -->
                     <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                         <StackPanel>
@@ -529,6 +562,8 @@
                             </Border>
                         </StackPanel>
                     </Border>
+                        </StackPanel>
+                    </Expander>
                 </StackPanel>
 
                 <!-- ================= ПРАВАЯ КОЛОНКА ================= -->
