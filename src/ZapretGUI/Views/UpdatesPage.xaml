@@ -67,21 +67,21 @@
             <!-- 1. Движок zapret — ПЕРЕДЕЛАНО 1.6.6: карточный дизайн с версиями и ручным откатом -->
             <Border Style="{StaticResource Card}" Margin="0,16,0,0" Padding="0">
                 <StackPanel>
-                    <Grid Margin="20,16,20,0">
+                    <Grid Margin="16,12,16,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
-                            <TextBlock Text="&#xE8B5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <TextBlock Text="&#xE8B5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET (ОБХОД)" Margin="0,0,0,2" />
                             <TextBlock Style="{StaticResource DimText}" Text="winws.exe + WinDivert из Flowseal/zapret-discord-youtube" FontSize="11" />
                         </StackPanel>
-                        <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
-                            <TextBlock FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}">
+                        <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <TextBlock FontSize="10" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock">
                                         <Setter Property="Text" Value="АКТУАЛЬНО" />
@@ -96,33 +96,23 @@
                         </Border>
                     </Grid>
 
-                    <Grid Margin="20,14,20,0">
+                    <Grid Margin="16,12,16,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border CornerRadius="10" Padding="14,12" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <Border CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                             <StackPanel>
-                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Border Width="22" Height="22" CornerRadius="6" Background="{DynamicResource SuccessSoftBrush}" Margin="0,0,7,0">
-                                        <TextBlock Text="&#xE73E;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Style="{StaticResource DimText}" Text="УСТАНОВЛЕНА" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
-                                </WrapPanel>
-                                <TextBlock Style="{StaticResource StatValueText}" Text="{Binding EngineVersion}" FontSize="20" Margin="0,6,0,0" />
+                                <TextBlock Style="{StaticResource DimText}" Text="УСТАНОВЛЕНА" FontSize="10" FontWeight="Bold" />
+                                <TextBlock Style="{StaticResource StatValueText}" Text="{Binding EngineVersion}" FontSize="16" Margin="0,6,0,0" />
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding LastCheckText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" />
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="2" CornerRadius="10" Padding="14,12" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2">
+                        <Border Grid.Column="2" CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                             <StackPanel>
-                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Border Width="22" Height="22" CornerRadius="6" Background="{DynamicResource AccentBrush}" Margin="0,0,7,0">
-                                        <TextBlock Text="&#xE774;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                    </Border>
-                                    <TextBlock Style="{StaticResource DimText}" Text="НА GITHUB" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-                                </WrapPanel>
-                                <TextBlock Style="{StaticResource StatValueText}" Text="{Binding LatestVersion}" FontSize="20" Margin="0,6,0,0" Foreground="{DynamicResource AccentBrush}" />
+                                <TextBlock Style="{StaticResource DimText}" Text="НА GITHUB" FontSize="10" FontWeight="Bold" />
+                                <TextBlock Style="{StaticResource StatValueText}" Text="{Binding LatestVersion}" FontSize="16" Margin="0,4,0,0" />
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding UpdateBadgeText}" FontSize="11" Margin="0,4,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" />
                             </StackPanel>
                         </Border>
@@ -196,7 +186,7 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
-                    <Border Style="{StaticResource Divider}" Margin="20,16,20,0" />
+                    <Border Style="{StaticResource Divider}" Margin="16,12,16,0" />
                 </StackPanel>
             </Border>
 
@@ -266,43 +256,43 @@
             <!-- 5. Обновление Zapret GUI — ПЕРЕДЕЛАНО 1.6.6: две карточки версий + статус -->
             <Border Style="{StaticResource Card}" Margin="0,16,0,0" Padding="0">
                 <StackPanel>
-                    <Grid Margin="20,16,20,0">
+                    <Grid Margin="16,12,16,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
-                        <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
-                            <TextBlock Text="&#xE895;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                            <TextBlock Text="&#xE895;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource SectionText}" Text="ОБНОВЛЕНИЕ ZAPRET GUI" Margin="0,0,0,2" />
                             <TextBlock Style="{StaticResource DimText}" Text="Самообновление portable EXE с проверкой SHA-256" FontSize="11" />
                         </StackPanel>
-                        <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                        <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                             <TextBlock Text="GUI" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
                         </Border>
                     </Grid>
 
-                    <Grid Margin="20,14,20,0">
+                    <Grid Margin="16,12,16,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="12" />
+                            <ColumnDefinition Width="10" />
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <Border CornerRadius="10" Padding="14,12" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <Border CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource DimText}" Text="УСТАНОВЛЕНА" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" />
-                                <TextBlock Style="{StaticResource StatValueText}" Text="{Binding GuiCurrentVersion}" FontSize="20" Margin="0,4,0,0" />
+                                <TextBlock Style="{StaticResource DimText}" Text="УСТАНОВЛЕНА" FontSize="10" FontWeight="Bold" />
+                                <TextBlock Style="{StaticResource StatValueText}" Text="{Binding GuiCurrentVersion}" FontSize="16" Margin="0,4,0,0" />
                                 <Border Style="{StaticResource Badge}" HorizontalAlignment="Left" Margin="0,8,0,0" Background="{DynamicResource SuccessSoftBrush}" Visibility="{Binding GuiUpdateAvailable, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
                                     <TextBlock Text="Актуальная" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
                                 </Border>
                             </StackPanel>
                         </Border>
-                        <Border Grid.Column="2" CornerRadius="10" Padding="14,12" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2">
+                        <Border Grid.Column="2" CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource DimText}" Text="ПОСЛЕДНЯЯ" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" />
-                                <TextBlock Style="{StaticResource StatValueText}" Text="{Binding GuiLatestVersion}" FontSize="20" Margin="0,4,0,0" Foreground="{DynamicResource AccentBrush}" />
+                                <TextBlock Style="{StaticResource DimText}" Text="ПОСЛЕДНЯЯ" FontSize="10" FontWeight="Bold" />
+                                <TextBlock Style="{StaticResource StatValueText}" Text="{Binding GuiLatestVersion}" FontSize="16" Margin="0,4,0,0" />
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding GuiUpdateBadgeText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold" />
                             </StackPanel>
                         </Border>

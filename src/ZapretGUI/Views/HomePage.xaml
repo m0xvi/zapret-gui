@@ -606,14 +606,14 @@
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
-                                    <TextBlock Text="&#xE8B5;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                    <TextBlock Text="&#xE8B5;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
                                     <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" Margin="0,0,0,1" />
                                     <TextBlock Style="{StaticResource DimText}" Text="Версия и путь к сборке" FontSize="11" />
                                 </StackPanel>
-                                <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1" Padding="7,3">
+                                <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="7,3">
                                     <TextBlock FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
@@ -635,27 +635,16 @@
                                     <ColumnDefinition Width="10" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <Border CornerRadius="10" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                <Border CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                                     <StackPanel>
-                                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Border Width="20" Height="20" CornerRadius="6" Background="{DynamicResource SuccessSoftBrush}" Margin="0,0,6,0">
-                                                <TextBlock Text="&#xE73E;" FontFamily="{DynamicResource IconFont}" FontSize="9" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            </Border>
-                                            <TextBlock Style="{StaticResource DimText}" Text="УСТАНОВЛЕНА" FontSize="10" FontWeight="Bold" VerticalAlignment="Center" />
-                                        </WrapPanel>
-                                        <TextBlock Style="{StaticResource StatValueText}" Text="{Binding EngineVersionText}" FontSize="16" Margin="0,6,0,0" />
-                                        <TextBlock Style="{StaticResource DimText}" Text="локальная сборка" FontSize="11" Margin="0,2,0,0" Opacity="0.8" />
+                                        <TextBlock Style="{StaticResource DimText}" Text="УСТАНОВЛЕНА" FontSize="10" FontWeight="Bold" />
+                                        <TextBlock Style="{StaticResource StatValueText}" Text="{Binding EngineVersionText}" FontSize="16" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </Border>
-                                <Border Grid.Column="2" CornerRadius="10" Padding="12,10" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2">
+                                <Border Grid.Column="2" CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                                     <StackPanel>
-                                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Border Width="20" Height="20" CornerRadius="6" Background="{DynamicResource AccentBrush}" Margin="0,0,6,0">
-                                                <TextBlock Text="&#xE774;" FontFamily="{DynamicResource IconFont}" FontSize="9" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            </Border>
-                                            <TextBlock Style="{StaticResource DimText}" Text="НА GITHUB" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
-                                        </WrapPanel>
-                                        <TextBlock Style="{StaticResource StatValueText}" Text="{Binding LatestVersionText}" FontSize="16" Margin="0,6,0,0" Foreground="{DynamicResource AccentBrush}" />
+                                        <TextBlock Style="{StaticResource DimText}" Text="НА GITHUB" FontSize="10" FontWeight="Bold" />
+                                        <TextBlock Style="{StaticResource StatValueText}" Text="{Binding LatestVersionText}" FontSize="16" Margin="0,4,0,0" />
                                     </StackPanel>
                                 </Border>
                             </Grid>
