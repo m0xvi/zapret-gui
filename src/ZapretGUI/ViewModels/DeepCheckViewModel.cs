@@ -1082,7 +1082,7 @@ namespace ZapretGui.ViewModels
             if (answer != System.Windows.MessageBoxResult.Yes) return;
 
             Message = "Применяю подтверждённую рекомендацию…";
-            var result = await _main.Bypass.StartAsync(strategy, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+            var result = await _main.Bypass.SwitchToStrategyAsync(strategy, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
             if (result.Ok)
             {
                 Settings.SelectedStrategy = strategy.Name;

@@ -241,12 +241,17 @@ namespace ZapretGui.Core
             CancellationToken ct = default)
         {
             var status = GetStatus();
-            if (status.State == BypassState.RunningService)
+            // Служба имеет приоритет: если она Running/StartPending/StopPending — переустановку службы,
+            // даже если winws-процесс ещё не виден (гонка при старте). Это решает кейс «автостратегия
+            // как служба → нельзя переключить на обычную без ручной остановки».
+            if (status.ServiceState == ServiceState.Running
+                || status.ServiceState == ServiceState.StartPending
+                || status.ServiceState == ServiceState.StopPending)
             {
                 AppLog.SvcInfo($"Бесшовное переключение: служба zapret с «{status.ServiceStrategy}» → «{strategy.Name}»");
                 return await InstallServiceAsync(strategy, gameFilter, ct).ConfigureAwait(false);
             }
-            if (status.State == BypassState.RunningStandalone)
+            if (status.IsRunning)
             {
                 AppLog.SvcInfo($"Бесшовное переключение: standalone «{status.StrategyName}» → «{strategy.Name}»");
                 await StopAsync(ct).ConfigureAwait(false);

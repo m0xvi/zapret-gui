@@ -716,7 +716,11 @@ namespace ZapretGui.ViewModels
                 // обход, завершаем winws.exe и выгружаем драйвер WinDivert из ядра —
                 // иначе замена WinDivert64.sys «на лету» заканчивается синим экраном (BSOD).
                 Status = "Останавливаю обход и выгружаю драйвер WinDivert…";
-                var wasRunning = await _main.Bypass.PrepareForEngineUpdateAsync(_cts.Token);
+                var beforeStatus = _main.Bypass.GetStatus();
+                var wasRunning = beforeStatus.IsRunning;
+                var wasService = beforeStatus.State == BypassState.RunningService
+                    || beforeStatus.ServiceState == ServiceState.Running;
+                await _main.Bypass.PrepareForEngineUpdateAsync(_cts.Token);
 
                 var progress = new Progress<ProgressInfo>(ApplyProgress);
                 var result = await EngineService.DownloadAndInstallAsync(
@@ -740,14 +744,17 @@ namespace ZapretGui.ViewModels
                 RefreshConsistency();
                 Raise(nameof(EngineVersion));
 
-                // Если обход работал — возвращаем его к жизни с обновлённым движком
+                // Если обход работал — возвращаем его в прежнем режиме (служба vs процесс)
                 if (result.Ok && wasRunning)
                 {
                     var strategy = _main.Strategies.Find(Settings.SelectedStrategy) ?? _main.Strategies.Recommended;
                     if (strategy != null)
                     {
                         Status = "Перезапускаю обход с обновлённым движком…";
-                        var restart = await _main.Bypass.StartAsync(strategy,
+                        var restart = wasService
+                            ? await _main.Bypass.InstallServiceAsync(strategy,
+                                EngineService.GetGameFilterMode(Settings.EnginePath))
+                            : await _main.Bypass.SwitchToStrategyAsync(strategy,
                             EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
                         SetMessage(restart.Message, restart.Ok ? "Success" : "Warning");
                     }

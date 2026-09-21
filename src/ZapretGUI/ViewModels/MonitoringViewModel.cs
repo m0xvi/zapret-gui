@@ -397,9 +397,16 @@ namespace ZapretGui.ViewModels
 
         private async Task<OperationResult> StartSelectedStrategyAsync(StrategyInfo strategy, BypassStatus before)
         {
-            if (before.State == BypassState.RunningService)
+            // Бесшовное переключение с учётом актуального режима службы/процесса
+            var current = _main.Bypass.GetStatus();
+            if (current.ServiceState == ServiceState.Running
+                || current.ServiceState == ServiceState.StartPending
+                || current.ServiceState == ServiceState.StopPending)
                 return await _main.Bypass.InstallServiceAsync(strategy,
                     EngineService.GetGameFilterMode(Settings.EnginePath));
+            if (current.IsRunning)
+                return await _main.Bypass.SwitchToStrategyAsync(strategy,
+                    EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
             return await _main.Bypass.StartAsync(strategy,
                 EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
         }

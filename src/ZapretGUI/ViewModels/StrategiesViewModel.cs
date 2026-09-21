@@ -1036,6 +1036,17 @@ namespace ZapretGui.ViewModels
             var target = parameter as StrategyInfo ?? Selected;
             if (target == null || IsBusy) return;
 
+            if (!Shell.IsAdmin())
+            {
+                Message = "Для переключения стратегии нужны права администратора. Нажмите «Перезапустить от администратора» на странице Обзор.";
+                return;
+            }
+            if (!System.IO.File.Exists(System.IO.Path.Combine(Store.Folder, "bin", "winws.exe")))
+            {
+                Message = "Не найден bin\\winws.exe. Скачайте движок на странице «Обновления».";
+                return;
+            }
+
             IsBusy = true;
             Message = $"Запускаю стратегию «{target.Name}»…";
             try

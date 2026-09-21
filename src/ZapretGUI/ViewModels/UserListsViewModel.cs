@@ -684,7 +684,7 @@ namespace ZapretGui.ViewModels
             var strat = _main.Strategies.Find(status.StrategyName) ?? _main.Strategies.Recommended;
             if (strat == null) return;
 
-            var res = await _main.Bypass.StartAsync(strat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+            var res = await _main.Bypass.SwitchToStrategyAsync(strat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
             Status = res.Ok ? "Обход успешно перезапущен с новыми списками!" : "Ошибка перезапуска: " + res.Message;
             _main.Home.RefreshStatus();
         }

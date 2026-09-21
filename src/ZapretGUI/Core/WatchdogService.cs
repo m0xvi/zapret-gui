@@ -131,7 +131,7 @@ namespace ZapretGui.Core
                 }
                 else
                 {
-                    await _bypass.StartAsync(strat, EngineService.GetGameFilterMode(_settings.EnginePath), _settings.ShowWinwsConsole);
+                    await _bypass.SwitchToStrategyAsync(strat, EngineService.GetGameFilterMode(_settings.EnginePath), _settings.ShowWinwsConsole);
                 }
 
                 var msg = $"[Watchdog] Обход «{strat.Name}» успешно восстановлен.";

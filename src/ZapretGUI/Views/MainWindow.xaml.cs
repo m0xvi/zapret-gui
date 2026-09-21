@@ -171,7 +171,7 @@ namespace ZapretGui.Views
                         SettingsStore.Save(_vm.Settings);
                         if (_vm.Bypass.GetStatus().IsRunning)
                         {
-                            var res = await _vm.Bypass.StartAsync(strat,
+                            var res = await _vm.Bypass.SwitchToStrategyAsync(strat,
                                 EngineService.GetGameFilterMode(_vm.Settings.EnginePath), _vm.Settings.ShowWinwsConsole);
                             _tray?.ShowBalloon("Смена стратегии", res.Message);
                         }

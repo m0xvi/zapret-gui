@@ -193,7 +193,8 @@ namespace ZapretGui.Core
                 var strategy = strategies.Find(settings.SelectedStrategy) ?? strategies.Recommended;
                 if (isRunning && strategy != null)
                 {
-                    var res = await bypass.StartAsync(strategy, profile.GameFilter, settings.ShowWinwsConsole).ConfigureAwait(false);
+                    var res = await bypass.SwitchToStrategyAsync(strategy, profile.GameFilter, settings.ShowWinwsConsole).ConfigureAwait(false);
+                    if (!res.Ok) return (false, $"Профиль «{profile.Name}» применён, но перезапуск обхода не удался: {res.Message}");
                     profile.LastAppliedAt = DateTime.UtcNow;
                     return (true, $"Профиль «{profile.Name}» успешно применён. Обход перезапущен со стратегией «{strategy.Name}».");
                 }
