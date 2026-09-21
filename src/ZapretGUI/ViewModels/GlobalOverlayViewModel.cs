@@ -1,45 +1,118 @@
-using Wpf.Ui.Controls;
-using ZapretGUI.Core;
+using System;
+using ZapretGui.Core;
 
-namespace ZapretGUI.ViewModels;
+namespace ZapretGui.ViewModels;
 
 /// <summary>
 /// Глобальный затемняющий оверлей для длительных операций. Один экземпляр в MainViewModel.
 /// </summary>
-public partial class GlobalOverlayViewModel : ObservableObject
+public sealed class GlobalOverlayViewModel : ObservableObject
 {
-    [ObservableProperty] private bool _isVisible;
-    [ObservableProperty] private string _title = "Выполнение операции";
-    [ObservableProperty] private string _status = "";
-    [ObservableProperty] private string _details = "";
-    [ObservableProperty] private double _progress; // 0..100
-    [ObservableProperty] private bool _isIndeterminate;
-    [ObservableProperty] private bool _canCancel;
-    [ObservableProperty] private bool _hasError;
-    [ObservableProperty] private string _errorText = "";
+    private bool _isVisible;
+    private string _title = "Выполнение операции";
+    private string _status = "";
+    private string _details = "";
+    private double _progress; // 0..100
+    private bool _isIndeterminate;
+    private bool _canCancel;
+    private bool _hasError;
+    private string _errorText = "";
 
-    // Сохранённые колбэки — не сериализуются
     private Action? _onCancel;
     private Action? _onRetry;
+
+    public bool IsVisible
+    {
+        get => _isVisible;
+        set
+        {
+            if (Set(ref _isVisible, value))
+            {
+                Raise(nameof(OverlayVisible));
+                Raise(nameof(ProgressVisible));
+                Raise(nameof(ErrorVisible));
+            }
+        }
+    }
+
+    public string Title
+    {
+        get => _title;
+        set => Set(ref _title, value);
+    }
+
+    public string Status
+    {
+        get => _status;
+        set => Set(ref _status, value);
+    }
+
+    public string Details
+    {
+        get => _details;
+        set => Set(ref _details, value);
+    }
+
+    public double Progress
+    {
+        get => _progress;
+        set
+        {
+            if (Set(ref _progress, value))
+                Raise(nameof(ProgressPercentText));
+        }
+    }
+
+    public bool IsIndeterminate
+    {
+        get => _isIndeterminate;
+        set
+        {
+            if (Set(ref _isIndeterminate, value))
+                Raise(nameof(ProgressVisible));
+        }
+    }
+
+    public bool CanCancel
+    {
+        get => _canCancel;
+        set => Set(ref _canCancel, value);
+    }
+
+    public bool HasError
+    {
+        get => _hasError;
+        set
+        {
+            if (Set(ref _hasError, value))
+            {
+                Raise(nameof(ProgressVisible));
+                Raise(nameof(ErrorVisible));
+            }
+        }
+    }
+
+    public string ErrorText
+    {
+        get => _errorText;
+        set => Set(ref _errorText, value);
+    }
 
     public bool OverlayVisible => IsVisible;
     public bool ProgressVisible => IsVisible && !HasError && !IsIndeterminate;
     public bool ErrorVisible => IsVisible && HasError;
     public string ProgressPercentText => $"{(int)Math.Clamp(Progress, 0, 100)}%";
 
-    partial void OnIsVisibleChanged(bool value)
+    public ICommand CancelCommand { get; }
+    public ICommand DismissCommand { get; }
+    public ICommand RetryCommand { get; }
+
+    public GlobalOverlayViewModel()
     {
-        Raise(nameof(OverlayVisible));
-        Raise(nameof(ProgressVisible));
-        Raise(nameof(ErrorVisible));
+        CancelCommand = new RelayCommand(Cancel);
+        DismissCommand = new RelayCommand(Dismiss);
+        RetryCommand = new RelayCommand(Retry);
     }
-    partial void OnHasErrorChanged(bool value)
-    {
-        Raise(nameof(ProgressVisible));
-        Raise(nameof(ErrorVisible));
-    }
-    partial void OnIsIndeterminateChanged(bool value) => Raise(nameof(ProgressVisible));
-    partial void OnProgressChanged(double value) => Raise(nameof(ProgressPercentText));
 
     public void Show(string title, string status, string details = "", double? progress = null, bool indeterminate = false, bool canCancel = false, Action? onCancel = null, Action? onRetry = null)
     {
@@ -82,17 +155,13 @@ public partial class GlobalOverlayViewModel : ObservableObject
         _onRetry = null;
     }
 
-    [RelayCommand]
     private void Cancel()
     {
         try { _onCancel?.Invoke(); } catch {}
-        // Не прячем сразу — пусть операция сама вызовет Hide после отмены
     }
 
-    [RelayCommand]
     private void Dismiss() => Hide();
 
-    [RelayCommand]
     private void Retry()
     {
         var cb = _onRetry;
