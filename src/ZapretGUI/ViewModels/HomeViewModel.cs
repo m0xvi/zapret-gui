@@ -31,6 +31,10 @@ namespace ZapretGui.ViewModels
         private DateTime _lastLegacyCheck = DateTime.MinValue;
         private LegacyInstallInfo? _legacyCache;
         private string _newConnectionAddress = "";
+        // ---- Здоровье соединения ----
+        private string _connectionHealthKey = "Muted";
+        private string _connectionHealthText = "";
+        private bool _connectionHealthVisible;
         // ---- Быстрая проверка «Проверить всё» ----
         private bool _isFullCheckRunning;
         private string _fullCheckStatusText = "";
@@ -59,6 +63,8 @@ namespace ZapretGui.ViewModels
             InstallServiceCommand = new AsyncRelayCommand(InstallServiceAsync, () => (HasStrategy || ServiceInstalled) && !IsBusy);
             ReinstallServiceCommand = new AsyncRelayCommand(ReinstallServiceAsync, () => HasStrategy && !IsBusy);
             RemoveServiceCommand = new AsyncRelayCommand(RemoveServiceAsync, () => ServiceInstalled && !IsBusy);
+            ToggleServiceCommand = new AsyncRelayCommand(ToggleServiceAsync, () => !IsBusy);
+            ReapplyServiceCommand = new AsyncRelayCommand(ReinstallServiceAsync, () => ServiceInstalled && !IsBusy && HasStrategy);
             TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync, () => !ConnectionBusy);
             AddConnectionTargetCommand = new RelayCommand(AddConnectionTarget);
             EditConnectionTargetCommand = new RelayCommand(EditConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
@@ -198,6 +204,8 @@ namespace ZapretGui.ViewModels
         public string InstallServiceButtonText => ServiceInstalled
             ? "Служба уже установлена, удалить?"
             : "Установить в службу";
+        public string ServiceToggleStatusText => ServiceInstalled ? "Автозапуск включён" : "Автозапуск выключен";
+        public bool IsServiceToggleOn => ServiceInstalled;
         public bool HasStrategy => Store.Items.Count > 0;
         public string StatusText => _status.StateText;
         public string StatusKey => _status.State switch
@@ -316,6 +324,28 @@ namespace ZapretGui.ViewModels
         {
             get => _connectionProgressText;
             set => Set(ref _connectionProgressText, value);
+        }
+
+        public string ConnectionHealthKey
+        {
+            get => _connectionHealthKey;
+            private set => Set(ref _connectionHealthKey, value);
+        }
+
+        public string ConnectionHealthText
+        {
+            get => _connectionHealthText;
+            private set => Set(ref _connectionHealthText, value);
+        }
+
+        public bool ConnectionHealthVisible
+        {
+            get => _connectionHealthVisible;
+            private set
+            {
+                if (Set(ref _connectionHealthVisible, value))
+                    Raise(nameof(ConnectionHealthVisible));
+            }
         }
 
         // ---- Свойства «Проверить всё» ----
@@ -507,6 +537,8 @@ namespace ZapretGui.ViewModels
         public ICommand InstallServiceCommand { get; }
         public ICommand ReinstallServiceCommand { get; }
         public ICommand RemoveServiceCommand { get; }
+        public ICommand ToggleServiceCommand { get; }
+        public ICommand ReapplyServiceCommand { get; }
         public ICommand TestConnectionCommand { get; }
         public ICommand AddConnectionTargetCommand { get; }
         public ICommand EditConnectionTargetCommand { get; }
@@ -572,6 +604,8 @@ namespace ZapretGui.ViewModels
             _status = Bypass.GetStatus();
             Raise(nameof(IsRunning));
             Raise(nameof(ServiceInstalled));
+            Raise(nameof(ServiceToggleStatusText));
+            Raise(nameof(IsServiceToggleOn));
             Raise(nameof(InstallServiceButtonText));
             Raise(nameof(StatusText));
             Raise(nameof(StatusKey));
@@ -597,7 +631,10 @@ namespace ZapretGui.ViewModels
             (ToggleBypassCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (ResolveLegacyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ReinstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (RemoveServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ToggleServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ReapplyServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (TestConnectionCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (CancelFullCheckCommand as RelayCommand)?.RaiseCanExecuteChanged();
@@ -821,6 +858,12 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        private async Task ToggleServiceAsync()
+        {
+            if (ServiceInstalled) await RemoveServiceAsync();
+            else await InstallServiceAsync();
+        }
+
         private async Task InstallServiceAsync()
         {
             if (ServiceInstalled)
@@ -945,13 +988,23 @@ namespace ZapretGui.ViewModels
             ConnectionProgressPercentText = "";
             ConnectionProgressText = "Подготавливаю проверку…";
             ConnectionChecks.Clear();
+            ConnectionHealthVisible = false;
             try
             {
                 var results = await ConnectionTester.RunAsync(ConnectionTargets, default,
                     new Progress<string>(UpdateConnectionProgress));
                 foreach (var check in results) ConnectionChecks.Add(check);
 
-                var failed = results.Count(r => !r.Ok);
+                var total = results.Count;
+                var ok = results.Count(r => r.Ok);
+                var avg = ok > 0 ? (int)results.Where(r => r.Ok).Average(r => r.Milliseconds) : 0;
+                ConnectionHealthVisible = total > 0;
+                ConnectionHealthKey = ok == total ? "Success" : ok == 0 ? "Danger" : "Warning";
+                ConnectionHealthText = total > 0 ? $"{ok}/{total} OK" + (ok > 0 ? $" · {avg} мс" : "") : "";
+                Raise(nameof(ConnectionHealthKey));
+                Raise(nameof(ConnectionHealthText));
+
+                var failed = total - ok;
                 if (failed == 0) ShowSuccess("Все проверенные ресурсы доступны");
                 else if (failed == results.Count) ShowError("Ни один ресурс не открылся — проверьте обход и DNS");
                 else ShowWarning($"Часть ресурсов недоступна ({failed} из {results.Count})");
@@ -1133,6 +1186,17 @@ namespace ZapretGui.ViewModels
                 ConnectionChecks.Clear();
                 var connResults = await ConnectionTester.RunAsync(ConnectionTargets, _fullCheckCts.Token, null);
                 foreach (var r in connResults) ConnectionChecks.Add(r);
+                // Обновляем health для кольца
+                {
+                    var total = connResults.Count;
+                    var ok = connResults.Count(x => x.Ok);
+                    var avg = ok > 0 ? (int)connResults.Where(x => x.Ok).Average(x => x.Milliseconds) : 0;
+                    ConnectionHealthVisible = total > 0;
+                    ConnectionHealthKey = ok == total ? "Success" : ok == 0 ? "Danger" : "Warning";
+                    ConnectionHealthText = total > 0 ? $"{ok}/{total} OK" + (ok > 0 ? $" · {avg} мс" : "") : "";
+                    Raise(nameof(ConnectionHealthKey));
+                    Raise(nameof(ConnectionHealthText));
+                }
                 var failedConn = connResults.Count(r => !r.Ok);
                 if (failedConn == 0) FullCheckAdviceText += "Сайты доступны. ";
                 else if (failedConn == connResults.Count) FullCheckAdviceText += $"Ни один сайт не открылся ({failedConn}/{connResults.Count}) — проверьте, запущен ли обход и DNS. ";

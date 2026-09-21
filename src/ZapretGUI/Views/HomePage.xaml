@@ -96,6 +96,15 @@
                                         <TextBlock Style="{StaticResource DimText}" Text="{Binding PidText, StringFormat=Процесс: {0}}" />
                                     </Border>
                                 </WrapPanel>
+                                <!-- Здоровье соединения — кольцо теперь отражает реальный коннект -->
+                                <Border Margin="0,8,0,0" CornerRadius="7" Padding="8,5" Background="{Binding ConnectionHealthKey, Converter={StaticResource SoftSeverityBrush}}" BorderBrush="{Binding ConnectionHealthKey, Converter={StaticResource SeverityBrush}}" BorderThickness="1"
+                                        Visibility="{Binding ConnectionHealthVisible, Converter={StaticResource BoolToVis}}">
+                                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Width="7" Height="7" CornerRadius="3.5" VerticalAlignment="Center" Background="{Binding ConnectionHealthKey, Converter={StaticResource SeverityBrush}}" />
+                                        <TextBlock Text="{Binding ConnectionHealthText}" Style="{StaticResource DimText}" FontSize="11" FontWeight="SemiBold" Margin="7,0,0,0" VerticalAlignment="Center" />
+                                        <TextBlock Text=" • проверьте YouTube/Discord" Style="{StaticResource DimText}" FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center" Opacity="0.8" />
+                                    </WrapPanel>
+                                </Border>
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding ServiceText}" Margin="0,8,0,0" />
                                 <WrapPanel Margin="0,8,0,0" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
                                     <Border Style="{StaticResource BusySpinner}">
@@ -105,19 +114,29 @@
                                 </WrapPanel>
                             </StackPanel>
 
-                            <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="160" MaxWidth="220">
-                                <Button Style="{StaticResource SecondaryButton}" Content="Установить в службу"
-                                        Command="{Binding InstallServiceCommand}" MinHeight="38" Padding="14,8"
-                                        Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
-                                        ToolTip="Создать и запустить службу Windows zapret с выбранной стратегией" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Переустановить службу"
-                                        Command="{Binding ReinstallServiceCommand}" MinHeight="36" Padding="12,6" Margin="0,0,0,6"
+                            <!-- Служба — один тумблер + обновление (P0 1.6.8) -->
+                            <StackPanel Grid.Column="2" VerticalAlignment="Center" MinWidth="180" MaxWidth="240">
+                                <Border CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
+                                            <TextBlock Text="Служба Windows" Style="{StaticResource SectionText}" FontSize="11" Margin="0,0,0,2" />
+                                            <TextBlock Text="{Binding ServiceToggleStatusText}" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <CheckBox Grid.Column="1" Style="{StaticResource SwitchCheckBox}" VerticalAlignment="Center" Margin="0,0,0,0"
+                                                  IsChecked="{Binding ServiceInstalled, Mode=OneWay}" Command="{Binding ToggleServiceCommand}"
+                                                  ToolTip="Включить/выключить автозапуск как службу Windows (требуются права администратора)" Content="" />
+                                    </Grid>
+                                </Border>
+                                <Button Style="{StaticResource SecondaryButton}" Content="Обновить службу" Padding="10,6" FontSize="11.5" Margin="0,8,0,0" MinHeight="32"
                                         Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}}"
-                                        ToolTip="Обновить параметры работающей службы на текущую выбранную стратегию" />
-                                <Button Style="{StaticResource DangerButton}" Content="Удалить службу"
-                                        Command="{Binding RemoveServiceCommand}" MinHeight="36" Padding="12,6"
-                                        Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}}"
-                                        ToolTip="Остановить и полностью удалить службу zapret и WinDivert" />
+                                        Command="{Binding ReinstallServiceCommand}"
+                                        ToolTip="Применить текущую стратегию и фильтры к уже установленной службе" />
+                                <TextBlock Style="{StaticResource DimText}" FontSize="10.5" Margin="0,6,0,0" Text="{Binding ServiceText}" TextWrapping="Wrap"
+                                           Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}}" />
                             </StackPanel>
                         </Grid>
                     </Border>
@@ -632,17 +651,8 @@
                             <Button Style="{StaticResource PrimaryButton}" Content="Перейти к обновлениям" Margin="16,12,16,0" MinHeight="38" Padding="14,8"
                                     Command="{Binding CheckUpdatesCommand}" ToolTip="Проверка новых версий движка, списки ipset и hosts" />
 
-                            <Grid Margin="16,8,16,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="8" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Button Style="{StaticResource GhostButton}" Content="Открыть папку" Padding="10,6" FontSize="11.5"
-                                        Command="{Binding OpenEngineFolderCommand}" ToolTip="Открыть папку движка в проводнике" />
-                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Стратегии" Padding="10,6" FontSize="11.5"
-                                        Command="{Binding OpenStrategiesCommand}" ToolTip="Перейти к списку стратегий" />
-                            </Grid>
+                            <Button Style="{StaticResource GhostButton}" Content="Открыть список стратегий →" Padding="10,7" FontSize="11.5" Margin="16,8,16,0" HorizontalAlignment="Stretch"
+                                    Command="{Binding OpenStrategiesCommand}" ToolTip="Перейти к каталогу стратегий" />
 
                             <Border Style="{StaticResource Divider}" Margin="16,12,16,0" />
                             <Grid Margin="16,8,16,14">
