@@ -120,6 +120,19 @@ namespace ZapretGui.ViewModels
 
         private int _selectedSubTab;
 
+        public string[] DiagnosticsTabs { get; } = new[] { "⚡ Экспресс", "🌐 DPI 34 узла", "🔬 Deep Check", "🛠 Аудит", "📊 Результаты", "🎙️ Voice RTC" };
+
+        public string DiagnosticsTabHintText => SelectedSubTab switch
+        {
+            0 => "Быстрая проверка ресурсов • ~10 сек • без остановки обхода",
+            1 => "34 узла DPI • ~2 мин • может временно перезапустить обход",
+            2 => "Матрица Deep Check • до 30 мин • под каждой стратегией",
+            3 => "Аудит системы • ~5 сек • службы, драйвер,hosts",
+            4 => "Сводные результаты и экспорт • история проверок",
+            5 => "Discord Voice • WebRTC/STUN • ~15 сек",
+            _ => ""
+        };
+
         public int SelectedSubTab
         {
             get => _selectedSubTab;
@@ -127,6 +140,7 @@ namespace ZapretGui.ViewModels
             {
                 if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 5)))
                 {
+                    Raise(nameof(DiagnosticsTabHintText));
                     Raise(nameof(IsExpressTabSelected));
                     Raise(nameof(IsDpiTabSelected));
                     Raise(nameof(IsDeepCheckTabSelected));

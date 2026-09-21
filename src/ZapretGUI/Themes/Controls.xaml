@@ -777,6 +777,9 @@
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Root" Property="Background" Value="{DynamicResource CardHoverBrush}" />
                         </Trigger>

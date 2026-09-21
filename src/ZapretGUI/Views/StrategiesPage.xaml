@@ -82,35 +82,37 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
 
-            <!-- Поиск и фильтры каталога -->
-            <Grid Grid.Row="0" Margin="0,0,0,10">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-
+            <!-- Поиск и фильтры каталога — sticky Card с тенью -->
+            <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,10" Padding="12,10">
                 <Grid>
-                    <TextBox Style="{StaticResource SearchBox}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                             ToolTip="Поиск по названию стратегии и параметрам winws.exe" />
-                    <TextBlock Style="{StaticResource DimText}" Text="Поиск по названию или параметрам…" Margin="13,0,0,0"
-                               VerticalAlignment="Center" IsHitTestVisible="False"
-                               Visibility="{Binding SearchText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid>
+                        <TextBox Style="{StaticResource SearchBox}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Поиск по названию стратегии и параметрам winws.exe" />
+                        <TextBlock Style="{StaticResource DimText}" Text="Поиск по названию или параметрам…" Margin="13,0,0,0"
+                                   VerticalAlignment="Center" IsHitTestVisible="False"
+                                   Visibility="{Binding SearchText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
+                    </Grid>
+
+                    <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" MinWidth="140" MaxWidth="220" Margin="10,0,0,0"
+                              ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex, Mode=TwoWay}"
+                              ToolTip="Фильтр по группе стратегий: FAKE TLS AUTO, ALT, SIMPLE FAKE, базовая, автоконструктор" />
+
+                    <ToggleButton Grid.Column="2" Style="{StaticResource ChipToggle}" Margin="10,0,0,0"
+                                  Content="Только рекомендуемые" IsChecked="{Binding OnlyRecommended, Mode=TwoWay}"
+                                  ToolTip="Показать только рекомендуемые стратегии" />
+
+                    <Button Grid.Column="3" Style="{StaticResource GhostButton}" Margin="10,0,0,0" Content="Рекомендуемая"
+                            Command="{Binding UseRecommendedCommand}"
+                            ToolTip="Выбрать рекомендуемую стратегию" />
                 </Grid>
-
-                <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" MinWidth="140" MaxWidth="220" Margin="10,0,0,0"
-                          ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex, Mode=TwoWay}"
-                          ToolTip="Фильтр по группе стратегий: FAKE TLS AUTO, ALT, SIMPLE FAKE, базовая, автоконструктор" />
-
-                <ToggleButton Grid.Column="2" Style="{StaticResource ChipToggle}" Margin="10,0,0,0"
-                              Content="Только рекомендуемые" IsChecked="{Binding OnlyRecommended, Mode=TwoWay}"
-                              ToolTip="Показать только рекомендуемые стратегии" />
-
-                <Button Grid.Column="3" Style="{StaticResource GhostButton}" Margin="10,0,0,0" Content="Рекомендуемая"
-                        Command="{Binding UseRecommendedCommand}"
-                        ToolTip="Выбрать рекомендуемую стратегию" />
-            </Grid>
+            </Border>
 
             <!-- Панель пакетного тестирования -->
             <Border Grid.Row="1" Margin="0,0,0,10" Padding="12,8"
@@ -156,6 +158,10 @@
                                  MouseDoubleClick="StrategyList_MouseDoubleClick"
                                  PreviewMouseRightButtonDown="StrategyList_PreviewMouseRightButtonDown"
                                  ItemContainerStyle="{StaticResource CompactRowItemStyle}"
+                                 AlternationCount="2"
+                                 VirtualizingStackPanel.IsVirtualizing="True"
+                                 VirtualizingStackPanel.VirtualizationMode="Recycling"
+                                 ScrollViewer.IsDeferredScrollingEnabled="True"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
                                  ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                                  ToolTip="Enter — бесшовно применить выбранную стратегию; двойной клик — то же">
