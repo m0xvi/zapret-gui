@@ -50,6 +50,21 @@ namespace ZapretGui.Views
                 _vm.Hotkeys.Register(this);
             };
 
+            // Esc закрывает глобальный оверлей (ошибка → Dismiss, иначе отмена/скрытие)
+            PreviewKeyDown += (_, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Escape && _vm.GlobalOverlay.IsVisible)
+                {
+                    if (_vm.GlobalOverlay.HasError)
+                        _vm.GlobalOverlay.DismissCommand.Execute(null);
+                    else if (_vm.GlobalOverlay.CanCancel)
+                        _vm.GlobalOverlay.CancelCommand.Execute(null);
+                    else
+                        _vm.GlobalOverlay.Hide();
+                    e.Handled = true;
+                }
+            };
+
             _vm.RequestToggleOverlay += () => Dispatcher.Invoke(ToggleMiniOverlayWindow);
 
             _vm.Home.PropertyChanged += (_, e) =>

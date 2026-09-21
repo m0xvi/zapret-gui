@@ -149,16 +149,29 @@
                     </StackPanel>
                 </Border>
 
-                <!-- О путях -->
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource SectionText}" Text="ГДЕ ХРАНЯТСЯ ФАЙЛЫ" />
-                        <TextBlock Style="{StaticResource DimText}" Text="{Binding SettingsFilePath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SettingsFilePath}" />
-                        <TextBlock Style="{StaticResource DimText}" Text="{Binding LogsPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LogsPath}" Margin="0,4,0,0" />
-                        <TextBlock Style="{StaticResource DimText}" Text="{Binding BackupPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding BackupPath}" Margin="0,4,0,0" />
-                        <TextBlock Style="{StaticResource DimText}" Text="{Binding LastBackupText}" Margin="0,10,0,0" />
-                    </StackPanel>
-                </Border>
+                <!-- О путях — свёрнуто, для продвинутых -->
+                <Expander Margin="0,14,0,0" IsExpanded="False" Background="Transparent" BorderThickness="0">
+                    <Expander.Header>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,10,0">
+                                <TextBlock Text="&#xE8B7;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="Где хранятся файлы" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="12.5" />
+                                <TextBlock Text="Пути к настройкам, логам и бэкапам — можно не открывать" Style="{StaticResource DimText}" FontSize="11" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Expander.Header>
+                    <Border Style="{StaticResource Card}" Margin="0,8,0,0">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ГДЕ ХРАНЯТСЯ ФАЙЛЫ" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding SettingsFilePath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SettingsFilePath}" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LogsPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LogsPath}" Margin="0,4,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding BackupPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding BackupPath}" Margin="0,4,0,0" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastBackupText}" Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+                </Expander>
             </StackPanel>
 
             <!-- ===================== ВКЛАДКА 1: ОБХОД ===================== -->

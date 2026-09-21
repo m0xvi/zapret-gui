@@ -225,6 +225,9 @@ namespace ZapretGui.ViewModels
                 {
                     (BulkAddCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     Raise(nameof(BulkLineCountText));
+                    Raise(nameof(BulkDetailedCountText));
+                    Raise(nameof(BulkPreviewItems));
+                    Raise(nameof(BulkHasPreview));
                 }
             }
         }
@@ -238,6 +241,48 @@ namespace ZapretGui.ViewModels
                 return $"{lines} строк готово к добавлению";
             }
         }
+
+        public string BulkDetailedCountText
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(BulkPasteText)) return "Поддерживаются https://, пробелы и пустые строки — дубликаты пропускаются";
+                var lines = BulkPasteText.Split(new[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
+                var added = 0; var skipped = 0; var invalid = 0;
+                foreach (var raw in lines)
+                {
+                    var clean = CleanDomain(raw);
+                    if (string.IsNullOrWhiteSpace(clean)) { skipped++; continue; }
+                    if (!IsValidListEntry(clean)) { invalid++; continue; }
+                    if (Entries.Any(e => e.Equals(clean, StringComparison.OrdinalIgnoreCase))) { skipped++; continue; }
+                    added++;
+                }
+                return $"{lines.Length} строк • Новых: {added} • Дубликатов: {skipped} • Невалидных: {invalid}";
+            }
+        }
+
+        public IEnumerable<string> BulkPreviewItems
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(BulkPasteText)) return Array.Empty<string>();
+                var lines = BulkPasteText.Split(new[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
+                var res = new List<string>();
+                foreach (var raw in lines)
+                {
+                    if (res.Count >= 8) break;
+                    var clean = CleanDomain(raw);
+                    if (string.IsNullOrWhiteSpace(clean)) continue;
+                    if (!IsValidListEntry(clean)) continue;
+                    if (Entries.Any(e => e.Equals(clean, StringComparison.OrdinalIgnoreCase))) continue;
+                    if (res.Contains(clean, StringComparer.OrdinalIgnoreCase)) continue;
+                    res.Add(clean);
+                }
+                return res;
+            }
+        }
+
+        public bool BulkHasPreview => BulkPreviewItems.Any();
 
         public string CountText
         {

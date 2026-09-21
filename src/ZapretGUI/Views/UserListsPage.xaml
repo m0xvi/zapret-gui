@@ -120,7 +120,7 @@
                         </WrapPanel>
                     </Grid>
 
-                    <!-- Пачка: массовая вставка доменов -->
+                    <!-- Пачка: массовая вставка доменов — улучшена: детальный счётчик + превью чипов -->
                     <Border Margin="0,0,0,10" Padding="12,10" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Visibility="{Binding CanEditCurrentList, Converter={StaticResource BoolToVis}}">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -128,11 +128,29 @@
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
                             <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="МАССОВАЯ ВСТАВКА (ПАЧКОЙ)" />
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding BulkLineCountText}" Margin="0,2,0,6" FontSize="11" />
-                                <TextBox Style="{StaticResource InputBox}" Text="{Binding BulkPasteText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="90" MinHeight="48" ToolTip="Вставьте много доменов — каждый с новой строки (поддерживает https://, пробелы обрежутся). Пустые и дубликаты пропускаются." />
+                                <Grid>
+                                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="МАССОВАЯ ВСТАВКА (ПАЧКОЙ)" VerticalAlignment="Center" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding BulkLineCountText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource AccentBrush}" />
+                                </Grid>
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding BulkDetailedCountText}" Margin="0,3,0,6" FontSize="11" TextWrapping="Wrap" Opacity="0.9" />
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding BulkPasteText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="96" MinHeight="56" ToolTip="Вставьте много доменов — каждый с новой строки (поддерживает https://, пробелы обрежутся). Пустые и дубликаты пропускаются." />
+                                <!-- Превью первых 8 нормализованных доменов как чипы -->
+                                <ItemsControl ItemsSource="{Binding BulkPreviewItems}" Margin="0,8,0,0" Visibility="{Binding BulkHasPreview, Converter={StaticResource BoolToVis}}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="6" Padding="7,3" Margin="0,0,6,6" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                                <TextBlock Text="{Binding}" FontSize="11" Foreground="{DynamicResource TextBrush}" />
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                                <TextBlock Style="{StaticResource DimText}" Text="Показаны первые 8 из пачки — остальные проверятся при добавлении" FontSize="10" Margin="0,2,0,0" Opacity="0.7" Visibility="{Binding BulkHasPreview, Converter={StaticResource BoolToVis}}" />
                             </StackPanel>
-                            <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Добавить пачкой" Margin="10,0,0,0" VerticalAlignment="Bottom" Padding="14,7"
+                            <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Добавить пачкой" Margin="12,0,0,0" VerticalAlignment="Bottom" Padding="16,7" MinHeight="36"
                                     Command="{Binding BulkAddCommand}" ToolTip="Разобрать строки, почистить, проверить формат и сохранить в файл" />
                         </Grid>
                     </Border>
