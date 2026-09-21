@@ -232,6 +232,30 @@ namespace ZapretGui.Core
         }
 
         /// <summary>
+        /// Бесшовное переключение стратегии без ручной остановки обхода.
+        /// Сохраняет текущий режим: если обход запущен как служба — переустанавливает службу
+        /// с новой стратегией, если как отдельный процесс — перезапускает процесс.
+        /// Если обход выключен — просто запускает стратегию.
+        /// </summary>
+        public async Task<OperationResult> SwitchToStrategyAsync(StrategyInfo strategy, GameFilterMode gameFilter, bool showConsole,
+            CancellationToken ct = default)
+        {
+            var status = GetStatus();
+            if (status.State == BypassState.RunningService)
+            {
+                AppLog.SvcInfo($"Бесшовное переключение: служба zapret с «{status.ServiceStrategy}» → «{strategy.Name}»");
+                return await InstallServiceAsync(strategy, gameFilter, ct).ConfigureAwait(false);
+            }
+            if (status.State == BypassState.RunningStandalone)
+            {
+                AppLog.SvcInfo($"Бесшовное переключение: standalone «{status.StrategyName}» → «{strategy.Name}»");
+                await StopAsync(ct).ConfigureAwait(false);
+                return await StartAsync(strategy, gameFilter, showConsole, ct).ConfigureAwait(false);
+            }
+            return await StartAsync(strategy, gameFilter, showConsole, ct).ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// Запускает стратегию во временном режиме, проверяет YouTube/Discord/GitHub
         /// и затем возвращает прежнее состояние обхода. Настройки пользователя не меняются.
         /// </summary>

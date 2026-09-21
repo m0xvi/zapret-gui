@@ -24,6 +24,7 @@ namespace ZapretGui.ViewModels
         private string _releaseUrl = "";
         private bool _updateAvailable;
         private bool _isBusy;
+        private bool _isGuiUpdating;
         private double _progress;
         private bool _indeterminate;
         private string _status = "Нажмите «Проверить обновления»";
@@ -193,6 +194,22 @@ namespace ZapretGui.ViewModels
                 }
             }
         }
+
+        /// <summary>Затемнение всего окна при скачивании/установке нового GUI (прогресс в процентах).</summary>
+        public bool IsGuiUpdating
+        {
+            get => _isGuiUpdating;
+            private set
+            {
+                if (Set(ref _isGuiUpdating, value))
+                {
+                    Raise(nameof(IsGuiUpdating));
+                    Raise(nameof(GuiUpdateOverlayVisible));
+                }
+            }
+        }
+
+        public bool GuiUpdateOverlayVisible => IsGuiUpdating;
 
         public double Progress
         {
@@ -417,6 +434,7 @@ namespace ZapretGui.ViewModels
                 System.Windows.MessageBoxImage.Information);
             if (confirmation != System.Windows.MessageBoxResult.Yes) return;
 
+            IsGuiUpdating = true;
             IsBusy = true;
             Progress = 0;
             Indeterminate = true;
@@ -430,20 +448,29 @@ namespace ZapretGui.ViewModels
                 SetMessage(result.Message, result.Ok ? "Success" : "Danger");
                 if (result.Ok)
                 {
-                    Status = "Обновление подготовлено. Закрываю приложение…";
-                    await Task.Delay(300);
+                    Status = "Обновление подготовлено. Перезапускаю приложение…";
+                    Progress = 100;
+                    Indeterminate = false;
+                    await Task.Delay(1200);
                     if (System.Windows.Application.Current is App app) app.ShutdownApp();
+                    else System.Windows.Application.Current?.Shutdown();
+                }
+                else
+                {
+                    IsGuiUpdating = false;
                 }
             }
             catch (OperationCanceledException)
             {
                 GuiUpdateStatus = "Загрузка обновления GUI отменена.";
                 SetMessage(GuiUpdateStatus, "Warning");
+                IsGuiUpdating = false;
             }
             catch (Exception ex)
             {
                 GuiUpdateStatus = "Ошибка обновления GUI: " + ex.Message;
                 SetMessage(GuiUpdateStatus, "Danger");
+                IsGuiUpdating = false;
             }
             finally
             {
@@ -451,6 +478,8 @@ namespace ZapretGui.ViewModels
                 _cts = null;
                 IsBusy = false;
                 Indeterminate = false;
+                // IsGuiUpdating остаётся true до перезапуска при успехе, чтобы оверлей не моргнул
+                if (!IsGuiUpdating) { }
             }
         }
 

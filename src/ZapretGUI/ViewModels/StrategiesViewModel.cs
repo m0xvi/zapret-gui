@@ -401,13 +401,20 @@ namespace ZapretGui.ViewModels
         {
             if (WinnerCandidate == null) return;
             var strat = WinnerCandidate.ToStrategyInfo();
+            var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+            var status = _main.Bypass.GetStatus();
+            if (status.IsRunning)
+            {
+                var res = await _main.Bypass.SwitchToStrategyAsync(strat, mode, Settings.ShowWinwsConsole);
+                if (!res.Ok)
+                {
+                    Message = res.Message;
+                    _main.Home.ShowError(res.Message);
+                    return;
+                }
+            }
             Settings.SelectedStrategy = strat.Name;
             SettingsStore.Save(Settings);
-
-            if (_main.Bypass.GetStatus().IsRunning)
-            {
-                await _main.Bypass.StartAsync(strat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
-            }
 
             _main.Home.RefreshStatus();
             _main.Home.ShowSuccess($"Стратегия «{strat.Name}» установлена как основная и применена.");
@@ -1033,14 +1040,17 @@ namespace ZapretGui.ViewModels
             Message = $"Запускаю стратегию «{target.Name}»…";
             try
             {
-                var result = await Bypass.StartAsync(target,
-                    EngineService.GetGameFilterMode(Store.Folder), false);
+                var wasRunning = Bypass.GetStatus().IsRunning;
+                var mode = EngineService.GetGameFilterMode(Store.Folder);
+                var result = wasRunning
+                    ? await Bypass.SwitchToStrategyAsync(target, mode, Settings.ShowWinwsConsole)
+                    : await Bypass.StartAsync(target, mode, Settings.ShowWinwsConsole);
                 if (result.Ok)
                 {
                     Settings.SelectedStrategy = target.Name;
                     SettingsStore.Save(Settings);
                     _main.Home.RefreshStatus();
-                    Message = $"Стратегия «{target.Name}» успешно запущена";
+                    Message = result.Message.Length > 0 ? result.Message : $"Стратегия «{target.Name}» успешно запущена";
                 }
                 else
                 {

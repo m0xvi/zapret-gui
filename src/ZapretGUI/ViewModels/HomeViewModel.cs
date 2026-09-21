@@ -1023,13 +1023,22 @@ namespace ZapretGui.ViewModels
         private async Task ApplyRecommendedStrategyAsync()
         {
             if (_recommendedStrategy == null) return;
-            SelectedStrategyName = _recommendedStrategy.Name;
-            Settings.SelectedStrategy = _recommendedStrategy.Name;
+            var strat = _recommendedStrategy;
+            var mode = CurrentGameFilter();
+            var status = Bypass.GetStatus();
+            if (status.IsRunning && Shell.IsAdmin())
+            {
+                var res = await Bypass.SwitchToStrategyAsync(strat, mode, Settings.ShowWinwsConsole);
+                if (res.Ok) ShowSuccess(res.Message);
+                else ShowError(res.Message);
+            }
+            SelectedStrategyName = strat.Name;
+            Settings.SelectedStrategy = strat.Name;
             SettingsStore.Save(Settings);
             ReloadFromEngine();
-            ShowSuccess($"Стратегия «{_recommendedStrategy.Name}» выбрана как основная");
-            // Попробовать запустить, если права есть
-            if (Shell.IsAdmin())
+            if (!status.IsRunning) ShowSuccess($"Стратегия «{strat.Name}» выбрана как основная");
+            // Попробовать запустить, если права есть и был выключен
+            if (!status.IsRunning && Shell.IsAdmin())
             {
                 await StartAsync();
             }
