@@ -52,7 +52,7 @@
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding BestStrategyRecommendationText}" FontWeight="Bold" FontSize="12.5" TextTrimming="CharacterEllipsis" MaxWidth="560" />
                         <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Padding="7,3" Background="{DynamicResource AccentBrush}" VerticalAlignment="Center">
-                            <TextBlock Text="ЛИДЕР СЕТИ" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}" LetterSpacing="0.3" />
+                            <TextBlock Text="ЛИДЕР СЕТИ" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}" />
                         </Border>
                     </WrapPanel>
                     <TextBlock Style="{StaticResource DimText}" Text="{Binding BestStrategyDetailsText}" Margin="0,3,0,0" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" Opacity="0.85" />

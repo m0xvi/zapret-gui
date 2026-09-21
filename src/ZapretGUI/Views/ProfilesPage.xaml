@@ -74,7 +74,7 @@
                                 </Border>
                                 <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
                                     <TextBlock Style="{StaticResource SectionText}" Text="СПИСОК ПРОФИЛЕЙ" Margin="0,0,0,1" />
-                                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding Profiles.Count, StringFormat={}{0} профилей}" />
+                                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding Profiles.Count, StringFormat='{}{0} профилей'}" />
                                 </StackPanel>
                                 <Border Grid.Column="2" Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" VerticalAlignment="Center">
                                     <TextBlock Text="БАЗОВЫЕ + СВОИ" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" />
