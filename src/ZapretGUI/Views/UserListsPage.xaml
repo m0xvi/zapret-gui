@@ -165,11 +165,19 @@
                         </Grid.ColumnDefinitions>
 
                         <Grid>
-                            <TextBox Style="{StaticResource SearchBox}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Поиск и фильтрация строк в текущем списке" />
-                            <TextBlock Style="{StaticResource DimText}" Text="Поиск в списке…" Margin="13,0,0,0"
-                                       VerticalAlignment="Center" IsHitTestVisible="False"
-                                       Visibility="{Binding SearchText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Grid>
+                                <TextBox Style="{StaticResource SearchBox}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="Поиск и фильтрация строк в текущем списке" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Поиск в списке…" Margin="13,0,0,0"
+                                           VerticalAlignment="Center" IsHitTestVisible="False"
+                                           Visibility="{Binding SearchText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
+                            </Grid>
+                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="✕" Margin="4,0,0,0" Padding="6,2" FontSize="11"
+                                    Command="{Binding ClearSearchCommand}" ToolTip="Сбросить поиск" Visibility="{Binding SearchText, Converter={StaticResource StringToVis}}"/>
                         </Grid>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
@@ -183,34 +191,54 @@
                     </Grid>
 
                     <!-- Таблица / Список записей -->
-                    <ListBox Grid.Row="3" Style="{StaticResource PlainListBox}" Background="Transparent"
-                             ItemsSource="{Binding EntriesView}"
-                             SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
-                             ItemContainerStyle="{StaticResource CompactRowItemStyle}"
-                             ScrollViewer.VerticalScrollBarVisibility="Auto"
-                             ScrollViewer.HorizontalScrollBarVisibility="Disabled">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid Margin="0,1,0,1">
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
-                                        <ColumnDefinition Width="Auto" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding}" VerticalAlignment="Center" />
-                                    <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                                        <Button Style="{StaticResource SmallIconButton}" Content="&#xE70F;"
-                                                ToolTip="Изменить запись"
-                                                Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                CommandParameter="{Binding}" />
-                                        <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;" Margin="4,0,0,0"
-                                                ToolTip="Удалить запись"
-                                                Command="{Binding DataContext.RemoveEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                CommandParameter="{Binding}" />
-                                    </WrapPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                    <Grid Grid.Row="3">
+                        <ListBox Style="{StaticResource PlainListBox}" Background="Transparent"
+                                 ItemsSource="{Binding EntriesView}"
+                                 SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
+                                 ItemContainerStyle="{StaticResource CompactRowItemStyle}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="0,1,0,1">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding}" VerticalAlignment="Center" />
+                                        <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <Button Style="{StaticResource SmallIconButton}" Content="&#xE70F;"
+                                                    ToolTip="Изменить запись (Enter)"
+                                                    Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}" />
+                                            <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;" Margin="4,0,0,0"
+                                                    ToolTip="Удалить запись (Del)"
+                                                    Command="{Binding DataContext.RemoveEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}" />
+                                        </WrapPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <!-- Пустое состояние -->
+                        <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="8" Padding="16" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Visibility="{Binding IsFilteredEmpty, Converter={StaticResource BoolToVis}}" Margin="0,20,0,0">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="🔍" FontSize="22" HorizontalAlignment="Center" Opacity="0.7"/>
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding EmptyStateText}" Margin="0,6,0,0" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360"/>
+                                <Button Style="{StaticResource GhostButton}" Content="Сбросить поиск" Margin="0,8,0,0" Command="{Binding ClearSearchCommand}" HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="8" Padding="16" VerticalAlignment="Center" HorizontalAlignment="Center"
+                                Visibility="{Binding IsListEmpty, Converter={StaticResource BoolToVis}}" Margin="0,20,0,0">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="📄" FontSize="22" HorizontalAlignment="Center" Opacity="0.7"/>
+                                <TextBlock Style="{StaticResource BodyText}" Text="Список пуст" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                                <TextBlock Style="{StaticResource DimText}" Text="Добавьте первый домен через поле выше или импортируйте файл." Margin="0,4,0,0" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360"/>
+                            </StackPanel>
+                        </Border>
+                    </Grid>
                 </Grid>
             </Border>
         </Grid>

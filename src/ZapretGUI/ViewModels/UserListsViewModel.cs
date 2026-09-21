@@ -122,6 +122,11 @@ namespace ZapretGui.ViewModels
 
             EntriesView = CollectionViewSource.GetDefaultView(Entries);
             EntriesView.Filter = FilterEntry;
+            if (Entries is System.Collections.Specialized.INotifyCollectionChanged incc)
+                incc.CollectionChanged += (_, _) => { Raise(nameof(IsFilteredEmpty)); Raise(nameof(IsListEmpty)); Raise(nameof(EmptyStateText)); Raise(nameof(FilteredCountText)); Raise(nameof(CountText)); };
+
+            ClearSearchCommand = new RelayCommand(() => SearchText = "");
+            CopyFingerprintHintCommand = new RelayCommand(() => { try { System.Windows.Clipboard.SetText(ListPath); Status = $"Путь скопирован: {ListPath}"; } catch {} });
 
             AddEntryCommand = new RelayCommand(AddEntry, () => CanEditCurrentList);
             QuickAddDomainCommand = new RelayCommand(QuickAddDomain, () => !string.IsNullOrWhiteSpace(QuickDomainInput) && CanEditCurrentList);
@@ -189,6 +194,10 @@ namespace ZapretGui.ViewModels
                 {
                     EntriesView.Refresh();
                     Raise(nameof(CountText));
+                    Raise(nameof(FilteredCountText));
+                    Raise(nameof(IsFilteredEmpty));
+                    Raise(nameof(IsListEmpty));
+                    Raise(nameof(EmptyStateText));
                 }
             }
         }
@@ -214,6 +223,12 @@ namespace ZapretGui.ViewModels
                 return filtered == total ? $"Всего: {total}" : $"Показано: {filtered} из {total}";
             }
         }
+
+        public string FilteredCountText => $"{EntriesView.Cast<object>().Count()} из {Entries.Count}";
+        public bool IsFilteredEmpty => Entries.Count > 0 && EntriesView.IsEmpty;
+        public bool IsListEmpty => Entries.Count == 0 && string.IsNullOrWhiteSpace(SearchText);
+        public string EmptyStateText => IsFilteredEmpty ? "Ничего не найдено — измените запрос или нажмите «Сбросить поиск»." : "Список пуст. Добавьте первый домен через поле ввода.";
+
 
         public bool HasUnsavedChanges
         {
@@ -556,6 +571,8 @@ namespace ZapretGui.ViewModels
         }
 
 
+        public ICommand ClearSearchCommand { get; }
+        public ICommand CopyFingerprintHintCommand { get; }
         public ICommand AddEntryCommand { get; }
         public ICommand QuickAddDomainCommand { get; }
         public ICommand EditEntryCommand { get; }
@@ -662,6 +679,10 @@ namespace ZapretGui.ViewModels
             }
             Raise(nameof(HasEntries));
             Raise(nameof(CountText));
+            Raise(nameof(FilteredCountText));
+            Raise(nameof(IsFilteredEmpty));
+            Raise(nameof(IsListEmpty));
+            Raise(nameof(EmptyStateText));
             Raise(nameof(FileInfoText));
             RaiseCommands();
         }
@@ -1119,6 +1140,7 @@ namespace ZapretGui.ViewModels
 
         private void RaiseCommands()
         {
+            (ClearSearchCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (AddEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (QuickAddDomainCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (EditEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();

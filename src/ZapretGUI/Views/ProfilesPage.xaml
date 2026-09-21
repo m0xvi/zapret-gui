@@ -88,9 +88,12 @@
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="150"/>
                                         <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Style="{StaticResource DimText}" Text="Отпечаток:" Margin="0,2,0,2" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" Style="{StaticResource DimText}" FontSize="11" Text="{Binding CurrentNetworkFingerprint}" TextWrapping="Wrap" Opacity="0.8" Margin="0,2,0,2"/>
+                                    <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="⎘" Padding="6,2" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"
+                                            Command="{Binding CopyNetworkFingerprintCommand}" ToolTip="Скопировать отпечаток в буфер обмена" />
                                 </Grid>
                                 <Border Style="{StaticResource Divider}" Margin="0,10,0,10"/>
                                 <Grid>
@@ -112,7 +115,7 @@
                                     Command="{Binding UnbindNetworkCommand}" ToolTip="Снять привязку профиля к сети"/>
                         </WrapPanel>
                         <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
-                                   Text="Подсказка: создайте отдельные профили для «Домашний Wi-Fi» и «Мобильный интернет», привяжите каждый к своей сети — переключение произойдёт в фоне через ~30с после смены сети (cooldown 60с)."/>
+                                   Text="Подсказка: создайте отдельные профили для «Домашний Wi-Fi» и «Мобильный», привяжите каждый к своей сети — переключение в фоне через ~30с (cooldown 60с). Enter в списке стратегий — быстрое применение."/>
                     </StackPanel>
                 </Border>
 
@@ -146,7 +149,8 @@
                             <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}"
                                      Style="{StaticResource PlainListBox}" Margin="8,10,8,0" MinHeight="260" MaxHeight="450"
                                      Background="Transparent" BorderThickness="0"
-                                     ItemContainerStyle="{StaticResource CompactRowItemStyle}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                     ItemContainerStyle="{StaticResource CompactRowItemStyle}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ToolTip="Двойной клик — применить профиль; Enter — тоже">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <Border CornerRadius="8" Padding="10,9" Margin="0,3,0,3" BorderThickness="1.2">

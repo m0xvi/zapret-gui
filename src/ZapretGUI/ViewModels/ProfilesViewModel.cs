@@ -42,6 +42,7 @@ namespace ZapretGui.ViewModels
             BindToCurrentNetworkCommand = new RelayCommand(BindSelectedToCurrentNetwork, () => SelectedProfile != null);
             UnbindNetworkCommand = new RelayCommand(UnbindSelectedNetwork, () => SelectedProfile != null && SelectedProfile.IsNetworkBound);
             RefreshNetworkCommand = new RelayCommand(RefreshNetwork);
+            CopyNetworkFingerprintCommand = new RelayCommand(CopyNetworkFingerprint, () => !string.IsNullOrWhiteSpace(CurrentNetworkFingerprint));
 
             Reload();
             RefreshNetwork();
@@ -197,6 +198,7 @@ namespace ZapretGui.ViewModels
         public ICommand BindToCurrentNetworkCommand { get; }
         public ICommand UnbindNetworkCommand { get; }
         public ICommand RefreshNetworkCommand { get; }
+        public ICommand CopyNetworkFingerprintCommand { get; }
 
         public void Reload()
         {
@@ -448,10 +450,27 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(CurrentNetworkDisplay));
                 Raise(nameof(CurrentNetworkFingerprint));
                 Raise(nameof(AutoSwitchStatus));
+                (CopyNetworkFingerprintCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
             catch (Exception ex)
             {
                 CurrentNetworkDisplay = "Ошибка: " + ex.Message;
+            }
+        }
+
+        private void CopyNetworkFingerprint()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(CurrentNetworkFingerprint)) return;
+                System.Windows.Clipboard.SetText(CurrentNetworkFingerprint);
+                StatusText = "Отпечаток сети скопирован в буфер обмена";
+                StatusKey = "Success";
+            }
+            catch (Exception ex)
+            {
+                StatusText = "Не удалось скопировать: " + ex.Message;
+                StatusKey = "Danger";
             }
         }
 
