@@ -347,43 +347,47 @@
                         </Grid>
                     </Border>
 
-                    <!-- Игровой опыт — минималистично, фикс сжатия при узком окне -->
-                    <Border Style="{StaticResource Card}" Margin="0,16,0,0" Padding="14,12">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Center">
-                                <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel Grid.Column="1" Margin="10,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ИГРОВОЙ ОПЫТ" Margin="0,0,0,2" />
-                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Padding="6,3" Margin="0,0,6,0">
-                                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                            <Border Style="{StaticResource Dot}" Width="7" Height="7"
-                                                    Background="{Binding IsGameRunning, Converter={StaticResource BoolToAccentBrush}}" VerticalAlignment="Center" />
-                                            <TextBlock Text="{Binding GameStatusBadgeText}" Style="{StaticResource BodyText}" FontSize="11" FontWeight="SemiBold" Margin="5,0,0,0" TextTrimming="CharacterEllipsis" MaxWidth="180" VerticalAlignment="Center" />
-                                        </WrapPanel>
-                                    </Border>
-                                    <Border Style="{StaticResource Badge}" Background="{DynamicResource SuccessSoftBrush}" Padding="6,3"
-                                            Visibility="{Binding GameModeActive, Converter={StaticResource BoolToVis}}">
-                                        <TextBlock Text="Игровой режим ВКЛ" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
-                                    </Border>
-                                </WrapPanel>
+                    <!-- Игровой опыт — вынесен в сворачиваемый блок (hero остаётся один) -->
+                    <Expander Margin="0,16,0,0" IsExpanded="False" Background="Transparent" BorderThickness="0">
+                        <Expander.Header>
+                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" Margin="0,0,10,0">
+                                    <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel VerticalAlignment="Center">
+                                    <TextBlock Text="Игровой опыт" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="12.5" />
+                                    <TextBlock Text="{Binding GameStatusBadgeText}" Style="{StaticResource DimText}" FontSize="11" />
+                                </StackPanel>
                             </StackPanel>
-                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Padding="12,6" MinHeight="30" VerticalAlignment="Center"
-                                    Command="{Binding ToggleGameModeCommand}"
-                                    ToolTip="Переключить игровой режим (UDP для минимального пинга)">
-                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                    <TextBlock Text="🎮" FontSize="12" VerticalAlignment="Center" />
-                                    <TextBlock Text=" Игровой режим" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="2,0,0,0" />
-                                </WrapPanel>
-                            </Button>
-                        </Grid>
-                    </Border>
+                        </Expander.Header>
+                        <Border Style="{StaticResource Card}" Margin="0,8,0,0" Padding="14,12">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel VerticalAlignment="Center">
+                                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Padding="6,3" Margin="0,0,6,0">
+                                            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <Border Style="{StaticResource Dot}" Width="7" Height="7" Background="{Binding IsGameRunning, Converter={StaticResource BoolToAccentBrush}}" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding GameStatusBadgeText}" Style="{StaticResource BodyText}" FontSize="11" FontWeight="SemiBold" Margin="5,0,0,0" VerticalAlignment="Center" />
+                                            </WrapPanel>
+                                        </Border>
+                                        <Border Style="{StaticResource Badge}" Background="{DynamicResource SuccessSoftBrush}" Padding="6,3" Visibility="{Binding GameModeActive, Converter={StaticResource BoolToVis}}">
+                                            <TextBlock Text="Игровой режим ВКЛ" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                                        </Border>
+                                    </WrapPanel>
+                                </StackPanel>
+                                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Padding="12,6" MinHeight="30" VerticalAlignment="Center" Command="{Binding ToggleGameModeCommand}" ToolTip="Переключить игровой режим (UDP для минимального пинга)">
+                                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="🎮" FontSize="12" VerticalAlignment="Center" />
+                                        <TextBlock Text=" Игровой режим" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="2,0,0,0" />
+                                    </WrapPanel>
+                                </Button>
+                            </Grid>
+                        </Border>
+                    </Expander>
 
                     <!-- Продвинутые — свёрнуто по умолчанию: фильтры + проверка (P0 1.6.7) -->
                     <Expander Margin="0,16,0,0" IsExpanded="False" Background="Transparent" BorderThickness="0">

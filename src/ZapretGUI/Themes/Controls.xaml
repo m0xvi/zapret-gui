@@ -99,6 +99,11 @@
         <Setter Property="CornerRadius" Value="{DynamicResource CardRadius}" />
         <Setter Property="Padding" Value="18" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.22" Color="Black" />
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="InnerCard" TargetType="Border">
