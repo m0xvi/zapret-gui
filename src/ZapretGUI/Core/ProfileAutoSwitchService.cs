@@ -4,6 +4,7 @@ using System.Net.NetworkInformation;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Timers;
+using ZapretGui.ViewModels;
 
 namespace ZapretGui.Core
 {
