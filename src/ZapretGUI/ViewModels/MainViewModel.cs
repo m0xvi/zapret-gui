@@ -53,6 +53,7 @@ namespace ZapretGui.ViewModels
             Home = new HomeViewModel(this);
             StrategiesPage = new StrategiesViewModel(this);
             Updates = new UpdatesViewModel(this);
+            GlobalOverlay = new GlobalOverlayViewModel();
             SettingsPage = new SettingsViewModel(this);
             Diagnostics = new DiagnosticsViewModel(this);
             DeepCheck = new DeepCheckViewModel(this);
@@ -197,6 +198,7 @@ namespace ZapretGui.ViewModels
         public HomeViewModel Home { get; }
         public StrategiesViewModel StrategiesPage { get; }
         public UpdatesViewModel Updates { get; }
+    public GlobalOverlayViewModel GlobalOverlay { get; }
         public SettingsViewModel SettingsPage { get; }
         public DiagnosticsViewModel Diagnostics { get; }
         public DeepCheckViewModel DeepCheck { get; }

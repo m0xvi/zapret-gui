@@ -381,6 +381,7 @@ namespace ZapretGui.ViewModels
             AutoTuningProgressMaximum = SmartStrategyAutoTuner.Hypotheses.Count;
             AutoTuningProgressPercentText = "0%";
             _autoTuningCts = new CancellationTokenSource();
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Умный автоподбор", "Глубокий перебор гипотез DPI — не закрывайте окно", "Подготовка…", 0, false, true, () => _autoTuningCts?.Cancel())); } catch {}
 
             var progress = new Progress<AutoTunerProgress>(p =>
             {
@@ -388,6 +389,7 @@ namespace ZapretGui.ViewModels
                 AutoTuningProgressMaximum = p.TotalSteps;
                 AutoTuningProgressPercentText = p.TotalSteps > 0 ? $"{(int)((double)p.CurrentStep / p.TotalSteps * 100)}%" : "0%";
                 AutoTuningStatusText = p.StatusMessage;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(p.StatusMessage, $"{p.CurrentStep}/{p.TotalSteps} гипотез", p.TotalSteps > 0 ? (double)p.CurrentStep / p.TotalSteps * 100 : 0, false)); } catch {}
             });
 
             try
@@ -422,6 +424,7 @@ namespace ZapretGui.ViewModels
             finally
             {
                 IsAutoTuningRunning = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1461,6 +1464,8 @@ namespace ZapretGui.ViewModels
             TestSummary = "";
             TestSummaryKey = "Info";
             var results = new List<StrategyTestResult>();
+            // Глобальный оверлей затемнения — блокирует окно на время проверки всех стратегий
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка всех стратегий", $"Подготовка: {Store.Items.Count} стратегий × {ConnectionTester.GetEffectiveTargets(Settings).Count} целей", "Не закрывайте окно — идёт важная проверка", 0, false, true, () => _testCts?.Cancel())); } catch {}
             try
             {
                 var total = Store.Items.Count;
@@ -1518,6 +1523,7 @@ namespace ZapretGui.ViewModels
                     var passed = results.Count(r => r.IsSuitable);
                     TestSummary = $"Проверено: {index + 1} из {total}. Подходящих стратегий: {passed}";
                     TestSummaryKey = passed > 0 ? "Success" : "Warning";
+                    try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update($"[{index + 1}/{total}] «{strategy.Name}» — {passed} подходящих", TestSummary, ((double)(index + 1) / total) * 100, false)); } catch {}
                 }
 
                 TestProgressValue = TestProgressMaximum;
@@ -1553,6 +1559,7 @@ namespace ZapretGui.ViewModels
                 IsTestingAll = false;
                 _testCts?.Dispose();
                 _testCts = null;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1986,10 +1993,11 @@ namespace ZapretGui.ViewModels
             IsTestingSniPool = true;
             SniTestingStatusText = "Тестирование пула TLS SNI фейков…";
             SniTestResults.Clear();
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Пул TLS SNI", "Параллельное TLS-тестирование доменов — не закрывайте окно", SniTestingStatusText, 0, true, false)); } catch {}
 
             try
             {
-                var progress = new Progress<string>(s => SniTestingStatusText = s);
+                var progress = new Progress<string>(s => { SniTestingStatusText = s; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(s, "Проверка SNI…", null, true)); } catch {} });
                 var results = await SniFakePoolManager.TestPoolAsync(null, progress).ConfigureAwait(true);
 
                 foreach (var r in results)
@@ -2013,10 +2021,13 @@ namespace ZapretGui.ViewModels
             catch (Exception ex)
             {
                 SniTestingStatusText = "Ошибка тестирования SNI: " + ex.Message;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Пул TLS SNI — ошибка", ex.Message, "Попробуйте ещё раз")); } catch {}
+                return;
             }
             finally
             {
                 IsTestingSniPool = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 

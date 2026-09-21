@@ -343,5 +343,49 @@
                 </StackPanel>
             </Border>
         </Border>
+
+        <!-- Глобальный прогресс-оверлей для длительных операций (затемнение, блокировка UI) -->
+        <Border Grid.RowSpan="3"
+                Background="#AA000000"
+                Visibility="{Binding GlobalOverlay.OverlayVisible, Converter={StaticResource BoolToVis}}"
+                Panel.ZIndex="300">
+            <Border Width="480"
+                    Padding="28"
+                    Background="{DynamicResource CardBrush}"
+                    BorderBrush="{DynamicResource BorderBrush}"
+                    BorderThickness="1" CornerRadius="14"
+                    HorizontalAlignment="Center" VerticalAlignment="Center">
+                <Border.Effect>
+                    <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.25" Color="Black" />
+                </Border.Effect>
+                <StackPanel>
+                    <TextBlock Text="{Binding GlobalOverlay.Title}" FontSize="18" FontWeight="SemiBold"
+                               Foreground="{DynamicResource TextBrush}" TextAlignment="Center" />
+                    <TextBlock Text="{Binding GlobalOverlay.Status}" Margin="0,10,0,0" FontSize="13"
+                               Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" TextAlignment="Center" />
+                    <TextBlock Text="{Binding GlobalOverlay.Details}" Margin="0,6,0,0" FontSize="12"
+                               Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" Opacity="0.9" />
+                    <StackPanel Margin="0,16,0,0" Visibility="{Binding GlobalOverlay.ProgressVisible, Converter={StaticResource BoolToVis}}">
+                        <ProgressBar Value="{Binding GlobalOverlay.Progress, Mode=OneWay}" Maximum="100"
+                                     IsIndeterminate="{Binding GlobalOverlay.IsIndeterminate, Mode=OneWay}"
+                                     Height="8" />
+                        <TextBlock Text="{Binding GlobalOverlay.ProgressPercentText}" Margin="0,6,0,0"
+                                   FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"
+                                   Visibility="{Binding GlobalOverlay.IsIndeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                    </StackPanel>
+                    <StackPanel Margin="0,14,0,0" Visibility="{Binding GlobalOverlay.ErrorVisible, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="{Binding GlobalOverlay.ErrorText}" TextWrapping="Wrap" TextAlignment="Center"
+                                   Foreground="#E53935" FontSize="13" />
+                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
+                            <Button Content="Повторить" Command="{Binding GlobalOverlay.RetryCommand}" MinWidth="110" Margin="0,0,8,0" />
+                            <Button Content="Закрыть" Command="{Binding GlobalOverlay.DismissCommand}" MinWidth="110" />
+                        </StackPanel>
+                    </StackPanel>
+                    <Button Content="Отмена" Command="{Binding GlobalOverlay.CancelCommand}" MinWidth="110"
+                            HorizontalAlignment="Center" Margin="0,14,0,0"
+                            Visibility="{Binding GlobalOverlay.CanCancel, Converter={StaticResource BoolToVis}}" />
+                </StackPanel>
+            </Border>
+        </Border>
     </Grid>
 </Window>
