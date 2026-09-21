@@ -205,7 +205,7 @@
                                                 <Button Style="{StaticResource SecondaryButton}" Content="Применить" Padding="8,3" FontSize="11"
                                                         Command="{Binding DataContext.RunCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding}"
-                                                        ToolTip="Остановить текущий обход и запустить эту стратегию" />
+                                                        ToolTip="Бесшовно применить эту стратегию (переключит службу/процесс без ручной остановки)" />
                                                 <Button Style="{StaticResource GhostButton}" Content="Тест" Padding="8,3" FontSize="11" Margin="4,0,0,0"
                                                         Command="{Binding DataContext.TestStrategyCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding}"
@@ -246,10 +246,10 @@
 
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding SelectedDescription}" Margin="0,4,0,0" TextWrapping="Wrap" />
 
-                                <!-- Кнопки управления стратегией -->
-                                <Button Style="{StaticResource PrimaryButton}" Content="Применить и запустить стратегию" Margin="0,10,0,0"
+                                <!-- Кнопки управления стратегией — P1 1.6.9: динамический текст Запустить/Переключить -->
+                                <Button Style="{StaticResource PrimaryButton}" Content="{Binding RunButtonText}" Margin="0,10,0,0"
                                         Command="{Binding RunCommand}"
-                                        ToolTip="Остановить текущий обход и запустить выбранную стратегию" />
+                                        ToolTip="{Binding RunButtonTooltip}" />
 
                                 <Grid Margin="0,6,0,0">
                                     <Grid.ColumnDefinitions>

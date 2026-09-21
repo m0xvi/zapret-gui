@@ -474,6 +474,7 @@ namespace ZapretGui.ViewModels
             try
             {
                 Home.RefreshStatus();
+                StrategiesPage.RefreshRunButton();
                 Updates.RefreshBadge();
                 _ = CheckRealTimePingAsync();
                 Raise(nameof(ReadinessText));

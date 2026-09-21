@@ -97,7 +97,7 @@ namespace ZapretGui.ViewModels
             CancelTestCommand = new RelayCommand(() => _testCts?.Cancel(), () => IsTestingAll);
             OpenBatCommand = new RelayCommand(() => { if (Selected != null) Shell.OpenInNotepad(Selected.FullPath); });
             CopyArgsCommand = new RelayCommand(CopyArgs, () => Selected != null);
-            SetDefaultCommand = new RelayCommand(SetDefault, () => Selected != null);
+            SetDefaultCommand = new AsyncRelayCommand(SetDefaultAsync, () => Selected != null && !IsBusy && !IsTestingAll);
             RefreshCommand = new RelayCommand(Refresh);
             OpenFolderCommand = new RelayCommand(() => Shell.OpenFolder(Store.Folder));
             UseRecommendedCommand = new RelayCommand(UseRecommended);
@@ -807,12 +807,15 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(SelectedArgs));
                 Raise(nameof(SelectedFeatures));
                 Raise(nameof(SelectedPath));
+                Raise(nameof(RunButtonText));
+                Raise(nameof(RunButtonTooltip));
+                Raise(nameof(IsRunSwitchMode));
                 (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 (TestStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 (OpenBatCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (CopyArgsCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (SetDefaultCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (SetDefaultCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 (BuildCandidatePreviewCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
@@ -824,6 +827,49 @@ namespace ZapretGui.ViewModels
         public string SelectedFeatures => Selected == null ? "" : StrategyFeatureAnalyzer.Analyze(Selected).Summary;
         public string SelectedPath => Selected?.FullPath ?? "";
 
+        // Динамический текст кнопки «Запустить/Переключить» — P1 1.6.9: отражает бесшовность
+        public string RunButtonText
+        {
+            get
+            {
+                var running = CurrentRunningName();
+                if (Selected != null && !string.IsNullOrWhiteSpace(running) && !string.Equals(running, Selected.Name, StringComparison.OrdinalIgnoreCase) && Bypass.GetStatus().IsRunning)
+                    return $"Переключить на «{Selected.Name}»";
+                if (Selected != null) return $"Запустить «{Selected.Name}»";
+                return "Запустить";
+            }
+        }
+
+        public string RunButtonTooltip
+        {
+            get
+            {
+                var running = CurrentRunningName();
+                if (Selected != null && !string.IsNullOrWhiteSpace(running) && !string.Equals(running, Selected.Name, StringComparison.OrdinalIgnoreCase) && Bypass.GetStatus().IsRunning)
+                    return $"Бесшовно переключить обход с «{running}» на «{Selected.Name}» — служба или процесс перезапустится без ручной остановки";
+                if (Selected != null) return $"Запустить обход со стратегией «{Selected.Name}»";
+                return "Выберите стратегию для запуска";
+            }
+        }
+
+        public bool IsRunSwitchMode => Bypass.GetStatus().IsRunning && Selected != null && !string.IsNullOrWhiteSpace(CurrentRunningName()) && !string.Equals(CurrentRunningName(), Selected.Name, StringComparison.OrdinalIgnoreCase);
+
+        private string CurrentRunningName()
+        {
+            var s = Bypass.GetStatus();
+            if (!string.IsNullOrWhiteSpace(s.ServiceStrategy)) return s.ServiceStrategy;
+            return s.StrategyName ?? "";
+        }
+
+        public void RefreshRunButton()
+        {
+            Raise(nameof(RunButtonText));
+            Raise(nameof(RunButtonTooltip));
+            Raise(nameof(IsRunSwitchMode));
+            (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (SetDefaultCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        }
+
         public bool IsBusy
         {
             get => _isBusy;
@@ -831,6 +877,9 @@ namespace ZapretGui.ViewModels
             {
                 if (Set(ref _isBusy, value))
                 {
+                    Raise(nameof(RunButtonText));
+                    Raise(nameof(RunButtonTooltip));
+                    Raise(nameof(IsRunSwitchMode));
                     (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (TestStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
@@ -841,6 +890,7 @@ namespace ZapretGui.ViewModels
                     (ApplyBestRecommendedCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (BuilderTestCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (BuilderApplyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (SetDefaultCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -994,6 +1044,9 @@ namespace ZapretGui.ViewModels
             Raise(nameof(HasBestRecommendation));
             Raise(nameof(BestStrategyRecommendationText));
             Raise(nameof(BestStrategyDetailsText));
+            Raise(nameof(RunButtonText));
+            Raise(nameof(RunButtonTooltip));
+            Raise(nameof(IsRunSwitchMode));
         }
 
         private void ReloadTargetEndpoints()
@@ -1123,13 +1176,57 @@ namespace ZapretGui.ViewModels
             await RunAsync(BestEmpiricalStrategy);
         }
 
-        private void SetDefault()
+        private async Task SetDefaultAsync()
         {
             if (Selected == null) return;
+            var wasRunning = Bypass.GetStatus().IsRunning;
+            var runningName = CurrentRunningName();
+            var needsSwitch = wasRunning && !string.Equals(runningName, Selected.Name, StringComparison.OrdinalIgnoreCase);
+            if (needsSwitch)
+            {
+                var answer = MessageBox.Show(
+                    $"Сделать «{Selected.Name}» основной и сразу бесшовно переключить обход с «{runningName}» на «{Selected.Name}»?\n\nТекущий обход будет перезапущен без ручной остановки.\n\nНажмите «Да» для переключения сейчас или «Нет» чтобы только запомнить выбор.",
+                    "Сделать основной", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (answer == MessageBoxResult.Yes)
+                {
+                    if (!Shell.IsAdmin())
+                    {
+                        Message = "Для переключения стратегии нужны права администратора.";
+                        return;
+                    }
+                    IsBusy = true;
+                    try
+                    {
+                        var mode = EngineService.GetGameFilterMode(Store.Folder);
+                        var res = await Bypass.SwitchToStrategyAsync(Selected, mode, Settings.ShowWinwsConsole);
+                        if (!res.Ok)
+                        {
+                            Message = res.Message;
+                            return;
+                        }
+                        Settings.SelectedStrategy = Selected.Name;
+                        SettingsStore.Save(Settings);
+                        _main.Home.RefreshStatus();
+                        RefreshRunButton();
+                        Message = $"«{Selected.Name}» установлена как основная и сразу применена";
+                        return;
+                    }
+                    finally
+                    {
+                        IsBusy = false;
+                    }
+                }
+            }
             Settings.SelectedStrategy = Selected.Name;
             SettingsStore.Save(Settings);
             _main.Home.ReloadFromEngine();
+            RefreshRunButton();
             Message = $"«{Selected.Name}» установлена как основная стратегия";
+        }
+
+        private void SetDefault()
+        {
+            _ = SetDefaultAsync();
         }
 
         private void CopyArgs()
@@ -1638,12 +1735,39 @@ namespace ZapretGui.ViewModels
             Message = $"Кандидат «{saved.DisplayName}» удалён";
         }
 
-        private void MakeCandidatePrimary()
+        private async void MakeCandidatePrimary()
         {
             if (CandidatePreview == null) return;
+            var wasRunning = Bypass.GetStatus().IsRunning;
+            var runningName = CurrentRunningName();
+            var needsSwitch = wasRunning && !string.Equals(runningName, CandidatePreview.Name, StringComparison.OrdinalIgnoreCase);
+            if (needsSwitch)
+            {
+                var answer = MessageBox.Show(
+                    $"Сделать кандидата «{CandidatePreview.Name}» основной и сразу бесшовно переключить обход с «{runningName}» на него?",
+                    "Сделать основной", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (answer == MessageBoxResult.Yes)
+                {
+                    if (!Shell.IsAdmin())
+                    {
+                        Message = "Для переключения стратегии нужны права администратора.";
+                        return;
+                    }
+                    var candidateInfo = new StrategyInfo { Name = CandidatePreview.Name, Args = CandidatePreview.Args, Category = "АВТОКОНСТРУКТОР", Description = CandidatePreview.MutationDescription };
+                    var mode = EngineService.GetGameFilterMode(Store.Folder);
+                    IsBusy = true;
+                    try
+                    {
+                        var res = await Bypass.SwitchToStrategyAsync(candidateInfo, mode, Settings.ShowWinwsConsole);
+                        if (!res.Ok) { Message = res.Message; return; }
+                    }
+                    finally { IsBusy = false; }
+                }
+            }
             Settings.SelectedStrategy = CandidatePreview.Name;
             SettingsStore.Save(Settings);
             _main.Home.ReloadFromEngine();
+            RefreshRunButton();
             Message = $"Кандидат «{CandidatePreview.Name}» выбран основной стратегией";
         }
 
