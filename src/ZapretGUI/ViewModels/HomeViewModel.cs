@@ -92,6 +92,7 @@ namespace ZapretGui.ViewModels
             });
             RunFullCheckCommand = new AsyncRelayCommand(RunFullCheckAsync, () => !IsFullCheckRunning && !IsBusy && HasStrategy);
             CancelFullCheckCommand = new RelayCommand(CancelFullCheck, () => IsFullCheckRunning);
+            ClearFullCheckResultCommand = new RelayCommand(ClearFullCheckResult, () => FullCheckResultVisible && !IsFullCheckRunning);
             ApplyRecommendedStrategyCommand = new AsyncRelayCommand(ApplyRecommendedStrategyAsync, () => HasRecommendedStrategy && !IsBusy);
             RefreshGamingStatus();
         }
@@ -326,9 +327,11 @@ namespace ZapretGui.ViewModels
                 if (Set(ref _isFullCheckRunning, value))
                 {
                     Raise(nameof(FullCheckResultVisible));
+                    Raise(nameof(IsQuickSetupIdle));
                     Raise(nameof(HasRecommendedStrategy));
                     (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (CancelFullCheckCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ClearFullCheckResultCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (ApplyRecommendedStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     Raise(nameof(IsFullCheckRunning));
                 }
@@ -350,7 +353,16 @@ namespace ZapretGui.ViewModels
         public string FullCheckSummaryText
         {
             get => _fullCheckSummaryText;
-            private set => Set(ref _fullCheckSummaryText, value);
+            private set
+            {
+                if (Set(ref _fullCheckSummaryText, value))
+                {
+                    Raise(nameof(FullCheckResultVisible));
+                    Raise(nameof(IsQuickSetupIdle));
+                    (ClearFullCheckResultCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
         }
 
         public string FullCheckSummaryKey
@@ -387,6 +399,8 @@ namespace ZapretGui.ViewModels
         public bool HasRecommendedStrategy => _recommendedStrategy != null;
         public string RecommendedStrategyName => _recommendedStrategy?.Name ?? "";
         public StrategyInfo? RecommendedStrategy => _recommendedStrategy;
+        /// <summary>Исходное состояние блока — ни прогресса, ни результата; видны кнопки «Проверить всё».</summary>
+        public bool IsQuickSetupIdle => !IsFullCheckRunning && !FullCheckResultVisible;
 
         public string Message
         {
@@ -506,6 +520,7 @@ namespace ZapretGui.ViewModels
         public ICommand ClearMessageCommand { get; }
         public ICommand RunFullCheckCommand { get; }
         public ICommand CancelFullCheckCommand { get; }
+        public ICommand ClearFullCheckResultCommand { get; }
         public ICommand ApplyRecommendedStrategyCommand { get; }
 
         // ------------------------------------------------------------------ логика
@@ -1014,10 +1029,31 @@ namespace ZapretGui.ViewModels
             SettingsStore.Save(Settings);
         }
 
+        public void ClearFullCheckResult()
+        {
+            // Сбрасывает заглушку завершённой проверки — возвращает блок в исходное состояние
+            FullCheckSummaryText = "";
+            FullCheckAdviceText = "";
+            FullCheckSummaryKey = "Info";
+            FullCheckStatusText = "";
+            FullCheckProgressValue = 0;
+            FullCheckProgressPercentText = "";
+            _recommendedStrategy = null;
+            Raise(nameof(HasRecommendedStrategy));
+            Raise(nameof(RecommendedStrategyName));
+            Raise(nameof(FullCheckResultVisible));
+            Raise(nameof(IsQuickSetupIdle));
+            (ClearFullCheckResultCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ApplyRecommendedStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            AppLog.Info("Блок быстрой настройки сброшен — заглушка проверки убрана");
+        }
+
         public void CancelFullCheck()
         {
             _fullCheckCts?.Cancel();
             FullCheckStatusText = "Отменяю проверку…";
+            AppLog.Info("Отмена полной проверки по кнопке");
         }
 
         private async Task ApplyRecommendedStrategyAsync()
@@ -1053,14 +1089,17 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
+            AppLog.Info("Запущена быстрая проверка «Проверить всё»");
             IsFullCheckRunning = true;
             _fullCheckCts = new CancellationTokenSource();
+            // Сбрасываем предыдущий результат без мигания — блок становится активным
             FullCheckSummaryText = "";
             FullCheckAdviceText = "";
             FullCheckSummaryKey = "Info";
             _recommendedStrategy = null;
             Raise(nameof(HasRecommendedStrategy));
             Raise(nameof(RecommendedStrategyName));
+            Raise(nameof(FullCheckResultVisible));
             FullCheckStatusText = "Шаг 1/4: проверяю систему и движок…";
             FullCheckProgressValue = 0;
             FullCheckProgressMaximum = 4;
