@@ -151,8 +151,28 @@ namespace ZapretGui.ViewModels
         public string AutoSwitchStatus
         {
             get => _autoSwitchStatus;
-            private set => Set(ref _autoSwitchStatus, value);
+            private set
+            {
+                if (Set(ref _autoSwitchStatus, value))
+                {
+                    Raise(nameof(AutoSwitchStatusKey));
+                    Raise(nameof(AutoSwitchStatusVisible));
+                }
+            }
         }
+
+        public string AutoSwitchStatusKey
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(AutoSwitchStatus)) return "Info";
+                if (AutoSwitchStatus.Contains("ошибка", StringComparison.OrdinalIgnoreCase) || AutoSwitchStatus.Contains("не удалось", StringComparison.OrdinalIgnoreCase)) return "Danger";
+                if (AutoSwitchStatus.Contains("переключаю", StringComparison.OrdinalIgnoreCase) || AutoSwitchStatus.Contains("применён", StringComparison.OrdinalIgnoreCase) || AutoSwitchStatus.Contains("профиль", StringComparison.OrdinalIgnoreCase)) return "Success";
+                return "Info";
+            }
+        }
+
+        public bool AutoSwitchStatusVisible => !string.IsNullOrWhiteSpace(AutoSwitchStatus);
 
         public bool AutoSwitchOnNetworkChange
         {
@@ -450,6 +470,8 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(CurrentNetworkDisplay));
                 Raise(nameof(CurrentNetworkFingerprint));
                 Raise(nameof(AutoSwitchStatus));
+                Raise(nameof(AutoSwitchStatusKey));
+                Raise(nameof(AutoSwitchStatusVisible));
                 (CopyNetworkFingerprintCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
             catch (Exception ex)

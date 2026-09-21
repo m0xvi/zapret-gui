@@ -104,7 +104,9 @@
                                     <CheckBox Grid.Column="0" Style="{StaticResource SwitchCheckBox}" Content="При смене сети" IsChecked="{Binding AutoSwitchOnNetworkChange, Mode=TwoWay}" ToolTip="Автоматически применять привязанный профиль при смене Wi-Fi / проводной сети" Margin="0,0,8,0"/>
                                     <CheckBox Grid.Column="1" Style="{StaticResource SwitchCheckBox}" Content="При сбое стратегии" IsChecked="{Binding AutoSwitchOnFailure, Mode=TwoWay}" ToolTip="При диагностированном сбое стратегии попробовать привязанный к сети профиль" Margin="8,0,0,0"/>
                                 </Grid>
-                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding AutoSwitchStatus}" Margin="0,8,0,0" TextWrapping="Wrap" Visibility="{Binding AutoSwitchStatus, Converter={StaticResource StringToVis}}"/>
+                                <Border Margin="0,8,0,0" Padding="10,8" CornerRadius="8" Background="{Binding AutoSwitchStatusKey, Converter={StaticResource SoftSeverityBrush}}" Visibility="{Binding AutoSwitchStatusVisible, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Style="{StaticResource BodyText}" FontSize="11" FontWeight="SemiBold" Text="{Binding AutoSwitchStatus}" TextWrapping="Wrap" Foreground="{Binding AutoSwitchStatusKey, Converter={StaticResource SeverityBrush}}"/>
+                                </Border>
                             </StackPanel>
                         </Border>
 
@@ -170,6 +172,7 @@
                                                 <Grid.RowDefinitions>
                                                     <RowDefinition Height="Auto" />
                                                     <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                     <Border Width="6" Height="6" CornerRadius="3" Margin="0,0,7,0" VerticalAlignment="Center"
@@ -181,6 +184,9 @@
                                                     </Border>
                                                 </WrapPanel>
                                                 <TextBlock Grid.Row="1" Text="{Binding SummaryText}" Style="{StaticResource DimText}" FontSize="11" Margin="13,3,0,0" Opacity="0.9" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                <Border Grid.Row="2" Style="{StaticResource Badge}" Margin="13,4,0,0" Padding="6,2" Background="{DynamicResource SuccessSoftBrush}" Visibility="{Binding IsNetworkBound, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding NetworkBadgeText}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" MaxWidth="165" />
+                                                </Border>
                                             </Grid>
                                         </Border>
                                     </DataTemplate>
