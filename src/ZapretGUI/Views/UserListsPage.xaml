@@ -391,9 +391,8 @@
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Style="{StaticResource BodyText}" Text="{Binding Domain}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <StackPanel Grid.Column="1" Margin="8,0,8,0">
-                                                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding SystemIps, Converter={StaticResource StringToVis}}" Visibility="Collapsed"/>
                                                         <TextBlock Style="{StaticResource MonoText}" FontSize="11" TextWrapping="Wrap">
-                                                            <Run Text="Системный: "/><Run Text="{Binding SystemIpsText}"/><Run Text=" · DoH: "/><Run Text="{Binding DohIpsText}"/>
+                                                            <Run Text="Системный: "/><Run Text="{Binding SystemIpsText, Mode=OneWay}"/><Run Text=" · DoH: "/><Run Text="{Binding DohIpsText, Mode=OneWay}"/>
                                                         </TextBlock>
                                                         <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding Details}" TextWrapping="Wrap" Opacity="0.8"/>
                                                     </StackPanel>

@@ -62,14 +62,26 @@ namespace ZapretGui.ViewModels
         private void OnEntryAdded(LogEntry entry)
         {
             if (!Accepts(entry)) return;
-            RelayCommand.Dispatch(() =>
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
             {
-                Entries.Add(entry);
-                Raise(nameof(CountText));
-                (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                if (AutoScroll) ScrollToEndRequested?.Invoke();
-            });
+                dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Entries.Add(entry);
+                    if (Entries.Count > 4000) Entries.RemoveAt(0);
+                    Raise(nameof(CountText));
+                    (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    if (AutoScroll) ScrollToEndRequested?.Invoke();
+                }));
+                return;
+            }
+            Entries.Add(entry);
+            if (Entries.Count > 4000) Entries.RemoveAt(0);
+            Raise(nameof(CountText));
+            (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            if (AutoScroll) ScrollToEndRequested?.Invoke();
         }
 
         private bool Accepts(LogEntry entry)
@@ -97,9 +109,13 @@ namespace ZapretGui.ViewModels
 
         private void Reload()
         {
+            var filtered = AppLog.Entries.Where(Accepts).ToList();
+            // Батчевая перезагрузка — минимизирует уведомления коллекции
             Entries.Clear();
-            foreach (var entry in AppLog.Entries.Where(Accepts)) Entries.Add(entry);
+            foreach (var entry in filtered) Entries.Add(entry);
             Raise(nameof(CountText));
+            (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private void Clear()
