@@ -244,6 +244,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             StatusText = $"Применяю профиль «{SelectedProfile.Name}»…";
             StatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show($"Применение профиля «{SelectedProfile.Name}»", StatusText, "Переключение стратегии и настроек…", 0, true, false)); } catch {}
 
             try
             {
@@ -254,10 +255,17 @@ namespace ZapretGui.ViewModels
                 StatusKey = ok ? "Success" : "Danger";
                 _main.Home.RefreshStatus();
                 _main.SettingsPage.Reload();
+                if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Профиль — ошибка", msg)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Профиль — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsBusy = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -374,6 +382,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             StatusText = "Создаю полный архив конфигурации и списков…";
             StatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Создание бэкапа", StatusText, "Архивация настроек и списков…", 0, true, false)); } catch {}
 
             try
             {
@@ -383,10 +392,17 @@ namespace ZapretGui.ViewModels
                 StatusText = msg;
                 StatusKey = ok ? "Success" : "Danger";
                 RefreshBackupHistory();
+                if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Бэкап — ошибка", msg)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Бэкап — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsBusy = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -402,6 +418,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             StatusText = $"Восстанавливаю конфигурацию из «{SelectedBackup.FileName}»…";
             StatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Восстановление бэкапа", StatusText, SelectedBackup.FilePath, 0, true, false)); } catch {}
 
             try
             {
@@ -413,10 +430,17 @@ namespace ZapretGui.ViewModels
                 Reload();
                 _main.Home.ReloadFromEngine();
                 _main.SettingsPage.Reload();
+                if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Восстановление — ошибка", msg)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Восстановление — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsBusy = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -445,6 +469,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             StatusText = "Выполняю системную очистку служб и настроек…";
             StatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Очистка системы", StatusText, "Удаление служб и драйвера…", 0, true, false)); } catch {}
 
             try
             {
@@ -452,10 +477,17 @@ namespace ZapretGui.ViewModels
                 StatusText = msg;
                 StatusKey = ok ? "Success" : "Danger";
                 _main.Home.RefreshStatus();
+                if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Очистка — ошибка", msg)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Очистка — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsBusy = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 

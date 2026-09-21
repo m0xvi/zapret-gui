@@ -603,6 +603,7 @@ namespace ZapretGui.ViewModels
             UpdateAvailable = false;
             Raise(nameof(HasEnginePackage));
             _cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка обновлений", Status, "Запрос к GitHub…", 0, true, true, () => _cts?.Cancel())); } catch {}
 
             try
             {
@@ -653,11 +654,14 @@ namespace ZapretGui.ViewModels
             {
                 Status = "Ошибка проверки обновлений";
                 SetMessage(ex.Message, "Danger");
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Проверка обновлений — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsBusy = false;
                 Indeterminate = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -798,6 +802,7 @@ namespace ZapretGui.ViewModels
             Indeterminate = true;
             Status = "Подготовка обновления…";
             _cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Обновление движка", Status, "Подготовка — проверка SHA-256…", 0, false, true, () => _cts?.Cancel())); } catch {}
 
             try
             {
@@ -878,11 +883,14 @@ namespace ZapretGui.ViewModels
             {
                 Status = "Ошибка обновления движка";
                 SetMessage(ex.Message, "Danger");
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Обновление движка — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsBusy = false;
                 Indeterminate = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -922,6 +930,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             Indeterminate = true;
             Status = "Останавливаю обход перед откатом движка…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Откат движка", Status, backup.FolderName, 0, true, false)); } catch {}
             var before = _main.Bypass.GetStatus();
             _cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
             try
@@ -982,6 +991,7 @@ namespace ZapretGui.ViewModels
                 _cts = null;
                 IsBusy = false;
                 Indeterminate = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -990,6 +1000,7 @@ namespace ZapretGui.ViewModels
             Indeterminate = info.IsIndeterminate;
             if (!info.IsIndeterminate) Progress = info.Percent;
             Status = info.Status;
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(info.Status, info.Details ?? "", info.IsIndeterminate ? (double?)null : info.Percent, info.IsIndeterminate)); } catch {}
         }
 
         private async Task UpdateIpsetAsync()
@@ -997,6 +1008,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             Indeterminate = true;
             Status = "Обновляю список ipset-all.txt…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Обновление списка", Status, "Загрузка ipset-all.txt…", 0, true, false)); } catch {}
             try
             {
                 var ok = await EngineService.UpdateIpsetAsync(Settings.EnginePath);
@@ -1010,6 +1022,7 @@ namespace ZapretGui.ViewModels
             {
                 IsBusy = false;
                 Indeterminate = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1018,6 +1031,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             Indeterminate = true;
             Status = "Проверяю файл hosts…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка hosts", Status, "Чтение hosts…", 0, true, false)); } catch {}
             try
             {
                 var result = await EngineService.CheckHostsAsync();

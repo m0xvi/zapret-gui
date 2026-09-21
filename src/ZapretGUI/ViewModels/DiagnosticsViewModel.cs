@@ -540,10 +540,11 @@ namespace ZapretGui.ViewModels
             Message = "";
             Summary = "Идёт проверка…";
             SummaryKey = "Warning";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Диагностика системы", "Комплексная проверка 14 пунктов — не закрывайте окно", "Подготовка…", 0, false, false)); } catch {}
 
             try
             {
-                var progress = new Progress<string>(UpdateProgress);
+                var progress = new Progress<string>(s => { UpdateProgress(s); try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(s, "Диагностика…", null, false)); } catch {} });
                 var items = await DiagnosticsService.RunAsync(Settings, progress);
 
                 foreach (var item in items) Items.Add(item);
@@ -566,11 +567,14 @@ namespace ZapretGui.ViewModels
             catch (Exception ex)
             {
                 SetMessage("Ошибка диагностики: " + ex.Message, "Danger");
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Диагностика — ошибка", ex.Message, "Попробуйте ещё раз")); } catch {}
+                return;
             }
             finally
             {
                 ProgressText = "";
                 IsRunning = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -813,6 +817,7 @@ namespace ZapretGui.ViewModels
             _dpiCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
             var ct = _dpiCts.Token;
             IsDpiRunning = true;
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка DPI", "Сетевые пробы DPI — не закрывайте окно", "Подготовка endpoint-ов…", 0, true, true, () => _dpiCts?.Cancel())); } catch {}
             DpiProgressValue = 0;
             DpiProgressMaximum = 1;
             DpiProgressIndeterminate = true;
@@ -869,6 +874,7 @@ namespace ZapretGui.ViewModels
                 _dpiCts = null;
                 DpiProgressText = "";
                 IsDpiRunning = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1018,9 +1024,10 @@ namespace ZapretGui.ViewModels
 
             IsCleaningDiscord = true;
             DiscordCleanStatusText = "Подготовка к очистке кэша Discord и сбросу сети…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show(restartDiscord ? "Перезапуск Discord" : "Очистка Discord", "Очистка кэша Discord и сброс сети — не закрывайте окно", DiscordCleanStatusText, 0, true, false)); } catch {}
             try
             {
-                var progress = new Progress<string>(s => DiscordCleanStatusText = s);
+                var progress = new Progress<string>(s => { DiscordCleanStatusText = s; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(s, "Очистка…", null, true)); } catch {} });
                 var summary = await DiscordNetworkCleaner.CleanAsync(new DiscordCleanOptions
                 {
                     CloseDiscordProcesses = true,
@@ -1041,10 +1048,13 @@ namespace ZapretGui.ViewModels
                 DiscordCleanStatusText = "Ошибка очистки: " + ex.Message;
                 SetMessage("Ошибка очистки кэша: " + ex.Message, "Danger");
                 AppLog.Error("Ошибка очистки кэша Discord", ex);
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Очистка Discord — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsCleaningDiscord = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1067,9 +1077,10 @@ namespace ZapretGui.ViewModels
 
             IsCleaningDiscord = true;
             DiscordCleanStatusText = "Выполняется глубокий сброс сетевого стека Windows…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Глубокий сброс сети", "Сброс Winsock / TCP-IP / DNS / ARP — не закрывайте окно", DiscordCleanStatusText, 0, true, false)); } catch {}
             try
             {
-                var progress = new Progress<string>(s => DiscordCleanStatusText = s);
+                var progress = new Progress<string>(s => { DiscordCleanStatusText = s; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(s, "Сброс сети…", null, true)); } catch {} });
                 var report = await DiscordNetworkCleaner.DeepNetworkStackResetAsync(progress).ConfigureAwait(true);
                 DiscordCleanStatusText = "Сброс сети завершён. Рекомендуется перезагрузить ПК.";
                 SetMessage(string.Join("\n", report), "Warning");
@@ -1079,10 +1090,13 @@ namespace ZapretGui.ViewModels
             {
                 DiscordCleanStatusText = "Ошибка сброса сети: " + ex.Message;
                 SetMessage("Ошибка сброса сети: " + ex.Message, "Danger");
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Сброс сети — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsCleaningDiscord = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1169,8 +1183,9 @@ namespace ZapretGui.ViewModels
             VoiceRtcStatusText = "Запуск проверки голосовых серверов Discord (WebRTC/STUN)…";
             VoiceRtcDiagnosisKey = "Warning";
             VoiceServers.Clear();
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка голосовых серверов", "WebRTC/STUN пробы Discord — не закрывайте окно", VoiceRtcStatusText, 0, true, false)); } catch {}
 
-            var progress = new Progress<string>(text => VoiceRtcStatusText = text);
+            var progress = new Progress<string>(text => { VoiceRtcStatusText = text; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(text, "Voice RTC…", null, true)); } catch {} });
 
             try
             {
@@ -1201,11 +1216,14 @@ namespace ZapretGui.ViewModels
             {
                 VoiceRtcStatusText = "Ошибка проверки: " + ex.Message;
                 VoiceRtcDiagnosisKey = "Danger";
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Voice RTC — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsVoiceRtcRunning = false;
                 Raise(nameof(HasVoiceRtcResults));
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1214,6 +1232,7 @@ namespace ZapretGui.ViewModels
             if (IsVoiceRtcRunning) return;
             IsVoiceRtcRunning = true;
             VoiceRtcStatusText = "Применяю оптимизированную конфигурацию для Discord Voice…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Оптимизация Discord Voice", "Настройка UDP/desync и переключатель стратегии — не закрывайте окно", VoiceRtcStatusText, 0, true, false)); } catch {}
 
             try
             {
@@ -1251,10 +1270,13 @@ namespace ZapretGui.ViewModels
             {
                 VoiceRtcStatusText = "Ошибка оптимизации: " + ex.Message;
                 VoiceRtcDiagnosisKey = "Danger";
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Оптимизация Voice — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsVoiceRtcRunning = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 

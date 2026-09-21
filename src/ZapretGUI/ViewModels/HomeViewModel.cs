@@ -163,11 +163,14 @@ namespace ZapretGui.ViewModels
                 ShowError("Для изменения сетевых параметров Windows требуются права администратора.");
                 return;
             }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Оптимизация сети", "Применение игровых твиков Windows…", "TCP/UDP параметры…", 0, true, false)); } catch {}
 
             var (ok, msg) = await GamingNetworkOptimizer.ApplyTweaksAsync();
             if (ok) ShowSuccess(msg);
             else ShowError(msg);
             RefreshGamingStatus();
+            if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Оптимизация — ошибка", msg)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private async Task RevertGamingTweaksAsync()
@@ -177,11 +180,14 @@ namespace ZapretGui.ViewModels
                 ShowError("Для изменения сетевых параметров Windows требуются права администратора.");
                 return;
             }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Сброс оптимизации", "Откат игровых твиков Windows…", "Восстановление настроек…", 0, true, false)); } catch {}
 
             var (ok, msg) = await GamingNetworkOptimizer.RevertTweaksAsync();
             if (ok) ShowSuccess(msg);
             else ShowError(msg);
             RefreshGamingStatus();
+            if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Откат — ошибка", msg)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         public ObservableCollection<string> StrategyNames { get; } = new();

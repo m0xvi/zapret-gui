@@ -748,6 +748,8 @@ namespace ZapretGui.ViewModels
         {
             if (!CanEditCurrentList || string.IsNullOrWhiteSpace(BulkPasteText)) return;
             var lines = BulkPasteText.Split(new[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
+            var isLarge = lines.Length > 50;
+            if (isLarge) try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Массовое добавление", $"Обработка {lines.Length} строк — не закрывайте окно", "Проверка доменов…", 0, true, false)); } catch {}
             var added = 0; var skipped = 0; var invalid = 0;
             foreach (var raw in lines)
             {
@@ -762,6 +764,7 @@ namespace ZapretGui.ViewModels
             BulkPasteText = "";
             Status = $"Пачкой добавлено {added}, пропущено дубликатов {skipped}, невалидных {invalid} — {(added>0?"сохранено":"")}.";
             Raise(nameof(HasEntries)); Raise(nameof(CountText)); RaiseCommands();
+            if (isLarge) try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private static string CleanDomain(string input)
@@ -1042,7 +1045,9 @@ namespace ZapretGui.ViewModels
             _main.Home.ShowSuccess($"✅ GameFilter: порты обновлены (UDP: {udpPort}).");
             if (_main.Bypass.GetStatus().IsRunning)
             {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("GameFilter", "Перезапуск обхода для применения портов…", udpPort, 0, true, false)); } catch {}
                 await RestartBypassAsync();
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1058,10 +1063,13 @@ namespace ZapretGui.ViewModels
             Status = "Перезапускаю обход для применения обновлённых списков…";
             var strat = _main.Strategies.Find(status.StrategyName) ?? _main.Strategies.Recommended;
             if (strat == null) return;
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Перезапуск обхода", Status, strat.Name, 0, true, false)); } catch {}
 
             var res = await _main.Bypass.SwitchToStrategyAsync(strat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
             Status = res.Ok ? "Обход успешно перезапущен с новыми списками!" : "Ошибка перезапуска: " + res.Message;
             _main.Home.RefreshStatus();
+            if (!res.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Перезапуск — ошибка", res.Message)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private async Task UpdateListsFromGithubAsync()
@@ -1070,10 +1078,11 @@ namespace ZapretGui.ViewModels
             IsUpdatingLists = true;
             DomainListUpdateResultText = "Загружаю свежие списки с GitHub…";
             DomainListUpdateResultKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Обновление списков", DomainListUpdateResultText, "Загрузка с GitHub…", 0, true, false)); } catch {}
 
             try
             {
-                var progress = new Progress<string>(msg => DomainListUpdateResultText = msg);
+                var progress = new Progress<string>(msg => { DomainListUpdateResultText = msg; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(msg, "Списки…", null, true)); } catch {} });
                 var res = await DomainListUpdater.UpdateAllAsync(Settings.EnginePath, progress);
                 DomainListUpdateResultText = res.Message;
                 DomainListUpdateResultKey = res.Ok ? "Success" : "Danger";
@@ -1081,10 +1090,17 @@ namespace ZapretGui.ViewModels
                 {
                     LoadEntries();
                 }
+                if (!res.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Списки — ошибка", res.Message)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Списки — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsUpdatingLists = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1100,11 +1116,14 @@ namespace ZapretGui.ViewModels
             if (SelectedDnsProfile == null) return;
             DnsTestStatusText = $"Применяю {SelectedDnsProfile.Name} к сетевому адаптеру…";
             DnsTestStatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Настройка DNS", DnsTestStatusText, SelectedDnsProfile.PrimaryServer ?? "", 0, true, false)); } catch {}
 
             var result = await DnsManagementService.ApplyDnsProfileAsync(SelectedDnsProfile);
             DnsTestStatusText = result.Message;
             DnsTestStatusKey = result.Ok ? "Success" : "Danger";
             RefreshCurrentDns();
+            if (!result.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS — ошибка", result.Message)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private async Task ResetDnsToDhcpAsync()
@@ -1112,11 +1131,14 @@ namespace ZapretGui.ViewModels
             var dhcpProfile = DnsProfiles.FirstOrDefault(p => p.IsDhcp) ?? new DnsProfile { Id = "dhcp", Name = "Автоматический DNS (DHCP)" };
             DnsTestStatusText = "Сбрасываю DNS на автоматический режим (DHCP)…";
             DnsTestStatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Сброс DNS", DnsTestStatusText, "DHCP…", 0, true, false)); } catch {}
 
             var result = await DnsManagementService.ApplyDnsProfileAsync(dhcpProfile);
             DnsTestStatusText = result.Message;
             DnsTestStatusKey = result.Ok ? "Success" : "Danger";
             RefreshCurrentDns();
+            if (!result.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS — ошибка", result.Message)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private async Task TestDnsServerAsync()
@@ -1125,6 +1147,7 @@ namespace ZapretGui.ViewModels
             IsTestingDns = true;
             DnsTestStatusText = "Тестирую скорость ответа и резолвинг DNS…";
             DnsTestStatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Тест DNS", DnsTestStatusText, SelectedDnsProfile?.PrimaryServer ?? "", 0, true, false)); } catch {}
 
             try
             {
@@ -1134,10 +1157,17 @@ namespace ZapretGui.ViewModels
                     ? $"DNS проверен успешно: задержка {res.Milliseconds} мс (резолв youtube.com -> {res.ResolvedIp})"
                     : $"Ошибка DNS: {res.Message}";
                 DnsTestStatusKey = res.Ok ? "Success" : "Danger";
+                if (!res.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS тест — ошибка", res.Message)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS тест — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsTestingDns = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1147,9 +1177,10 @@ namespace ZapretGui.ViewModels
             IsCheckingHijack = true;
             HijackSummary = "Проверяю DNS на подмену (сравнение системный vs Cloudflare DoH)…";
             HijackSummaryKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка подмены DNS", HijackSummary, "Сравнение с Cloudflare DoH…", 0, true, false)); } catch {}
             try
             {
-                var progress = new Progress<string>(msg => HijackSummary = msg);
+                var progress = new Progress<string>(msg => { HijackSummary = msg; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(msg, "DNS hijack…", null, true)); } catch {} });
                 var report = await DnsManagementService.CheckHijackAsync(progress);
                 HijackReport = report;
                 HijackSummary = report.Summary;
@@ -1163,10 +1194,13 @@ namespace ZapretGui.ViewModels
             {
                 HijackSummary = "Ошибка проверки подмены: " + ex.Message;
                 HijackSummaryKey = "Danger";
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS hijack — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsCheckingHijack = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1177,11 +1211,14 @@ namespace ZapretGui.ViewModels
             if (cloudflare == null) return;
             DnsTestStatusText = "Обнаружена подмена — применяю защищённый Cloudflare DNS…";
             DnsTestStatusKey = "Warning";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Защита DNS", DnsTestStatusText, "Cloudflare…", 0, true, false)); } catch {}
             var res = await DnsManagementService.ApplyDnsProfileAsync(cloudflare);
             DnsTestStatusText = res.Message;
             DnsTestStatusKey = res.Ok ? "Success" : "Danger";
             RefreshCurrentDns();
             if (res.Ok) SelectedDnsProfile = cloudflare;
+            if (!res.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS — ошибка", res.Message)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private void RaiseCommands()
