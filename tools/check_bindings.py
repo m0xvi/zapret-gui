@@ -60,7 +60,7 @@ ITEM_TYPES = {
 # Типы, для которых второй сегмент не проверяем
 SKIP_SECOND = {
     "string", "bool", "int", "double", "ICommand", "AppSettings", "void", "",
-    "ObservableCollection<string>", "List<string>", "ICollectionView",
+    "ObservableCollection<string>", "ObservableCollection<MonitorTarget>", "ObservableCollection<ConnectionCheck>", "ObservableCollection<EngineBackupInfo>", "ObservableCollection<LogEntry>", "ObservableCollection<GameFilterProfile>", "ObservableCollection<DnsProfile>", "List<string>", "ICollectionView",
 }
 
 

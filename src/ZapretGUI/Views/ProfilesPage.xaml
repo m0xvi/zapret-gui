@@ -60,33 +60,72 @@
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Список профилей слева -->
-                    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,16,0" Padding="12">
+                    <!-- Список профилей слева — ПЕРЕДЕЛАНО 1.6.6: карточки с акцентным выбором -->
+                    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,16,0" Padding="0">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="СПИСОК ПРОФИЛЕЙ" />
+                            <Grid Margin="16,14,16,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                                    <TextBlock Text="&#xE8D2;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="СПИСОК ПРОФИЛЕЙ" Margin="0,0,0,1" />
+                                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding Profiles.Count, StringFormat={}{0} профилей}" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" VerticalAlignment="Center">
+                                    <TextBlock Text="БАЗОВЫЕ + СВОИ" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" />
+                                </Border>
+                            </Grid>
+
                             <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}"
-                                     Style="{StaticResource PlainListBox}" MinHeight="260" MaxHeight="450"
-                                     ItemContainerStyle="{StaticResource NavItemStyle}">
+                                     Style="{StaticResource PlainListBox}" Margin="8,10,8,0" MinHeight="260" MaxHeight="450"
+                                     Background="Transparent" BorderThickness="0"
+                                     ItemContainerStyle="{StaticResource CompactRowItemStyle}" ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <StackPanel Margin="2,4,2,4">
-                                            <WrapPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" FontWeight="SemiBold" />
-                                                <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}" Margin="6,0,0,0"
-                                                        Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}}">
-                                                    <TextBlock Text="Базовый" FontSize="10" Foreground="{DynamicResource AccentBrush}" />
-                                                </Border>
-                                            </WrapPanel>
-                                            <TextBlock Text="{Binding SummaryText}" Style="{StaticResource DimText}" FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
+                                        <Border CornerRadius="8" Padding="10,9" Margin="0,3,0,3" BorderThickness="1.2">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Border Width="6" Height="6" CornerRadius="3" Margin="0,0,7,0" VerticalAlignment="Center"
+                                                            Background="{DynamicResource AccentBrush}" Visibility="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={StaticResource BoolToVis}}" />
+                                                    <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis" MaxWidth="165" />
+                                                    <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentBrush}" Margin="7,0,0,0" Padding="6,2"
+                                                            Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock Text="Базовый" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}" />
+                                                    </Border>
+                                                </WrapPanel>
+                                                <TextBlock Grid.Row="1" Text="{Binding SummaryText}" Style="{StaticResource DimText}" FontSize="11" Margin="13,3,0,0" Opacity="0.9" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                            </Grid>
+                                        </Border>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
 
-                            <WrapPanel Margin="0,12,0,0">
-                                <Button Style="{StaticResource GhostButton}" Content="Импорт JSON"
+                            <Border Style="{StaticResource Divider}" Margin="16,12,16,0" />
+                            <WrapPanel Margin="16,10,16,14">
+                                <Button Style="{StaticResource SecondaryButton}" Content="⬆ Импорт JSON" Padding="12,6" FontSize="11.5"
                                         Command="{Binding ImportProfileCommand}" ToolTip="Загрузить профиль из JSON файла" />
-                                <Button Style="{StaticResource GhostButton}" Content="Создать" Margin="8,0,0,0"
+                                <Button Style="{StaticResource PrimaryButton}" Content="+ Создать" Margin="8,0,0,0" Padding="12,6" FontSize="11.5"
                                         Command="{Binding CreateProfileFromCurrentCommand}" ToolTip="Создать из текущих параметров" />
                             </WrapPanel>
                         </StackPanel>

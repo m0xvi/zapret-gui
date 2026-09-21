@@ -409,94 +409,124 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Проверка соединения — единый стиль (иконка как в Настройках) -->
-                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                    <!-- Проверка соединения — ПЕРЕДЕЛАНО 1.6.6: карточки с чипами и бейджами -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0" Padding="0">
                         <StackPanel>
-                            <Grid>
+                            <Grid Margin="20,16,20,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" VerticalAlignment="Center">
+                                <Border Width="34" Height="34" CornerRadius="9" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
                                     <TextBlock Text="&#xE774;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                                     <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА СОЕДИНЕНИЯ" Margin="0,0,0,2" />
                                     <TextBlock Style="{StaticResource DimText}" Text="YouTube, Discord, GitHub и ваши адреса" FontSize="11" />
                                 </StackPanel>
-                                <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Проверить"
-                                        HorizontalAlignment="Right" Command="{Binding TestConnectionCommand}" Padding="14,7"
-                                        ToolTip="Проверяет доступность YouTube, Discord и GitHub: сначала TCP-подключение, затем HTTP-запрос" />
+                                <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="Проверить" Padding="16,7" MinHeight="36"
+                                        Command="{Binding TestConnectionCommand}" ToolTip="Проверяет доступность: TCP + HTTP-запрос к каждому адресу" />
                             </Grid>
-                            <TextBlock Style="{StaticResource DimText}"
-                                       Text="Быстрая проверка доступности YouTube, Discord, GitHub и добавленных вами адресов." />
-                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0"
+                            <TextBlock Margin="20,8,20,0" Style="{StaticResource DimText}" Text="Быстрая проверка доступности всех контрольных ресурсов — зелёная точка = OK, latency в мс." FontSize="11" />
+
+                            <!-- Прогресс -->
+                            <Border Style="{StaticResource InnerCard}" Margin="20,12,20,0" Padding="12,10" Background="{DynamicResource CardBrush}"
                                     Visibility="{Binding ConnectionBusy, Converter={StaticResource BoolToVis}}">
                                 <StackPanel>
                                     <Grid>
-                                        <TextBlock Style="{StaticResource BodyText}" Text="Проверяю соединение" FontWeight="SemiBold" />
+                                        <TextBlock Style="{StaticResource BodyText}" Text="Проверяю соединение" FontWeight="SemiBold" FontSize="12.5" />
                                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding ConnectionProgressPercentText}" HorizontalAlignment="Right"
                                                    Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                                     </Grid>
-                                    <TextBlock Style="{StaticResource MutedText}" Text="{Binding ConnectionProgressText}" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
-                                    <ProgressBar Style="{StaticResource ThinProgress}"
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding ConnectionProgressText}" Margin="0,3,0,0" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                    <ProgressBar Style="{StaticResource ThinProgress}" Height="6" Margin="0,8,0,0"
                                                  Value="{Binding ConnectionProgressValue, Mode=OneWay}"
                                                  Maximum="{Binding ConnectionProgressMaximum, Mode=OneWay}"
-                                                 IsIndeterminate="{Binding ConnectionProgressIndeterminate, Mode=OneWay}"
-                                                 Margin="0,8,0,0" />
+                                                 IsIndeterminate="{Binding ConnectionProgressIndeterminate, Mode=OneWay}" />
                                 </StackPanel>
                             </Border>
-                            <Button Style="{StaticResource SecondaryButton}" Content="Добавить адрес для проверки"
-                                    Margin="0,10,0,0" HorizontalAlignment="Left"
-                                    Command="{Binding AddConnectionTargetCommand}"
-                                    ToolTip="Открыть отдельное окно и добавить URL или домен в список проверки" />
-                            <ItemsControl ItemsSource="{Binding ConnectionTargets}" Margin="0,8,0,0">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0,2,0,2">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding Name}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}" VerticalAlignment="Center" />
-                                            <WrapPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center"
-                                                       Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
-                                                <Button Style="{StaticResource SmallIconButton}" Content="&#xE70F;" Margin="0,0,4,0"
-                                                        Command="{Binding DataContext.EditConnectionTargetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}" ToolTip="Изменить адрес или название" />
-                                                <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
-                                                        Command="{Binding DataContext.RemoveConnectionTargetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
-                                                        CommandParameter="{Binding}" ToolTip="Удалить адрес из проверки соединения" />
-                                            </WrapPanel>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
 
-                            <ScrollViewer MaxHeight="300" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,12,0,0">
-                                <ItemsControl ItemsSource="{Binding ConnectionChecks}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="0,0,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Style="{StaticResource Dot}"
-                                                    Background="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}" />
-                                            <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontWeight="SemiBold" />
-                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" />
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="2" Style="{StaticResource MutedText}"
-                                                       Text="{Binding StatusText}" VerticalAlignment="Center" />
-                                        </Grid>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
+                            <!-- Адреса как чипы -->
+                            <StackPanel Margin="20,12,20,0">
+                                <WrapPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <TextBlock Style="{StaticResource DimText}" Text="АДРЕСА ДЛЯ ПРОВЕРКИ" FontSize="10" FontWeight="Bold" LetterSpacing="0.3" VerticalAlignment="Center" />
+                                    <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource ElevatedBrush}" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding ConnectionTargets.Count, StringFormat={}{0} шт.}" Style="{StaticResource DimText}" FontSize="10" />
+                                    </Border>
+                                </WrapPanel>
+                                <WrapPanel Orientation="Horizontal">
+                                    <Button Style="{StaticResource GhostButton}" Content="+ Добавить адрес" Padding="10,6" FontSize="11.5" Margin="0,0,8,6"
+                                            Command="{Binding AddConnectionTargetCommand}" ToolTip="Добавить URL/домен в проверку" />
+                                </WrapPanel>
+                                <ItemsControl ItemsSource="{Binding ConnectionTargets}" Margin="0,4,0,0">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel Orientation="Horizontal" />
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border CornerRadius="7" Padding="9,5" Margin="0,0,6,6" BorderThickness="1" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Name}" FontSize="11.5" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="140" ToolTip="{Binding Name}" />
+                                                    <WrapPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                               Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                                                        <Button Style="{StaticResource SmallIconButton}" Content="&#xE70F;" Width="22" Height="22" Margin="0,0,2,0"
+                                                                Command="{Binding DataContext.EditConnectionTargetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}" ToolTip="Изменить" />
+                                                        <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;" Width="22" Height="22"
+                                                                Command="{Binding DataContext.RemoveConnectionTargetCommand, RelativeSource={RelativeSource AncestorType=ItemsControl}}"
+                                                                CommandParameter="{Binding}" ToolTip="Удалить" />
+                                                    </WrapPanel>
+                                                </Grid>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                            </ScrollViewer>
+                            </StackPanel>
+
+                            <!-- Результаты как карточки -->
+                            <Border Margin="20,12,20,16" Padding="12,10" CornerRadius="10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,0,8">
+                                        <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ" FontSize="11" VerticalAlignment="Center" />
+                                        <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource SuccessSoftBrush}" Visibility="{Binding ConnectionChecks.Count, Converter={StaticResource CountToVis}}">
+                                            <TextBlock Text="{Binding ConnectionChecks.Count, StringFormat={}{0} проверок}" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
+                                        </Border>
+                                    </WrapPanel>
+                                    <ScrollViewer MaxHeight="340" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+                                        <ItemsControl ItemsSource="{Binding ConnectionChecks}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate>
+                                                    <Border CornerRadius="8" Padding="10,8" Margin="0,0,0,6" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                                        <Grid>
+                                                            <Grid.ColumnDefinitions>
+                                                                <ColumnDefinition Width="Auto" />
+                                                                <ColumnDefinition Width="*" />
+                                                                <ColumnDefinition Width="Auto" />
+                                                            </Grid.ColumnDefinitions>
+                                                            <Border Width="8" Height="8" CornerRadius="4" VerticalAlignment="Center"
+                                                                    Background="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}" Margin="0,2,0,0" />
+                                                            <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontWeight="SemiBold" FontSize="12.5" />
+                                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                                                            </StackPanel>
+                                                            <Border Grid.Column="2" Style="{StaticResource Badge}" Background="{Binding SeverityKey, Converter={StaticResource SoftSeverityBrush}}" VerticalAlignment="Center" Padding="7,4">
+                                                                <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="SemiBold" Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}" />
+                                                            </Border>
+                                                        </Grid>
+                                                    </Border>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                </StackPanel>
+                            </Border>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -504,92 +534,99 @@
                 <!-- ================= ПРАВАЯ КОЛОНКА ================= -->
                 <StackPanel>
 
-                    <Border Style="{StaticResource Card}">
+                    <!-- ДВИЖОК ZAPRET — ПЕРЕДЕЛАНО 1.6.6: компактные карточки версий -->
+                    <Border Style="{StaticResource Card}" Padding="0">
                         <StackPanel>
-                            <Grid>
+                            <Grid Margin="16,14,16,0">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Top">
+                                <Border Width="30" Height="30" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
                                     <TextBlock Text="&#xE8B5;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                    <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" Margin="0,0,0,2" />
+                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" Margin="0,0,0,1" />
                                     <TextBlock Style="{StaticResource DimText}" Text="Версия и путь к сборке" FontSize="11" />
                                 </StackPanel>
+                                <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{Binding UpdateAvailable, Converter={StaticResource BoolToAccentBrush}}" Padding="7,3">
+                                    <TextBlock FontSize="9" FontWeight="Bold" Foreground="White">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock">
+                                                <Setter Property="Text" Value="✓ АКТУАЛЬНО" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding UpdateAvailable}" Value="True">
+                                                        <Setter Property="Text" Value="● ОБНОВЛЕНИЕ" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                </Border>
                             </Grid>
-                            <TextBlock Style="{StaticResource StatValueText}" Text="{Binding EngineVersionText}" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LatestVersionText, StringFormat=Последняя на GitHub: {0}}" Margin="0,4,0,0" />
 
-                            <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0"
+                            <Grid Margin="16,12,16,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="10" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource DimText}" Text="УСТАНОВЛЕНА" FontSize="10" FontWeight="Bold" LetterSpacing="0.3" />
+                                        <TextBlock Style="{StaticResource StatValueText}" Text="{Binding EngineVersionText}" FontSize="16" Margin="0,4,0,0" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Grid.Column="2" CornerRadius="9" Padding="12,10" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource DimText}" Text="НА GITHUB" FontSize="10" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" LetterSpacing="0.3" />
+                                        <TextBlock Style="{StaticResource StatValueText}" Text="{Binding LatestVersionText}" FontSize="16" Margin="0,4,0,0" Foreground="{DynamicResource AccentBrush}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
+
+                            <Border Margin="16,10,16,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1"
                                     Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVis}}">
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Доступно обновление" />
-                                    <TextBlock Style="{StaticResource DimText}"
-                                               Text="Обновление сохранит ваши списки, флаги фильтров и активные фейки." />
-                                </StackPanel>
+                                <WrapPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE73E;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBlock Style="{StaticResource BodyText}" Text="Доступно обновление — списки и флаги сохранятся" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextWrapping="Wrap" />
+                                </WrapPanel>
                             </Border>
 
-                            <Button Style="{StaticResource PrimaryButton}" Content="Перейти к обновлениям"
-                                    Margin="0,14,0,0" Command="{Binding CheckUpdatesCommand}"
-                                    ToolTip="Проверка новых версий движка, скачивание и установка, списки ipset и файл hosts" />
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть папку движка"
-                                    Margin="0,6,0,0" Command="{Binding OpenEngineFolderCommand}"
-                                    ToolTip="Открыть папку со сборкой zapret в проводнике (bin, lists, .bat файлы)" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding StrategyCountText}" Margin="0,10,0,0" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding EnginePathText}"
-                                       TextTrimming="CharacterEllipsis" ToolTip="{Binding EnginePathText}" Margin="0,4,0,0" />
-                        </StackPanel>
-                    </Border>
+                            <Button Style="{StaticResource PrimaryButton}" Content="Перейти к обновлениям" Margin="16,12,16,0" MinHeight="38" Padding="14,8"
+                                    Command="{Binding CheckUpdatesCommand}" ToolTip="Проверка новых версий движка, списки ipset и hosts" />
 
-                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                        <StackPanel>
-                            <Grid>
+                            <Grid Margin="16,8,16,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Button Style="{StaticResource GhostButton}" Content="Открыть папку" Padding="10,6" FontSize="11.5"
+                                        Command="{Binding OpenEngineFolderCommand}" ToolTip="Открыть папку движка в проводнике" />
+                                <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="Стратегии" Padding="10,6" FontSize="11.5"
+                                        Command="{Binding OpenStrategiesCommand}" ToolTip="Перейти к списку стратегий" />
+                            </Grid>
+
+                            <Border Style="{StaticResource Divider}" Margin="16,12,16,0" />
+                            <Grid Margin="16,8,16,14">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" VerticalAlignment="Top">
-                                    <TextBlock Text="&#xE9CE;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                <Border Width="22" Height="22" CornerRadius="6" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,8,0">
+                                    <TextBlock Text="&#xE8B7;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                 </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                    <TextBlock Style="{StaticResource SectionText}" Text="ЕСЛИ НЕ РАБОТАЕТ" Margin="0,0,0,2" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="Короткая памятка" FontSize="11" />
+                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding StrategyCountText}" FontSize="11" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding EnginePathText}" FontSize="10.5" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding EnginePathText}" />
                                 </StackPanel>
                             </Grid>
-                            <TextBlock Style="{StaticResource MutedText}"
-                                       Text="1. Попробуйте другую стратегию (обычно помогает одна из группы ALT или FAKE TLS AUTO)." />
-                            <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
-                                       Text="2. Включите игровой фильтр, если не работают игры с UDP." />
-                            <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
-                                       Text="3. Нажмите «Диагностика» — она проверит VPN, прокси, службы и конфликты." />
-                            <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0"
-                                       Text="4. Включите безопасный DNS (DoH) в браузере или Windows 11." />
                         </StackPanel>
                     </Border>
 
-                    <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                        <StackPanel>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Top">
-                                    <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
-                                    <TextBlock Style="{StaticResource SectionText}" Text="О ДВИЖКЕ" Margin="0,0,0,2" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="winws.exe и WinDivert" FontSize="11" />
-                                </StackPanel>
-                            </Grid>
-                            <TextBlock Style="{StaticResource MutedText}"
-                                       Text="Обход выполняется утилитой winws.exe (zapret от bol-van) со стратегиями из сборки Flowseal." />
-                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
-                                       Text="WinDivert может вызывать реакцию антивируса — это инструмент перехвата трафика, а не вирус." />
-                        </StackPanel>
-                    </Border>
+<!-- Блоки «Если не работает» и «О движке» — убраны в 1.6.6 по запросу -->
                 </StackPanel>
             </StackPanel>
         </StackPanel>
