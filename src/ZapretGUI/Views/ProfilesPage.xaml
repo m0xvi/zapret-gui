@@ -47,7 +47,7 @@
             </Border>
 
             <!-- Подсказка для новичка: Профили -->
-            <Border Margin="0,16,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+            <Border Margin="0,16,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />

@@ -51,7 +51,7 @@ ITEM_TYPES = {
     "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord", "StrategySwitchRecord", "MonitorTarget", "AutoTunerStepResult", "SniTestResult", "SniCandidate"],
     "ProfilesPage": ["UserProfile", "BackupArchiveInfo"],
     "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult", "MonitorTarget", "ResourceProbeResult", "DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "DiscordVoiceServerCheck"],
-    "UserListsPage": ["GameFilterProfile", "DnsProfile", "DnsHijackEntry", "DnsHijackReport"],
+    "UserListsPage": ["GameFilterProfile", "DnsProfile", "DnsHijackEntry", "DnsHijackReport", "UserListOption"],
     "DpiPage": ["DpiTargetResult", "DpiProbeResult"],
     "DeepCheckPage": ["DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "EngineConsistencyCheck"],
     "MonitoringPage": ["MonitorTarget", "ResourceProbeResult"],

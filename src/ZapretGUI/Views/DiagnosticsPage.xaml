@@ -106,7 +106,7 @@
                                 <TextBlock Style="{StaticResource SectionText}" Text="ОТСЛЕЖИВАЕМЫЕ РЕСУРСЫ" VerticalAlignment="Center" />
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding Monitoring.LastCheckText}" Margin="14,0,0,0" VerticalAlignment="Center" />
                             </WrapPanel>
-                            <Border Grid.Row="1" Margin="8,0,8,8" Padding="10,8" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                            <Border Grid.Row="1" Margin="8,0,8,8" Padding="10,8" CornerRadius="8" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
