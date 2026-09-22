@@ -63,20 +63,36 @@
             </Grid>
         </Border>
 
-        <!-- Подсказка для новичка в Стратегиях -->
-        <Border Grid.Row="1" Margin="0,10,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1" Visibility="{Binding HasBestRecommendation, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="Auto" />
-                    <ColumnDefinition Width="*" />
-                </Grid.ColumnDefinitions>
-                <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource InfoBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
-                <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Новичок? Нажмите «Проверить все» — зелёные строки (14/14) = работают. Двойной клик по строке — применить (спросит про службу). Вкладки: «Конструктор» — собрать параметры вручную, «Пул SNI» — для игр/Discord, «Контрольные адреса» — свои сайты для проверки. «Умный автоподбор» — сам найдёт лучшее." />
-            </Grid>
-        </Border>
+        <!-- Подсказка для новичка — свёрнутый Expander, не занимает место -->
+        <Expander Grid.Row="1" Margin="0,8,0,0" IsExpanded="False" Visibility="{Binding HasBestRecommendation, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+            <Expander.Header>
+                <StackPanel Orientation="Horizontal">
+                    <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="11" Foreground="{DynamicResource InfoBrush}" VerticalAlignment="Center" />
+                    <TextBlock Text="Подсказка для новичка" Style="{StaticResource DimText}" FontSize="11" FontWeight="SemiBold" Margin="6,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Text=" — куда нажать, что значат вкладки" Style="{StaticResource DimText}" FontSize="11" Margin="4,0,0,0" VerticalAlignment="Center" Opacity="0.8" />
+                </StackPanel>
+            </Expander.Header>
+            <Border CornerRadius="8" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,6,0,0">
+                <StackPanel>
+                    <WrapPanel Orientation="Horizontal">
+                        <Border Style="{StaticResource Badge}" Background="{DynamicResource SuccessSoftBrush}" Padding="6,3" Margin="0,0,6,0">
+                            <TextBlock Text="1" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" FontSize="10" />
+                        </Border>
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" MaxWidth="640" Text="Нажмите «Проверить все» — зелёные строки «14/14 — OK» = работают у вашего провайдера. Красные/0/14 — блок." />
+                    </WrapPanel>
+                    <WrapPanel Orientation="Horizontal" Margin="0,6,0,0">
+                        <Border Style="{StaticResource Badge}" Background="{DynamicResource SuccessSoftBrush}" Padding="6,3" Margin="0,0,6,0">
+                            <TextBlock Text="2" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" FontSize="10" />
+                        </Border>
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" MaxWidth="640" Text="Двойной клик по строке — применить (спросит «Служба или процесс?»). «Применить» — разовый запуск, «Как службу» — автозапуск." />
+                    </WrapPanel>
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap" Text="Вкладки: «Конструктор» — собрать winws-параметры вручную; «Пул SNI» — IP/домены для игр и Discord; «Контрольные адреса» — свои сайты для проверки; «Умный автоподбор» — сам переберёт и найдёт лучшее." />
+                </StackPanel>
+            </Border>
+        </Expander>
 
         <!-- Переключатель подвкладок раздела (Каталог / Конструктор / Контрольные адреса) -->
-        <Grid Grid.Row="3" Margin="0,8,0,10">
+        <Grid Grid.Row="2" Margin="0,8,0,10">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
@@ -88,7 +104,7 @@
         </Grid>
 
         <!-- ============================== ВКЛАДКА 1: КАТАЛОГ СТРАТЕГИЙ ============================== -->
-        <Grid Grid.Row="3" Visibility="{Binding IsCatalogTabVisible, Converter={StaticResource BoolToVis}}">
+        <Grid Grid.Row="4" Visibility="{Binding IsCatalogTabVisible, Converter={StaticResource BoolToVis}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -406,7 +422,7 @@
         </Grid>
 
         <!-- ============================== ВКЛАДКА 2: КОНСТРУКТОР ПАРАМЕТРОВ ============================== -->
-        <Grid Grid.Row="3" Visibility="{Binding IsBuilderTabVisible, Converter={StaticResource BoolToVis}}">
+        <Grid Grid.Row="4" Visibility="{Binding IsBuilderTabVisible, Converter={StaticResource BoolToVis}}">
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -569,7 +585,7 @@
         </Grid>
 
         <!-- ============================== ВКЛАДКА 3: УМНЫЙ АВТОПОДБОР ============================== -->
-        <Grid Grid.Row="3" Visibility="{Binding IsAutoTunerTabVisible, Converter={StaticResource BoolToVis}}">
+        <Grid Grid.Row="4" Visibility="{Binding IsAutoTunerTabVisible, Converter={StaticResource BoolToVis}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
