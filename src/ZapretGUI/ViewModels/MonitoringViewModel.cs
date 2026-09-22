@@ -521,7 +521,7 @@ namespace ZapretGui.ViewModels
             if (best.Strategy == null || currentMs != long.MaxValue && best.Probe.Milliseconds + 15 >= currentMs) return;
             _main.StrategiesPage.SelectAsDefault(best.Strategy);
             var res = await StartSelectedStrategyAsync(best.Strategy, before);
-            if (res.IsSuccess)
+            if (res.Ok)
                 AppLog.Info($"[Фон] Авто-переключение на лучшую стратегию «{best.Strategy.Name}» ({best.Probe.Milliseconds} мс vs {currentMs} мс)");
         }
 
