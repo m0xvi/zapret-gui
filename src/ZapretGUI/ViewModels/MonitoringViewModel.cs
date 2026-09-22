@@ -518,11 +518,11 @@ namespace ZapretGui.ViewModels
                 if (best.Strategy == null || probe.Milliseconds + 15 < currentMs && probe.Milliseconds < (best.Probe?.Milliseconds ?? long.MaxValue))
                     best = (c, probe);
             }
-            if (best.Strategy == null || currentMs != long.MaxValue && best.Probe.Milliseconds + 15 >= currentMs) return;
+            if (best.Strategy == null || best.Probe == null || currentMs != long.MaxValue && best.Probe!.Milliseconds + 15 >= currentMs) return;
             _main.StrategiesPage.SelectAsDefault(best.Strategy);
             var res = await StartSelectedStrategyAsync(best.Strategy, before);
             if (res.Ok)
-                AppLog.Info($"[Фон] Авто-переключение на лучшую стратегию «{best.Strategy.Name}» ({best.Probe.Milliseconds} мс vs {currentMs} мс)");
+                AppLog.Info($"[Фон] Авто-переключение на лучшую стратегию «{best.Strategy!.Name}» ({best.Probe!.Milliseconds} мс vs {currentMs} мс)");
         }
 
         private int GetInterval() => Math.Clamp(Settings.ResourceMonitoringIntervalMinutes, 5, 120);
