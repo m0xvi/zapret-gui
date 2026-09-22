@@ -3,8 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
-        <StackPanel Margin="24,20,20,26">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,12" CanContentScroll="False">
+        <StackPanel Margin="24,20,20,24">
 
             <!-- Заголовок страницы -->
             <Grid>
@@ -617,14 +617,15 @@
                                     <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" Margin="0,0,0,1" />
                                     <TextBlock Style="{StaticResource DimText}" Text="Версия и путь к сборке" FontSize="11" />
                                 </StackPanel>
-                                <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="7,3">
-                                    <TextBlock FontSize="9" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}">
+                                <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="6,3">
+                                    <TextBlock FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.9">
                                         <TextBlock.Style>
                                             <Style TargetType="TextBlock">
                                                 <Setter Property="Text" Value="АКТУАЛЬНО" />
                                                 <Style.Triggers>
                                                     <DataTrigger Binding="{Binding UpdateAvailable}" Value="True">
                                                         <Setter Property="Text" Value="ОБНОВЛЕНИЕ" />
+                                                        <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
                                                     </DataTrigger>
                                                 </Style.Triggers>
                                             </Style>

@@ -1465,7 +1465,7 @@ namespace ZapretGui.ViewModels
             TestSummaryKey = "Info";
             var results = new List<StrategyTestResult>();
             // Глобальный оверлей затемнения — блокирует окно на время проверки всех стратегий
-            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка всех стратегий", $"Подготовка: {Store.Items.Count} стратегий × {ConnectionTester.GetEffectiveTargets(Settings).Count} целей", "Не закрывайте окно — идёт важная проверка", 0, false, true, () => _testCts?.Cancel())); } catch {}
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка", $"Подготовка: {Store.Items.Count} стратегий × {ConnectionTester.GetEffectiveTargets(Settings).Count} целей", "Инициализация...", 0, false, true, () => _testCts?.Cancel())); } catch {}
             try
             {
                 var total = Store.Items.Count;
@@ -1508,6 +1508,7 @@ namespace ZapretGui.ViewModels
                         {
                             TestProgressText = $"[{index + 1}/{total}] «{strategy.Name}»: {text}";
                         }
+                        try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update($"Проверено {index} из {total} • Подходящих: {results.Count(r => r.IsSuitable)}", TestProgressText, TestProgressMaximum > 0 ? (double)TestProgressValue / TestProgressMaximum * 100 : 0, false)); } catch {}
                     });
 
                     var result = await Bypass.TestStrategyAsync(strategy, _testCts.Token, subProgress);
@@ -1523,7 +1524,7 @@ namespace ZapretGui.ViewModels
                     var passed = results.Count(r => r.IsSuitable);
                     TestSummary = $"Проверено: {index + 1} из {total}. Подходящих стратегий: {passed}";
                     TestSummaryKey = passed > 0 ? "Success" : "Warning";
-                    try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update($"[{index + 1}/{total}] «{strategy.Name}» — {passed} подходящих", TestSummary, ((double)(index + 1) / total) * 100, false)); } catch {}
+                    try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update($"Проверено {index + 1} из {total} • Подходящих: {passed}", TestProgressText, ((double)(index + 1) / total) * 100, false)); } catch {}
                 }
 
                 TestProgressValue = TestProgressMaximum;

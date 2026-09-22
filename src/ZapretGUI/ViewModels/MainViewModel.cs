@@ -165,10 +165,7 @@ namespace ZapretGui.ViewModels
                 new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
                 new() { Key = "profiles", Title = "Профили", Icon = "\uE753", Hint = "Пресеты настроек и полные бэкапы" },
                 new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
-                new() { Key = "updates", Title = "Обновления", Icon = "\uE895", Hint = "Движок, hosts, ipset и GUI" },
-                new() { Key = "logs", Title = "Журнал", Icon = "\uE7C3", Hint = "События и отладка" },
-                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация приложения" },
-                new() { Key = "about", Title = "О программе", Icon = "\uE946", Hint = "Версия и лицензия" }
+                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация, журнал и о программе" },
             };
             _selectedNav = NavItems[1];
 

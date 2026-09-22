@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
-        <Grid Margin="24,20,20,26">
+        <Grid Margin="24,20,20,24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -601,19 +601,21 @@
                     <Border Style="{StaticResource Card}">
                         <Grid>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel Margin="0,0,12,0">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE81B;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                                 <TextBlock Style="{StaticResource SectionText}" Text="АУДИТ СИСТЕМЫ И ПРАВ" />
-                                <TextBlock Style="{StaticResource MutedText}"
-                                           Text="Проверка прав администратора, файлов движка, служб Windows, драйвера WinDivert и сетевых конфликтов." TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11"
+                                           Text="Права, файлы движка, службы, драйвер WinDivert и сеть — одним кликом." TextWrapping="Wrap" />
                             </StackPanel>
-                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                <Button Style="{StaticResource PrimaryButton}" Content="Запустить аудит"
-                                        Command="{Binding RunCommand}"
-                                        ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
-                            </WrapPanel>
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Запустить аудит" Padding="14,7" MinHeight="34"
+                                    Command="{Binding RunCommand}" VerticalAlignment="Center"
+                                    ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
                         </Grid>
                     </Border>
 

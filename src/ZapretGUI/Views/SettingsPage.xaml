@@ -3,8 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
-        <StackPanel Margin="24,20,20,26" MaxWidth="980">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,12" CanContentScroll="False">
+        <StackPanel Margin="24,20,20,24" MaxWidth="980">
 
             <!-- Заголовок -->
             <Grid>
@@ -741,6 +741,30 @@
                 </Border>
 
             </StackPanel>
+
+            <!-- Система и информация — перенесённые разделы Журнал / Обновления / О программе -->
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМА И ИНФОРМАЦИЯ" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Журнал, обновления движка/GUI и о программе — теперь здесь." FontSize="11" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Grid>
+                    <WrapPanel Margin="0,14,0,0">
+                        <Button Style="{StaticResource SecondaryButton}" Content="Открыть журнал" Padding="14,7" MinWidth="140" Command="{Binding OpenLogsCommand}" ToolTip="Перейти к журналу" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Проверить обновления" Margin="8,0,0,0" Padding="14,7" MinWidth="160" Command="{Binding OpenUpdatesCommand}" ToolTip="Перейти к обновлениям" />
+                        <Button Style="{StaticResource GhostButton}" Content="О программе" Margin="8,0,0,0" Padding="14,7" MinWidth="130" Command="{Binding OpenAboutCommand}" ToolTip="Версия, лицензия и ссылки" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
 
         </StackPanel>
     </ScrollViewer>

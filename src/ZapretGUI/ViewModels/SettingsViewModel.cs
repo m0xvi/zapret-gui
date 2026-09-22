@@ -109,6 +109,9 @@ namespace ZapretGui.ViewModels
             ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
             OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
+            OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
+            OpenUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
+            OpenAboutCommand = new RelayCommand(() => _main.Navigate("about"));
             RunFullDiagnosticsAndExportCommand = new AsyncRelayCommand(RunFullDiagnosticsAndExportAsync, () => !IsRunningFullCheckCycle);
             CancelFullDiagnosticsCommand = new RelayCommand(CancelFullDiagnostics, () => IsRunningFullCheckCycle);
             CopyTelemetryMarkdownCommand = new RelayCommand(CopyTelemetryMarkdown);
@@ -774,6 +777,9 @@ namespace ZapretGui.ViewModels
         public ICommand ApplyGamingTweaksCommand { get; }
         public ICommand RevertGamingTweaksCommand { get; }
         public ICommand OpenOverlayCommand { get; }
+        public ICommand OpenLogsCommand { get; }
+        public ICommand OpenUpdatesCommand { get; }
+        public ICommand OpenAboutCommand { get; }
 
         public void RefreshGamingOptimization()
         {

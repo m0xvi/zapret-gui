@@ -109,13 +109,23 @@ namespace ZapretGui.ViewModels
 
         private void Reload()
         {
-            var filtered = AppLog.Entries.Where(Accepts).ToList();
-            // Батчевая перезагрузка — минимизирует уведомления коллекции
-            Entries.Clear();
-            foreach (var entry in filtered) Entries.Add(entry);
-            Raise(nameof(CountText));
-            (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
-            (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            // Фильтрация в фоне, затем батчевое обновление на UI-потоке — не блокирует переход в Журнал
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            System.Threading.Tasks.Task.Run(() => AppLog.Entries.Where(Accepts).ToList())
+                .ContinueWith(t =>
+                {
+                    var filtered = t.Result;
+                    void Apply()
+                    {
+                        Entries.Clear();
+                        foreach (var entry in filtered) Entries.Add(entry);
+                        Raise(nameof(CountText));
+                        (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                        (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    }
+                    if (dispatcher != null && !dispatcher.CheckAccess()) dispatcher.BeginInvoke(new Action(Apply));
+                    else Apply();
+                }, System.Threading.Tasks.TaskScheduler.Default);
         }
 
         private void Clear()

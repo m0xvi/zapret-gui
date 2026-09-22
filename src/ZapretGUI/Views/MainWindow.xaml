@@ -251,7 +251,7 @@
                     Width="480" HorizontalAlignment="Center" VerticalAlignment="Center"
                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <Border.Effect>
-                    <DropShadowEffect Color="#22000000" BlurRadius="18" ShadowDepth="4" Opacity="0.45" />
+                    <DropShadowEffect Color="#22000000" BlurRadius="10" ShadowDepth="2" Opacity="0.22" />
                 </Border.Effect>
                 <StackPanel>
                     <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -356,19 +356,44 @@
                     BorderThickness="1" CornerRadius="14"
                     HorizontalAlignment="Center" VerticalAlignment="Center">
                 <Border.Effect>
-                    <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.25" Color="Black" />
+                    <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.18" Color="Black" />
                 </Border.Effect>
                 <StackPanel>
-                    <TextBlock Text="{Binding GlobalOverlay.Title}" FontSize="18" FontWeight="SemiBold"
+                    <TextBlock Text="{Binding GlobalOverlay.Title}" FontSize="17" FontWeight="SemiBold"
                                Foreground="{DynamicResource TextBrush}" TextAlignment="Center" />
                     <TextBlock Text="{Binding GlobalOverlay.Status}" Margin="0,10,0,0" FontSize="13"
-                               Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" TextAlignment="Center" />
-                    <TextBlock Text="{Binding GlobalOverlay.Details}" Margin="0,6,0,0" FontSize="12"
-                               Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" Opacity="0.9" />
+                               Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" TextAlignment="Center" FontWeight="SemiBold" />
+                    <!-- Анимированный процесс: серый текст, растворение вниз / появление сверху вместо статичного 'не закрывайте окно' -->
+                    <TextBlock x:Name="OverlayDetailsText" Text="{Binding GlobalOverlay.Details, NotifyOnTargetUpdated=True}" Margin="0,6,0,0" FontSize="11.5"
+                               Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" Opacity="0.85">
+                        <TextBlock.RenderTransform>
+                            <TranslateTransform Y="0" />
+                        </TextBlock.RenderTransform>
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Style.Triggers>
+                                    <EventTrigger RoutedEvent="Binding.TargetUpdated">
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1.0" To="0.0" Duration="0:0:0.13" />
+                                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="0" To="8" Duration="0:0:0.13" />
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0.0" To="0.85" BeginTime="0:0:0.13" Duration="0:0:0.16" />
+                                                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)" From="-8" To="0" BeginTime="0:0:0.13" Duration="0:0:0.16">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <CubicEase EasingMode="EaseOut" />
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </EventTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
                     <StackPanel Margin="0,16,0,0" Visibility="{Binding GlobalOverlay.ProgressVisible, Converter={StaticResource BoolToVis}}">
                         <ProgressBar Value="{Binding GlobalOverlay.Progress, Mode=OneWay}" Maximum="100"
                                      IsIndeterminate="{Binding GlobalOverlay.IsIndeterminate, Mode=OneWay}"
-                                     Height="8" />
+                                     Height="7" />
                         <TextBlock Text="{Binding GlobalOverlay.ProgressPercentText}" Margin="0,6,0,0"
                                    FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"
                                    Visibility="{Binding GlobalOverlay.IsIndeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
@@ -377,12 +402,12 @@
                         <TextBlock Text="{Binding GlobalOverlay.ErrorText}" TextWrapping="Wrap" TextAlignment="Center"
                                    Foreground="#E53935" FontSize="13" />
                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
-                            <Button Content="Повторить" Command="{Binding GlobalOverlay.RetryCommand}" MinWidth="110" Margin="0,0,8,0" />
-                            <Button Content="Закрыть" Command="{Binding GlobalOverlay.DismissCommand}" MinWidth="110" />
+                            <Button Style="{StaticResource PrimaryButton}" Content="Повторить" Command="{Binding GlobalOverlay.RetryCommand}" MinWidth="120" Padding="14,6" Margin="0,0,8,0" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Закрыть" Command="{Binding GlobalOverlay.DismissCommand}" MinWidth="120" Padding="14,6" />
                         </StackPanel>
                     </StackPanel>
-                    <Button Content="Отмена" Command="{Binding GlobalOverlay.CancelCommand}" MinWidth="110"
-                            HorizontalAlignment="Center" Margin="0,14,0,0"
+                    <Button Style="{StaticResource GhostButton}" Content="Отмена" Command="{Binding GlobalOverlay.CancelCommand}" MinWidth="120" Padding="14,6"
+                            HorizontalAlignment="Center" Margin="0,14,0,0" Opacity="0.9"
                             Visibility="{Binding GlobalOverlay.CanCancel, Converter={StaticResource BoolToVis}}" />
                 </StackPanel>
             </Border>

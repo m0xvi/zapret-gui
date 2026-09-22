@@ -155,15 +155,20 @@
                                      ToolTip="Двойной клик — применить профиль; Enter — тоже">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <Border CornerRadius="8" Padding="10,9" Margin="0,3,0,3" BorderThickness="1">
+                                        <Border CornerRadius="9" Padding="12,10" Margin="0,4,0,4" BorderThickness="1">
                                             <Border.Style>
                                                 <Style TargetType="Border">
-                                                    <Setter Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                                                    <Setter Property="Background" Value="{DynamicResource CardBrush}" />
                                                     <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
                                                     <Style.Triggers>
                                                         <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
-                                                            <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
-                                                            <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                                                            <Setter Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                                                            <Setter Property="Effect">
+                                                                <Setter.Value>
+                                                                    <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.10" Color="Black" />
+                                                                </Setter.Value>
+                                                            </Setter>
                                                         </DataTrigger>
                                                     </Style.Triggers>
                                                 </Style>
@@ -175,17 +180,17 @@
                                                     <RowDefinition Height="Auto" />
                                                 </Grid.RowDefinitions>
                                                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <Border Width="6" Height="6" CornerRadius="3" Margin="0,0,7,0" VerticalAlignment="Center"
-                                                            Background="{DynamicResource AccentBrush}" Visibility="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={StaticResource BoolToVis}}" />
-                                                    <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="12.5" TextTrimming="CharacterEllipsis" MaxWidth="165" />
-                                                    <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentBrush}" Margin="7,0,0,0" Padding="6,2"
+                                                    <Border Width="7" Height="7" CornerRadius="3.5" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                            Background="{DynamicResource AccentBrush}" Opacity="0.85" Visibility="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={StaticResource BoolToVis}}" />
+                                                    <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="165" />
+                                                    <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="8,0,0,0" Padding="6,2"
                                                             Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}}">
-                                                        <TextBlock Text="Базовый" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource OnAccentBrush}" />
+                                                        <TextBlock Text="Базовый" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" />
                                                     </Border>
                                                 </WrapPanel>
-                                                <TextBlock Grid.Row="1" Text="{Binding SummaryText}" Style="{StaticResource DimText}" FontSize="11" Margin="13,3,0,0" Opacity="0.9" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
-                                                <Border Grid.Row="2" Style="{StaticResource Badge}" Margin="13,4,0,0" Padding="6,2" Background="{DynamicResource SuccessSoftBrush}" Visibility="{Binding IsNetworkBound, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Left">
-                                                    <TextBlock Text="{Binding NetworkBadgeText}" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" TextTrimming="CharacterEllipsis" MaxWidth="165" />
+                                                <TextBlock Grid.Row="1" Text="{Binding SummaryText}" Style="{StaticResource DimText}" FontSize="11" Margin="15,4,0,0" Opacity="0.85" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                <Border Grid.Row="2" Style="{StaticResource Badge}" Margin="15,5,0,0" Padding="6,2" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Visibility="{Binding IsNetworkBound, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding NetworkBadgeText}" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" MaxWidth="165" />
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -194,10 +199,10 @@
                             </ListBox>
 
                             <Border Style="{StaticResource Divider}" Margin="16,12,16,0" />
-                            <WrapPanel Margin="16,10,16,14">
-                                <Button Style="{StaticResource SecondaryButton}" Content="⬆ Импорт JSON" Padding="12,6" FontSize="11.5"
+                            <WrapPanel Margin="16,12,16,14">
+                                <Button Style="{StaticResource GhostButton}" Content="Импорт JSON" Padding="12,6" FontSize="11.5"
                                         Command="{Binding ImportProfileCommand}" ToolTip="Загрузить профиль из JSON файла" />
-                                <Button Style="{StaticResource PrimaryButton}" Content="+ Создать" Margin="8,0,0,0" Padding="12,6" FontSize="11.5"
+                                <Button Style="{StaticResource PrimaryButton}" Content="+ Создать" Margin="8,0,0,0" Padding="14,6" FontSize="11.5" MinWidth="110"
                                         Command="{Binding CreateProfileFromCurrentCommand}" ToolTip="Создать из текущих параметров" />
                             </WrapPanel>
                         </StackPanel>
