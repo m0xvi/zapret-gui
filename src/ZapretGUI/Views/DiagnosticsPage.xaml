@@ -97,6 +97,16 @@
                     <!-- Список ресурсов экспресс-мониторинга -->
                     <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
                         <Grid>
+                            <Border Margin="8,4,8,8" Padding="10,8" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource InfoBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
+                                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Проверка — когда сайт не открывается: «Экспресс» — 10 сек без остановки обхода, «DPI 34 узла» — анализ фильтра, результаты теперь справа от ресурса (иконка корзины остаётся)." />
+                                </Grid>
+                            </Border>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
@@ -123,10 +133,15 @@
                                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding Name}" FontWeight="SemiBold" />
                                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}" />
                                             </StackPanel>
-                                            <Button Grid.Column="2" Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
-                                                    Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                    CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
-                                                    ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding LastStatusText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                           Foreground="{Binding LastStatusKey, Converter={StaticResource SeverityBrush}}"
+                                                           Visibility="{Binding LastStatusText, Converter={StaticResource StringToVis}}" ToolTip="{Binding LastDetails}" />
+                                                <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
+                                                        Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                                                        ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" />
+                                            </StackPanel>
                                         </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>

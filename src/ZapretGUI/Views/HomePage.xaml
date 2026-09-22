@@ -347,6 +347,45 @@
                         </Grid>
                     </Border>
 
+                    <!-- Подсказка для новичка — куда нажимать после включения -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Top">
+                                    <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="НОВИЧКУ — КУДА НАЖИМАТЬ" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="Большая кнопка включает обход, но если сайты не открылись — не нужно гадать, просто сделайте 2 шага:" FontSize="11" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Grid>
+                            <StackPanel Margin="0,10,0,0">
+                                <WrapPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <Border Style="{StaticResource Badge}" Background="{DynamicResource CardBrush}" Padding="6,3" Margin="0,0,8,0">
+                                        <TextBlock Text="1" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                                    </Border>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="Нажмите «Проверить всё и подобрать стратегию» выше — за 1–2 мин подберёт рабочую." FontSize="11.5" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="460" />
+                                </WrapPanel>
+                                <WrapPanel Orientation="Horizontal" Margin="0,0,0,6">
+                                    <Border Style="{StaticResource Badge}" Background="{DynamicResource CardBrush}" Padding="6,3" Margin="0,0,8,0">
+                                        <TextBlock Text="2" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                                    </Border>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="В «Стратегии» двойной клик по зелёной строке — применить (спросит про службу). Зелёные цифры = OK, красные = блок." FontSize="11.5" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="460" />
+                                </WrapPanel>
+                                <Border Style="{StaticResource Divider}" Margin="0,6,0,6" />
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Если не помогло: «Стратегии» → вкладки «Конструктор» (ручная сборка winws), «Умный автоподбор» (авто), «Пул SNI» (игры/Discord), «Контрольные адреса» (свои сайты). «Списки» — домены, «Профили» — сохранения, «Проверка» — диагностика." />
+                                <WrapPanel Margin="0,10,0,0">
+                                    <Button Style="{StaticResource SecondaryButton}" Content="Открыть Стратегии →" Padding="12,6" Command="{Binding OpenStrategiesCommand}" ToolTip="Каталог стратегий" />
+                                    <Button Style="{StaticResource GhostButton}" Content="Что такое Стратегия? ℹ️" Margin="8,0,0,0" Padding="12,6" ToolTip="Стратегия = набор параметров winws.exe (--filter, --dpi-desync, --fake ...), который обманывает ТСПУ провайдера" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Игровой опыт — вынесен в сворачиваемый блок (hero остаётся один) -->
                     <Expander Margin="0,16,0,0" IsExpanded="False" Background="Transparent" BorderThickness="0">
                         <Expander.Header>
@@ -601,90 +640,7 @@
                 <!-- ================= ПРАВАЯ КОЛОНКА ================= -->
                 <StackPanel>
 
-                    <!-- ДВИЖОК ZAPRET — ПЕРЕДЕЛАНО 1.6.6: компактные карточки версий -->
-                    <Border Style="{StaticResource Card}" Padding="0">
-                        <StackPanel>
-                            <Grid Margin="16,14,16,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                                    <TextBlock Text="&#xE8B5;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" Margin="0,0,0,1" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="Версия и путь к сборке" FontSize="11" />
-                                </StackPanel>
-                                <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="6,3">
-                                    <TextBlock FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.9">
-                                        <TextBlock.Style>
-                                            <Style TargetType="TextBlock">
-                                                <Setter Property="Text" Value="АКТУАЛЬНО" />
-                                                <Style.Triggers>
-                                                    <DataTrigger Binding="{Binding UpdateAvailable}" Value="True">
-                                                        <Setter Property="Text" Value="ОБНОВЛЕНИЕ" />
-                                                        <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}" />
-                                                    </DataTrigger>
-                                                </Style.Triggers>
-                                            </Style>
-                                        </TextBlock.Style>
-                                    </TextBlock>
-                                </Border>
-                            </Grid>
-
-                            <Grid Margin="16,12,16,0">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="10" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                                    <StackPanel>
-                                        <TextBlock Style="{StaticResource DimText}" Text="УСТАНОВЛЕНА" FontSize="10" FontWeight="Bold" />
-                                        <TextBlock Style="{StaticResource StatValueText}" Text="{Binding EngineVersionText}" FontSize="16" Margin="0,4,0,0" />
-                                    </StackPanel>
-                                </Border>
-                                <Border Grid.Column="2" CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                                    <StackPanel>
-                                        <TextBlock Style="{StaticResource DimText}" Text="НА GITHUB" FontSize="10" FontWeight="Bold" />
-                                        <TextBlock Style="{StaticResource StatValueText}" Text="{Binding LatestVersionText}" FontSize="16" Margin="0,4,0,0" />
-                                    </StackPanel>
-                                </Border>
-                            </Grid>
-
-                            <Border Margin="16,10,16,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1"
-                                    Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVis}}">
-                                <WrapPanel Orientation="Horizontal">
-                                    <TextBlock Text="&#xE73E;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                    <TextBlock Style="{StaticResource BodyText}" Text="Доступно обновление — списки и флаги сохранятся" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextWrapping="Wrap" />
-                                </WrapPanel>
-                            </Border>
-
-                            <Button Style="{StaticResource PrimaryButton}" Content="Перейти к обновлениям" Margin="16,12,16,0" MinHeight="38" Padding="14,8"
-                                    Command="{Binding CheckUpdatesCommand}" ToolTip="Проверка новых версий движка, списки ipset и hosts" />
-
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть список стратегий →" Padding="10,7" FontSize="11.5" Margin="16,8,16,0" HorizontalAlignment="Stretch"
-                                    Command="{Binding OpenStrategiesCommand}" ToolTip="Перейти к каталогу стратегий" />
-
-                            <Border Style="{StaticResource Divider}" Margin="16,12,16,0" />
-                            <Grid Margin="16,8,16,14">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="22" Height="22" CornerRadius="6" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,8,0">
-                                    <TextBlock Text="&#xE8B7;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                </Border>
-                                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding StrategyCountText}" FontSize="11" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding EnginePathText}" FontSize="10.5" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding EnginePathText}" />
-                                </StackPanel>
-                            </Grid>
-                        </StackPanel>
-                    </Border>
-
+                                        <!-- Движок Zapret перенесён в Настройки → Обновления -->
 <!-- Блоки «Если не работает» и «О движке» — убраны в 1.6.6 по запросу -->
                 </StackPanel>
             </StackPanel>

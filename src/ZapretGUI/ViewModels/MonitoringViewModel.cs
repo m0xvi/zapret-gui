@@ -248,6 +248,9 @@ namespace ZapretGui.ViewModels
                     ProgressText = $"Проверяю {i + 1} из {enabled.Count}: {target.Name}…";
                     var probe = await ResourceProbe.CheckAsync(target);
                     Results.Add(probe);
+                    target.LastStatusText = probe.StatusText;
+                    target.LastStatusKey = probe.StatusKey;
+                    target.LastDetails = probe.Details;
                     ProgressValue = i + 1;
                     ProgressPercentText = $"{ProgressValue / ProgressMaximum * 100:0}%";
                 }

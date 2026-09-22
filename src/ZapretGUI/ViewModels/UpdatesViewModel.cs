@@ -67,6 +67,7 @@ namespace ZapretGui.ViewModels
             OpenManualGuiDownloadCommand = new RelayCommand(() => Shell.OpenUrl(GuiUpdateManualUrl));
             DismissGuiUpdateErrorCommand = new RelayCommand(() => { IsGuiUpdating = false; GuiUpdateHasError = false; GuiUpdateErrorText = ""; }, () => GuiUpdateHasError);
             OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
+            BackToSettingsCommand = new RelayCommand(() => _main.Navigate("settings"));
             RefreshEngineBackups();
             RefreshConsistency();
         }

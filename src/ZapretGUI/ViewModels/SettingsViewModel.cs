@@ -402,6 +402,7 @@ namespace ZapretGui.ViewModels
         }
 
         public AppSettings Settings => _main.Settings;
+        public HomeViewModel Home => _main.Home;
 
         private ProviderContext Provider => Settings.ProviderContext ??= new ProviderContext();
 

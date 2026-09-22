@@ -225,6 +225,18 @@
                                    VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold" />
                     </Grid>
 
+                    <!-- Подсказка для новичка: Списки -->
+                    <Border Margin="0,10,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource InfoBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
+                            <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Списки — для точечного обхода: добавьте домены в «Списки», сохраните пресет в «Профили», чтобы не терять. Двойной клик по записи — изменить, Enter — то же. «Проверка» — когда что-то не открывается — запускайте диагностику." />
+                        </Grid>
+                    </Border>
+
                     <!-- Таблица / Список записей -->
                     <Grid Grid.Row="3">
                         <ListBox Style="{StaticResource PlainListBox}" Background="Transparent"
@@ -232,7 +244,9 @@
                                  SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
                                  ItemContainerStyle="{StaticResource CompactRowItemStyle}"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto"
-                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled">
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 MouseDoubleClick="EntriesList_MouseDoubleClick"
+                                 ToolTip="Двойной клик — изменить запись">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
                                     <Grid Margin="0,1,0,1">

@@ -60,7 +60,7 @@ namespace ZapretGui.ViewModels
             UserLists = new UserListsViewModel(this);
             Profiles = new ProfilesViewModel(this);
             FirstLaunch = new FirstLaunchViewModel(this);
-            Logs = new LogsViewModel();
+            Logs = new LogsViewModel(this);
             Monitoring = new MonitoringViewModel(this);
 
             GameDetector = new GameDetectionService(settings);

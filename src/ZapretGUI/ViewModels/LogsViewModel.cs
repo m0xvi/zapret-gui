@@ -18,8 +18,11 @@ namespace ZapretGui.ViewModels
         private bool _showApp = true;
         private bool _showBypass = true;
 
-        public LogsViewModel()
+        private readonly MainViewModel? _main;
+
+        public LogsViewModel(MainViewModel? main = null)
         {
+            _main = main;
             foreach (var entry in AppLog.Entries) Entries.Add(entry);
             AppLog.EntryAdded += OnEntryAdded;
 
@@ -28,6 +31,7 @@ namespace ZapretGui.ViewModels
             SaveCommand = new RelayCommand(SaveToFile, () => Entries.Count > 0);
             OpenFolderCommand = new RelayCommand(() => Shell.OpenFolder(AppPaths.LogDir));
             RefreshCommand = new RelayCommand(Reload);
+            BackToSettingsCommand = new RelayCommand(() => _main?.Navigate("settings"), () => _main != null);
         }
 
         public ObservableCollection<LogEntry> Entries { get; } = new();
@@ -58,6 +62,7 @@ namespace ZapretGui.ViewModels
         public ICommand SaveCommand { get; }
         public ICommand OpenFolderCommand { get; }
         public ICommand RefreshCommand { get; }
+        public ICommand BackToSettingsCommand { get; }
 
         private void OnEntryAdded(LogEntry entry)
         {

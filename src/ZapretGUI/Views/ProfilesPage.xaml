@@ -46,6 +46,18 @@
                 </Grid>
             </Border>
 
+            <!-- Подсказка для новичка: Профили -->
+            <Border Margin="0,16,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource InfoBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
+                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Профили — сохранения ваших настроек (стратегия, списки, фильтры). Сохраните рабочий набор — при сбое восстановите за клик. Автопереключение по сети — в Настройках → Сеть. Двойной клик по профилю — применить." />
+                </Grid>
+            </Border>
+
             <!-- Вкладки управления -->
             <controls:SegmentedControl Margin="0,16,0,0"
                                        ItemsSource="{Binding SubTabs}"
