@@ -384,6 +384,7 @@ namespace ZapretGui.ViewModels
         public ICommand OpenManualGuiDownloadCommand { get; }
         public ICommand DismissGuiUpdateErrorCommand { get; }
         public ICommand OpenLogsCommand { get; }
+        public ICommand BackToSettingsCommand { get; }
 
         private readonly ObservableCollection<ReleaseAsset> _assets = new();
 
