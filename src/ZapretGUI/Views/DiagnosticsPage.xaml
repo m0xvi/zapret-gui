@@ -97,7 +97,16 @@
                     <!-- Список ресурсов экспресс-мониторинга -->
                     <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
                         <Grid>
-                            <Border Margin="8,4,8,8" Padding="10,8" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <WrapPanel Orientation="Horizontal" Margin="8,4,8,12">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ОТСЛЕЖИВАЕМЫЕ РЕСУРСЫ" VerticalAlignment="Center" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Monitoring.LastCheckText}" Margin="14,0,0,0" VerticalAlignment="Center" />
+                            </WrapPanel>
+                            <Border Grid.Row="1" Margin="8,0,8,8" Padding="10,8" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -107,15 +116,7 @@
                                     <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Проверка — когда сайт не открывается: «Экспресс» — 10 сек без остановки обхода, «DPI 34 узла» — анализ фильтра, результаты теперь справа от ресурса (иконка корзины остаётся)." />
                                 </Grid>
                             </Border>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                            </Grid.RowDefinitions>
-                            <WrapPanel Orientation="Horizontal" Margin="8,4,8,12">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ОТСЛЕЖИВАЕМЫЕ РЕСУРСЫ" VerticalAlignment="Center" />
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Monitoring.LastCheckText}" Margin="14,0,0,0" VerticalAlignment="Center" />
-                            </WrapPanel>
-                            <ListBox Grid.Row="1" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Monitoring.Targets}"
+                            <ListBox Grid.Row="2" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Monitoring.Targets}"
                                      SelectedItem="{Binding Monitoring.SelectedTarget, Mode=TwoWay}" Background="Transparent"
                                      ItemContainerStyle="{StaticResource CompactRowItemStyle}"
                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
