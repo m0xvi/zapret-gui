@@ -25,7 +25,7 @@ namespace ZapretGui.ViewModels
         private bool _isProviderLookupBusy;
         private int _selectedTabIndex;
 
-        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры" };
+        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления", "📄 Журнал", "ℹ️ О программе" };
 
         public int SelectedTabIndex
         {
@@ -39,6 +39,9 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsNetworkTabSelected));
                     Raise(nameof(IsAppearanceTabSelected));
                     Raise(nameof(IsGamingTabSelected));
+                    Raise(nameof(IsUpdatesTabSelected));
+                    Raise(nameof(IsLogsTabSelected));
+                    Raise(nameof(IsAboutTabSelected));
                     Raise(nameof(SelectedTabHint));
                 }
             }
@@ -72,6 +75,36 @@ namespace ZapretGui.ViewModels
         {
             get => _selectedTabIndex == 4;
             set { if (value) SelectedTabIndex = 4; }
+        }
+
+        public bool IsUpdatesTabSelected
+        {
+            get => _selectedTabIndex == 5;
+            set { if (value) SelectedTabIndex = 5; }
+        }
+
+        public bool IsLogsTabSelected
+        {
+            get => _selectedTabIndex == 6;
+            set { if (value) SelectedTabIndex = 6; }
+        }
+
+        public bool IsAboutTabSelected
+        {
+            get => _selectedTabIndex == 7;
+            set { if (value) SelectedTabIndex = 7; }
+        }
+
+        public bool AutoSwitchToBestStrategy
+        {
+            get => Settings.AutoSwitchToBestStrategy;
+            set { if (Settings.AutoSwitchToBestStrategy != value) { Settings.AutoSwitchToBestStrategy = value; SettingsStore.Save(Settings); Raise(nameof(AutoSwitchToBestStrategy)); } }
+        }
+
+        public int BestStrategyCheckMinutes
+        {
+            get => Settings.BestStrategyCheckMinutes;
+            set { var v = Math.Clamp(value, 5, 120); if (Settings.BestStrategyCheckMinutes != v) { Settings.BestStrategyCheckMinutes = v; SettingsStore.Save(Settings); Raise(nameof(BestStrategyCheckMinutes)); } }
         }
 
         public string SelectedTabHint => SelectedTabIndex switch

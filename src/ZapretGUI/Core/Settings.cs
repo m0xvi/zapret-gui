@@ -204,6 +204,12 @@ namespace ZapretGui.Core
         /// <summary>Автоматически переключать профиль при диагностированном сбое стратегии (требует AutoRecoverStrategy).</summary>
         public bool AutoSwitchProfileOnFailure { get; set; }
 
+        /// <summary>Фоновый мониторинг: автоматически переключать на самую быструю рабочую стратегию.</summary>
+        public bool AutoSwitchToBestStrategy { get; set; } = false;
+
+        /// <summary>Интервал фонового сравнения стратегий (минуты), если AutoSwitchToBestStrategy включён.</summary>
+        public int BestStrategyCheckMinutes { get; set; } = 30;
+
         /// <summary>Последний отпечаток сети, для которого уже применялся профиль (защита от зацикливания).</summary>
         public string LastNetworkFingerprint { get; set; } = "";
 

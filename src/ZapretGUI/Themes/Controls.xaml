@@ -996,8 +996,8 @@
                                                 <ColumnDefinition Width="Auto" />
                                                 <ColumnDefinition Width="*" />
                                             </Grid.ColumnDefinitions>
-                                            <Border Width="24" Height="24" CornerRadius="7" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
-                                                <TextBlock x:Name="Arrow" Text="&#xE76C;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                                            <Border x:Name="ChevronBox" Width="20" Height="20" CornerRadius="6" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                                                <TextBlock x:Name="Arrow" Text="&#xE76C;" FontFamily="{DynamicResource IconFont}" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
                                                     <TextBlock.RenderTransform>
                                                         <RotateTransform Angle="0" />
                                                     </TextBlock.RenderTransform>
@@ -1007,19 +1007,80 @@
                                         </Grid>
                                         <ControlTemplate.Triggers>
                                             <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ChevronBox" Property="Background" Value="{DynamicResource ElevatedBrush}" />
                                                 <Setter TargetName="Arrow" Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ChevronBox" Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                                                <Setter TargetName="Arrow" Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                <Setter TargetName="Arrow" Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <RotateTransform Angle="90" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="Arrow" Storyboard.TargetProperty="RenderTransform.(RotateTransform.Angle)" From="0" To="90" Duration="0:0:0.18">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <CubicEase EasingMode="EaseOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="Arrow" Storyboard.TargetProperty="RenderTransform.(RotateTransform.Angle)" From="90" To="0" Duration="0:0:0.14">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <CubicEase EasingMode="EaseIn" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.ExitActions>
                                             </Trigger>
                                         </ControlTemplate.Triggers>
                                     </ControlTemplate>
                                 </ToggleButton.Template>
                                 <ContentPresenter ContentSource="Header" />
                             </ToggleButton>
-                            <ContentPresenter x:Name="ExpandSite" Visibility="Collapsed" Margin="0,10,0,0" />
+                            <Border x:Name="ExpandSite" Visibility="Collapsed" Margin="0,8,0,0" Opacity="0">
+                                <Border.RenderTransform>
+                                    <TranslateTransform Y="-6" />
+                                </Border.RenderTransform>
+                                <ContentPresenter />
+                            </Border>
                         </StackPanel>
                     </Border>
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsExpanded" Value="True">
                             <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.18" />
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" From="-6" To="0" Duration="0:0:0.18">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="Opacity" From="1" To="0" Duration="0:0:0.14" />
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" From="0" To="-6" Duration="0:0:0.14">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseIn" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
                         </Trigger>
                     </ControlTemplate.Triggers>
                 </ControlTemplate>

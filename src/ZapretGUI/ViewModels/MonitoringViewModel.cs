@@ -33,6 +33,7 @@ namespace ZapretGui.ViewModels
         private string _messageKey = "Info";
         private string _lastCheckText = "Проверка ещё не выполнялась";
         private DateTime _lastRecovery = DateTime.MinValue;
+        private DateTime _lastBestCheck = DateTime.MinValue;
         private int _consecutiveStrategyFailures;
         private string _failureTargetId = "";
         private const int RecoveryFailureThreshold = 2;
@@ -489,6 +490,39 @@ namespace ZapretGui.ViewModels
         {
             if (!Settings.ResourceMonitoringEnabled || IsBusy) return;
             await CheckAllAsync();
+            // Фоновая проверка лучшей стратегии, если включено в Настройках → Сеть
+            if (Settings.AutoSwitchToBestStrategy && !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning)
+            {
+                var minutes = Math.Clamp(Settings.BestStrategyCheckMinutes, 5, 120);
+                if ((DateTime.Now - _lastBestCheck).TotalMinutes < minutes) return;
+                _lastBestCheck = DateTime.Now;
+                try { await TrySwitchToBestStrategyAsync(); } catch { }
+            }
+        }
+
+        private async Task TrySwitchToBestStrategyAsync()
+        {
+            var before = _main.Bypass.GetStatus();
+            var candidates = _main.Strategies.Items.Where(s => !s.Name.Equals(before.StrategyName, StringComparison.OrdinalIgnoreCase)).Take(6).ToList();
+            if (candidates.Count == 0) return;
+            // Тестируем лёгкий ресурс (Google) для сравнения скорости
+            var target = Targets.FirstOrDefault(t => t.Enabled) ?? Targets.FirstOrDefault();
+            if (target == null) return;
+            var current = await _main.Bypass.TestStrategyOnResourceAsync(_main.Strategies.Items.FirstOrDefault(s => s.Name == before.StrategyName) ?? candidates[0], target);
+            long currentMs = current.Ok ? current.Milliseconds : long.MaxValue;
+            (StrategyInfo Strategy, ResourceProbeResult Probe) best = (null!, null!);
+            foreach (var c in candidates)
+            {
+                var probe = await _main.Bypass.TestStrategyOnResourceAsync(c, target);
+                if (!probe.Ok) continue;
+                if (best.Strategy == null || probe.Milliseconds + 15 < currentMs && probe.Milliseconds < (best.Probe?.Milliseconds ?? long.MaxValue))
+                    best = (c, probe);
+            }
+            if (best.Strategy == null || currentMs != long.MaxValue && best.Probe.Milliseconds + 15 >= currentMs) return;
+            _main.StrategiesPage.SelectAsDefault(best.Strategy);
+            var res = await StartSelectedStrategyAsync(best.Strategy, before);
+            if (res.IsSuccess)
+                AppLog.Info($"[Фон] Авто-переключение на лучшую стратегию «{best.Strategy.Name}» ({best.Probe.Milliseconds} мс vs {currentMs} мс)");
         }
 
         private int GetInterval() => Math.Clamp(Settings.ResourceMonitoringIntervalMinutes, 5, 120);

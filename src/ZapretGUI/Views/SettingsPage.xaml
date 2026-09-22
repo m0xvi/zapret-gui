@@ -479,6 +479,17 @@
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
                                 <TextBlock Style="{StaticResource SectionText}" Text="ФОНОВЫЙ МОНИТОРИНГ" Margin="0,0,0,2" />
+                                <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Автоматически переключать на самую быструю стратегию (фоновая проверка)" Margin="0,8,0,0"
+                                          IsChecked="{Binding AutoSwitchToBestStrategy, Mode=TwoWay}"
+                                          ToolTip="Каждые N минут тихо тестирует топ-стратегии и переключает на самую быструю 14/14. Сейчас выключено — включается только по вашему желанию." />
+                                <StackPanel Orientation="Horizontal" Margin="24,6,0,0" Visibility="{Binding AutoSwitchToBestStrategy, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Style="{StaticResource DimText}" Text="Интервал, мин:" VerticalAlignment="Center" />
+                                    <Slider Minimum="5" Maximum="120" Width="120" Margin="10,0,0,0" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding BestStrategyCheckMinutes, Mode=TwoWay}" VerticalAlignment="Center" />
+                                    <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                        <TextBlock Text="{Binding BestStrategyCheckMinutes}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+                                    </Border>
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" FontSize="11" Text="Работает совместно с Watchdog и мониторингом ресурсов: переключает только если новая стратегия 14/14 и быстрее текущей на ≥15 мс." TextWrapping="Wrap" Opacity="0.85" Visibility="{Binding AutoSwitchToBestStrategy, Converter={StaticResource BoolToVis}}" />
                                 <TextBlock Style="{StaticResource DimText}" Text="Проверяет избранные сайты даже когда окно в трее. Не добавляет домены без вашего подтверждения." TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
@@ -740,6 +751,96 @@
                     </StackPanel>
                 </Border>
 
+            </StackPanel>
+
+            <!-- ===================== ВКЛАДКА 5: ОБНОВЛЕНИЯ ===================== -->
+            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsUpdatesTabSelected, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE895;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ОБНОВЛЕНИЯ" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Движок, списки, hosts и сам GUI — всё здесь, без перехода в боковое меню." FontSize="11" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Border Grid.Column="2" Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="6,3" VerticalAlignment="Center">
+                                <TextBlock Text="GUI + ДВИЖОК" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.85" />
+                            </Border>
+                        </Grid>
+                        <WrapPanel Margin="0,14,0,0">
+                            <Button Style="{StaticResource SecondaryButton}" Content="Проверить обновления" Padding="14,7" Command="{Binding OpenUpdatesCommand}" ToolTip="Перейти на страницу Обновления" />
+                            <Button Style="{StaticResource GhostButton}" Content="Открыть репозиторий" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenRepoCommand}" ToolTip="Flowseal/zapret-discord-youtube" />
+                        </WrapPanel>
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" FontSize="11" Text="На странице Обновления: версии движка и GUI, откат, hosts и ipset — всё как раньше, но теперь вкладка внутри Настроек." TextWrapping="Wrap" Opacity="0.9" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ===================== ВКЛАДКА 6: ЖУРНАЛ ===================== -->
+            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsLogsTabSelected, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE7C3;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ЖУРНАЛ" />
+                                <TextBlock Style="{StaticResource DimText}" Text="События приложения и службы — фильтры по уровню и источнику." FontSize="11" TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Border Grid.Column="2" Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="6,3" VerticalAlignment="Center">
+                                <TextBlock Text="ЖУРНАЛ" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.85" />
+                            </Border>
+                        </Grid>
+                        <WrapPanel Margin="0,14,0,0">
+                            <Button Style="{StaticResource SecondaryButton}" Content="Открыть журнал" Padding="14,7" Command="{Binding OpenLogsCommand}" ToolTip="Перейти на страницу Журнала" />
+                            <Button Style="{StaticResource GhostButton}" Content="Папка логов" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenLogsFolderCommand}" ToolTip="Открыть папку логов" />
+                            <Button Style="{StaticResource GhostButton}" Content="Очистить" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenLogsCommand}" ToolTip="Открыть журнал и очистить там" />
+                        </WrapPanel>
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" FontSize="11" Text="На странице Журнала: 4000 последних записей, виртуализация, авто-прокрутка. Тяжёлая фильтрация теперь в фоне — зависания нет." TextWrapping="Wrap" Opacity="0.9" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            <!-- ===================== ВКЛАДКА 7: О ПРОГРАММЕ ===================== -->
+            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsAboutTabSelected, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SectionText}" Text="О ПРОГРАММЕ" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Версия, лицензия и ссылки — без отдельного пункта в меню." FontSize="11" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                        <StackPanel Margin="0,14,0,0">
+                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Zapret GUI v1.15.0" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="Графический интерфейс для zapret-discord-youtube. Портативный EXE, автообновление движка и GUI, профили и автопереключение." TextWrapping="Wrap" />
+                            <WrapPanel Margin="0,12,0,0">
+                                <Button Style="{StaticResource SecondaryButton}" Content="Открыть о программе" Padding="14,7" Command="{Binding OpenAboutCommand}" ToolTip="Перейти на страницу О программе" />
+                                <Button Style="{StaticResource GhostButton}" Content="Репозиторий GUI" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenRepoCommand}" ToolTip="Открыть m0xvi/zapret-gui" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
             </StackPanel>
 
             <!-- Система и информация — перенесённые разделы Журнал / Обновления / О программе -->
