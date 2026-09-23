@@ -3,8 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                  PanningMode="VerticalOnly" Padding="0,0,4,0">
-    <Grid Margin="24,20,20,26">
+                  PanningMode="VerticalOnly" Padding="0,0,4,24">
+    <Grid Margin="24,20,20,32">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -142,6 +142,8 @@
                 </Border>
             </StackPanel>
         </StackPanel>
+            <!-- Нижний отступ для свободного места снизу -->
+        <Border Height="12" Opacity="0" />
     </Grid>
     </ScrollViewer>
 </UserControl>

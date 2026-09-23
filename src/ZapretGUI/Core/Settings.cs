@@ -186,8 +186,56 @@ namespace ZapretGui.Core
         /// <summary>Флаг отображения мини-виджета вместо или рядом с главным окном.</summary>
         public bool MiniOverlayEnabled { get; set; }
 
+        /// <summary>Пользовательские DNS-профили (дополнительно к встроенным).</summary>
+        public List<DnsProfile> CustomDnsProfiles { get; set; } = new();
+
+        /// <summary>Результат последней проверки подмены DNS.</summary>
+        public string LastDnsHijackSummary { get; set; } = "";
+
+        /// <summary>Время последней проверки подмены DNS.</summary>
+        public DateTime? LastDnsHijackCheckedAt { get; set; }
+
         /// <summary>Необязательный контекст провайдера для будущего подбора стратегий.</summary>
         public ProviderContext ProviderContext { get; set; } = new();
+
+        /// <summary>Автоматически переключать профиль при смене сети (SSID/шлюз).</summary>
+        public bool AutoSwitchProfileOnNetworkChange { get; set; }
+
+        /// <summary>Автоматически переключать профиль при диагностированном сбое стратегии (требует AutoRecoverStrategy).</summary>
+        public bool AutoSwitchProfileOnFailure { get; set; }
+
+        /// <summary>Фоновый мониторинг: автоматически переключать на самую быструю рабочую стратегию.</summary>
+        public bool AutoSwitchToBestStrategy { get; set; } = false;
+
+        /// <summary>Интервал фонового сравнения стратегий (минуты), если AutoSwitchToBestStrategy включён.</summary>
+        public int BestStrategyCheckMinutes { get; set; } = 30;
+
+        /// <summary>Последний отпечаток сети, для которого уже применялся профиль (защита от зацикливания).</summary>
+        public string LastNetworkFingerprint { get; set; } = "";
+
+        /// <summary>Id профиля, применённого последним автопереключением.</summary>
+        public string LastAutoSwitchedProfileId { get; set; } = "";
+
+        /// <summary>Время последнего автопереключения профиля.</summary>
+        public DateTime? LastAutoSwitchTime { get; set; }
+
+        /// <summary>Использовать targets.txt из utils как доп цели при проверке стратегий.</summary>
+        public bool UseTargetsTxtForStrategyTest { get; set; } = true;
+
+        /// <summary>Расписание обхода: включить авто-старт/стоп.</summary>
+        public bool ScheduleEnabled { get; set; }
+
+        /// <summary>Время авто-старта обхода (HH:mm).</summary>
+        public string ScheduleStartTime { get; set; } = "09:00";
+
+        /// <summary>Время авто-стопа обхода (HH:mm).</summary>
+        public string ScheduleStopTime { get; set; } = "23:00";
+
+        /// <summary>Дни недели для расписания, битовая маска 1=Пн ... 64=Вс (127 = ежедневно).</summary>
+        public int ScheduleDaysMask { get; set; } = 127;
+
+        /// <summary>При расписании: оставлять службу (true) или процесс.</summary>
+        public bool ScheduleUseService { get; set; } = true;
     }
 
     /// <summary>Загрузка/сохранение settings.json.</summary>
@@ -214,6 +262,7 @@ namespace ZapretGui.Core
                         if (string.IsNullOrWhiteSpace(loaded.GuiRepo)) loaded.GuiRepo = GuiUpdateService.DefaultRepository;
                         loaded.MonitorTargets ??= new List<MonitorTarget>();
                         loaded.ProviderContext ??= new ProviderContext();
+                        loaded.CustomDnsProfiles ??= new List<DnsProfile>();
                         return loaded;
                     }
                 }
