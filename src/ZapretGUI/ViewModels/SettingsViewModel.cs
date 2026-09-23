@@ -23,6 +23,99 @@ namespace ZapretGui.ViewModels
         private int _providerConfidenceIndex;
         private string _status = "Изменения сохраняются автоматически";
         private bool _isProviderLookupBusy;
+        private int _selectedTabIndex;
+
+        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления", "📄 Журнал", "ℹ️ О программе" };
+
+        public int SelectedTabIndex
+        {
+            get => _selectedTabIndex;
+            set
+            {
+                if (Set(ref _selectedTabIndex, Math.Clamp(value, 0, SettingsTabs.Length - 1)))
+                {
+                    Raise(nameof(IsGeneralTabSelected));
+                    Raise(nameof(IsBypassTabSelected));
+                    Raise(nameof(IsNetworkTabSelected));
+                    Raise(nameof(IsAppearanceTabSelected));
+                    Raise(nameof(IsGamingTabSelected));
+                    Raise(nameof(IsUpdatesTabSelected));
+                    Raise(nameof(IsLogsTabSelected));
+                    Raise(nameof(IsAboutTabSelected));
+                    Raise(nameof(SelectedTabHint));
+                }
+            }
+        }
+
+        public bool IsGeneralTabSelected
+        {
+            get => _selectedTabIndex == 0;
+            set { if (value) SelectedTabIndex = 0; }
+        }
+
+        public bool IsBypassTabSelected
+        {
+            get => _selectedTabIndex == 1;
+            set { if (value) SelectedTabIndex = 1; }
+        }
+
+        public bool IsNetworkTabSelected
+        {
+            get => _selectedTabIndex == 2;
+            set { if (value) SelectedTabIndex = 2; }
+        }
+
+        public bool IsAppearanceTabSelected
+        {
+            get => _selectedTabIndex == 3;
+            set { if (value) SelectedTabIndex = 3; }
+        }
+
+        public bool IsGamingTabSelected
+        {
+            get => _selectedTabIndex == 4;
+            set { if (value) SelectedTabIndex = 4; }
+        }
+
+        public bool IsUpdatesTabSelected
+        {
+            get => _selectedTabIndex == 5;
+            set { if (value) SelectedTabIndex = 5; }
+        }
+
+        public bool IsLogsTabSelected
+        {
+            get => _selectedTabIndex == 6;
+            set { if (value) SelectedTabIndex = 6; }
+        }
+
+        public bool IsAboutTabSelected
+        {
+            get => _selectedTabIndex == 7;
+            set { if (value) SelectedTabIndex = 7; }
+        }
+
+        public bool AutoSwitchToBestStrategy
+        {
+            get => Settings.AutoSwitchToBestStrategy;
+            set { if (Settings.AutoSwitchToBestStrategy != value) { Settings.AutoSwitchToBestStrategy = value; SettingsStore.Save(Settings); Raise(nameof(AutoSwitchToBestStrategy)); } }
+        }
+
+        public int BestStrategyCheckMinutes
+        {
+            get => Settings.BestStrategyCheckMinutes;
+            set { var v = Math.Clamp(value, 5, 120); if (Settings.BestStrategyCheckMinutes != v) { Settings.BestStrategyCheckMinutes = v; SettingsStore.Save(Settings); Raise(nameof(BestStrategyCheckMinutes)); } }
+        }
+
+        public string SelectedTabHint => SelectedTabIndex switch
+        {
+            0 => "Движок, папки и системный автозапуск — всё, что нужно для первого старта.",
+            1 => "Как ведёт себя обход: автозапуск, безопасный режим, сторож и автоподбор.",
+            2 => "Провайдер, телеметрия и фоновый мониторинг — диагностика вашей сети.",
+            3 => "Тема, масштаб, трей, горячие клавиши и мини-виджет HUD.",
+            4 => "Детектор игр, игровой режим и твики сети для минимальных задержек.",
+            _ => ""
+        };
 
         public SettingsViewModel(MainViewModel main)
         {
@@ -49,6 +142,9 @@ namespace ZapretGui.ViewModels
             ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
             OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
+            OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
+            OpenUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
+            OpenAboutCommand = new RelayCommand(() => _main.Navigate("about"));
             RunFullDiagnosticsAndExportCommand = new AsyncRelayCommand(RunFullDiagnosticsAndExportAsync, () => !IsRunningFullCheckCycle);
             CancelFullDiagnosticsCommand = new RelayCommand(CancelFullDiagnostics, () => IsRunningFullCheckCycle);
             CopyTelemetryMarkdownCommand = new RelayCommand(CopyTelemetryMarkdown);
@@ -306,6 +402,7 @@ namespace ZapretGui.ViewModels
         }
 
         public AppSettings Settings => _main.Settings;
+        public HomeViewModel Home => _main.Home;
 
         private ProviderContext Provider => Settings.ProviderContext ??= new ProviderContext();
 
@@ -497,6 +594,46 @@ namespace ZapretGui.ViewModels
             set { Settings.AutoDiagnoseOnFirstLaunch = value; OnSettingChanged(); }
         }
 
+        public bool ScheduleEnabled
+        {
+            get => Settings.ScheduleEnabled;
+            set { Settings.ScheduleEnabled = value; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleEnabled)); Raise(nameof(ScheduleSummary)); Status = value ? "Расписание включено" : "Расписание выключено"; }
+        }
+
+        public string ScheduleStartTime
+        {
+            get => Settings.ScheduleStartTime;
+            set { if (System.TimeSpan.TryParse(value, out _)) { Settings.ScheduleStartTime = value; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleStartTime)); Raise(nameof(ScheduleSummary)); } }
+        }
+
+        public string ScheduleStopTime
+        {
+            get => Settings.ScheduleStopTime;
+            set { if (System.TimeSpan.TryParse(value, out _)) { Settings.ScheduleStopTime = value; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleStopTime)); Raise(nameof(ScheduleSummary)); } }
+        }
+
+        public int ScheduleDaysMask
+        {
+            get => Settings.ScheduleDaysMask;
+            set { Settings.ScheduleDaysMask = value & 127; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleDaysMask)); Raise(nameof(ScheduleSummary)); Raise(nameof(ScheduleDayMonday)); Raise(nameof(ScheduleDayTuesday)); Raise(nameof(ScheduleDayWednesday)); Raise(nameof(ScheduleDayThursday)); Raise(nameof(ScheduleDayFriday)); Raise(nameof(ScheduleDaySaturday)); Raise(nameof(ScheduleDaySunday)); }
+        }
+
+        public bool ScheduleDayMonday { get => (ScheduleDaysMask & 1) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 1) : (ScheduleDaysMask & ~1); } }
+        public bool ScheduleDayTuesday { get => (ScheduleDaysMask & 2) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 2) : (ScheduleDaysMask & ~2); } }
+        public bool ScheduleDayWednesday { get => (ScheduleDaysMask & 4) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 4) : (ScheduleDaysMask & ~4); } }
+        public bool ScheduleDayThursday { get => (ScheduleDaysMask & 8) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 8) : (ScheduleDaysMask & ~8); } }
+        public bool ScheduleDayFriday { get => (ScheduleDaysMask & 16) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 16) : (ScheduleDaysMask & ~16); } }
+        public bool ScheduleDaySaturday { get => (ScheduleDaysMask & 32) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 32) : (ScheduleDaysMask & ~32); } }
+        public bool ScheduleDaySunday { get => (ScheduleDaysMask & 64) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 64) : (ScheduleDaysMask & ~64); } }
+
+        public bool ScheduleUseService
+        {
+            get => Settings.ScheduleUseService;
+            set { Settings.ScheduleUseService = value; SettingsStore.Save(Settings); Raise(nameof(ScheduleUseService)); Status = value ? "Расписание: служба" : "Расписание: процесс"; }
+        }
+
+        public string ScheduleSummary => _main.ScheduleService?.Describe() ?? (ScheduleEnabled ? $"{ScheduleStartTime} → {ScheduleStopTime}" : "выключено");
+
         public bool ResourceMonitoringEnabled
         {
             get => _main.Monitoring.ResourceMonitoringEnabled;
@@ -674,6 +811,9 @@ namespace ZapretGui.ViewModels
         public ICommand ApplyGamingTweaksCommand { get; }
         public ICommand RevertGamingTweaksCommand { get; }
         public ICommand OpenOverlayCommand { get; }
+        public ICommand OpenLogsCommand { get; }
+        public ICommand OpenUpdatesCommand { get; }
+        public ICommand OpenAboutCommand { get; }
 
         public void RefreshGamingOptimization()
         {
@@ -697,10 +837,13 @@ namespace ZapretGui.ViewModels
                 Status = "Для изменения сетевых параметров Windows требуются права администратора";
                 return;
             }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Оптимизация сети", "Применение игровых твиков Windows…", "TCP/UDP параметры…", 0, true, false)); } catch {}
 
             var (ok, msg) = await GamingNetworkOptimizer.ApplyTweaksAsync();
             Status = msg;
             RefreshGamingOptimization();
+            if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Оптимизация — ошибка", msg)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private async Task RevertGamingTweaksAsync()
@@ -710,10 +853,13 @@ namespace ZapretGui.ViewModels
                 Status = "Для изменения сетевых параметров Windows требуются права администратора";
                 return;
             }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Сброс оптимизации", "Откат игровых твиков Windows…", "Восстановление настроек…", 0, true, false)); } catch {}
 
             var (ok, msg) = await GamingNetworkOptimizer.RevertTweaksAsync();
             Status = msg;
             RefreshGamingOptimization();
+            if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Откат — ошибка", msg)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         public string LastBackupText { get; }
@@ -783,6 +929,11 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ProviderCheckedAtText));
             Raise(nameof(ProviderContextText));
             Raise(nameof(HasProviderContext));
+            Raise(nameof(ScheduleEnabled));
+            Raise(nameof(ScheduleStartTime));
+            Raise(nameof(ScheduleStopTime));
+            Raise(nameof(ScheduleDaysMask));
+            Raise(nameof(ScheduleSummary));
         }
 
         private void SaveProviderContext()
@@ -905,6 +1056,11 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ProviderCheckedAtText));
             Raise(nameof(ProviderContextText));
             Raise(nameof(HasProviderContext));
+            Raise(nameof(ScheduleEnabled));
+            Raise(nameof(ScheduleStartTime));
+            Raise(nameof(ScheduleStopTime));
+            Raise(nameof(ScheduleDaysMask));
+            Raise(nameof(ScheduleSummary));
         }
 
         private void BrowseEnginePath()

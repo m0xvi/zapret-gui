@@ -205,8 +205,9 @@ namespace ZapretGui.Core
             var target = Process.GetCurrentProcess().MainModule?.FileName;
             if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
                 return Failure("Не удалось определить текущий exe для обновления.");
-            if (!string.Equals(Path.GetFileNameWithoutExtension(target), "ZapretGUI", StringComparison.OrdinalIgnoreCase))
-                return Failure("Самообновление доступно только для установленного ZapretGUI.exe.");
+            var targetFileName = Path.GetFileNameWithoutExtension(target);
+            if (!targetFileName.StartsWith("ZapretGUI", StringComparison.OrdinalIgnoreCase))
+                return Failure("Самообновление доступно только для ZapretGUI.exe (текущий файл: " + Path.GetFileName(target) + "). Переименуйте файл в ZapretGUI.exe или скачайте обновление вручную со страницы релиза.");
 
             var updateId = Guid.NewGuid().ToString("N");
             var updateDirectory = Path.Combine(AppPaths.TempDir, "gui-update-" + updateId);
@@ -232,7 +233,10 @@ namespace ZapretGui.Core
 
             try
             {
+                AppLog.Info($"[GuiUpdate] Подготовка обновления {release.Tag} из {asset.DownloadUrl} в {staged}");
                 Directory.CreateDirectory(updateDirectory);
+                Directory.CreateDirectory(AppPaths.GuiBackupDir);
+                Directory.CreateDirectory(helperDirectory);
                 progress?.Report(new ProgressInfo { Percent = 0, Status = "Скачиваю обновление GUI" });
                 await DownloadFileAsync(asset.DownloadUrl, staged, asset.Size, progress, ct).ConfigureAwait(false);
                 progress?.Report(new ProgressInfo { Percent = -1, Status = "Проверяю SHA-256 обновления GUI" });
@@ -244,6 +248,7 @@ namespace ZapretGui.Core
                 SavePlan(plan);
 
                 progress?.Report(new ProgressInfo { Percent = -1, Status = "Готовлю безопасный перезапуск GUI" });
+                AppLog.Info($"[GuiUpdate] Запускаю helper: {helper} {ApplyArgument} {PlanFile}");
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = helper,
@@ -252,8 +257,24 @@ namespace ZapretGui.Core
                     UseShellExecute = true,
                     Verb = "runas"
                 };
-                if (Process.Start(startInfo) == null)
-                    throw new InvalidOperationException("Не удалось запустить временный процесс обновления.");
+                try
+                {
+                    var helperProcess = Process.Start(startInfo);
+                    if (helperProcess == null)
+                        throw new InvalidOperationException("Не удалось запустить временный процесс обновления (Process.Start вернул null).");
+                    AppLog.Info("[GuiUpdate] Helper запущен, ожидаю перезапуск");
+                }
+                catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+                {
+                    // Пользователь нажал "Нет" в диалоге UAC
+                    AppLog.Warn("[GuiUpdate] Пользователь отклонил UAC при запуске helper: " + ex.Message);
+                    throw new OperationCanceledException("Обновление отменено — требуются права администратора. Нажмите «Да» в диалоге UAC или запустите Zapret GUI от имени администратора и повторите.", ex);
+                }
+                catch (System.ComponentModel.Win32Exception ex)
+                {
+                    AppLog.Error("[GuiUpdate] Ошибка запуска helper (Win32): " + ex.Message);
+                    throw new InvalidOperationException("Не удалось запустить helper с правами администратора: " + ex.Message + ". Попробуйте запустить Zapret GUI от имени администратора.", ex);
+                }
 
                 return new GuiUpdateResult
                 {
@@ -265,16 +286,23 @@ namespace ZapretGui.Core
                     Version = release.Tag
                 };
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
                 CleanupUpdateFiles(updateDirectory, PlanFile);
+                // Если это отмена UAC, показываем понятное сообщение
+                if (ex.Message.Contains("UAC") || ex.Message.Contains("администратора"))
+                    return Failure(ex.Message);
                 return Failure("Загрузка обновления GUI отменена.");
             }
             catch (Exception ex)
             {
                 CleanupUpdateFiles(updateDirectory, PlanFile);
-                AppLog.Error("Не удалось подготовить обновление GUI: " + ex.Message);
-                return Failure("Не удалось подготовить обновление GUI: " + ex.Message);
+                AppLog.Error("Не удалось подготовить обновление GUI: " + ex.ToString());
+                // Даём подсказку для ручной установки
+                var hint = ex is InvalidDataException || ex is FileNotFoundException || ex is System.Net.Http.HttpRequestException
+                    ? " Попробуйте скачать обновление вручную со страницы релиза."
+                    : "";
+                return Failure("Не удалось подготовить обновление GUI: " + ex.Message + hint);
             }
         }
 
@@ -474,7 +502,7 @@ namespace ZapretGui.Core
                 string.IsNullOrWhiteSpace(plan.ExpectedSha256)) return false;
             if (plan.ExpectedSha256.Length != 64 || plan.ExpectedSha256.Any(c => !Uri.IsHexDigit(c))) return false;
             if (!string.Equals(Path.GetExtension(plan.TargetPath), ".exe", StringComparison.OrdinalIgnoreCase)) return false;
-            if (!string.Equals(Path.GetFileNameWithoutExtension(plan.TargetPath), "ZapretGUI", StringComparison.OrdinalIgnoreCase)) return false;
+            if (!Path.GetFileNameWithoutExtension(plan.TargetPath).StartsWith("ZapretGUI", StringComparison.OrdinalIgnoreCase)) return false;
             if (!IsUnder(plan.StagedPath, AppPaths.TempDir) || !IsUnder(plan.HelperPath, AppPaths.TempDir)) return false;
             if (string.Equals(Path.GetFullPath(plan.TargetPath), Path.GetFullPath(plan.HelperPath), StringComparison.OrdinalIgnoreCase)) return false;
             return true;

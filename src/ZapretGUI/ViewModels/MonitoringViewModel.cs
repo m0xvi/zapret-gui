@@ -33,6 +33,7 @@ namespace ZapretGui.ViewModels
         private string _messageKey = "Info";
         private string _lastCheckText = "Проверка ещё не выполнялась";
         private DateTime _lastRecovery = DateTime.MinValue;
+        private DateTime _lastBestCheck = DateTime.MinValue;
         private int _consecutiveStrategyFailures;
         private string _failureTargetId = "";
         private const int RecoveryFailureThreshold = 2;
@@ -247,6 +248,9 @@ namespace ZapretGui.ViewModels
                     ProgressText = $"Проверяю {i + 1} из {enabled.Count}: {target.Name}…";
                     var probe = await ResourceProbe.CheckAsync(target);
                     Results.Add(probe);
+                    target.LastStatusText = probe.StatusText;
+                    target.LastStatusKey = probe.StatusKey;
+                    target.LastDetails = probe.Details;
                     ProgressValue = i + 1;
                     ProgressPercentText = $"{ProgressValue / ProgressMaximum * 100:0}%";
                 }
@@ -332,6 +336,28 @@ namespace ZapretGui.ViewModels
             MessageKey = "Warning";
             var before = _main.Bypass.GetStatus();
 
+            // P0 1.7.0: сначала пробуем профиль, привязанный к текущей сети / любой подходящий профиль
+            if (Settings.AutoSwitchProfileOnFailure && Settings.AutoSwitchProfileOnNetworkChange)
+            {
+                try
+                {
+                    var switched = await _main.ProfileAutoSwitch.TrySwitchOnFailureAsync(target, before);
+                    if (switched)
+                    {
+                        _main.Home.RefreshStatus();
+                        _main.Profiles.RefreshNetwork();
+                        Message = $"📶 Автопрофиль применён для восстановления «{target.Name}»";
+                        MessageKey = "Success";
+                        if (Settings.MonitorNotificationsEnabled) NotificationRequested?.Invoke(Message);
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Debug("[Monitoring] Ошибка автопрофиля при сбое: " + ex.Message);
+                }
+            }
+
             if (target.IsGame)
             {
                 await RecoverGameStrategyAsync(target, before);
@@ -397,9 +423,16 @@ namespace ZapretGui.ViewModels
 
         private async Task<OperationResult> StartSelectedStrategyAsync(StrategyInfo strategy, BypassStatus before)
         {
-            if (before.State == BypassState.RunningService)
+            // Бесшовное переключение с учётом актуального режима службы/процесса
+            var current = _main.Bypass.GetStatus();
+            if (current.ServiceState == ServiceState.Running
+                || current.ServiceState == ServiceState.StartPending
+                || current.ServiceState == ServiceState.StopPending)
                 return await _main.Bypass.InstallServiceAsync(strategy,
                     EngineService.GetGameFilterMode(Settings.EnginePath));
+            if (current.IsRunning)
+                return await _main.Bypass.SwitchToStrategyAsync(strategy,
+                    EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
             return await _main.Bypass.StartAsync(strategy,
                 EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
         }
@@ -460,6 +493,39 @@ namespace ZapretGui.ViewModels
         {
             if (!Settings.ResourceMonitoringEnabled || IsBusy) return;
             await CheckAllAsync();
+            // Фоновая проверка лучшей стратегии, если включено в Настройках → Сеть
+            if (Settings.AutoSwitchToBestStrategy && !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning)
+            {
+                var minutes = Math.Clamp(Settings.BestStrategyCheckMinutes, 5, 120);
+                if ((DateTime.Now - _lastBestCheck).TotalMinutes < minutes) return;
+                _lastBestCheck = DateTime.Now;
+                try { await TrySwitchToBestStrategyAsync(); } catch { }
+            }
+        }
+
+        private async Task TrySwitchToBestStrategyAsync()
+        {
+            var before = _main.Bypass.GetStatus();
+            var candidates = _main.Strategies.Items.Where(s => !s.Name.Equals(before.StrategyName, StringComparison.OrdinalIgnoreCase)).Take(6).ToList();
+            if (candidates.Count == 0) return;
+            // Тестируем лёгкий ресурс (Google) для сравнения скорости
+            var target = Targets.FirstOrDefault(t => t.Enabled) ?? Targets.FirstOrDefault();
+            if (target == null) return;
+            var current = await _main.Bypass.TestStrategyOnResourceAsync(_main.Strategies.Items.FirstOrDefault(s => s.Name == before.StrategyName) ?? candidates[0], target);
+            long currentMs = current.Ok ? current.Milliseconds : long.MaxValue;
+            (StrategyInfo Strategy, ResourceProbeResult Probe) best = (null!, null!);
+            foreach (var c in candidates)
+            {
+                var probe = await _main.Bypass.TestStrategyOnResourceAsync(c, target);
+                if (!probe.Ok) continue;
+                if (best.Strategy == null || probe.Milliseconds + 15 < currentMs && probe.Milliseconds < (best.Probe?.Milliseconds ?? long.MaxValue))
+                    best = (c, probe);
+            }
+            if (best.Strategy == null || best.Probe == null || currentMs != long.MaxValue && best.Probe!.Milliseconds + 15 >= currentMs) return;
+            _main.StrategiesPage.SelectAsDefault(best.Strategy);
+            var res = await StartSelectedStrategyAsync(best.Strategy, before);
+            if (res.Ok)
+                AppLog.Info($"[Фон] Авто-переключение на лучшую стратегию «{best.Strategy!.Name}» ({best.Probe!.Milliseconds} мс vs {currentMs} мс)");
         }
 
         private int GetInterval() => Math.Clamp(Settings.ResourceMonitoringIntervalMinutes, 5, 120);
