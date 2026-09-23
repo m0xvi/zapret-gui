@@ -99,6 +99,11 @@
         <Setter Property="CornerRadius" Value="{DynamicResource CardRadius}" />
         <Setter Property="Padding" Value="18" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.14" Color="Black" />
+            </Setter.Value>
+        </Setter>
     </Style>
 
     <Style x:Key="InnerCard" TargetType="Border">
@@ -772,6 +777,9 @@
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Root" Property="Background" Value="{DynamicResource CardHoverBrush}" />
                         </Trigger>
@@ -973,6 +981,128 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
         <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                        <StackPanel>
+                            <ToggleButton x:Name="HeaderSite" IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Background="Transparent" BorderThickness="0" Cursor="Hand" FocusVisualStyle="{x:Null}" HorizontalContentAlignment="Stretch" Padding="0">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Grid Background="Transparent">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border x:Name="ChevronBox" Width="20" Height="20" CornerRadius="6" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                                                <TextBlock x:Name="Arrow" Text="&#xE76C;" FontFamily="{DynamicResource IconFont}" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                                                    <TextBlock.RenderTransform>
+                                                        <RotateTransform Angle="0" />
+                                                    </TextBlock.RenderTransform>
+                                                </TextBlock>
+                                            </Border>
+                                            <ContentPresenter Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                                        </Grid>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ChevronBox" Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                                                <Setter TargetName="Arrow" Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ChevronBox" Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                                                <Setter TargetName="Arrow" Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                <Setter TargetName="Arrow" Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <RotateTransform Angle="90" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="Arrow" Storyboard.TargetProperty="RenderTransform.(RotateTransform.Angle)" From="0" To="90" Duration="0:0:0.18">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <CubicEase EasingMode="EaseOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="Arrow" Storyboard.TargetProperty="RenderTransform.(RotateTransform.Angle)" From="90" To="0" Duration="0:0:0.14">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <CubicEase EasingMode="EaseIn" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.ExitActions>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <ContentPresenter ContentSource="Header" />
+                            </ToggleButton>
+                            <Border x:Name="ExpandSite" Visibility="Collapsed" Margin="0,8,0,0" Opacity="0">
+                                <Border.RenderTransform>
+                                    <TranslateTransform Y="-6" />
+                                </Border.RenderTransform>
+                                <ContentPresenter />
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.18" />
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" From="-6" To="0" Duration="0:0:0.18">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="Opacity" From="1" To="0" Duration="0:0:0.14" />
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" From="0" To="-6" Duration="0:0:0.14">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseIn" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!-- Запрет выделения всего кроме текста — v1.15.0: все кроме TextBox не фокусируются, без рамки фокуса -->
+    <Style TargetType="TextBlock">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    </Style>
+    <Style TargetType="Border">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    </Style>
+    <Style TargetType="StackPanel">
+        <Setter Property="Focusable" Value="False" />
+    </Style>
+    <Style TargetType="Grid">
+        <Setter Property="Focusable" Value="False" />
     </Style>
 
 </ResourceDictionary>

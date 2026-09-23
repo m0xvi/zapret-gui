@@ -39,6 +39,21 @@ namespace ZapretGui.Core
                 MonitorTarget.CreateBuiltIn("GitHub (обновления)", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
             };
 
+            // Доп цели из utils/targets.txt (если включено и файл есть) — как в Flowseal test zapret.ps1
+            if (settings != null && settings.UseTargetsTxtForStrategyTest && !string.IsNullOrWhiteSpace(settings.EnginePath))
+            {
+                try
+                {
+                    var extras = TargetsTxtLoader.LoadFromEngine(settings.EnginePath);
+                    foreach (var ex in extras)
+                    {
+                        if (!list.Any(x => x.Host.Equals(ex.Host, StringComparison.OrdinalIgnoreCase)))
+                            list.Add(ex);
+                    }
+                }
+                catch { }
+            }
+
             if (settings?.MonitorTargets != null)
             {
                 foreach (var custom in settings.MonitorTargets.Where(t => t.Enabled && !t.IsBuiltIn))
@@ -51,6 +66,12 @@ namespace ZapretGui.Core
             }
 
             return list;
+        }
+
+        public static IReadOnlyList<MonitorTarget> GetTargetsTxtExtras(AppSettings? settings)
+        {
+            if (settings == null || !settings.UseTargetsTxtForStrategyTest || string.IsNullOrWhiteSpace(settings.EnginePath)) return Array.Empty<MonitorTarget>();
+            try { return TargetsTxtLoader.LoadFromEngine(settings.EnginePath); } catch { return Array.Empty<MonitorTarget>(); }
         }
 
         public static Task<List<ConnectionCheck>> RunAsync(CancellationToken ct = default)

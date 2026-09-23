@@ -1,10 +1,9 @@
 <UserControl x:Class="ZapretGui.Views.DiagnosticsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                  PanningMode="VerticalOnly" Padding="0,0,4,0">
-        <Grid Margin="24,20,20,26">
+        <Grid Margin="24,20,20,32">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />
@@ -32,24 +31,15 @@
                 </WrapPanel>
             </Grid>
 
-            <!-- Переключатель вкладок -->
-            <WrapPanel Grid.Row="1" Margin="0,14,0,14">
-                <ToggleButton Style="{StaticResource ChipToggle}" Content="⚡ Экспресс (Мониторинг)"
-                              IsChecked="{Binding IsExpressTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
-                <ToggleButton Style="{StaticResource ChipToggle}" Content="🌐 Проверка DPI (34 узла)"
-                              IsChecked="{Binding IsDpiTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
-                <ToggleButton Style="{StaticResource ChipToggle}" Content="🎙️ Discord Voice (RTC)"
-                              IsChecked="{Binding IsVoiceRtcTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
-                <ToggleButton Style="{StaticResource ChipToggle}" Content="🔬 Deep Check (Матрица)"
-                              IsChecked="{Binding IsDeepCheckTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
-                <ToggleButton Style="{StaticResource ChipToggle}" Content="🛠 Аудит системы"
-                              IsChecked="{Binding IsSystemTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
-                <ToggleButton Style="{StaticResource ChipToggle}" Content="📊 Сводные результаты"
-                              IsChecked="{Binding IsResultsTabSelected, Mode=TwoWay}" Margin="0,0,8,6" />
-            </WrapPanel>
+            <!-- Сегментированный переключатель вкладок — sticky, единый стиль с Каталогом стратегий -->
+            <StackPanel Grid.Row="1" Margin="0,14,0,0">
+                <controls:SegmentedControl ItemsSource="{Binding DiagnosticsTabs}" SelectedIndex="{Binding SelectedSubTab, Mode=TwoWay}" MinWidth="620" />
+                <TextBlock Style="{StaticResource DimText}" Text="{Binding DiagnosticsTabHintText}" Margin="0,6,0,12" FontSize="11" TextWrapping="Wrap" Opacity="0.85" />
+            </StackPanel>
 
-            <!-- Содержимое активной вкладки -->
-            <StackPanel Grid.Row="2">
+            <!-- Содержимое активной вкладки — скроллится, табы остаются на месте -->
+            <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly" Padding="0,0,4,0">
+                <StackPanel>
 
                 <!-- ==================== ВКЛАДКА 0: ЭКСПРЕСС / МОНИТОРИНГ ==================== -->
                 <StackPanel Visibility="{Binding IsExpressTabSelected, Converter={StaticResource BoolToVis}}">
@@ -109,13 +99,24 @@
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
                                 <RowDefinition Height="*" />
                             </Grid.RowDefinitions>
                             <WrapPanel Orientation="Horizontal" Margin="8,4,8,12">
                                 <TextBlock Style="{StaticResource SectionText}" Text="ОТСЛЕЖИВАЕМЫЕ РЕСУРСЫ" VerticalAlignment="Center" />
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding Monitoring.LastCheckText}" Margin="14,0,0,0" VerticalAlignment="Center" />
                             </WrapPanel>
-                            <ListBox Grid.Row="1" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Monitoring.Targets}"
+                            <Border Grid.Row="1" Margin="8,0,8,8" Padding="10,8" CornerRadius="8" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource InfoBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
+                                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Проверка — когда сайт не открывается: «Экспресс» — 10 сек без остановки обхода, «DPI 34 узла» — анализ фильтра, результаты теперь справа от ресурса (иконка корзины остаётся)." />
+                                </Grid>
+                            </Border>
+                            <ListBox Grid.Row="2" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Monitoring.Targets}"
                                      SelectedItem="{Binding Monitoring.SelectedTarget, Mode=TwoWay}" Background="Transparent"
                                      ItemContainerStyle="{StaticResource CompactRowItemStyle}"
                                      ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -133,10 +134,15 @@
                                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding Name}" FontWeight="SemiBold" />
                                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}" />
                                             </StackPanel>
-                                            <Button Grid.Column="2" Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
-                                                    Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                    CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
-                                                    ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" />
+                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding LastStatusText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                           Foreground="{Binding LastStatusKey, Converter={StaticResource SeverityBrush}}"
+                                                           Visibility="{Binding LastStatusText, Converter={StaticResource StringToVis}}" ToolTip="{Binding LastDetails}" />
+                                                <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
+                                                        Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                        CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                                                        ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" />
+                                            </StackPanel>
                                         </Grid>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
@@ -611,19 +617,21 @@
                     <Border Style="{StaticResource Card}">
                         <Grid>
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <StackPanel Margin="0,0,12,0">
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE81B;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                                 <TextBlock Style="{StaticResource SectionText}" Text="АУДИТ СИСТЕМЫ И ПРАВ" />
-                                <TextBlock Style="{StaticResource MutedText}"
-                                           Text="Проверка прав администратора, файлов движка, служб Windows, драйвера WinDivert и сетевых конфликтов." TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11"
+                                           Text="Права, файлы движка, службы, драйвер WinDivert и сеть — одним кликом." TextWrapping="Wrap" />
                             </StackPanel>
-                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                <Button Style="{StaticResource PrimaryButton}" Content="Запустить аудит"
-                                        Command="{Binding RunCommand}"
-                                        ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
-                            </WrapPanel>
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Запустить аудит" Padding="14,7" MinHeight="34"
+                                    Command="{Binding RunCommand}" VerticalAlignment="Center"
+                                    ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
                         </Grid>
                     </Border>
 
@@ -820,7 +828,7 @@
                     </Border>
                 </StackPanel>
 
-            </StackPanel>
+                </StackPanel>
+            </ScrollViewer>
         </Grid>
-    </ScrollViewer>
 </UserControl>
