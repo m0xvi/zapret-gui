@@ -232,6 +232,35 @@ namespace ZapretGui.Core
         }
 
         /// <summary>
+        /// Бесшовное переключение стратегии без ручной остановки обхода.
+        /// Сохраняет текущий режим: если обход запущен как служба — переустанавливает службу
+        /// с новой стратегией, если как отдельный процесс — перезапускает процесс.
+        /// Если обход выключен — просто запускает стратегию.
+        /// </summary>
+        public async Task<OperationResult> SwitchToStrategyAsync(StrategyInfo strategy, GameFilterMode gameFilter, bool showConsole,
+            CancellationToken ct = default)
+        {
+            var status = GetStatus();
+            // Служба имеет приоритет: если она Running/StartPending/StopPending — переустановку службы,
+            // даже если winws-процесс ещё не виден (гонка при старте). Это решает кейс «автостратегия
+            // как служба → нельзя переключить на обычную без ручной остановки».
+            if (status.ServiceState == ServiceState.Running
+                || status.ServiceState == ServiceState.StartPending
+                || status.ServiceState == ServiceState.StopPending)
+            {
+                AppLog.SvcInfo($"Бесшовное переключение: служба zapret с «{status.ServiceStrategy}» → «{strategy.Name}»");
+                return await InstallServiceAsync(strategy, gameFilter, ct).ConfigureAwait(false);
+            }
+            if (status.IsRunning)
+            {
+                AppLog.SvcInfo($"Бесшовное переключение: standalone «{status.StrategyName}» → «{strategy.Name}»");
+                await StopAsync(ct).ConfigureAwait(false);
+                return await StartAsync(strategy, gameFilter, showConsole, ct).ConfigureAwait(false);
+            }
+            return await StartAsync(strategy, gameFilter, showConsole, ct).ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// Запускает стратегию во временном режиме, проверяет YouTube/Discord/GitHub
         /// и затем возвращает прежнее состояние обхода. Настройки пользователя не меняются.
         /// </summary>

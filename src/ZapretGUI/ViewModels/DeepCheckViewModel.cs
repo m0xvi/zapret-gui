@@ -324,10 +324,11 @@ namespace ZapretGui.ViewModels
             // timeout, а не тайм-аут отдельной пробы.
             _cts = new CancellationTokenSource(TimeSpan.FromMinutes(30));
             var ct = _cts.Token;
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Глубокая проверка", "DeepCheck — последовательная проверка 7 слоёв + DPI-матрица под каждой стратегией", "Подготовка…", 0, false, true, () => _cts?.Cancel())); } catch {}
 
             try
             {
-                var progress = new Progress<string>(UpdateProgress);
+                var progress = new Progress<string>(s => { UpdateProgress(s); try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(s, "Глубокая проверка…", null, false)); } catch {} });
                 ProviderContext = (Settings.ProviderContext ?? new ProviderContext()).DisplayText;
                 ProviderLimitations = BuildProviderLimitations(Settings.ProviderContext);
                 AddProviderFinding(Settings.ProviderContext);
@@ -490,6 +491,7 @@ namespace ZapretGui.ViewModels
                 _cts = null;
                 ProgressText = "";
                 IsRunning = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1082,7 +1084,7 @@ namespace ZapretGui.ViewModels
             if (answer != System.Windows.MessageBoxResult.Yes) return;
 
             Message = "Применяю подтверждённую рекомендацию…";
-            var result = await _main.Bypass.StartAsync(strategy, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+            var result = await _main.Bypass.SwitchToStrategyAsync(strategy, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
             if (result.Ok)
             {
                 Settings.SelectedStrategy = strategy.Name;
