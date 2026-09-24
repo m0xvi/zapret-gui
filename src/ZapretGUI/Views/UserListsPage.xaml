@@ -92,6 +92,8 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -127,7 +129,7 @@
                     </Grid>
 
                     <!-- Пачка: массовая вставка доменов — улучшена: детальный счётчик + превью чипов -->
-                    <Border Margin="0,0,0,10" Padding="12,10" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Visibility="{Binding CanEditCurrentList, Converter={StaticResource BoolToVis}}">
+                    <Border Grid.Row="1" Margin="0,0,0,10" Padding="12,10" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Visibility="{Binding CanEditCurrentList, Converter={StaticResource BoolToVis}}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -162,7 +164,7 @@
                     </Border>
 
                     <!-- Баннеры состояния -->
-                    <StackPanel Grid.Row="1" Margin="0,0,0,8">
+                    <StackPanel Grid.Row="2" Margin="0,0,0,8">
                         <Border Padding="10,8" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
                                 Visibility="{Binding IsBuiltInList, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
                             <TextBlock Style="{StaticResource BodyText}" Text="🔒 Встроенный список Flowseal — только чтение. Редактируйте пользовательскую копию (list-*-user.txt)." TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold"/>
@@ -198,7 +200,7 @@
 
 
                     <!-- Поиск по списку и статусная строка -->
-                    <Grid Grid.Row="2" Margin="0,0,0,8">
+                    <Grid Grid.Row="3" Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="220" />
                             <ColumnDefinition Width="*" />
@@ -232,13 +234,13 @@
                     </Grid>
 
                     <!-- Подсказка: максимально минималистично, не растянута -->
-                    <TextBlock Margin="0,4,0,2" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Opacity="0.7" MaxWidth="720" HorizontalAlignment="Left">
+                    <TextBlock Grid.Row="4" Margin="0,4,0,6" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Opacity="0.7" MaxWidth="720" HorizontalAlignment="Left">
                         <Run FontFamily="{DynamicResource IconFont}" Text="&#xE946; " Foreground="{DynamicResource TextMutedBrush}" FontSize="11" />
                         <Run Text="Списки — точечный обход: добавь домен → сохрани в «Профили». Двойной клик/Enter — править, «Проверка» — диагностика." />
                     </TextBlock>
 
                     <!-- Таблица / Список записей -->
-                    <Grid Grid.Row="3">
+                    <Grid Grid.Row="5">
                         <ListBox Style="{StaticResource PlainListBox}" Background="Transparent"
                                  ItemsSource="{Binding EntriesView}"
                                  SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
