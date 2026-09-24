@@ -19,7 +19,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Ellipse Width="6" Height="6" Fill="#FF00E676" VerticalAlignment="Center" Margin="0,0,6,0" />
-                    <TextBlock Text="МЕТРИКИ" FontSize="10" FontWeight="SemiBold" Foreground="White" Opacity="0.85" VerticalAlignment="Center" LetterSpacing="0.5" />
+                    <TextBlock Text="МЕТРИКИ" FontSize="10" FontWeight="SemiBold" Foreground="White" Opacity="0.85" VerticalAlignment="Center" />
                 </StackPanel>
                 <Button Grid.Column="1" Style="{StaticResource SmallIconButton}" Content="&#xE8BB;" FontSize="10" Foreground="White" Opacity="0.7" Width="18" Height="18" VerticalAlignment="Center" Click="Close_Click" ToolTip="Скрыть метрики (включить снова в Настройки → Сеть → Метрики)" />
             </Grid>
