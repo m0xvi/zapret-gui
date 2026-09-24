@@ -358,14 +358,22 @@ namespace ZapretGui.ViewModels
         public string RealTimePingStatusKey => RealTimePing?.StatusKey ?? "Muted";
         public string RealTimePingTooltip => RealTimePing?.TooltipText ?? "Живой мониторинг сетевой задержки (RTT)…";
 
-        // Тулбар-метрики — как в MSI Afterburner, рядом с иконкой, обновление каждую минуту
+        // Тулбар-метрики — как в MSI Afterburner, на панели задач внизу (вертикально)
         public bool ToolbarMetricsVisible => Settings.ToolbarMetricsEnabled;
         public string ToolbarMetricsText => BuildToolbarMetricsText();
         public string ToolbarMetricsTooltip => "Метрики на панели задач внизу (как в MSI Afterburner) — настройте в Настройки → Сеть → Метрики на панели задач";
+        public System.Collections.Generic.IReadOnlyList<ToolbarMetricsRow> ToolbarMetricsRows => BuildToolbarMetricsRows();
 
         private string BuildToolbarMetricsText()
         {
-            if (!Settings.ToolbarMetricsEnabled) return "";
+            // Горизонтальная строка для совместимости — теперь основной вертикальный список
+            try { return string.Join("  ", BuildToolbarMetricsRows().Select(r => r.CompactText)); } catch { return MonitoringSummaryText; }
+        }
+
+        private System.Collections.Generic.IReadOnlyList<ToolbarMetricsRow> BuildToolbarMetricsRows()
+        {
+            var list = new System.Collections.Generic.List<ToolbarMetricsRow>();
+            if (!Settings.ToolbarMetricsEnabled) return list;
             try
             {
                 var visible = Settings.ToolbarMetricsVisibleTargets;
@@ -374,16 +382,24 @@ namespace ZapretGui.ViewModels
                     targets = targets.Where(t => visible.Any(v => v.Equals(t.Name, StringComparison.OrdinalIgnoreCase))).ToList();
                 if (targets.Count == 0) targets = Monitoring.Targets.Take(4).ToList();
                 var results = Monitoring.Results.ToList();
-                var parts = new System.Collections.Generic.List<string>();
-                foreach (var tgt in targets.Take(4))
+                foreach (var tgt in targets.Take(6))
                 {
                     var res = results.FirstOrDefault(r => r.Target.Name == tgt.Name);
-                    if (res != null) parts.Add($"{tgt.Name} {res.StatusText}");
-                    else parts.Add($"{tgt.Name} …");
+                    if (res != null)
+                    {
+                        var latency = res.Ok ? $"{res.Milliseconds} мс" : "—";
+                        var key = res.StatusKey;
+                        list.Add(new ToolbarMetricsRow(tgt.Name, latency, key, res.Ok));
+                    }
+                    else
+                    {
+                        list.Add(new ToolbarMetricsRow(tgt.Name, "…", "Info", false));
+                    }
                 }
-                return string.Join(" • ", parts);
             }
-            catch { return MonitoringSummaryText; }
+            catch {}
+            if (list.Count == 0) list.Add(new ToolbarMetricsRow("Нет данных", "…", "Muted", false));
+            return list;
         }
 
         public void RefreshToolbarMetrics()
@@ -391,6 +407,7 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ToolbarMetricsVisible));
             Raise(nameof(ToolbarMetricsText));
             Raise(nameof(ToolbarMetricsTooltip));
+            Raise(nameof(ToolbarMetricsRows));
             // Перезапуск таймера при изменении интервала
             try
             {
@@ -431,6 +448,7 @@ namespace ZapretGui.ViewModels
         {
             // Обновление каждую минуту — как в MSI Afterburner
             Raise(nameof(ToolbarMetricsText));
+            Raise(nameof(ToolbarMetricsRows));
             Raise(nameof(MonitoringSummaryText));
             Raise(nameof(RealTimePingSummaryText));
             // Обновляем позицию окна на панели задач (на случай перемещения таскбара)
@@ -702,6 +720,23 @@ namespace ZapretGui.ViewModels
         {
             RequestToggleOverlay?.Invoke();
         }
+
+
+    public sealed class ToolbarMetricsRow
+    {
+        public ToolbarMetricsRow(string name, string latency, string statusKey, bool ok)
+        {
+            Name = name;
+            Latency = latency;
+            StatusKey = statusKey;
+            IsOk = ok;
+        }
+        public string Name { get; }
+        public string Latency { get; }
+        public string StatusKey { get; }
+        public bool IsOk { get; }
+        public string CompactText => $"{Name} {Latency}";
+    }
 
         public void NotifyAutoSwitchChanged()
         {

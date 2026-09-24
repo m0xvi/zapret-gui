@@ -10,12 +10,12 @@ namespace ZapretGui.Views
         {
             InitializeComponent();
             Loaded += OnLoaded;
+            SizeChanged += (_, _) => UpdatePosition();
         }
 
         private void OnLoaded(object sender, RoutedEventArgs e)
         {
             UpdatePosition();
-            // Обновляем позицию при изменении разрешения
             SystemEvents.DisplaySettingsChanged += (_, _) => Dispatcher.Invoke(UpdatePosition);
         }
 
@@ -24,14 +24,13 @@ namespace ZapretGui.Views
             try
             {
                 var workArea = SystemParameters.WorkArea;
-                var screenWidth = SystemParameters.PrimaryScreenWidth;
-                var screenHeight = SystemParameters.PrimaryScreenHeight;
-                // Позиция прямо над таскбаром, справа (как в MSI Afterburner)
-                Left = workArea.Right - Width - 8;
-                // Если таскбар снизу — WorkArea.Bottom < ScreenHeight, ставим над ним
-                // Если таскбар сверху/сбоку — всё равно ставим у нижнего края WorkArea
-                Top = workArea.Bottom - Height - 4;
-                // На случай если таскбар сверху — корректируем
+                var w = ActualWidth > 0 ? ActualWidth : Width;
+                if (double.IsNaN(w) || w <= 0) w = 170;
+                var h = ActualHeight > 0 ? ActualHeight : Height;
+                if (double.IsNaN(h) || h <= 0) h = 120;
+                // Вертикальная панель над треем справа, как в MSI Afterburner
+                Left = workArea.Right - w - 8;
+                Top = workArea.Bottom - h - 4;
                 if (Top < workArea.Top) Top = workArea.Top + 4;
                 if (Left < workArea.Left) Left = workArea.Left + 4;
             }
@@ -40,7 +39,6 @@ namespace ZapretGui.Views
 
         private void Close_Click(object sender, RoutedEventArgs e)
         {
-            // Скрываем, но не закрываем полностью — пользователь может снова включить в настройках
             Hide();
             if (DataContext is ViewModels.MainViewModel vm)
             {
@@ -53,7 +51,6 @@ namespace ZapretGui.Views
         protected override void OnSourceInitialized(EventArgs e)
         {
             base.OnSourceInitialized(e);
-            // Делаем окно некликабельным для фокуса, но кликабельным для кнопки закрытия
             var hwnd = new WindowInteropHelper(this).Handle;
             var extendedStyle = NativeMethods.GetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE);
             NativeMethods.SetWindowLong(hwnd, NativeMethods.GWL_EXSTYLE, extendedStyle | NativeMethods.WS_EX_TOOLWINDOW);
