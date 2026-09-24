@@ -202,9 +202,44 @@ namespace ZapretGui.Core
                 !IsSafeReleaseUrl(asset.DownloadUrl, repository))
                 return Failure("Ссылка на EXE не принадлежит указанному GitHub-репозиторию.");
 
-            var target = Process.GetCurrentProcess().MainModule?.FileName;
+            // Надёжное определение текущего exe: MainModule может быть пустым в single-file / при запуске из dll
+            var target = Environment.ProcessPath;
             if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
+                target = Process.GetCurrentProcess().MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
+            {
+                try { target = System.Reflection.Assembly.GetEntryAssembly()?.Location; } catch {}
+            }
+            if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
+            {
+                try { target = System.Reflection.Assembly.GetExecutingAssembly().Location; } catch {}
+            }
+            if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
+            {
+                // Последняя попытка — база приложения (для dotnet --roll-forward)
+                var baseDir = AppContext.BaseDirectory;
+                if (!string.IsNullOrWhiteSpace(baseDir))
+                {
+                    var candidate = Path.Combine(baseDir.TrimEnd(Path.DirectorySeparatorChar), "ZapretGUI.exe");
+                    if (File.Exists(candidate)) target = candidate;
+                    else
+                    {
+                        var dllCandidate = Path.Combine(baseDir.TrimEnd(Path.DirectorySeparatorChar), "ZapretGUI.dll");
+                        if (File.Exists(dllCandidate)) target = dllCandidate;
+                    }
+                }
+            }
+            if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
+            {
+                AppLog.Warn($"[GuiUpdate] Не удалось определить exe: ProcessPath={Environment.ProcessPath}, MainModule={Process.GetCurrentProcess().MainModule?.FileName}, EntryLocation={System.Reflection.Assembly.GetEntryAssembly()?.Location}");
                 return Failure("Не удалось определить текущий exe для обновления.");
+            }
+            // Single-file публикуется как dll+exe, но Location может указывать на dll — нормализуем к exe
+            if (target.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                var exeCandidate = Path.ChangeExtension(target, ".exe");
+                if (File.Exists(exeCandidate)) target = exeCandidate;
+            }
             var targetFileName = Path.GetFileNameWithoutExtension(target);
             if (!targetFileName.StartsWith("ZapretGUI", StringComparison.OrdinalIgnoreCase))
                 return Failure("Самообновление доступно только для ZapretGUI.exe (текущий файл: " + Path.GetFileName(target) + "). Переименуйте файл в ZapretGUI.exe или скачайте обновление вручную со страницы релиза.");
