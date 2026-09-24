@@ -64,7 +64,13 @@ namespace ZapretGui.Core
             new() { Domain = "microsoft.com", Title = "Microsoft", Category = "Облачные сервисы", Tier = 2 },
             new() { Domain = "wikipedia.org", Title = "Википедия", Category = "Энциклопедии", Tier = 2 },
             new() { Domain = "archive.org", Title = "Internet Archive", Category = "Архивы", Tier = 2 },
-            new() { Domain = "github.com", Title = "GitHub", Category = "Разработка", Tier = 2 }
+            new() { Domain = "github.com", Title = "GitHub", Category = "Разработка", Tier = 2 },
+            // Tier 2+: Google/YouTube — критичны для регионов с жёсткой блокировкой YouTube (см. отчёт 24.09: youtube.com FAIL везде)
+            new() { Domain = "google.com", Title = "Google", Category = "Поисковые / Сервисы", Tier = 2, Recommended = true },
+            new() { Domain = "www.google.com", Title = "Google WWW", Category = "Поисковые / Сервисы", Tier = 2 },
+            new() { Domain = "googlevideo.com", Title = "Google Video CDN", Category = "Видео CDN", Tier = 2 },
+            new() { Domain = "youtube.com", Title = "YouTube", Category = "Видео", Tier = 2 },
+            new() { Domain = "yt3.ggpht.com", Title = "YouTube Images", Category = "Видео", Tier = 2 }
         };
 
         /// <summary>

@@ -63,10 +63,13 @@ namespace ZapretGui.Core
                 ("multisplit", "1", "none", "auto", "ts", 0, true, "Многосегментный оверлей TCP (multisplit, pos=1, seqovl=1) + fooling ts"),
                 ("multisplit", "midsld", "none", "auto", "ts", 0, true, "Многосегментный оверлей TCP (multisplit, midsld, seqovl=1) + fooling ts"),
 
-                // 3. Семейство гибридов с подстановкой SNI (Google, Microsoft, Cloudflare)
+                // 3. Семейство гибридов с подстановкой SNI (Google, Microsoft, Cloudflare) — усилено для YouTube-регионов
                 ("fake,split2", "1", "www.google.com", "auto", "ts", 11, false, "Гибрид Fake TLS + Split2 (pos=1) + Google SNI + fooling ts"),
                 ("fake,split2", "1", "www.google.com", "auto", "badsum", 6, false, "Гибрид Fake TLS + Split2 (pos=1) + Google SNI + badsum"),
                 ("fake,split2", "sniext", "www.google.com", "auto", "badsum", 6, false, "Гибрид Fake TLS + Split2 (sniext) + Google SNI + badsum"),
+                ("fake,split2", "midsld", "google.com", "auto", "ts", 11, false, "Гибрид Fake TLS + Split2 (midsld) + Google SNI + fooling ts (YouTube-регионы)"),
+                ("fake,multisplit", "midsld", "googlevideo.com", "auto", "ts", 11, true, "Гибрид Fake TLS + Multisplit (midsld) + GoogleVideo SNI + ts (YouTube CDN)"),
+                ("fake,split2", "1", "youtube.com", "auto", "ts", 11, false, "Гибрид Fake TLS + Split2 (pos=1) + YouTube SNI + ts"),
                 ("fake,split2", "1", "www.microsoft.com", "auto", "badsum", 6, false, "Гибрид Fake TLS + Split2 (pos=1) + Microsoft SNI + badsum"),
                 ("fake,split2", "sniext", "www.cloudflare.com", "auto", "badseq", 6, false, "Гибрид Fake TLS + Split2 (sniext) + Cloudflare SNI + badseq"),
 
