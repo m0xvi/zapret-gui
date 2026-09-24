@@ -698,6 +698,29 @@ namespace ZapretGui.ViewModels
             set { Settings.WatchdogNotifyUser = value; OnSettingChanged(); }
         }
 
+        public bool DisableQuicFake
+        {
+            get => Settings.DisableQuicFake;
+            set { Settings.DisableQuicFake = value; SettingsStore.Save(Settings); Raise(nameof(DisableQuicFake)); Status = value ? "QUIC fake отключён для теста YouTube" : "QUIC fake включён"; }
+        }
+        public bool PreferIPv4ForBypass
+        {
+            get => Settings.PreferIPv4ForBypass;
+            set { Settings.PreferIPv4ForBypass = value; SettingsStore.Save(Settings); Raise(nameof(PreferIPv4ForBypass)); Status = value ? "Приоритет IPv4 включён" : "IPv6 разрешён"; }
+        }
+        public bool UseDohForBlockedHosts
+        {
+            get => Settings.UseDohForBlockedHosts;
+            set { Settings.UseDohForBlockedHosts = value; SettingsStore.Save(Settings); Raise(nameof(UseDohForBlockedHosts)); Status = value ? "DoH включён для заблокированных" : "DoH выключен"; }
+        }
+        public string YoutubeSniOverride
+        {
+            get => Settings.YoutubeSniOverride;
+            set { Settings.YoutubeSniOverride = (value ?? "").Trim(); SettingsStore.Save(Settings); Raise(nameof(YoutubeSniOverride)); Raise(nameof(YoutubeSniDisplay)); Status = string.IsNullOrWhiteSpace(value) ? "YouTube SNI: авто" : $"YouTube SNI: {value}"; }
+        }
+        public string YoutubeSniDisplay => string.IsNullOrWhiteSpace(Settings.YoutubeSniOverride) ? "Авто (как в стратегии)" : Settings.YoutubeSniOverride;
+        public System.Collections.Generic.List<string> YoutubeSniOptions { get; } = new() { "", "google.com", "www.google.com", "googlevideo.com", "youtube.com", "yt3.ggpht.com", "cloudflare.com" };
+
         public bool RealTimePingEnabled
         {
             get => Settings.RealTimePingEnabled;
@@ -1033,6 +1056,11 @@ namespace ZapretGui.ViewModels
             Raise(nameof(WatchdogAutoRestart));
             Raise(nameof(WatchdogNotifyUser));
             Raise(nameof(RealTimePingEnabled));
+            Raise(nameof(DisableQuicFake));
+            Raise(nameof(PreferIPv4ForBypass));
+            Raise(nameof(UseDohForBlockedHosts));
+            Raise(nameof(YoutubeSniOverride));
+            Raise(nameof(YoutubeSniDisplay));
             Raise(nameof(RealTimePingIntervalSeconds));
             Raise(nameof(ToolbarMetricsIntervalSeconds));
             Raise(nameof(ToolbarMetricsIntervalIndex));

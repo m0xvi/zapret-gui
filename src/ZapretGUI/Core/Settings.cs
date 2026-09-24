@@ -165,6 +165,18 @@ namespace ZapretGui.Core
         public double TaskbarMetricsWidth { get; set; } = 170;
         public double TaskbarMetricsHeight { get; set; } = -1;
 
+        // === Улучшения для строгих регионов (YouTube FAIL) ===
+        /// <summary>Отключить fake QUIC для YouTube (помогает в регионах где QUIC режется отдельно, 24.09 отчёт: YouTube 0/13)</summary>
+        public bool DisableQuicFake { get; set; } = false;
+        /// <summary>Предпочитать IPv4 (отключает IPv6 для обхода, помогает при fec0:: DNS)</summary>
+        public bool PreferIPv4ForBypass { get; set; } = false;
+        /// <summary>Использовать DoH для заблокированных хостов (1.1.1.1)</summary>
+        public bool UseDohForBlockedHosts { get; set; } = false;
+        /// <summary>SNI для YouTube-трафика (googlevideo.com / google.com / youtube.com)</summary>
+        public string YoutubeSniOverride { get; set; } = "";
+        /// <summary>Пер-хост стратегии: имя хоста → имя стратегии</summary>
+        public Dictionary<string, string> HostSpecificStrategies { get; set; } = new();
+
         /// <summary>Включить автоматический мониторинг запущенных игр.</summary>
         public bool GameDetectionEnabled { get; set; } = true;
 

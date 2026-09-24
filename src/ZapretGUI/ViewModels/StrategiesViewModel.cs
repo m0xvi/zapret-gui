@@ -616,7 +616,8 @@ namespace ZapretGui.ViewModels
 
         public List<string> BuilderGeneratedArgs => VisualStrategyBuilder.BuildArgs(
             Settings.EnginePath, BuilderDesyncMode, BuilderSplitPos, BuilderFakeSni, BuilderTtl,
-            BuilderFooling, BuilderUseMultisplit, BuilderUseGameUdp, BuilderUseHostlist, BuilderUseIpSet);
+            BuilderFooling, BuilderUseMultisplit, BuilderUseGameUdp, BuilderUseHostlist, BuilderUseIpSet,
+            repeats: 0, youtubeSni: Settings.YoutubeSniOverride, disableQuicFake: Settings.DisableQuicFake);
 
         public string BuilderGeneratedArgsPreview => string.Join(" ", BuilderGeneratedArgs);
 

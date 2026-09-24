@@ -151,13 +151,49 @@ namespace ZapretGui.Core
         // ---------------------------------------------------------------- запуск / остановка
 
         public List<string> BuildArgs(StrategyInfo strategy, GameFilterMode gameFilter)
-            => BypassArgumentBuilder.Build(
+        {
+            var args = BypassArgumentBuilder.Build(
                 strategy,
                 gameFilter,
                 _settings.GameFilterProfileId,
                 _settings.CustomGameFilterTcpPorts,
                 _settings.CustomGameFilterUdpPorts,
                 _settings.SelectedFakeSni);
+            // Применяем YouTube-специфичные настройки для строгих регионов
+            if (!string.IsNullOrWhiteSpace(_settings.YoutubeSniOverride))
+            {
+                // Заменяем SNI в QUIC-блоке на youtube SNI если задан
+                for (int i = 0; i < args.Count; i++)
+                {
+                    if (args[i].StartsWith("--dpi-desync-fake-quic-mod=") && args[i].Contains("sni="))
+                    {
+                        // уже есть sni, заменяем
+                        var parts = args[i].Split(new[] { "sni=" }, System.StringSplitOptions.None);
+                        var prefix = parts[0];
+                        var rest = parts[1];
+                        var commaIdx = rest.IndexOf(',');
+                        var suffix = commaIdx >= 0 ? rest.Substring(commaIdx) : "";
+                        args[i] = $"{prefix}sni={_settings.YoutubeSniOverride}{suffix}";
+                    }
+                    else if (args[i].StartsWith("--dpi-desync-fake-quic=") && i+1 < args.Count && !args[i+1].StartsWith("--dpi-desync-fake-quic-mod="))
+                    {
+                        // Добавляем mod если его нет
+                        args.Insert(i+1, $"--dpi-desync-fake-quic-mod=sni={_settings.YoutubeSniOverride}");
+                    }
+                }
+            }
+            if (_settings.DisableQuicFake)
+            {
+                // Удаляем fake QUIC для теста в регионах где QUIC режется
+                args = args.Where(a => !a.StartsWith("--dpi-desync-fake-quic")).ToList();
+                // Для QUIC-блока оставляем только fake без quic
+                if (!args.Any(a => a.Contains("--filter-udp=443") && a.Contains("fake")))
+                {
+                    // если удалили всё, добавляем заглушку
+                }
+            }
+            return args;
+        }
 
         public async Task<OperationResult> StartAsync(StrategyInfo strategy, GameFilterMode gameFilter, bool showConsole,
             CancellationToken ct = default, bool testMode = false)

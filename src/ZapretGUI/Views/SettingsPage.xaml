@@ -514,6 +514,36 @@
                     </StackPanel>
                 </Border>
 
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}">
+                                <TextBlock Text="&#xE7C5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="YOUTUBE — СТРОГИЕ РЕГИОНЫ (НА ОСНОВЕ ОТЧЁТА 24.09)" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Для регионов где YouTube 0/13: включает GoogleVideo SNI, тест без QUIC и DoH. Основано на отчёте где youtube.com FAIL везде при 11/13 OK." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отключить QUIC fake для YouTube (тест 6→ без QUIC, помогает когда QUIC режется)" Margin="0,14,0,0" IsChecked="{Binding DisableQuicFake, Mode=TwoWay}" ToolTip="Удаляет --dpi-desync-fake-quic, оставляет только TCP fake. Попробуйте если YouTube не открывается." />
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="160" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource DimText}" Text="SNI для YouTube QUIC-блока" VerticalAlignment="Center" ToolTip="Какой SNI подставлять в QUIC fake" />
+                            <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" ItemsSource="{Binding YoutubeSniOptions}" SelectedItem="{Binding YoutubeSniOverride, Mode=TwoWay}" ToolTip="Пусто=как в стратегии, иначе googlevideo.com / google.com" />
+                        </Grid>
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Приоритет IPv4 (отключает IPv6 для обхода, помогает при fec0:: DNS)" Margin="0,10,0,0" IsChecked="{Binding PreferIPv4ForBypass, Mode=TwoWay}" />
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="DoH для заблокированных (1.1.1.1)" Margin="0,10,0,0" IsChecked="{Binding UseDohForBlockedHosts, Mode=TwoWay}" ToolTip="Использует DNS-over-HTTPS для youtube.com" />
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" FontSize="11" Opacity="0.8" Text="Подсказка: после смены SNI или QUIC — запустите в Стратегиях «Проверка пула SNI» и «Автоподбор». Новые гипотезы SmartTuned уже тестируют googlevideo.com." TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
                 <Border Style="{StaticResource Card}" Margin="0,14,0,0">
                     <StackPanel>
                         <Grid>

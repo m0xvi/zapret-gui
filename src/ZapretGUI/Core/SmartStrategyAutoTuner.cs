@@ -87,7 +87,11 @@ namespace ZapretGui.Core
                 ("multisplit", "1", "none", "auto", "badsum", 0, true, "Многосегментный оверлей TCP (multisplit, pos=1, seqovl=1) + badsum"),
                 ("multisplit", "2", "none", "auto", "badsum", 0, true, "Многосегментный оверлей TCP (multisplit, pos=2, seqovl=1) + badsum"),
 
-                // 7. Семейство TTL & MD5 Evasion
+                // 7. Семейство без QUIC для YouTube-регионов (24.09: QUIC FAIL)
+                ("fake,split2", "1", "googlevideo.com", "auto", "ts", 11, false, "Гибрид Fake TLS + Split2 без QUIC (QUIC off) + GoogleVideo SNI + ts"),
+                ("fake,split2", "midsld", "google.com", "auto", "ts", 11, false, "Гибрид Fake TLS + Split2 midsld без QUIC (QUIC off) + Google SNI"),
+
+                // 8. Семейство TTL & MD5 Evasion
                 ("fake", "none", "www.google.com", "1", "badsum", 6, false, "Fake TLS с ультра-малым TTL (TTL=1) + badsum"),
                 ("fake", "none", "www.google.com", "3", "badsum", 6, false, "Fake TLS с малым TTL (TTL=3) + badsum"),
                 ("fake", "none", "www.google.com", "4", "md5sig", 6, false, "Fake TLS с TCP MD5 Signature fooling (md5sig) + TTL=4")
@@ -153,9 +157,13 @@ namespace ZapretGui.Core
                         BestCandidateName = bestResult?.CandidateName ?? "—"
                     });
 
+                    // Для YouTube-регионов: передаём SNI в QUIC-блок тоже, и тестируем отключение QUIC
+                    var disableQuic = desc.Contains("без QUIC") || desc.Contains("QUIC off");
+                    var youtubeSni = sni != "none" ? sni : null;
                     var args = VisualStrategyBuilder.BuildArgs(
                         enginePath, desync, split, sni, ttl, fooling, multi,
-                        useGameUdp: true, useHostlist: true, useIpSet: true, repeats: repeats);
+                        useGameUdp: true, useHostlist: true, useIpSet: true, repeats: repeats,
+                        youtubeSni: youtubeSni, disableQuicFake: disableQuic);
 
                     var tempStrategy = new StrategyInfo
                     {
