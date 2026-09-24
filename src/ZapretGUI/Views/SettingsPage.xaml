@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,12" CanContentScroll="False">
+    <ScrollViewer x:Name="RootScrollViewer" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,12" CanContentScroll="False" ScrollChanged="OnScrollChanged">
         <StackPanel Margin="24,20,20,32" MaxWidth="980">
 
             <!-- Заголовок -->
@@ -524,9 +524,8 @@
                             <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}">
                                 <TextBlock Text="&#xE7C5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
-                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="YOUTUBE — СТРОГИЕ РЕГИОНЫ (НА ОСНОВЕ ОТЧЁТА 24.09)" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Для регионов где YouTube 0/13: включает GoogleVideo SNI, тест без QUIC и DoH. Основано на отчёте где youtube.com FAIL везде при 11/13 OK." TextWrapping="Wrap" />
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SectionText}" Text="YouTube (Тяжелый случай)" Margin="0,0,0,2" />
                             </StackPanel>
                         </Grid>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отключить QUIC fake для YouTube (тест 6→ без QUIC, помогает когда QUIC режется)" Margin="0,14,0,0" IsChecked="{Binding DisableQuicFake, Mode=TwoWay}" ToolTip="Удаляет --dpi-desync-fake-quic, оставляет только TCP fake. Попробуйте если YouTube не открывается." />

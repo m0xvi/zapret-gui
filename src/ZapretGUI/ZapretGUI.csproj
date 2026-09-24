@@ -21,10 +21,10 @@
     <Description>Удобный графический интерфейс для zapret-discord-youtube</Description>
     <Company>Zapret GUI community</Company>
     <Copyright>MIT License</Copyright>
-    <Version>1.17.18</Version>
-    <AssemblyVersion>1.17.18.0</AssemblyVersion>
-    <FileVersion>1.17.18.0</FileVersion>
-    <InformationalVersion>1.17.18</InformationalVersion>
+    <Version>1.17.19</Version>
+    <AssemblyVersion>1.17.19.0</AssemblyVersion>
+    <FileVersion>1.17.19.0</FileVersion>
+    <InformationalVersion>1.17.19</InformationalVersion>
 
     <!-- Позволяет собирать проект не только на Windows (например, в CI на Linux) -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
