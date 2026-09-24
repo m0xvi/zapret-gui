@@ -151,10 +151,16 @@ namespace ZapretGui.ViewModels
             ExportTelemetryJsonCommand = new RelayCommand(ExportTelemetryJson);
             ExportTelemetryZipCommand = new AsyncRelayCommand(ExportTelemetryZipAsync);
             RefreshGamingOptimization();
-            RefreshToolbarMetricsHosts();
-            _main.Monitoring.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MonitoringViewModel.Targets)) RefreshToolbarMetricsHosts(); };
-            // Также при изменении целей — обновляем
-            try { _main.Monitoring.Targets.CollectionChanged += (_, _) => RefreshToolbarMetricsHosts(); } catch {}
+            try { RefreshToolbarMetricsHosts(); } catch {}
+            try
+            {
+                if (_main.Monitoring != null)
+                {
+                    _main.Monitoring.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MonitoringViewModel.Targets)) try { RefreshToolbarMetricsHosts(); } catch {} };
+                    _main.Monitoring.Targets.CollectionChanged += (_, _) => { try { RefreshToolbarMetricsHosts(); } catch {} };
+                }
+            }
+            catch {}
         }
 
         public ICommand RunFullDiagnosticsAndExportCommand { get; }
@@ -760,6 +766,7 @@ namespace ZapretGui.ViewModels
         {
             try
             {
+                if (_main.Monitoring == null || _main.Monitoring.Targets == null) return;
                 var targets = _main.Monitoring.Targets.ToList();
                 var selected = Settings.ToolbarMetricsVisibleTargets;
                 var allSelected = selected.Count == 0;

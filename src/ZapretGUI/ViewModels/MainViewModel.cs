@@ -56,14 +56,14 @@ namespace ZapretGui.ViewModels
             StrategiesPage = new StrategiesViewModel(this);
             Updates = new UpdatesViewModel(this);
             GlobalOverlay = new GlobalOverlayViewModel();
-            SettingsPage = new SettingsViewModel(this);
+            Monitoring = new MonitoringViewModel(this);
             Diagnostics = new DiagnosticsViewModel(this);
             DeepCheck = new DeepCheckViewModel(this);
             UserLists = new UserListsViewModel(this);
             Profiles = new ProfilesViewModel(this);
             FirstLaunch = new FirstLaunchViewModel(this);
             Logs = new LogsViewModel(this);
-            Monitoring = new MonitoringViewModel(this);
+            SettingsPage = new SettingsViewModel(this);
 
             GameDetector = new GameDetectionService(settings);
             Hotkeys = new GlobalHotkeyService(settings);
@@ -374,6 +374,7 @@ namespace ZapretGui.ViewModels
         {
             var list = new System.Collections.Generic.List<ToolbarMetricsRow>();
             if (!Settings.ToolbarMetricsEnabled) return list;
+            if (Monitoring == null || Monitoring.Targets == null) return list;
             try
             {
                 var visible = Settings.ToolbarMetricsVisibleTargets;
