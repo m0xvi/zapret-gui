@@ -56,6 +56,7 @@ ITEM_TYPES = {
     "DeepCheckPage": ["DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "EngineConsistencyCheck"],
     "MonitoringPage": ["MonitorTarget", "ResourceProbeResult"],
     "LogsPage": ["LogEntry"],
+    "SettingsPage": ["MetricHostOption"],
     "MainWindow": ["NavItem"],
 }
 

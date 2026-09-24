@@ -720,24 +720,6 @@ namespace ZapretGui.ViewModels
         {
             RequestToggleOverlay?.Invoke();
         }
-
-
-    public sealed class ToolbarMetricsRow
-    {
-        public ToolbarMetricsRow(string name, string latency, string statusKey, bool ok)
-        {
-            Name = name;
-            Latency = latency;
-            StatusKey = statusKey;
-            IsOk = ok;
-        }
-        public string Name { get; }
-        public string Latency { get; }
-        public string StatusKey { get; }
-        public bool IsOk { get; }
-        public string CompactText => $"{Name} {Latency}";
-    }
-
         public void NotifyAutoSwitchChanged()
         {
             if (Settings.AutoSwitchProfileOnNetworkChange || Settings.AutoSwitchProfileOnFailure)
@@ -766,5 +748,21 @@ namespace ZapretGui.ViewModels
                 await Bypass.StopAsync();
             }
         }
+    
+    public sealed class ToolbarMetricsRow
+    {
+        public ToolbarMetricsRow(string name, string latency, string statusKey, bool ok)
+        {
+            Name = name;
+            Latency = latency;
+            StatusKey = statusKey;
+            IsOk = ok;
+        }
+        public string Name { get; }
+        public string Latency { get; }
+        public string StatusKey { get; }
+        public bool IsOk { get; }
+        public string CompactText => $"{Name} {Latency}";
     }
+}
 }

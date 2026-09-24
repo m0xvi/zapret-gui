@@ -159,6 +159,12 @@ namespace ZapretGui.Core
         /// <summary>Какие ресурсы показывать в тулбаре (пусто = все). Хранит Name ресурсов.</summary>
         public List<string> ToolbarMetricsVisibleTargets { get; set; } = new();
 
+        /// <summary>Позиция окна метрик на панели задач (для перетаскивания). -1 = авто над треем.</summary>
+        public double TaskbarMetricsLeft { get; set; } = -1;
+        public double TaskbarMetricsTop { get; set; } = -1;
+        public double TaskbarMetricsWidth { get; set; } = 170;
+        public double TaskbarMetricsHeight { get; set; } = -1;
+
         /// <summary>Включить автоматический мониторинг запущенных игр.</summary>
         public bool GameDetectionEnabled { get; set; } = true;
 

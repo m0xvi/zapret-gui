@@ -151,6 +151,10 @@ namespace ZapretGui.ViewModels
             ExportTelemetryJsonCommand = new RelayCommand(ExportTelemetryJson);
             ExportTelemetryZipCommand = new AsyncRelayCommand(ExportTelemetryZipAsync);
             RefreshGamingOptimization();
+            RefreshToolbarMetricsHosts();
+            _main.Monitoring.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MonitoringViewModel.Targets)) RefreshToolbarMetricsHosts(); };
+            // Также при изменении целей — обновляем
+            try { _main.Monitoring.Targets.CollectionChanged += (_, _) => RefreshToolbarMetricsHosts(); } catch {}
         }
 
         public ICommand RunFullDiagnosticsAndExportCommand { get; }
@@ -724,9 +728,73 @@ namespace ZapretGui.ViewModels
                 Settings.ToolbarMetricsIntervalSeconds = Math.Clamp(value, 15, 300);
                 OnSettingChanged();
                 _main.RefreshToolbarMetrics();
+                Raise(nameof(ToolbarMetricsIntervalIndex));
+                Raise(nameof(ToolbarMetricsHint));
             }
         }
 
+        public System.Collections.Generic.List<int> ToolbarMetricsIntervalOptions { get; } = new() { 15, 30, 60, 120, 180, 300 };
+        public int ToolbarMetricsIntervalIndex
+        {
+            get
+            {
+                var v = Settings.ToolbarMetricsIntervalSeconds;
+                var idx = ToolbarMetricsIntervalOptions.IndexOf(v);
+                if (idx >= 0) return idx;
+                // ближайший
+                var best = 0; var bestDiff = int.MaxValue;
+                for (int i = 0; i < ToolbarMetricsIntervalOptions.Count; i++) { var d = Math.Abs(ToolbarMetricsIntervalOptions[i] - v); if (d < bestDiff) { bestDiff = d; best = i; } }
+                return best;
+            }
+            set
+            {
+                if (value < 0 || value >= ToolbarMetricsIntervalOptions.Count) return;
+                ToolbarMetricsIntervalSeconds = ToolbarMetricsIntervalOptions[value];
+            }
+        }
+        public string ToolbarMetricsIntervalDisplay => $"{ToolbarMetricsIntervalSeconds} сек";
+
+        // Выбор хостов через селект-меню (чекбоксы), а не ручной ввод
+        public System.Collections.ObjectModel.ObservableCollection<MetricHostOption> ToolbarMetricsHostOptions { get; } = new();
+        public void RefreshToolbarMetricsHosts()
+        {
+            try
+            {
+                var targets = _main.Monitoring.Targets.ToList();
+                var selected = Settings.ToolbarMetricsVisibleTargets;
+                var allSelected = selected.Count == 0;
+                ToolbarMetricsHostOptions.Clear();
+                foreach (var tgt in targets)
+                {
+                    var isSel = allSelected || selected.Any(s => s.Equals(tgt.Name, StringComparison.OrdinalIgnoreCase));
+                    ToolbarMetricsHostOptions.Add(new MetricHostOption(this, tgt.Name, tgt.Host, isSel));
+                }
+                // Если нет целей — добавить заглушку
+                if (ToolbarMetricsHostOptions.Count == 0)
+                    ToolbarMetricsHostOptions.Add(new MetricHostOption(this, "Нет ресурсов", "", false) { IsEnabled = false });
+                Raise(nameof(ToolbarMetricsHostOptions));
+                Raise(nameof(ToolbarMetricsHint));
+                Raise(nameof(ToolbarMetricsVisibleTargetsText));
+            }
+            catch {}
+        }
+        public void UpdateToolbarMetricsHostsFromSelection()
+        {
+            try
+            {
+                var all = ToolbarMetricsHostOptions.Where(h => h.IsEnabled).ToList();
+                var sel = all.Where(h => h.IsSelected).Select(h => h.Name).ToList();
+                // Если выбраны все — храним пусто (значение Все)
+                if (sel.Count == all.Count) sel.Clear();
+                Settings.ToolbarMetricsVisibleTargets = sel;
+                SettingsStore.Save(Settings);
+                Raise(nameof(ToolbarMetricsVisibleTargetsText));
+                Raise(nameof(ToolbarMetricsHint));
+                _main.RefreshToolbarMetrics();
+                Status = sel.Count == 0 ? "Метрики: показаны все ресурсы" : $"Метрики: {string.Join(", ", sel)}";
+            }
+            catch {}
+        }
         public string ToolbarMetricsVisibleTargetsText
         {
             get => Settings.ToolbarMetricsVisibleTargets.Count == 0 ? "Все" : string.Join(", ", Settings.ToolbarMetricsVisibleTargets);
@@ -736,6 +804,7 @@ namespace ZapretGui.ViewModels
                 Settings.ToolbarMetricsVisibleTargets = list;
                 OnSettingChanged();
                 _main.RefreshToolbarMetrics();
+                RefreshToolbarMetricsHosts();
             }
         }
 
@@ -958,6 +1027,12 @@ namespace ZapretGui.ViewModels
             Raise(nameof(WatchdogNotifyUser));
             Raise(nameof(RealTimePingEnabled));
             Raise(nameof(RealTimePingIntervalSeconds));
+            Raise(nameof(ToolbarMetricsIntervalSeconds));
+            Raise(nameof(ToolbarMetricsIntervalIndex));
+            Raise(nameof(ToolbarMetricsIntervalDisplay));
+            Raise(nameof(ToolbarMetricsVisibleTargetsText));
+            Raise(nameof(ToolbarMetricsHint));
+            Raise(nameof(ToolbarMetricsHostOptions));
             Raise(nameof(StartupDelaySeconds));
             Raise(nameof(RunAtStartup));
             Raise(nameof(ProviderName));
@@ -1279,4 +1354,22 @@ namespace ZapretGui.ViewModels
             catch { return "Резервных копий пока нет"; }
         }
     }
+    public sealed class MetricHostOption : ObservableObject
+    {
+        private readonly SettingsViewModel _parent;
+        private bool _isSelected;
+        public MetricHostOption(SettingsViewModel parent, string name, string host, bool isSelected)
+        {
+            _parent = parent;
+            Name = name;
+            Host = host;
+            _isSelected = isSelected;
+        }
+        public string Name { get; }
+        public string Host { get; }
+        public bool IsEnabled { get; set; } = true;
+        public bool IsSelected { get => _isSelected; set { if (Set(ref _isSelected, value) && IsEnabled) _parent.UpdateToolbarMetricsHostsFromSelection(); } }
+        public string DisplayText => string.IsNullOrWhiteSpace(Host) ? Name : $"{Name} ({Host})";
+    }
+
 }

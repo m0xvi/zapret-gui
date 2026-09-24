@@ -563,27 +563,43 @@
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding ToolbarMetricsHint}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать метрики на панели задач внизу рядом с трей-иконками (обновление каждую минуту)" Margin="0,14,0,0"
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать метрики — перетаскиваемое окно с хостами и пингом (можно менять размер)" Margin="0,14,0,0"
                                   IsChecked="{Binding ToolbarMetricsEnabled, Mode=TwoWay}" />
                         <Grid Margin="0,12,0,0" IsEnabled="{Binding ToolbarMetricsEnabled}">
                             <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource DimText}" Text="Интервал обновления" VerticalAlignment="Center" />
-                            <StackPanel Grid.Column="1" Orientation="Horizontal">
-                                <Slider Minimum="15" Maximum="300" Width="120" TickFrequency="15" IsSnapToTickEnabled="True"
-                                        Value="{Binding ToolbarMetricsIntervalSeconds, Mode=TwoWay}" VerticalAlignment="Center" />
-                                <Border Style="{StaticResource Badge}" Margin="10,0,0,0" Background="{DynamicResource ElevatedBrush}">
-                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding ToolbarMetricsIntervalSeconds, StringFormat={}{0} сек}" />
-                                </Border>
-                            </StackPanel>
+                            <TextBlock Style="{StaticResource DimText}" Text="Опрос каждые" VerticalAlignment="Center" Margin="0,0,8,0" />
+                            <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" MinWidth="160" HorizontalAlignment="Left"
+                                      ItemsSource="{Binding ToolbarMetricsIntervalOptions}" SelectedIndex="{Binding ToolbarMetricsIntervalIndex, Mode=TwoWay}"
+                                      ToolTip="Выберите интервал опроса (секунды)">
+                                <ComboBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="{Binding}" />
+                                            <TextBlock Text=" сек" />
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ComboBox.ItemTemplate>
+                            </ComboBox>
+                            <Border Grid.Column="2" Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource ElevatedBrush}" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding ToolbarMetricsIntervalDisplay}" />
+                            </Border>
                         </Grid>
-                        <StackPanel Margin="0,12,0,0" IsEnabled="{Binding ToolbarMetricsEnabled}">
-                            <TextBlock Style="{StaticResource DimText}" Text="Какие ресурсы показывать (пусто = все, через запятую: YouTube, Discord, GitHub, Arena)" Margin="0,0,0,4" />
-                            <TextBox Style="{StaticResource InputBox}" Text="{Binding ToolbarMetricsVisibleTargetsText, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Укажите имена ресурсов из Мониторинга через запятую. Пусто — показывать все (до 4)" />
-                            <TextBlock Style="{StaticResource DimText}" Text="Окно 360×28 над треем справа внизу — как в MSI Afterburner. Клик по ✕ скрывает, снова включить — здесь." Margin="0,6,0,0" FontSize="10.5" Opacity="0.7" TextWrapping="Wrap" />
+                        <StackPanel Margin="0,14,0,0" IsEnabled="{Binding ToolbarMetricsEnabled}">
+                            <TextBlock Style="{StaticResource DimText}" Text="Какие хосты показывать — выберите галочками (пусто = все)" Margin="0,0,0,6" />
+                            <Border Style="{StaticResource InnerCard}" Padding="8" Background="{DynamicResource ElevatedBrush}">
+                                <ItemsControl ItemsSource="{Binding ToolbarMetricsHostOptions}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <CheckBox Style="{StaticResource CheckBoxApp}" Content="{Binding DisplayText}" IsChecked="{Binding IsSelected, Mode=TwoWay}" IsEnabled="{Binding IsEnabled}" Margin="0,4" ToolTip="{Binding Host}" />
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </Border>
+                            <TextBlock Style="{StaticResource DimText}" Text="Окно без заголовка — только хосты и мс. Перетащите за любую область, тяните за правый нижний угол для размера, двойной клик — сброс к трею, ✕ скрывает." Margin="0,8,0,0" FontSize="10.5" Opacity="0.7" TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
