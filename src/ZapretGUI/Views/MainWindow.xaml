@@ -83,17 +83,7 @@
                                    Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
                     </WrapPanel>
                 </Button>
-                <!-- Тулбар-метрики как в MSI Afterburner — обновление каждую минуту, рядом с иконкой -->
-                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
-                        Command="{Binding NavigateMonitoringCommand}"
-                        Visibility="{Binding ToolbarMetricsVisible, Converter={StaticResource BoolToVis}}"
-                        ToolTip="{Binding ToolbarMetricsTooltip}">
-                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <TextBlock Text="◉" FontSize="8" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Opacity="0.9" />
-                        <TextBlock Text="{Binding ToolbarMetricsText}" Margin="6,0,0,0" FontSize="11"
-                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="260" />
-                    </WrapPanel>
-                </Button>
+
                 <!-- Бейдж активной игры -->
                 <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
                         Command="{Binding Home.ToggleGameModeCommand}"

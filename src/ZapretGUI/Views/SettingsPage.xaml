@@ -559,11 +559,11 @@
                                 <TextBlock Text="&#xE9D9;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="МЕТРИКИ В ТУЛБАРЕ КАК В MSI AFTERBURNER" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource SectionText}" Text="МЕТРИКИ НА ПАНЕЛИ ЗАДАЧ КАК В MSI AFTERBURNER" Margin="0,0,0,2" />
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding ToolbarMetricsHint}" TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать метрики рядом с иконкой в тулбаре (обновление каждую минуту)" Margin="0,14,0,0"
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать метрики на панели задач внизу рядом с трей-иконками (обновление каждую минуту)" Margin="0,14,0,0"
                                   IsChecked="{Binding ToolbarMetricsEnabled, Mode=TwoWay}" />
                         <Grid Margin="0,12,0,0" IsEnabled="{Binding ToolbarMetricsEnabled}">
                             <Grid.ColumnDefinitions>
@@ -583,7 +583,7 @@
                             <TextBlock Style="{StaticResource DimText}" Text="Какие ресурсы показывать (пусто = все, через запятую: YouTube, Discord, GitHub, Arena)" Margin="0,0,0,4" />
                             <TextBox Style="{StaticResource InputBox}" Text="{Binding ToolbarMetricsVisibleTargetsText, UpdateSourceTrigger=PropertyChanged}"
                                      ToolTip="Укажите имена ресурсов из Мониторинга через запятую. Пусто — показывать все (до 4)" />
-                            <TextBlock Style="{StaticResource DimText}" Text="Иконка ◉ в шапке — клик ведёт в Мониторинг. Обновление каждую минуту, как в MSI Afterburner." Margin="0,6,0,0" FontSize="10.5" Opacity="0.7" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Окно 360×28 над треем справа внизу — как в MSI Afterburner. Клик по ✕ скрывает, снова включить — здесь." Margin="0,6,0,0" FontSize="10.5" Opacity="0.7" TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
                 </Border>

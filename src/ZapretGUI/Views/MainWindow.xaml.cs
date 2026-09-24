@@ -447,6 +447,7 @@ namespace ZapretGui.Views
 
             SettingsStore.Save(_vm.Settings);
             _vm.Hotkeys.Unregister();
+            _vm.CloseTaskbarMetricsWindow();
             _overlayWindow?.CloseDirectly();
             _tray?.Dispose();
 

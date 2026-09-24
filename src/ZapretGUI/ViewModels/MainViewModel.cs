@@ -24,6 +24,7 @@ namespace ZapretGui.ViewModels
     {
         private readonly DispatcherTimer _timer;
         private readonly DispatcherTimer _toolbarMetricsTimer;
+        private Views.TaskbarMetricsWindow? _taskbarMetricsWindow;
         private NavItem _selectedNav;
         private bool _isAdmin;
         private DateTime _lastPingProbeTime = DateTime.MinValue;
@@ -191,6 +192,20 @@ namespace ZapretGui.ViewModels
             var toolbarInterval = Math.Clamp(Settings.ToolbarMetricsIntervalSeconds, 15, 300);
             _toolbarMetricsTimer = new DispatcherTimer(TimeSpan.FromSeconds(toolbarInterval), DispatcherPriority.Background, OnToolbarMetricsTick, Application.Current.Dispatcher);
             if (Settings.ToolbarMetricsEnabled) _toolbarMetricsTimer.Start();
+            // Создаём окно метрик на панели задач (как в MSI Afterburner) — рядом с трей-иконками
+            try
+            {
+                Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        _taskbarMetricsWindow = new Views.TaskbarMetricsWindow { DataContext = this };
+                        if (Settings.ToolbarMetricsEnabled) { _taskbarMetricsWindow.Show(); _taskbarMetricsWindow.UpdatePosition(); }
+                    }
+                    catch {}
+                });
+            }
+            catch {}
         }
 
         public AppSettings Settings { get; }
@@ -346,7 +361,7 @@ namespace ZapretGui.ViewModels
         // Тулбар-метрики — как в MSI Afterburner, рядом с иконкой, обновление каждую минуту
         public bool ToolbarMetricsVisible => Settings.ToolbarMetricsEnabled;
         public string ToolbarMetricsText => BuildToolbarMetricsText();
-        public string ToolbarMetricsTooltip => "Метрики ресурсов в тулбаре (обновление каждую минуту) — настройте в Настройки → Тулбар";
+        public string ToolbarMetricsTooltip => "Метрики на панели задач внизу (как в MSI Afterburner) — настройте в Настройки → Сеть → Метрики на панели задач";
 
         private string BuildToolbarMetricsText()
         {
@@ -385,6 +400,31 @@ namespace ZapretGui.ViewModels
                 if (!Settings.ToolbarMetricsEnabled && _toolbarMetricsTimer.IsEnabled) _toolbarMetricsTimer.Stop();
             }
             catch {}
+            // Управление окном на панели задач
+            try
+            {
+                Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        if (Settings.ToolbarMetricsEnabled)
+                        {
+                            if (_taskbarMetricsWindow == null)
+                            {
+                                _taskbarMetricsWindow = new Views.TaskbarMetricsWindow { DataContext = this };
+                            }
+                            if (!_taskbarMetricsWindow.IsVisible) _taskbarMetricsWindow.Show();
+                            _taskbarMetricsWindow.UpdatePosition();
+                        }
+                        else
+                        {
+                            _taskbarMetricsWindow?.Hide();
+                        }
+                    }
+                    catch {}
+                });
+            }
+            catch {}
         }
 
         private void OnToolbarMetricsTick(object? sender, EventArgs e)
@@ -393,6 +433,8 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ToolbarMetricsText));
             Raise(nameof(MonitoringSummaryText));
             Raise(nameof(RealTimePingSummaryText));
+            // Обновляем позицию окна на панели задач (на случай перемещения таскбара)
+            try { _taskbarMetricsWindow?.UpdatePosition(); } catch {}
             // Фоновая проверка выбранных ресурсов
             if (Settings.ToolbarMetricsEnabled && !IsAnyCheckRunning)
             {
@@ -597,6 +639,11 @@ namespace ZapretGui.ViewModels
             {
                 AppLog.Error("Ошибка обновления статуса: " + ex.Message);
             }
+        }
+
+        public void CloseTaskbarMetricsWindow()
+        {
+            try { _taskbarMetricsWindow?.Close(); } catch {}
         }
 
         private async Task CheckRealTimePingAsync()

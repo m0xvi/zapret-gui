@@ -150,51 +150,7 @@
                         </Grid>
                     </Border>
 
-                    <!-- Управление ресурсами и результаты -->
-                    <Grid Margin="0,12,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="0,0,8,0">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="УПРАВЛЕНИЕ РЕСУРСАМИ" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Добавить ресурс в мониторинг" Margin="0,8,0,0"
-                                        Command="{Binding Monitoring.AddResourceCommand}"
-                                        ToolTip="Добавить ресурс в список фоновой проверки" />
-                                <Button Style="{StaticResource GhostButton}" Content="Добавить выбранный домен в обход" Margin="0,8,0,0"
-                                        Command="{Binding Monitoring.AddToBypassListCommand}"
-                                        ToolTip="Добавить домен в lists\list-general-user.txt. После этого перезапустите обход." />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Style="{StaticResource Card}" Grid.Column="1" Margin="8,0,0,0">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="ПОСЛЕДНИЕ РЕЗУЛЬТАТЫ" />
-                                <ItemsControl ItemsSource="{Binding Monitoring.Results}">
-                                    <ItemsControl.ItemTemplate>
-                                        <DataTemplate>
-                                            <Border Style="{StaticResource InnerCard}" Margin="0,4,0,0">
-                                                <Grid>
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="*" />
-                                                        <ColumnDefinition Width="Auto" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <StackPanel>
-                                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Target.Name}" FontWeight="SemiBold" />
-                                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" TextWrapping="Wrap" />
-                                                    </StackPanel>
-                                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding StatusText}"
-                                                               Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
-                                                </Grid>
-                                            </Border>
-                                        </DataTemplate>
-                                    </ItemsControl.ItemTemplate>
-                                </ItemsControl>
-                            </StackPanel>
-                        </Border>
-                    </Grid>
+                    <!-- Управление ресурсами и последние результаты удалены 24.09 — дублируют верхние ОТСЛЕЖИВАЕМЫЕ РЕСУРСЫ, результаты теперь справа от ресурса -->
                 </StackPanel>
 
                 <!-- ==================== ВКЛАДКА 1: ПРОВЕРКА DPI (34 УЗЛА) ==================== -->

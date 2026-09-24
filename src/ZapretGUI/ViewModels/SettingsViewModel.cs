@@ -740,8 +740,8 @@ namespace ZapretGui.ViewModels
         }
 
         public string ToolbarMetricsHint => ToolbarMetricsEnabled
-            ? $"Тулбар: {ToolbarMetricsVisibleTargetsText} • каждые {ToolbarMetricsIntervalSeconds} сек как в MSI Afterburner"
-            : "Тулбар-метрики отключены";
+            ? $"Панель задач: {ToolbarMetricsVisibleTargetsText} • каждые {ToolbarMetricsIntervalSeconds} сек как в MSI Afterburner"
+            : "Метрики на панели задач отключены — окно над треем скрыто";
 
         public int StartupDelaySeconds
         {
