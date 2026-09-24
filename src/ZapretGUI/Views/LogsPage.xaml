@@ -9,7 +9,8 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <Grid>
+        <Button Style="{StaticResource GhostButton}" Content="← Назад в Настройки" Padding="10,4" FontSize="11" HorizontalAlignment="Left" Margin="0,0,0,8" Command="{Binding BackToSettingsCommand}" ToolTip="Вернуться в Настройки" />
+        <Grid Margin="0,8,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />

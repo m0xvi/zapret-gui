@@ -29,6 +29,17 @@ namespace ZapretGui.Core
         public DateTime? LastAppliedAt { get; set; }
         public bool IsBuiltIn { get; set; }
 
+        /// <summary>Отпечаток сети, к которой привязан профиль (SSID + шлюз + интерфейс). Пусто — не привязан.</summary>
+        public string NetworkFingerprint { get; set; } = "";
+        /// <summary>Человекочитаемое имя сети (SSID или интерфейс + шлюз).</summary>
+        public string NetworkDisplayName { get; set; } = "";
+        /// <summary>Когда профиль был привязан к сети.</summary>
+        public DateTime? NetworkBoundAt { get; set; }
+
+        public bool IsNetworkBound => !string.IsNullOrWhiteSpace(NetworkFingerprint);
+
+        public string NetworkBadgeText => IsNetworkBound ? $"📶 {NetworkDisplayName}" : "Не привязан к сети";
+
         public string SummaryText
         {
             get
@@ -135,6 +146,13 @@ namespace ZapretGui.Core
             }
         }
 
+        public static UserProfile? FindProfileForNetwork(IEnumerable<UserProfile> profiles, string fingerprint)
+        {
+            if (string.IsNullOrWhiteSpace(fingerprint)) return null;
+            return profiles.FirstOrDefault(p => !string.IsNullOrWhiteSpace(p.NetworkFingerprint)
+                && p.NetworkFingerprint.Equals(fingerprint, StringComparison.OrdinalIgnoreCase));
+        }
+
         public static UserProfile CreateFromCurrentSettings(AppSettings settings, string name, string description = "")
         {
             return new UserProfile
@@ -193,7 +211,8 @@ namespace ZapretGui.Core
                 var strategy = strategies.Find(settings.SelectedStrategy) ?? strategies.Recommended;
                 if (isRunning && strategy != null)
                 {
-                    var res = await bypass.StartAsync(strategy, profile.GameFilter, settings.ShowWinwsConsole).ConfigureAwait(false);
+                    var res = await bypass.SwitchToStrategyAsync(strategy, profile.GameFilter, settings.ShowWinwsConsole).ConfigureAwait(false);
+                    if (!res.Ok) return (false, $"Профиль «{profile.Name}» применён, но перезапуск обхода не удался: {res.Message}");
                     profile.LastAppliedAt = DateTime.UtcNow;
                     return (true, $"Профиль «{profile.Name}» успешно применён. Обход перезапущен со стратегией «{strategy.Name}».");
                 }

@@ -54,6 +54,15 @@ namespace ZapretGui.Core
         public bool IsBuiltIn { get; set; }
         public bool IsGame { get; set; }
 
+        private string _lastStatusText = "";
+        public string LastStatusText { get => _lastStatusText; set { if (_lastStatusText != value) { _lastStatusText = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastStatusText))); } } }
+
+        private string _lastStatusKey = "Info";
+        public string LastStatusKey { get => _lastStatusKey; set { if (_lastStatusKey != value) { _lastStatusKey = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastStatusKey))); } } }
+
+        private string _lastDetails = "";
+        public string LastDetails { get => _lastDetails; set { if (_lastDetails != value) { _lastDetails = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastDetails))); } } }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public static bool TryCreate(string input, string? name, out MonitorTarget? target, out string error)

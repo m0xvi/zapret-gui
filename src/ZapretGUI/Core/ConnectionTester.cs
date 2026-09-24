@@ -34,10 +34,28 @@ namespace ZapretGui.Core
                 MonitorTarget.CreateBuiltIn("Discord Gateway", "https://gateway.discord.gg/"),
                 MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"),
                 MonitorTarget.CreateBuiltIn("YouTube image", "https://i.ytimg.com/generate_204"),
+                MonitorTarget.CreateBuiltIn("YouTube превью", "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"),
+                MonitorTarget.CreateBuiltIn("YouTube ggpht", "https://yt3.ggpht.com/generate_204"),
+                MonitorTarget.CreateBuiltIn("YouTube lh3", "https://lh3.googleusercontent.com/generate_204"),
                 MonitorTarget.CreateBuiltIn("Google", "https://www.google.com/generate_204"),
                 MonitorTarget.CreateBuiltIn("Cloudflare", "https://www.cloudflare.com"),
                 MonitorTarget.CreateBuiltIn("GitHub (обновления)", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
             };
+
+            // Доп цели из utils/targets.txt (если включено и файл есть) — как в Flowseal test zapret.ps1
+            if (settings != null && settings.UseTargetsTxtForStrategyTest && !string.IsNullOrWhiteSpace(settings.EnginePath))
+            {
+                try
+                {
+                    var extras = TargetsTxtLoader.LoadFromEngine(settings.EnginePath);
+                    foreach (var ex in extras)
+                    {
+                        if (!list.Any(x => x.Host.Equals(ex.Host, StringComparison.OrdinalIgnoreCase)))
+                            list.Add(ex);
+                    }
+                }
+                catch { }
+            }
 
             if (settings?.MonitorTargets != null)
             {
@@ -51,6 +69,12 @@ namespace ZapretGui.Core
             }
 
             return list;
+        }
+
+        public static IReadOnlyList<MonitorTarget> GetTargetsTxtExtras(AppSettings? settings)
+        {
+            if (settings == null || !settings.UseTargetsTxtForStrategyTest || string.IsNullOrWhiteSpace(settings.EnginePath)) return Array.Empty<MonitorTarget>();
+            try { return TargetsTxtLoader.LoadFromEngine(settings.EnginePath); } catch { return Array.Empty<MonitorTarget>(); }
         }
 
         public static Task<List<ConnectionCheck>> RunAsync(CancellationToken ct = default)
