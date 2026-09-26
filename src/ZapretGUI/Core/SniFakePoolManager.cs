@@ -70,7 +70,10 @@ namespace ZapretGui.Core
             new() { Domain = "www.google.com", Title = "Google WWW", Category = "Поисковые / Сервисы", Tier = 2 },
             new() { Domain = "googlevideo.com", Title = "Google Video CDN", Category = "Видео CDN", Tier = 2 },
             new() { Domain = "youtube.com", Title = "YouTube", Category = "Видео", Tier = 2 },
-            new() { Domain = "yt3.ggpht.com", Title = "YouTube Images", Category = "Видео", Tier = 2 }
+            new() { Domain = "yt3.ggpht.com", Title = "YouTube Images", Category = "Видео", Tier = 2 },
+            new() { Domain = "lh3.googleusercontent.com", Title = "Google User Content (превью)", Category = "Видео", Tier = 2 },
+            new() { Domain = "i.ytimg.com", Title = "YouTube Thumbnails", Category = "Видео", Tier = 2 },
+            new() { Domain = "vk.com", Title = "ВКонтакте (доп)", Category = "Социальные сети", Tier = 2 }
         };
 
         /// <summary>
