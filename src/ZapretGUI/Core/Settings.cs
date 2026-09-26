@@ -141,6 +141,21 @@ namespace ZapretGui.Core
         /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.</summary>
         public bool AutoRecoverStrategy { get; set; } = true;
 
+        /// <summary>Бесшовное автопереключение без окон и подтверждений (новый движок failover).</summary>
+        public bool SeamlessFailoverEnabled { get; set; } = true;
+
+        /// <summary>Интервал бесшовной проверки в минутах (2-60).</summary>
+        public int SeamlessCheckMinutes { get; set; } = 5;
+
+        /// <summary>Cooldown между бесшовными переключениями в минутах (5-120).</summary>
+        public int SeamlessCooldownMinutes { get; set; } = 10;
+
+        /// <summary>Последняя причина/статус бесшовного переключения.</summary>
+        public string SeamlessLastReason { get; set; } = "";
+
+        /// <summary>Время последнего бесшовного переключения.</summary>
+        public DateTime? SeamlessLastSwitchTime { get; set; }
+
         /// <summary>Показывать уведомления мониторинга через значок в трее.</summary>
         public bool MonitorNotificationsEnabled { get; set; } = true;
 

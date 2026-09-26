@@ -34,6 +34,7 @@ namespace ZapretGui.ViewModels
         public event Action? RequestToggleOverlay;
 
         public WatchdogService Watchdog { get; }
+        public SeamlessFailoverService SeamlessFailover { get; }
         public ProfileAutoSwitchService ProfileAutoSwitch { get; }
         public BypassScheduleService ScheduleService { get; }
         public RealTimePingSnapshot? RealTimePing { get; private set; }
@@ -128,6 +129,31 @@ namespace ZapretGui.ViewModels
             {
                 Watchdog.Start();
             }
+
+            SeamlessFailover = new SeamlessFailoverService(settings, () => Bypass, () => Strategies);
+            SeamlessFailover.StatusChanged += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Raise(nameof(SeamlessStatusText));
+                Raise(nameof(SeamlessStatusKey));
+            });
+            SeamlessFailover.FailoverSucceeded += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Home.RefreshStatus();
+                StrategiesPage.Refresh();
+                Raise(nameof(ActiveStrategySummaryText));
+                Raise(nameof(SeamlessStatusText));
+                Raise(nameof(SeamlessStatusKey));
+                if (Settings.MonitorNotificationsEnabled || Settings.WatchdogNotifyUser)
+                    WatchdogNotificationRequested?.Invoke(msg);
+            });
+            SeamlessFailover.FailoverFailed += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Raise(nameof(SeamlessStatusText));
+                if (Settings.MonitorNotificationsEnabled)
+                    WatchdogNotificationRequested?.Invoke(msg);
+            });
+            if (settings.SeamlessFailoverEnabled && !settings.SafeMode)
+                SeamlessFailover.Start();
 
             ProfileAutoSwitch = new ProfileAutoSwitchService(settings, () => Bypass, () => Strategies);
             ProfileAutoSwitch.StatusChanged += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
@@ -464,6 +490,28 @@ namespace ZapretGui.ViewModels
         public string AutoSwitchNetworkStatus => ProfileAutoSwitch?.CurrentIdentity?.DisplayName ?? "Сеть не определена";
         public string AutoSwitchLastReason => ProfileAutoSwitch?.LastReason ?? "";
         public string ScheduleSummaryText => ScheduleService?.Describe() ?? "расписание выключено";
+
+        public string SeamlessStatusText => SeamlessFailover?.LastReason ?? "Бесшовное переключение неактивно";
+        public string SeamlessStatusKey
+        {
+            get
+            {
+                var t = SeamlessStatusText;
+                if (t.Contains("✅") || t.Contains("восстановлен") || t.Contains("доступны")) return "Success";
+                if (t.Contains("❌") || t.Contains("не удалось") || t.Contains("ошибка", StringComparison.OrdinalIgnoreCase)) return "Danger";
+                if (t.Contains("подбираю") || t.Contains("Диагностирую") || t.Contains("Сбой")) return "Warning";
+                return "Info";
+            }
+        }
+        public string SeamlessLastSwitchText => Settings.SeamlessLastSwitchTime.HasValue ? Settings.SeamlessLastSwitchTime.Value.ToLocalTime().ToString("dd.MM HH:mm") : "ещё не было";
+        public void NotifySeamlessChanged()
+        {
+            if (Settings.SeamlessFailoverEnabled && !Settings.SafeMode) SeamlessFailover?.Start(); else SeamlessFailover?.Stop();
+            SeamlessFailover?.UpdateInterval();
+            Raise(nameof(SeamlessStatusText));
+            Raise(nameof(SeamlessStatusKey));
+            Raise(nameof(SeamlessLastSwitchText));
+        }
         public void NotifyScheduleChanged()
         {
             if (Settings.ScheduleEnabled && !Settings.SafeMode) ScheduleService?.Restart(); else ScheduleService?.Stop();
@@ -737,6 +785,8 @@ namespace ZapretGui.ViewModels
         {
             _timer.Stop();
             Monitoring.Stop();
+            SeamlessFailover?.Stop();
+            SeamlessFailover?.Dispose();
             ScheduleService?.Stop();
             ScheduleService?.Dispose();
             ProfileAutoSwitch?.Stop();

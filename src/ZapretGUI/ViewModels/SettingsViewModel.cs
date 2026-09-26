@@ -95,6 +95,26 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedTabIndex = 7; }
         }
 
+        public bool SeamlessFailoverEnabled
+        {
+            get => Settings.SeamlessFailoverEnabled;
+            set { if (Settings.SeamlessFailoverEnabled != value) { Settings.SeamlessFailoverEnabled = value; SettingsStore.Save(Settings); _main.NotifySeamlessChanged(); Raise(nameof(SeamlessFailoverEnabled)); Raise(nameof(SeamlessStatus)); Raise(nameof(SeamlessStatusKey)); } }
+        }
+        public int SeamlessCheckMinutes
+        {
+            get => Settings.SeamlessCheckMinutes;
+            set { var v = Math.Clamp(value, 2, 60); if (Settings.SeamlessCheckMinutes != v) { Settings.SeamlessCheckMinutes = v; SettingsStore.Save(Settings); _main.NotifySeamlessChanged(); Raise(nameof(SeamlessCheckMinutes)); } }
+        }
+        public int SeamlessCooldownMinutes
+        {
+            get => Settings.SeamlessCooldownMinutes;
+            set { var v = Math.Clamp(value, 5, 120); if (Settings.SeamlessCooldownMinutes != v) { Settings.SeamlessCooldownMinutes = v; SettingsStore.Save(Settings); Raise(nameof(SeamlessCooldownMinutes)); } }
+        }
+        public string SeamlessStatus => _main.SeamlessStatusText;
+        public string SeamlessStatusKey => _main.SeamlessStatusKey;
+        public string SeamlessLastSwitch => _main.SeamlessLastSwitchText;
+        public ICommand TestSeamlessNowCommand => new AsyncRelayCommand(async () => { Status = "Запускаю внеплановую проверку…"; await _main.SeamlessFailover.CheckNowAsync(); Raise(nameof(SeamlessStatus)); Status = _main.SeamlessStatusText; }, () => !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning);
+
         public bool AutoSwitchToBestStrategy
         {
             get => Settings.AutoSwitchToBestStrategy;
@@ -547,6 +567,8 @@ namespace ZapretGui.ViewModels
                 if (value) Settings.AutoStartBypass = false;
                 OnSettingChanged();
                 _main.RefreshReadiness();
+                _main.NotifySeamlessChanged();
+                if (value) _main.Watchdog.Stop(); else if (Settings.WatchdogEnabled) _main.Watchdog.Start();
             }
         }
 

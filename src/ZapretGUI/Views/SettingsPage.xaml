@@ -270,6 +270,66 @@
                     </StackPanel>
                 </Border>
 
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Top">
+                                <TextBlock Text="&#xE8F5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SectionText}" Text="БЕСШОВНОЕ ПЕРЕКЛЮЧЕНИЕ СТРАТЕГИЙ" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Без окон и подтверждений: сам проверяет YouTube/Discord и тихо переключает на рабочую стратегию, сохраняя режим служба/процесс." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <CheckBox Grid.Column="2" Style="{StaticResource SwitchCheckBox}" Content="" IsChecked="{Binding SeamlessFailoverEnabled, Mode=TwoWay}" ToolTip="Включить бесшовное автопереключение" VerticalAlignment="Center" />
+                        </Grid>
+                        <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Background="{DynamicResource ElevatedBrush}" Visibility="{Binding SeamlessFailoverEnabled, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Проверка каждые" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Slider Minimum="2" Maximum="30" Width="110" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding SeamlessCheckMinutes, Mode=TwoWay}" VerticalAlignment="Center" />
+                                        <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource ElevatedBrush}">
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding SeamlessCheckMinutes, StringFormat={}{0} мин}" />
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Cooldown между переключениями" VerticalAlignment="Center" />
+                                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                        <Slider Minimum="5" Maximum="60" Width="110" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding SeamlessCooldownMinutes, Mode=TwoWay}" VerticalAlignment="Center" />
+                                        <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource ElevatedBrush}">
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding SeamlessCooldownMinutes, StringFormat={}{0} мин}" />
+                                        </Border>
+                                    </StackPanel>
+                                </Grid>
+                                <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Background="{DynamicResource CardBrush}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource DimText}" Text="СТАТУС" FontSize="10" FontWeight="Bold" />
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding SeamlessStatus}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{Binding SeamlessStatusKey, Converter={StaticResource SeverityBrush}}" />
+                                        <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="{Binding SeamlessLastSwitch, StringFormat='Последнее переключение: {0}'}" />
+                                    </StackPanel>
+                                </Border>
+                                <Button Style="{StaticResource GhostButton}" Content="Проверить сейчас" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding TestSeamlessNowCommand}" ToolTip="Внепланово проверить ресурсы и при необходимости переключить" />
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap" Text="Логика: 2 подтверждённых сбоя подряд → сравнение «прямо vs обход» → если стратегия мешает — тест 8 кандидатов на упавшем ресурсе → бесшовный SwitchToStrategyAsync/InstallService. Уведомление только в трей, без MessageBox." />
+                            </StackPanel>
+                        </Border>
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap" Text="Работает в фоне даже когда окно в трее. Учитывает SafeMode и не трогает обход если он выключен." Visibility="{Binding SeamlessFailoverEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                    </StackPanel>
+                </Border>
+
                 <Border Style="{StaticResource Card}" Margin="0,14,0,0">
                     <StackPanel>
                         <Grid>
