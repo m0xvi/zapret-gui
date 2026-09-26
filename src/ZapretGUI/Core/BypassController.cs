@@ -151,13 +151,49 @@ namespace ZapretGui.Core
         // ---------------------------------------------------------------- запуск / остановка
 
         public List<string> BuildArgs(StrategyInfo strategy, GameFilterMode gameFilter)
-            => BypassArgumentBuilder.Build(
+        {
+            var args = BypassArgumentBuilder.Build(
                 strategy,
                 gameFilter,
                 _settings.GameFilterProfileId,
                 _settings.CustomGameFilterTcpPorts,
                 _settings.CustomGameFilterUdpPorts,
                 _settings.SelectedFakeSni);
+            // Применяем YouTube-специфичные настройки для строгих регионов
+            if (!string.IsNullOrWhiteSpace(_settings.YoutubeSniOverride))
+            {
+                // Заменяем SNI в QUIC-блоке на youtube SNI если задан
+                for (int i = 0; i < args.Count; i++)
+                {
+                    if (args[i].StartsWith("--dpi-desync-fake-quic-mod=") && args[i].Contains("sni="))
+                    {
+                        // уже есть sni, заменяем
+                        var parts = args[i].Split(new[] { "sni=" }, System.StringSplitOptions.None);
+                        var prefix = parts[0];
+                        var rest = parts[1];
+                        var commaIdx = rest.IndexOf(',');
+                        var suffix = commaIdx >= 0 ? rest.Substring(commaIdx) : "";
+                        args[i] = $"{prefix}sni={_settings.YoutubeSniOverride}{suffix}";
+                    }
+                    else if (args[i].StartsWith("--dpi-desync-fake-quic=") && i+1 < args.Count && !args[i+1].StartsWith("--dpi-desync-fake-quic-mod="))
+                    {
+                        // Добавляем mod если его нет
+                        args.Insert(i+1, $"--dpi-desync-fake-quic-mod=sni={_settings.YoutubeSniOverride}");
+                    }
+                }
+            }
+            if (_settings.DisableQuicFake)
+            {
+                // Удаляем fake QUIC для теста в регионах где QUIC режется
+                args = args.Where(a => !a.StartsWith("--dpi-desync-fake-quic")).ToList();
+                // Для QUIC-блока оставляем только fake без quic
+                if (!args.Any(a => a.Contains("--filter-udp=443") && a.Contains("fake")))
+                {
+                    // если удалили всё, добавляем заглушку
+                }
+            }
+            return args;
+        }
 
         public async Task<OperationResult> StartAsync(StrategyInfo strategy, GameFilterMode gameFilter, bool showConsole,
             CancellationToken ct = default, bool testMode = false)
@@ -229,6 +265,35 @@ namespace ZapretGui.Core
             }
 
             return OperationResult.Success($"Стратегия «{strategy.Name}» запущена");
+        }
+
+        /// <summary>
+        /// Бесшовное переключение стратегии без ручной остановки обхода.
+        /// Сохраняет текущий режим: если обход запущен как служба — переустанавливает службу
+        /// с новой стратегией, если как отдельный процесс — перезапускает процесс.
+        /// Если обход выключен — просто запускает стратегию.
+        /// </summary>
+        public async Task<OperationResult> SwitchToStrategyAsync(StrategyInfo strategy, GameFilterMode gameFilter, bool showConsole,
+            CancellationToken ct = default)
+        {
+            var status = GetStatus();
+            // Служба имеет приоритет: если она Running/StartPending/StopPending — переустановку службы,
+            // даже если winws-процесс ещё не виден (гонка при старте). Это решает кейс «автостратегия
+            // как служба → нельзя переключить на обычную без ручной остановки».
+            if (status.ServiceState == ServiceState.Running
+                || status.ServiceState == ServiceState.StartPending
+                || status.ServiceState == ServiceState.StopPending)
+            {
+                AppLog.SvcInfo($"Бесшовное переключение: служба zapret с «{status.ServiceStrategy}» → «{strategy.Name}»");
+                return await InstallServiceAsync(strategy, gameFilter, ct).ConfigureAwait(false);
+            }
+            if (status.IsRunning)
+            {
+                AppLog.SvcInfo($"Бесшовное переключение: standalone «{status.StrategyName}» → «{strategy.Name}»");
+                await StopAsync(ct).ConfigureAwait(false);
+                return await StartAsync(strategy, gameFilter, showConsole, ct).ConfigureAwait(false);
+            }
+            return await StartAsync(strategy, gameFilter, showConsole, ct).ConfigureAwait(false);
         }
 
         /// <summary>

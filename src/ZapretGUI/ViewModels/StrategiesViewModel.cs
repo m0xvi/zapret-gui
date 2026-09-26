@@ -16,6 +16,23 @@ using ZapretGui.Core;
 
 namespace ZapretGui.ViewModels
 {
+    public sealed class BuilderPreset
+    {
+        public string Id { get; init; } = "";
+        public string Name { get; init; } = "";
+        public string Description { get; init; } = "";
+        public string DesyncMode { get; init; } = "";
+        public string SplitPos { get; init; } = "";
+        public string FakeSni { get; init; } = "";
+        public string Ttl { get; init; } = "";
+        public string Fooling { get; init; } = "";
+        public bool UseMultisplit { get; init; }
+        public bool UseGameUdp { get; init; }
+        public bool UseHostlist { get; init; }
+        public bool UseIpSet { get; init; }
+        public string DisplayText => $"{Name} — {Description}";
+    }
+
     public sealed class StrategiesViewModel : ObservableObject
     {
         private readonly MainViewModel _main;
@@ -67,6 +84,7 @@ namespace ZapretGui.ViewModels
         private bool _builderUseIpSet = true;
         private string _builderTestStatus = "";
         private string _builderTestStatusKey = "Info";
+        private BuilderPreset? _selectedBuilderPreset;
 
         // Контрольные адреса
         private string _newTargetName = "";
@@ -97,16 +115,29 @@ namespace ZapretGui.ViewModels
             CancelTestCommand = new RelayCommand(() => _testCts?.Cancel(), () => IsTestingAll);
             OpenBatCommand = new RelayCommand(() => { if (Selected != null) Shell.OpenInNotepad(Selected.FullPath); });
             CopyArgsCommand = new RelayCommand(CopyArgs, () => Selected != null);
-            SetDefaultCommand = new RelayCommand(SetDefault, () => Selected != null);
+            SetDefaultCommand = new AsyncRelayCommand(SetDefaultAsync, () => Selected != null && !IsBusy && !IsTestingAll);
             RefreshCommand = new RelayCommand(Refresh);
             OpenFolderCommand = new RelayCommand(() => Shell.OpenFolder(Store.Folder));
             UseRecommendedCommand = new RelayCommand(UseRecommended);
             ApplyBestRecommendedCommand = new AsyncRelayCommand(ApplyBestRecommendedAsync, () => BestEmpiricalStrategy != null && !IsBusy && !IsTestingAll);
 
             // Команды конструктора параметров
+            BuilderPresets = new List<BuilderPreset>
+            {
+                new() { Id="preset-standard", Name="Стандарт", Description="fake,split2 + Google SNI, multisplit — баланс скорости и обхода", DesyncMode="fake,split2", SplitPos="midsld", FakeSni="www.google.com", Ttl="auto", Fooling="badsum", UseMultisplit=true, UseGameUdp=true, UseHostlist=true, UseIpSet=true },
+                new() { Id="preset-aggressive", Name="Агрессивный", Description="disorder2 + sniext, TTL 2 — для строгих ТСПУ", DesyncMode="disorder2", SplitPos="sniext", FakeSni="www.microsoft.com", Ttl="2", Fooling="badsum,ts", UseMultisplit=true, UseGameUdp=true, UseHostlist=true, UseIpSet=true },
+                new() { Id="preset-light", Name="Лёгкий", Description="только fake — минимальная нагрузка, для слабых ТСПУ", DesyncMode="fake", SplitPos="none", FakeSni="www.cloudflare.com", Ttl="auto", Fooling="none", UseMultisplit=false, UseGameUdp=false, UseHostlist=true, UseIpSet=false },
+                new() { Id="preset-gaming", Name="Игровой", Description="split2 + UDP 50000-65535 — голос Discord и игры", DesyncMode="split2", SplitPos="1", FakeSni="yandex.ru", Ttl="auto", Fooling="badseq", UseMultisplit=true, UseGameUdp=true, UseHostlist=true, UseIpSet=true },
+            };
+            SelectedBuilderPreset = BuilderPresets[0];
+
             BuilderTestCommand = new AsyncRelayCommand(BuilderTestAsync, () => !IsBusy && !IsTestingAll && !IsAutoTuningRunning);
-            BuilderSaveCommand = new RelayCommand(BuilderSave, () => !string.IsNullOrWhiteSpace(BuilderStrategyName));
-            BuilderApplyCommand = new AsyncRelayCommand(BuilderApplyAsync, () => !IsBusy && !IsTestingAll && !IsAutoTuningRunning && !string.IsNullOrWhiteSpace(BuilderStrategyName));
+            BuilderSaveCommand = new RelayCommand(BuilderSave, () => !string.IsNullOrWhiteSpace(BuilderStrategyName) && IsBuilderNameValid);
+            BuilderApplyCommand = new AsyncRelayCommand(BuilderApplyAsync, () => !IsBusy && !IsTestingAll && !IsAutoTuningRunning && !string.IsNullOrWhiteSpace(BuilderStrategyName) && IsBuilderNameValid);
+            ApplyBuilderPresetCommand = new RelayCommand(() => { if (SelectedBuilderPreset != null) ApplyBuilderPreset(SelectedBuilderPreset); });
+            LoadBuilderFromSelectedCommand = new RelayCommand(LoadBuilderFromSelected, () => Selected != null);
+            CopyBuilderArgsCommand = new RelayCommand(CopyBuilderArgs, () => BuilderGeneratedArgs.Count > 0);
+
 
             // Команды умного автоподбора
             StartSmartAutoTuningCommand = new AsyncRelayCommand(StartSmartAutoTuningAsync, () => !IsAutoTuningRunning && !IsBusy && !IsTestingAll);
@@ -131,6 +162,7 @@ namespace ZapretGui.ViewModels
             ExportCandidateReportCommand = new RelayCommand(ExportCandidateReport,
                 () => CandidateEvaluations.Count > 0 || EvaluationHistory.Count > 0);
             ClearHistoryCommand = new RelayCommand(ClearHistory, () => EvaluationHistory.Count > 0);
+            ClearSwitchHistoryCommand = new RelayCommand(ClearSwitchHistory, () => SwitchHistory.Count > 0);
             SaveCandidateCommand = new RelayCommand(SaveCandidate, () => CandidatePreview != null);
             RunSavedCandidateCommand = new AsyncRelayCommand(RunSavedCandidateAsync,
                 () => CandidatePreview != null && IsCandidatePreviewSaved && !IsBusy && !IsTestingAll && !IsGeneratingCandidates && !IsEvaluatingCandidates);
@@ -146,6 +178,7 @@ namespace ZapretGui.ViewModels
 
             foreach (var saved in StrategyCandidateStore.Load()) SavedCandidates.Add(saved);
             foreach (var record in _evaluationHistory.Take(50)) EvaluationHistory.Add(record);
+            foreach (var rec in StrategySwitchHistoryStore.Load().Take(20)) SwitchHistory.Add(rec);
         }
 
         public StrategyStore Store => _main.Strategies;
@@ -348,6 +381,7 @@ namespace ZapretGui.ViewModels
             AutoTuningProgressMaximum = SmartStrategyAutoTuner.Hypotheses.Count;
             AutoTuningProgressPercentText = "0%";
             _autoTuningCts = new CancellationTokenSource();
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Умный автоподбор", "Глубокий перебор гипотез DPI — не закрывайте окно", "Подготовка…", 0, false, true, () => _autoTuningCts?.Cancel())); } catch {}
 
             var progress = new Progress<AutoTunerProgress>(p =>
             {
@@ -355,6 +389,7 @@ namespace ZapretGui.ViewModels
                 AutoTuningProgressMaximum = p.TotalSteps;
                 AutoTuningProgressPercentText = p.TotalSteps > 0 ? $"{(int)((double)p.CurrentStep / p.TotalSteps * 100)}%" : "0%";
                 AutoTuningStatusText = p.StatusMessage;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(p.StatusMessage, $"{p.CurrentStep}/{p.TotalSteps} гипотез", p.TotalSteps > 0 ? (double)p.CurrentStep / p.TotalSteps * 100 : 0, false)); } catch {}
             });
 
             try
@@ -389,6 +424,7 @@ namespace ZapretGui.ViewModels
             finally
             {
                 IsAutoTuningRunning = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -401,13 +437,20 @@ namespace ZapretGui.ViewModels
         {
             if (WinnerCandidate == null) return;
             var strat = WinnerCandidate.ToStrategyInfo();
+            var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+            var status = _main.Bypass.GetStatus();
+            if (status.IsRunning)
+            {
+                var res = await _main.Bypass.SwitchToStrategyAsync(strat, mode, Settings.ShowWinwsConsole);
+                if (!res.Ok)
+                {
+                    Message = res.Message;
+                    _main.Home.ShowError(res.Message);
+                    return;
+                }
+            }
             Settings.SelectedStrategy = strat.Name;
             SettingsStore.Save(Settings);
-
-            if (_main.Bypass.GetStatus().IsRunning)
-            {
-                await _main.Bypass.StartAsync(strat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
-            }
 
             _main.Home.RefreshStatus();
             _main.Home.ShowSuccess($"Стратегия «{strat.Name}» установлена как основная и применена.");
@@ -483,6 +526,8 @@ namespace ZapretGui.ViewModels
             {
                 if (Set(ref _builderStrategyName, value ?? ""))
                 {
+                    Raise(nameof(BuilderNameValidationText));
+                    Raise(nameof(IsBuilderNameValid));
                     (BuilderSaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (BuilderApplyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
@@ -543,9 +588,36 @@ namespace ZapretGui.ViewModels
             set { if (Set(ref _builderUseIpSet, value)) RaiseBuilderPreview(); }
         }
 
+        public List<BuilderPreset> BuilderPresets { get; }
+        public BuilderPreset? SelectedBuilderPreset
+        {
+            get => _selectedBuilderPreset;
+            set => Set(ref _selectedBuilderPreset, value);
+        }
+
+        public string BuilderNameValidationText
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(BuilderStrategyName)) return "Укажите имя файла (без .bat)";
+                var invalid = Path.GetInvalidFileNameChars();
+                if (BuilderStrategyName.IndexOfAny(invalid) >= 0) return "Имя содержит недопустимые символы";
+                if (BuilderStrategyName.Length > 40) return "Имя слишком длинное (до 40 символов)";
+                if (Store.Items.Any(s => s.Name.Equals(BuilderStrategyName, StringComparison.OrdinalIgnoreCase))) return "Стратегия с таким именем уже существует — будет перезаписана";
+                return "";
+            }
+        }
+
+        public bool IsBuilderNameValid => string.IsNullOrWhiteSpace(BuilderNameValidationText) || BuilderNameValidationText.Contains("будет перезаписана");
+
+        public ICommand ApplyBuilderPresetCommand { get; }
+        public ICommand LoadBuilderFromSelectedCommand { get; }
+        public ICommand CopyBuilderArgsCommand { get; }
+
         public List<string> BuilderGeneratedArgs => VisualStrategyBuilder.BuildArgs(
             Settings.EnginePath, BuilderDesyncMode, BuilderSplitPos, BuilderFakeSni, BuilderTtl,
-            BuilderFooling, BuilderUseMultisplit, BuilderUseGameUdp, BuilderUseHostlist, BuilderUseIpSet);
+            BuilderFooling, BuilderUseMultisplit, BuilderUseGameUdp, BuilderUseHostlist, BuilderUseIpSet,
+            repeats: 0, youtubeSni: Settings.YoutubeSniOverride, disableQuicFake: Settings.DisableQuicFake);
 
         public string BuilderGeneratedArgsPreview => string.Join(" ", BuilderGeneratedArgs);
 
@@ -569,9 +641,93 @@ namespace ZapretGui.ViewModels
         {
             Raise(nameof(BuilderGeneratedArgs));
             Raise(nameof(BuilderGeneratedArgsPreview));
+            Raise(nameof(BuilderArgsCountText));
+            Raise(nameof(BuilderHasArgs));
+        }
+
+        public string BuilderArgsCountText => $"{BuilderGeneratedArgs.Count} аргументов · {BuilderGeneratedArgsPreview.Length} символов";
+        public bool BuilderHasArgs => BuilderGeneratedArgs.Count > 0;
+
+        private void ApplyBuilderPreset(BuilderPreset preset)
+        {
+            BuilderDesyncMode = preset.DesyncMode;
+            BuilderSplitPos = preset.SplitPos;
+            BuilderFakeSni = preset.FakeSni;
+            BuilderTtl = preset.Ttl;
+            BuilderFooling = preset.Fooling;
+            BuilderUseMultisplit = preset.UseMultisplit;
+            BuilderUseGameUdp = preset.UseGameUdp;
+            BuilderUseHostlist = preset.UseHostlist;
+            BuilderUseIpSet = preset.UseIpSet;
+            BuilderTestStatus = $"Применён пресет «{preset.Name}»: {preset.Description}";
+            BuilderTestStatusKey = "Info";
+        }
+
+        private void LoadBuilderFromSelected()
+        {
+            if (Selected == null) return;
+            var s = Selected;
+            BuilderStrategyName = s.Name + "_copy";
+            // Пытаемся угадать параметры из Args
+            var args = string.Join(" ", s.Args);
+            if (args.Contains("disorder2")) BuilderDesyncMode = "disorder2";
+            else if (args.Contains("fake,split2")) BuilderDesyncMode = "fake,split2";
+            else if (args.Contains("split2")) BuilderDesyncMode = "split2";
+            else if (args.Contains("fake")) BuilderDesyncMode = "fake";
+            if (args.Contains("sniext")) BuilderSplitPos = "sniext";
+            else if (args.Contains("midsld")) BuilderSplitPos = "midsld";
+            foreach (var sni in BuilderFakeSnis)
+            {
+                if (sni != "none" && args.Contains(sni)) { BuilderFakeSni = sni; break; }
+            }
+            BuilderTestStatus = $"Параметры загружены из «{s.Name}» — отредактируйте и сохраните как новую стратегию";
+            BuilderTestStatusKey = "Info";
+        }
+
+        private void CopyBuilderArgs()
+        {
+            try
+            {
+                System.Windows.Clipboard.SetText(BuilderGeneratedArgsPreview);
+                BuilderTestStatus = "Аргументы скопированы в буфер обмена";
+                BuilderTestStatusKey = "Success";
+            }
+            catch (Exception ex) { BuilderTestStatus = "Не удалось скопировать: " + ex.Message; BuilderTestStatusKey = "Danger"; }
         }
 
         // ------------------------------------------------------------------ Управление контрольными адресами
+        public bool UseTargetsTxtForStrategyTest
+        {
+            get => Settings.UseTargetsTxtForStrategyTest;
+            set
+            {
+                if (Settings.UseTargetsTxtForStrategyTest == value) return;
+                Settings.UseTargetsTxtForStrategyTest = value;
+                SettingsStore.Save(Settings);
+                Raise(nameof(UseTargetsTxtForStrategyTest));
+                Raise(nameof(TargetsTxtCountText));
+                Raise(nameof(TargetsTxtStatusText));
+                Raise(nameof(EffectiveTargetCountText));
+            }
+        }
+
+        public int TargetsTxtCount => TargetsTxtLoader.Exists(Settings.EnginePath) ? TargetsTxtLoader.Count(Settings.EnginePath) : 0;
+        public string TargetsTxtCountText => TargetsTxtCount == 0 ? "targets.txt не найден" : $"{TargetsTxtCount} доменов из targets.txt";
+        public string TargetsTxtStatusText => UseTargetsTxtForStrategyTest
+            ? (TargetsTxtCount == 0 ? "Файл utils/targets.txt не найден в папке движка" : $"Будет проверено дополнительно {TargetsTxtCount} HTTP-целей из utils/targets.txt (как в zapret.ps1) + ваши адреса")
+            : "Доп-цели из targets.txt отключены";
+        public int EffectiveTargetCount => ConnectionTester.GetEffectiveTargets(Settings).Count;
+        public string EffectiveTargetCountText => $"Итого контрольных целей: {EffectiveTargetCount} (базовые 8 + targets.txt {TargetsTxtCount} + ваши)";
+
+        public void RefreshTargetsTxtInfo()
+        {
+            Raise(nameof(TargetsTxtCount));
+            Raise(nameof(TargetsTxtCountText));
+            Raise(nameof(TargetsTxtStatusText));
+            Raise(nameof(EffectiveTargetCount));
+            Raise(nameof(EffectiveTargetCountText));
+        }
+
         public ObservableCollection<MonitorTarget> TargetEndpoints { get; }
 
         public string NewTargetName
@@ -602,6 +758,7 @@ namespace ZapretGui.ViewModels
         public ObservableCollection<StrategyCandidateEvaluation> CandidateEvaluations { get; } = new();
         public ObservableCollection<SavedStrategyCandidate> SavedCandidates { get; } = new();
         public ObservableCollection<StrategyEvaluationHistoryRecord> EvaluationHistory { get; } = new();
+        public ObservableCollection<StrategySwitchRecord> SwitchHistory { get; } = new();
 
         public StrategyCandidate? CandidatePreview
         {
@@ -739,6 +896,10 @@ namespace ZapretGui.ViewModels
             ? "История пуста"
             : $"Записей в истории: {EvaluationHistory.Count}";
 
+        public string SwitchHistoryCountText => SwitchHistory.Count == 0
+            ? "Переключений пока нет"
+            : $"Последних переключений: {SwitchHistory.Count}";
+
         public string SearchText
         {
             get => _searchText;
@@ -800,12 +961,15 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(SelectedArgs));
                 Raise(nameof(SelectedFeatures));
                 Raise(nameof(SelectedPath));
+                Raise(nameof(RunButtonText));
+                Raise(nameof(RunButtonTooltip));
+                Raise(nameof(IsRunSwitchMode));
                 (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 (TestStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 (OpenBatCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (CopyArgsCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (SetDefaultCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (SetDefaultCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 (BuildCandidatePreviewCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
@@ -817,6 +981,49 @@ namespace ZapretGui.ViewModels
         public string SelectedFeatures => Selected == null ? "" : StrategyFeatureAnalyzer.Analyze(Selected).Summary;
         public string SelectedPath => Selected?.FullPath ?? "";
 
+        // Динамический текст кнопки «Запустить/Переключить» — P1 1.6.9: отражает бесшовность
+        public string RunButtonText
+        {
+            get
+            {
+                var running = CurrentRunningName();
+                if (Selected != null && !string.IsNullOrWhiteSpace(running) && !string.Equals(running, Selected.Name, StringComparison.OrdinalIgnoreCase) && Bypass.GetStatus().IsRunning)
+                    return $"Переключить на «{Selected.Name}»";
+                if (Selected != null) return $"Запустить «{Selected.Name}»";
+                return "Запустить";
+            }
+        }
+
+        public string RunButtonTooltip
+        {
+            get
+            {
+                var running = CurrentRunningName();
+                if (Selected != null && !string.IsNullOrWhiteSpace(running) && !string.Equals(running, Selected.Name, StringComparison.OrdinalIgnoreCase) && Bypass.GetStatus().IsRunning)
+                    return $"Бесшовно переключить обход с «{running}» на «{Selected.Name}» — служба или процесс перезапустится без ручной остановки";
+                if (Selected != null) return $"Запустить обход со стратегией «{Selected.Name}»";
+                return "Выберите стратегию для запуска";
+            }
+        }
+
+        public bool IsRunSwitchMode => Bypass.GetStatus().IsRunning && Selected != null && !string.IsNullOrWhiteSpace(CurrentRunningName()) && !string.Equals(CurrentRunningName(), Selected.Name, StringComparison.OrdinalIgnoreCase);
+
+        private string CurrentRunningName()
+        {
+            var s = Bypass.GetStatus();
+            if (!string.IsNullOrWhiteSpace(s.ServiceStrategy)) return s.ServiceStrategy;
+            return s.StrategyName ?? "";
+        }
+
+        public void RefreshRunButton()
+        {
+            Raise(nameof(RunButtonText));
+            Raise(nameof(RunButtonTooltip));
+            Raise(nameof(IsRunSwitchMode));
+            (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (SetDefaultCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        }
+
         public bool IsBusy
         {
             get => _isBusy;
@@ -824,6 +1031,9 @@ namespace ZapretGui.ViewModels
             {
                 if (Set(ref _isBusy, value))
                 {
+                    Raise(nameof(RunButtonText));
+                    Raise(nameof(RunButtonTooltip));
+                    Raise(nameof(IsRunSwitchMode));
                     (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (TestStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
@@ -834,6 +1044,7 @@ namespace ZapretGui.ViewModels
                     (ApplyBestRecommendedCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (BuilderTestCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (BuilderApplyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (SetDefaultCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -943,6 +1154,7 @@ namespace ZapretGui.ViewModels
         public ICommand CancelCandidateEvaluationCommand { get; }
         public ICommand ExportCandidateReportCommand { get; }
         public ICommand ClearHistoryCommand { get; }
+        public ICommand ClearSwitchHistoryCommand { get; }
 
         // ------------------------------------------------------------------ логика
 
@@ -987,6 +1199,10 @@ namespace ZapretGui.ViewModels
             Raise(nameof(HasBestRecommendation));
             Raise(nameof(BestStrategyRecommendationText));
             Raise(nameof(BestStrategyDetailsText));
+            Raise(nameof(RunButtonText));
+            Raise(nameof(RunButtonTooltip));
+            Raise(nameof(IsRunSwitchMode));
+            RefreshTargetsTxtInfo();
         }
 
         private void ReloadTargetEndpoints()
@@ -1029,21 +1245,37 @@ namespace ZapretGui.ViewModels
             var target = parameter as StrategyInfo ?? Selected;
             if (target == null || IsBusy) return;
 
+            if (!Shell.IsAdmin())
+            {
+                Message = "Для переключения стратегии нужны права администратора. Нажмите «Перезапустить от администратора» на странице Обзор.";
+                return;
+            }
+            if (!System.IO.File.Exists(System.IO.Path.Combine(Store.Folder, "bin", "winws.exe")))
+            {
+                Message = "Не найден bin\\winws.exe. Скачайте движок на странице «Обновления».";
+                return;
+            }
+
             IsBusy = true;
             Message = $"Запускаю стратегию «{target.Name}»…";
             try
             {
-                var result = await Bypass.StartAsync(target,
-                    EngineService.GetGameFilterMode(Store.Folder), false);
+                var mode = EngineService.GetGameFilterMode(Store.Folder);
+                // P2 1.6.10: централизованная логика применения (admin/legacy/switch уже внутри Bypass, но используем сервис для консистентности)
+                var result = await StrategyApplicationService.ApplyAsync(Bypass, target, mode, Settings.ShowWinwsConsole);
+                var prev = CurrentRunningName();
                 if (result.Ok)
                 {
                     Settings.SelectedStrategy = target.Name;
                     SettingsStore.Save(Settings);
                     _main.Home.RefreshStatus();
-                    Message = $"Стратегия «{target.Name}» успешно запущена";
+                    RefreshRunButton();
+                    AppendSwitchHistory(target.Name, prev, "вручную", true, result.Message);
+                    Message = result.Message.Length > 0 ? result.Message : $"Стратегия «{target.Name}» успешно запущена";
                 }
                 else
                 {
+                    AppendSwitchHistory(target.Name, prev, "вручную", false, result.Message);
                     Message = result.Message;
                 }
             }
@@ -1102,13 +1334,58 @@ namespace ZapretGui.ViewModels
             await RunAsync(BestEmpiricalStrategy);
         }
 
-        private void SetDefault()
+        private async Task SetDefaultAsync()
         {
             if (Selected == null) return;
+            var wasRunning = Bypass.GetStatus().IsRunning;
+            var runningName = CurrentRunningName();
+            var needsSwitch = wasRunning && !string.Equals(runningName, Selected.Name, StringComparison.OrdinalIgnoreCase);
+            if (needsSwitch)
+            {
+                var answer = MessageBox.Show(
+                    $"Сделать «{Selected.Name}» основной и сразу бесшовно переключить обход с «{runningName}» на «{Selected.Name}»?\n\nТекущий обход будет перезапущен без ручной остановки.\n\nНажмите «Да» для переключения сейчас или «Нет» чтобы только запомнить выбор.",
+                    "Сделать основной", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (answer == MessageBoxResult.Yes)
+                {
+                    if (!Shell.IsAdmin())
+                    {
+                        Message = "Для переключения стратегии нужны права администратора.";
+                        return;
+                    }
+                    IsBusy = true;
+                    try
+                    {
+                        var mode = EngineService.GetGameFilterMode(Store.Folder);
+                        var res = await Bypass.SwitchToStrategyAsync(Selected, mode, Settings.ShowWinwsConsole);
+                        if (!res.Ok)
+                        {
+                            Message = res.Message;
+                            return;
+                        }
+                        Settings.SelectedStrategy = Selected.Name;
+                        SettingsStore.Save(Settings);
+                        _main.Home.RefreshStatus();
+                        RefreshRunButton();
+                        AppendSwitchHistory(Selected.Name, runningName, "сделать основной", true, res.Message);
+                        Message = $"«{Selected.Name}» установлена как основная и сразу применена";
+                        return;
+                    }
+                    finally
+                    {
+                        IsBusy = false;
+                    }
+                }
+            }
             Settings.SelectedStrategy = Selected.Name;
             SettingsStore.Save(Settings);
             _main.Home.ReloadFromEngine();
+            RefreshRunButton();
             Message = $"«{Selected.Name}» установлена как основная стратегия";
+        }
+
+        private void SetDefault()
+        {
+            _ = SetDefaultAsync();
         }
 
         private void CopyArgs()
@@ -1188,6 +1465,8 @@ namespace ZapretGui.ViewModels
             TestSummary = "";
             TestSummaryKey = "Info";
             var results = new List<StrategyTestResult>();
+            // Глобальный оверлей затемнения — блокирует окно на время проверки всех стратегий
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка", $"Подготовка: {Store.Items.Count} стратегий × {ConnectionTester.GetEffectiveTargets(Settings).Count} целей", "Инициализация...", 0, false, true, () => _testCts?.Cancel())); } catch {}
             try
             {
                 var total = Store.Items.Count;
@@ -1230,6 +1509,7 @@ namespace ZapretGui.ViewModels
                         {
                             TestProgressText = $"[{index + 1}/{total}] «{strategy.Name}»: {text}";
                         }
+                        try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update($"Проверено {index} из {total} • Подходящих: {results.Count(r => r.IsSuitable)}", TestProgressText, TestProgressMaximum > 0 ? (double)TestProgressValue / TestProgressMaximum * 100 : 0, false)); } catch {}
                     });
 
                     var result = await Bypass.TestStrategyAsync(strategy, _testCts.Token, subProgress);
@@ -1245,6 +1525,7 @@ namespace ZapretGui.ViewModels
                     var passed = results.Count(r => r.IsSuitable);
                     TestSummary = $"Проверено: {index + 1} из {total}. Подходящих стратегий: {passed}";
                     TestSummaryKey = passed > 0 ? "Success" : "Warning";
+                    try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update($"Проверено {index + 1} из {total} • Подходящих: {passed}", TestProgressText, ((double)(index + 1) / total) * 100, false)); } catch {}
                 }
 
                 TestProgressValue = TestProgressMaximum;
@@ -1280,6 +1561,7 @@ namespace ZapretGui.ViewModels
                 IsTestingAll = false;
                 _testCts?.Dispose();
                 _testCts = null;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1409,6 +1691,36 @@ namespace ZapretGui.ViewModels
             Raise(nameof(EvaluationHistoryCountText));
             (ClearHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
             Message = "История проверок очищена";
+        }
+
+        private void AppendSwitchHistory(string strategyName, string previousName, string source, bool success, string message)
+        {
+            var mode = Bypass.GetStatus().ServiceState == ServiceState.Running ? "служба" : Bypass.GetStatus().IsRunning ? "процесс" : "выкл";
+            var rec = new StrategySwitchRecord
+            {
+                StrategyName = strategyName,
+                PreviousStrategyName = previousName,
+                Source = source,
+                Mode = mode,
+                Success = success,
+                Message = message ?? ""
+            };
+            StrategySwitchHistoryStore.TryAppend(rec);
+            System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                SwitchHistory.Insert(0, rec);
+                while (SwitchHistory.Count > 20) SwitchHistory.RemoveAt(SwitchHistory.Count - 1);
+                Raise(nameof(SwitchHistoryCountText));
+                (ClearSwitchHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            });
+        }
+
+        public void ClearSwitchHistory()
+        {
+            StrategySwitchHistoryStore.Clear();
+            SwitchHistory.Clear();
+            Raise(nameof(SwitchHistoryCountText));
+            (ClearSwitchHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private void BuildCandidatePreview()
@@ -1617,12 +1929,39 @@ namespace ZapretGui.ViewModels
             Message = $"Кандидат «{saved.DisplayName}» удалён";
         }
 
-        private void MakeCandidatePrimary()
+        private async void MakeCandidatePrimary()
         {
             if (CandidatePreview == null) return;
+            var wasRunning = Bypass.GetStatus().IsRunning;
+            var runningName = CurrentRunningName();
+            var needsSwitch = wasRunning && !string.Equals(runningName, CandidatePreview.Name, StringComparison.OrdinalIgnoreCase);
+            if (needsSwitch)
+            {
+                var answer = MessageBox.Show(
+                    $"Сделать кандидата «{CandidatePreview.Name}» основной и сразу бесшовно переключить обход с «{runningName}» на него?",
+                    "Сделать основной", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (answer == MessageBoxResult.Yes)
+                {
+                    if (!Shell.IsAdmin())
+                    {
+                        Message = "Для переключения стратегии нужны права администратора.";
+                        return;
+                    }
+                    var candidateInfo = new StrategyInfo { Name = CandidatePreview.Name, Args = CandidatePreview.Args, Category = "АВТОКОНСТРУКТОР", Description = CandidatePreview.MutationDescription };
+                    var mode = EngineService.GetGameFilterMode(Store.Folder);
+                    IsBusy = true;
+                    try
+                    {
+                        var res = await Bypass.SwitchToStrategyAsync(candidateInfo, mode, Settings.ShowWinwsConsole);
+                        if (!res.Ok) { Message = res.Message; return; }
+                    }
+                    finally { IsBusy = false; }
+                }
+            }
             Settings.SelectedStrategy = CandidatePreview.Name;
             SettingsStore.Save(Settings);
             _main.Home.ReloadFromEngine();
+            RefreshRunButton();
             Message = $"Кандидат «{CandidatePreview.Name}» выбран основной стратегией";
         }
 
@@ -1656,10 +1995,11 @@ namespace ZapretGui.ViewModels
             IsTestingSniPool = true;
             SniTestingStatusText = "Тестирование пула TLS SNI фейков…";
             SniTestResults.Clear();
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Пул TLS SNI", "Параллельное TLS-тестирование доменов — не закрывайте окно", SniTestingStatusText, 0, true, false)); } catch {}
 
             try
             {
-                var progress = new Progress<string>(s => SniTestingStatusText = s);
+                var progress = new Progress<string>(s => { SniTestingStatusText = s; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(s, "Проверка SNI…", null, true)); } catch {} });
                 var results = await SniFakePoolManager.TestPoolAsync(null, progress).ConfigureAwait(true);
 
                 foreach (var r in results)
@@ -1683,10 +2023,13 @@ namespace ZapretGui.ViewModels
             catch (Exception ex)
             {
                 SniTestingStatusText = "Ошибка тестирования SNI: " + ex.Message;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Пул TLS SNI — ошибка", ex.Message, "Попробуйте ещё раз")); } catch {}
+                return;
             }
             finally
             {
                 IsTestingSniPool = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 

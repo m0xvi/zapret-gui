@@ -50,6 +50,21 @@ namespace ZapretGui.Views
                 _vm.Hotkeys.Register(this);
             };
 
+            // Esc закрывает глобальный оверлей (ошибка → Dismiss, иначе отмена/скрытие)
+            PreviewKeyDown += (_, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Escape && _vm.GlobalOverlay.IsVisible)
+                {
+                    if (_vm.GlobalOverlay.HasError)
+                        _vm.GlobalOverlay.DismissCommand.Execute(null);
+                    else if (_vm.GlobalOverlay.CanCancel)
+                        _vm.GlobalOverlay.CancelCommand.Execute(null);
+                    else
+                        _vm.GlobalOverlay.Hide();
+                    e.Handled = true;
+                }
+            };
+
             _vm.RequestToggleOverlay += () => Dispatcher.Invoke(ToggleMiniOverlayWindow);
 
             _vm.Home.PropertyChanged += (_, e) =>
@@ -171,7 +186,7 @@ namespace ZapretGui.Views
                         SettingsStore.Save(_vm.Settings);
                         if (_vm.Bypass.GetStatus().IsRunning)
                         {
-                            var res = await _vm.Bypass.StartAsync(strat,
+                            var res = await _vm.Bypass.SwitchToStrategyAsync(strat,
                                 EngineService.GetGameFilterMode(_vm.Settings.EnginePath), _vm.Settings.ShowWinwsConsole);
                             _tray?.ShowBalloon("Смена стратегии", res.Message);
                         }
@@ -432,6 +447,7 @@ namespace ZapretGui.Views
 
             SettingsStore.Save(_vm.Settings);
             _vm.Hotkeys.Unregister();
+            _vm.CloseTaskbarMetricsWindow();
             _overlayWindow?.CloseDirectly();
             _tray?.Dispose();
 

@@ -3,8 +3,8 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
-                  PanningMode="VerticalOnly" Padding="0,0,4,0">
-    <Grid Margin="24,20,20,26">
+                  PanningMode="VerticalOnly" Padding="0,0,4,24">
+    <Grid Margin="24,20,20,32">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -27,6 +27,8 @@
                 <Button Style="{StaticResource SecondaryButton}" Content="Определить причину" Margin="8,0,0,0"
                         Command="{Binding DiagnoseCommand}"
                         ToolTip="Сравнить ресурс без обхода и с текущей стратегией. Обход будет кратко перезапущен." />
+                <Border Style="{StaticResource BusySpinner}" Width="14" Height="14" Margin="8,0,0,0" VerticalAlignment="Center"
+                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
             </WrapPanel>
         </Grid>
 
@@ -65,10 +67,22 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
-                    <WrapPanel Orientation="Horizontal" Margin="8,4,8,12">
-                        <TextBlock Style="{StaticResource SectionText}" Text="РЕСУРСЫ" VerticalAlignment="Center" />
-                        <TextBlock Style="{StaticResource DimText}" Text="{Binding LastCheckText}" Margin="14,0,0,0" VerticalAlignment="Center" />
-                    </WrapPanel>
+                    <Grid Margin="8,4,8,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SectionText}" Text="РЕСУРСЫ" VerticalAlignment="Center" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastCheckText}" Margin="14,0,0,0" VerticalAlignment="Center" />
+                        </WrapPanel>
+                        <WrapPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource GhostButton}" Content="＋ Ресурс" Padding="8,3" FontSize="11"
+                                    Command="{Binding AddResourceCommand}" ToolTip="Добавить ресурс в мониторинг" />
+                            <Button Style="{StaticResource GhostButton}" Content="↗ В обход" Padding="8,3" FontSize="11" Margin="6,0,0,0"
+                                    Command="{Binding AddToBypassListCommand}" ToolTip="Добавить домен в обход (list-general-user.txt)" />
+                        </WrapPanel>
+                    </Grid>
                     <ListBox Grid.Row="1" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Targets}"
                              SelectedItem="{Binding SelectedTarget, Mode=TwoWay}" Background="Transparent"
                              ItemContainerStyle="{StaticResource CompactRowItemStyle}"
@@ -98,50 +112,15 @@
                 </Grid>
             </Border>
 
-            <StackPanel>
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource SectionText}" Text="ДОБАВИТЬ РЕСУРС" />
-                        <TextBlock Style="{StaticResource MutedText}"
-                                   Text="URL, название и тип ресурса вводятся в отдельном окне, чтобы пустые поля не занимали место." TextWrapping="Wrap" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="Добавить ресурс в мониторинг" Margin="0,10,0,0"
-                                Command="{Binding AddResourceCommand}"
-                                ToolTip="Добавить ресурс в список фоновой проверки" />
-                        <Button Style="{StaticResource GhostButton}" Content="Добавить выбранный домен в обход" Margin="0,8,0,0"
-                                Command="{Binding AddToBypassListCommand}"
-                                ToolTip="Добавить домен в lists\list-general-user.txt. После этого перезапустите обход." />
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
-                                   Text="Сначала ресурс проверяется напрямую и с обходом. Автоматически добавлять домены без подтверждения приложение не будет — это защищает от ложных срабатываний." TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource Card}" Margin="0,16,0,0">
-                    <StackPanel>
-                        <TextBlock Style="{StaticResource SectionText}" Text="ПОСЛЕДНИЕ РЕЗУЛЬТАТЫ" />
-                        <ItemsControl ItemsSource="{Binding Results}">
-                            <ItemsControl.ItemTemplate>
-                                <DataTemplate>
-                                    <Border Style="{StaticResource InnerCard}" Margin="0,5,0,0">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <StackPanel>
-                                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Target.Name}" FontWeight="SemiBold" />
-                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" TextWrapping="Wrap" />
-                                            </StackPanel>
-                                            <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding StatusText}"
-                                                       Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
-                                        </Grid>
-                                    </Border>
-                                </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
-                    </StackPanel>
-                </Border>
+            <!-- Дублирующие блоки удалены 24.09 — управление ресурсами теперь в шапке, результаты показываются внутри строки ресурса, ссылки ведут на единый инструмент Проверка -->
+            <StackPanel Margin="0,8,0,0" Orientation="Horizontal" VerticalAlignment="Center">
+                <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.7" Text="Результаты теперь справа от ресурса (в том же списке выше)." VerticalAlignment="Center" />
+                <Button Style="{StaticResource GhostButton}" Content="Единый инструмент — Проверка →" Padding="8,3" FontSize="11" Margin="8,0,0,0"
+                        Command="{Binding OpenUnifiedCheckCommand}" ToolTip="Перейти к единому инструменту проверки (Экспресс/DPI/DeepCheck)" />
             </StackPanel>
         </StackPanel>
+            <!-- Нижний отступ для свободного места снизу -->
+        <Border Height="12" Opacity="0" />
     </Grid>
     </ScrollViewer>
 </UserControl>

@@ -23,6 +23,8 @@ namespace ZapretGui.ViewModels
     public sealed class MainViewModel : ObservableObject
     {
         private readonly DispatcherTimer _timer;
+        private readonly DispatcherTimer _toolbarMetricsTimer;
+        private Views.TaskbarMetricsWindow? _taskbarMetricsWindow;
         private NavItem _selectedNav;
         private bool _isAdmin;
         private DateTime _lastPingProbeTime = DateTime.MinValue;
@@ -32,6 +34,9 @@ namespace ZapretGui.ViewModels
         public event Action? RequestToggleOverlay;
 
         public WatchdogService Watchdog { get; }
+        public SeamlessFailoverService SeamlessFailover { get; }
+        public ProfileAutoSwitchService ProfileAutoSwitch { get; }
+        public BypassScheduleService ScheduleService { get; }
         public RealTimePingSnapshot? RealTimePing { get; private set; }
         public GameDetectionService GameDetector { get; }
         public GlobalHotkeyService Hotkeys { get; }
@@ -51,14 +56,15 @@ namespace ZapretGui.ViewModels
             Home = new HomeViewModel(this);
             StrategiesPage = new StrategiesViewModel(this);
             Updates = new UpdatesViewModel(this);
-            SettingsPage = new SettingsViewModel(this);
+            GlobalOverlay = new GlobalOverlayViewModel();
+            Monitoring = new MonitoringViewModel(this);
             Diagnostics = new DiagnosticsViewModel(this);
             DeepCheck = new DeepCheckViewModel(this);
             UserLists = new UserListsViewModel(this);
             Profiles = new ProfilesViewModel(this);
             FirstLaunch = new FirstLaunchViewModel(this);
-            Logs = new LogsViewModel();
-            Monitoring = new MonitoringViewModel(this);
+            Logs = new LogsViewModel(this);
+            SettingsPage = new SettingsViewModel(this);
 
             GameDetector = new GameDetectionService(settings);
             Hotkeys = new GlobalHotkeyService(settings);
@@ -124,6 +130,58 @@ namespace ZapretGui.ViewModels
                 Watchdog.Start();
             }
 
+            SeamlessFailover = new SeamlessFailoverService(settings, () => Bypass, () => Strategies);
+            SeamlessFailover.StatusChanged += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Raise(nameof(SeamlessStatusText));
+                Raise(nameof(SeamlessStatusKey));
+            });
+            SeamlessFailover.FailoverSucceeded += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Home.RefreshStatus();
+                StrategiesPage.Refresh();
+                Raise(nameof(ActiveStrategySummaryText));
+                Raise(nameof(SeamlessStatusText));
+                Raise(nameof(SeamlessStatusKey));
+                if (Settings.MonitorNotificationsEnabled || Settings.WatchdogNotifyUser)
+                    WatchdogNotificationRequested?.Invoke(msg);
+            });
+            SeamlessFailover.FailoverFailed += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Raise(nameof(SeamlessStatusText));
+                if (Settings.MonitorNotificationsEnabled)
+                    WatchdogNotificationRequested?.Invoke(msg);
+            });
+            if (settings.SeamlessFailoverEnabled && !settings.SafeMode)
+                SeamlessFailover.Start();
+
+            ProfileAutoSwitch = new ProfileAutoSwitchService(settings, () => Bypass, () => Strategies);
+            ProfileAutoSwitch.StatusChanged += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Profiles.RefreshNetwork();
+                Raise(nameof(AutoSwitchNetworkStatus));
+            });
+            ScheduleService = new BypassScheduleService(settings, () => Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended);
+            ScheduleService.StatusChanged += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Home.RefreshStatus();
+                WatchdogNotificationRequested?.Invoke(msg);
+                Raise(nameof(ScheduleSummaryText));
+            });
+            if (settings.ScheduleEnabled && !settings.SafeMode) ScheduleService.Start();
+            ProfileAutoSwitch.ProfileSwitched += (profile, identity) => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                Home.RefreshStatus();
+                Profiles.Reload();
+                Profiles.RefreshNetwork();
+                Raise(nameof(ActiveStrategySummaryText));
+                WatchdogNotificationRequested?.Invoke($"📶 Автопрофиль «{profile.Name}» применён для сети «{identity.DisplayName}»");
+            });
+            if ((settings.AutoSwitchProfileOnNetworkChange || settings.AutoSwitchProfileOnFailure) && !settings.SafeMode)
+            {
+                ProfileAutoSwitch.Start();
+            }
+
             NavItems = new ObservableCollection<NavItem>
             {
                 new() { Key = "group-main", Title = "ОСНОВНОЕ", IsSectionHeader = true },
@@ -135,10 +193,7 @@ namespace ZapretGui.ViewModels
                 new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
                 new() { Key = "profiles", Title = "Профили", Icon = "\uE753", Hint = "Пресеты настроек и полные бэкапы" },
                 new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
-                new() { Key = "updates", Title = "Обновления", Icon = "\uE895", Hint = "Движок, hosts, ipset и GUI" },
-                new() { Key = "logs", Title = "Журнал", Icon = "\uE7C3", Hint = "События и отладка" },
-                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация приложения" },
-                new() { Key = "about", Title = "О программе", Icon = "\uE946", Hint = "Версия и лицензия" }
+                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация, журнал и о программе" },
             };
             _selectedNav = NavItems[1];
 
@@ -147,6 +202,8 @@ namespace ZapretGui.ViewModels
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
             RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
+            NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
+            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 3; Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
             NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
             NavigateActiveCheckCommand = new RelayCommand(NavigateToActiveCheck);
@@ -157,6 +214,24 @@ namespace ZapretGui.ViewModels
 
             _timer = new DispatcherTimer(TimeSpan.FromSeconds(3), DispatcherPriority.Background, OnTick, Application.Current.Dispatcher);
             _timer.Start();
+            // Тулбар-метрики как в MSI Afterburner — обновление каждую минуту, управляется в Настройках
+            var toolbarInterval = Math.Clamp(Settings.ToolbarMetricsIntervalSeconds, 15, 300);
+            _toolbarMetricsTimer = new DispatcherTimer(TimeSpan.FromSeconds(toolbarInterval), DispatcherPriority.Background, OnToolbarMetricsTick, Application.Current.Dispatcher);
+            if (Settings.ToolbarMetricsEnabled) _toolbarMetricsTimer.Start();
+            // Создаём окно метрик на панели задач (как в MSI Afterburner) — рядом с трей-иконками
+            try
+            {
+                Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        _taskbarMetricsWindow = new Views.TaskbarMetricsWindow { DataContext = this };
+                        if (Settings.ToolbarMetricsEnabled) { _taskbarMetricsWindow.Show(); _taskbarMetricsWindow.UpdatePosition(); }
+                    }
+                    catch {}
+                });
+            }
+            catch {}
         }
 
         public AppSettings Settings { get; }
@@ -166,6 +241,7 @@ namespace ZapretGui.ViewModels
         public HomeViewModel Home { get; }
         public StrategiesViewModel StrategiesPage { get; }
         public UpdatesViewModel Updates { get; }
+    public GlobalOverlayViewModel GlobalOverlay { get; }
         public SettingsViewModel SettingsPage { get; }
         public DiagnosticsViewModel Diagnostics { get; }
         public DeepCheckViewModel DeepCheck { get; }
@@ -308,9 +384,145 @@ namespace ZapretGui.ViewModels
         public string RealTimePingStatusKey => RealTimePing?.StatusKey ?? "Muted";
         public string RealTimePingTooltip => RealTimePing?.TooltipText ?? "Живой мониторинг сетевой задержки (RTT)…";
 
+        // Тулбар-метрики — как в MSI Afterburner, на панели задач внизу (вертикально)
+        public bool ToolbarMetricsVisible => Settings.ToolbarMetricsEnabled;
+        public string ToolbarMetricsText => BuildToolbarMetricsText();
+        public string ToolbarMetricsTooltip => "Метрики на панели задач внизу (как в MSI Afterburner) — настройте в Настройки → Сеть → Метрики на панели задач";
+        public System.Collections.Generic.IReadOnlyList<ToolbarMetricsRow> ToolbarMetricsRows => BuildToolbarMetricsRows();
+
+        private string BuildToolbarMetricsText()
+        {
+            // Горизонтальная строка для совместимости — теперь основной вертикальный список
+            try { return string.Join("  ", BuildToolbarMetricsRows().Select(r => r.CompactText)); } catch { return MonitoringSummaryText; }
+        }
+
+        private System.Collections.Generic.IReadOnlyList<ToolbarMetricsRow> BuildToolbarMetricsRows()
+        {
+            var list = new System.Collections.Generic.List<ToolbarMetricsRow>();
+            if (!Settings.ToolbarMetricsEnabled) return list;
+            if (Monitoring == null || Monitoring.Targets == null) return list;
+            try
+            {
+                var visible = Settings.ToolbarMetricsVisibleTargets;
+                var targets = Monitoring.Targets.Where(t => t.Enabled).ToList();
+                if (visible != null && visible.Count > 0)
+                    targets = targets.Where(t => visible.Any(v => v.Equals(t.Name, StringComparison.OrdinalIgnoreCase))).ToList();
+                if (targets.Count == 0) targets = Monitoring.Targets.Take(4).ToList();
+                var results = Monitoring.Results.ToList();
+                foreach (var tgt in targets.Take(6))
+                {
+                    var res = results.FirstOrDefault(r => r.Target.Name == tgt.Name);
+                    if (res != null)
+                    {
+                        var latency = res.Ok ? $"{res.Milliseconds} мс" : "—";
+                        var key = res.StatusKey;
+                        list.Add(new ToolbarMetricsRow(tgt.Name, latency, key, res.Ok));
+                    }
+                    else
+                    {
+                        list.Add(new ToolbarMetricsRow(tgt.Name, "…", "Info", false));
+                    }
+                }
+            }
+            catch {}
+            if (list.Count == 0) list.Add(new ToolbarMetricsRow("Нет данных", "…", "Muted", false));
+            return list;
+        }
+
+        public void RefreshToolbarMetrics()
+        {
+            Raise(nameof(ToolbarMetricsVisible));
+            Raise(nameof(ToolbarMetricsText));
+            Raise(nameof(ToolbarMetricsTooltip));
+            Raise(nameof(ToolbarMetricsRows));
+            // Перезапуск таймера при изменении интервала
+            try
+            {
+                var interval = Math.Clamp(Settings.ToolbarMetricsIntervalSeconds, 15, 300);
+                _toolbarMetricsTimer.Interval = TimeSpan.FromSeconds(interval);
+                if (Settings.ToolbarMetricsEnabled && !_toolbarMetricsTimer.IsEnabled) _toolbarMetricsTimer.Start();
+                if (!Settings.ToolbarMetricsEnabled && _toolbarMetricsTimer.IsEnabled) _toolbarMetricsTimer.Stop();
+            }
+            catch {}
+            // Управление окном на панели задач
+            try
+            {
+                Application.Current.Dispatcher.InvokeAsync(() =>
+                {
+                    try
+                    {
+                        if (Settings.ToolbarMetricsEnabled)
+                        {
+                            if (_taskbarMetricsWindow == null)
+                            {
+                                _taskbarMetricsWindow = new Views.TaskbarMetricsWindow { DataContext = this };
+                            }
+                            if (!_taskbarMetricsWindow.IsVisible) _taskbarMetricsWindow.Show();
+                            _taskbarMetricsWindow.UpdatePosition();
+                        }
+                        else
+                        {
+                            _taskbarMetricsWindow?.Hide();
+                        }
+                    }
+                    catch {}
+                });
+            }
+            catch {}
+        }
+
+        private void OnToolbarMetricsTick(object? sender, EventArgs e)
+        {
+            // Обновление каждую минуту — как в MSI Afterburner
+            Raise(nameof(ToolbarMetricsText));
+            Raise(nameof(ToolbarMetricsRows));
+            Raise(nameof(MonitoringSummaryText));
+            Raise(nameof(RealTimePingSummaryText));
+            // Обновляем позицию окна на панели задач (на случай перемещения таскбара)
+            try { _taskbarMetricsWindow?.UpdatePosition(); } catch {}
+            // Фоновая проверка выбранных ресурсов
+            if (Settings.ToolbarMetricsEnabled && !IsAnyCheckRunning)
+            {
+                _ = Monitoring.CheckAllAsync();
+            }
+        }
+
+        public string AutoSwitchNetworkStatus => ProfileAutoSwitch?.CurrentIdentity?.DisplayName ?? "Сеть не определена";
+        public string AutoSwitchLastReason => ProfileAutoSwitch?.LastReason ?? "";
+        public string ScheduleSummaryText => ScheduleService?.Describe() ?? "расписание выключено";
+
+        public string SeamlessStatusText => SeamlessFailover?.LastReason ?? "Бесшовное переключение неактивно";
+        public string SeamlessStatusKey
+        {
+            get
+            {
+                var t = SeamlessStatusText;
+                if (t.Contains("✅") || t.Contains("восстановлен") || t.Contains("доступны")) return "Success";
+                if (t.Contains("❌") || t.Contains("не удалось") || t.Contains("ошибка", StringComparison.OrdinalIgnoreCase)) return "Danger";
+                if (t.Contains("подбираю") || t.Contains("Диагностирую") || t.Contains("Сбой")) return "Warning";
+                return "Info";
+            }
+        }
+        public string SeamlessLastSwitchText => Settings.SeamlessLastSwitchTime.HasValue ? Settings.SeamlessLastSwitchTime.Value.ToLocalTime().ToString("dd.MM HH:mm") : "ещё не было";
+        public void NotifySeamlessChanged()
+        {
+            if (Settings.SeamlessFailoverEnabled && !Settings.SafeMode) SeamlessFailover?.Start(); else SeamlessFailover?.Stop();
+            SeamlessFailover?.UpdateInterval();
+            Raise(nameof(SeamlessStatusText));
+            Raise(nameof(SeamlessStatusKey));
+            Raise(nameof(SeamlessLastSwitchText));
+        }
+        public void NotifyScheduleChanged()
+        {
+            if (Settings.ScheduleEnabled && !Settings.SafeMode) ScheduleService?.Restart(); else ScheduleService?.Stop();
+            Raise(nameof(ScheduleSummaryText));
+        }
+
         public ICommand ToggleThemeCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
+        public ICommand NavigateHomeCommand { get; }
+        public ICommand NavigateDiagnosticsCommand { get; }
         public ICommand NavigateStrategiesCommand { get; }
         public ICommand NavigateMonitoringCommand { get; }
         public ICommand NavigateActiveCheckCommand { get; }
@@ -470,6 +682,7 @@ namespace ZapretGui.ViewModels
             try
             {
                 Home.RefreshStatus();
+                StrategiesPage.RefreshRunButton();
                 Updates.RefreshBadge();
                 _ = CheckRealTimePingAsync();
                 Raise(nameof(ReadinessText));
@@ -493,6 +706,11 @@ namespace ZapretGui.ViewModels
             {
                 AppLog.Error("Ошибка обновления статуса: " + ex.Message);
             }
+        }
+
+        public void CloseTaskbarMetricsWindow()
+        {
+            try { _taskbarMetricsWindow?.Close(); } catch {}
         }
 
         private async Task CheckRealTimePingAsync()
@@ -551,12 +769,28 @@ namespace ZapretGui.ViewModels
         {
             RequestToggleOverlay?.Invoke();
         }
+        public void NotifyAutoSwitchChanged()
+        {
+            if (Settings.AutoSwitchProfileOnNetworkChange || Settings.AutoSwitchProfileOnFailure)
+                ProfileAutoSwitch?.Start();
+            else
+                ProfileAutoSwitch?.Stop();
+            Profiles?.RefreshNetwork();
+            Raise(nameof(AutoSwitchNetworkStatus));
+            Raise(nameof(AutoSwitchLastReason));
+        }
 
         /// <summary>Вызывается при выходе: остановка обхода, если так настроено.</summary>
         public async System.Threading.Tasks.Task ShutdownAsync()
         {
             _timer.Stop();
             Monitoring.Stop();
+            SeamlessFailover?.Stop();
+            SeamlessFailover?.Dispose();
+            ScheduleService?.Stop();
+            ScheduleService?.Dispose();
+            ProfileAutoSwitch?.Stop();
+            ProfileAutoSwitch?.Dispose();
             GameDetector.Dispose();
             Hotkeys.Dispose();
             if (Settings.StopBypassOnExit && Bypass.GetStatus().IsRunning)
@@ -565,5 +799,21 @@ namespace ZapretGui.ViewModels
                 await Bypass.StopAsync();
             }
         }
+    
+    public sealed class ToolbarMetricsRow
+    {
+        public ToolbarMetricsRow(string name, string latency, string statusKey, bool ok)
+        {
+            Name = name;
+            Latency = latency;
+            StatusKey = statusKey;
+            IsOk = ok;
+        }
+        public string Name { get; }
+        public string Latency { get; }
+        public string StatusKey { get; }
+        public bool IsOk { get; }
+        public string CompactText => $"{Name} {Latency}";
     }
+}
 }

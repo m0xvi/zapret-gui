@@ -127,11 +127,27 @@ namespace ZapretGui.Core
 
                 if (isService)
                 {
-                    WinServices.Start(WinServices.ZapretService);
+                    // P1 1.6.9: если выбранная стратегия отличается от упавшей — переустанавливаем службу, а не просто стартуем старую
+                    var selected = _strategyResolver();
+                    if (selected != null && !string.Equals(selected.Name, strategyName, StringComparison.OrdinalIgnoreCase))
+                    {
+                        AppLog.Info($"[Watchdog] Стратегия изменена ({strategyName} → {selected.Name}), переустанавливаю службу");
+                        var mode = EngineService.GetGameFilterMode(_settings.EnginePath);
+                        var res = await _bypass.InstallServiceAsync(selected, mode);
+                        if (!res.Ok)
+                        {
+                            AppLog.Warn($"[Watchdog] Переустановка службы не удалась: {res.Message}, пробую обычный старт");
+                            WinServices.Start(WinServices.ZapretService);
+                        }
+                    }
+                    else
+                    {
+                        WinServices.Start(WinServices.ZapretService);
+                    }
                 }
                 else
                 {
-                    await _bypass.StartAsync(strat, EngineService.GetGameFilterMode(_settings.EnginePath), _settings.ShowWinwsConsole);
+                    await _bypass.SwitchToStrategyAsync(strat, EngineService.GetGameFilterMode(_settings.EnginePath), _settings.ShowWinwsConsole);
                 }
 
                 var msg = $"[Watchdog] Обход «{strat.Name}» успешно восстановлен.";
