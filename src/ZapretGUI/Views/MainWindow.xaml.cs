@@ -29,6 +29,7 @@ namespace ZapretGui.Views
             DataContext = _vm;
 
             _pages["home"] = new HomePage(_vm.Home);
+            _pages["bypass-center"] = new BypassCenterPage { DataContext = _vm.BypassCenter };
             _pages["first-run"] = new FirstLaunchPage(_vm.FirstLaunch);
             _pages["strategies"] = new StrategiesPage(_vm.StrategiesPage);
             _pages["monitoring"] = new MonitoringPage(_vm.Monitoring);

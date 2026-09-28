@@ -33,6 +33,8 @@ namespace ZapretGui.ViewModels
         public event Action<string>? WatchdogNotificationRequested;
         public event Action? RequestToggleOverlay;
 
+        public BypassCenterViewModel BypassCenter { get; }
+
         public WatchdogService Watchdog { get; }
         public SeamlessFailoverService SeamlessFailover { get; }
         public ProfileAutoSwitchService ProfileAutoSwitch { get; }
@@ -54,6 +56,7 @@ namespace ZapretGui.ViewModels
             Strategies = new StrategyStore(settings);
 
             Home = new HomeViewModel(this);
+            BypassCenter = new BypassCenterViewModel(this);
             StrategiesPage = new StrategiesViewModel(this);
             Updates = new UpdatesViewModel(this);
             GlobalOverlay = new GlobalOverlayViewModel();
@@ -186,6 +189,7 @@ namespace ZapretGui.ViewModels
             {
                 new() { Key = "group-main", Title = "ОСНОВНОЕ", IsSectionHeader = true },
                 new() { Key = "home", Title = "Обзор", Icon = "\uE80F", Hint = "Состояние обхода" },
+                new() { Key = "bypass-center", Title = "Центр обхода", Icon = "\uE8D2", Hint = "Всё в одном — стратегии, DNS, hosts, ipset и тяжёлый YouTube" },
                 new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
                 new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
                 new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check и результаты" },
