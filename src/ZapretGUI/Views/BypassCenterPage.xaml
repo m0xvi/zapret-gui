@@ -27,7 +27,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message}" TextWrapping="Wrap" Foreground="{Binding MessageKey, Converter={StaticResource SeverityBrush}}" VerticalAlignment="Center"/>
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message, Mode=OneWay}" TextWrapping="Wrap" Foreground="{Binding MessageKey, Converter={StaticResource SeverityBrush}}" VerticalAlignment="Center"/>
                     <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="✕" Margin="8,0,0,0" Command="{Binding DismissMessageCommand}"/>
                 </Grid>
             </Border>
@@ -41,19 +41,19 @@
                     </Grid.ColumnDefinitions>
                     <StackPanel>
                         <TextBlock Style="{StaticResource SectionText}" Text="СТАТУС"/>
-                        <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding BypassStatusText}" Foreground="{Binding BypassStatusKey, Converter={StaticResource SeverityBrush}}" Margin="0,4,0,0"/>
-                        <TextBlock Style="{StaticResource DimText}" Text="{Binding EngineStatusText}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding BypassStatusText, Mode=OneWay}" Foreground="{Binding BypassStatusKey, Converter={StaticResource SeverityBrush}}" Margin="0,4,0,0"/>
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding EngineStatusText, Mode=OneWay}" Margin="0,4,0,0" TextWrapping="Wrap"/>
                         <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" TextWrapping="Wrap">
-                            <Run Text="DNS: "/><Run Text="{Binding CurrentDnsText}" FontWeight="SemiBold"/>
+                            <Run Text="DNS: "/><Run Text="{Binding CurrentDnsText, Mode=OneWay}" FontWeight="SemiBold"/>
                         </TextBlock>
-                        <TextBlock Style="{StaticResource DimText}" Text="{Binding ListsStatusText}" Margin="0,2,0,0" TextWrapping="Wrap"/>
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding ListsStatusText, Mode=OneWay}" Margin="0,2,0,0" TextWrapping="Wrap"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
                         <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Padding="7,3">
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding HostsStatusText}"/>
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding HostsStatusText, Mode=OneWay}"/>
                         </Border>
                         <Border Style="{StaticResource Badge}" Margin="0,6,0,0" Background="{DynamicResource ElevatedBrush}" Padding="7,3">
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding IpsetStatusText}"/>
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding IpsetStatusText, Mode=OneWay}"/>
                         </Border>
                     </StackPanel>
                 </Grid>
@@ -86,7 +86,7 @@
                     <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="{Binding SelectedStrategy.Description}" TextWrapping="Wrap" Opacity="0.9"/>
                     <WrapPanel Margin="0,10,0,0">
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Бесшовное переключение включено" IsChecked="{Binding SeamlessEnabled, Mode=TwoWay}" ToolTip="Фоново 5 мин, 2 сбоя → диагностика → автозамена без окон"/>
-                        <TextBlock Style="{StaticResource DimText}" Margin="12,4,0,0" Text="{Binding SeamlessStatus}" TextWrapping="Wrap" Foreground="{Binding SeamlessStatusKey, Converter={StaticResource SeverityBrush}}"/>
+                        <TextBlock Style="{StaticResource DimText}" Margin="12,4,0,0" Text="{Binding SeamlessStatus, Mode=OneWay}" TextWrapping="Wrap" Foreground="{Binding SeamlessStatusKey, Converter={StaticResource SeverityBrush}}"/>
                         <Button Style="{StaticResource GhostButton}" Content="Проверить сейчас" Margin="8,0,0,0" Command="{Binding TestSeamlessNowCommand}" VerticalAlignment="Center"/>
                     </WrapPanel>
                 </StackPanel>
@@ -111,7 +111,7 @@
                             </Border>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                 <TextBlock Style="{StaticResource SectionText}" Text="DNS"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding CurrentDnsText}" TextWrapping="Wrap" FontSize="11"/>
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding CurrentDnsText, Mode=OneWay}" TextWrapping="Wrap" FontSize="11"/>
                             </StackPanel>
                         </Grid>
                         <ComboBox Style="{StaticResource AppComboBox}" Margin="0,10,0,0" ItemsSource="{Binding DnsProfiles}" SelectedItem="{Binding SelectedDnsProfile, Mode=TwoWay}" DisplayMemberPath="DisplayTitle"/>
@@ -133,8 +133,8 @@
                             </Border>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                 <TextBlock Style="{StaticResource SectionText}" Text="HOSTS &amp; IPSET"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding HostsStatusText}" FontSize="11"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding IpsetStatusText}" FontSize="11"/>
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding HostsStatusText, Mode=OneWay}" FontSize="11"/>
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding IpsetStatusText, Mode=OneWay}" FontSize="11"/>
                             </StackPanel>
                         </Grid>
                         <WrapPanel Margin="0,10,0,0">
@@ -142,7 +142,7 @@
                             <Button Style="{StaticResource GhostButton}" Content="Обновить ipset" Margin="8,0,0,0" Command="{Binding UpdateIpsetCommand}"/>
                             <Button Style="{StaticResource GhostButton}" Content="Списки OK" Margin="8,0,0,0" Command="{Binding EnsureListsCommand}"/>
                         </WrapPanel>
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="{Binding ListsStatusText}" TextWrapping="Wrap" FontSize="11" Opacity="0.85"/>
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="{Binding ListsStatusText, Mode=OneWay}" TextWrapping="Wrap" FontSize="11" Opacity="0.85"/>
                     </StackPanel>
                 </Border>
             </Grid>
@@ -206,18 +206,18 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding MatrixText}" TextTrimming="CharacterEllipsis"/>
-                                <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding MatrixPercent}" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding MatrixText, Mode=OneWay}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding MatrixPercent, Mode=OneWay}" FontWeight="SemiBold" Margin="8,0,0,0"/>
                             </Grid>
                             <ProgressBar Height="6" Margin="0,8,0,0" Minimum="0" Maximum="{Binding MatrixMax, Mode=OneWay}" Value="{Binding MatrixProgress, Mode=OneWay}"/>
-                            <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="{Binding MatrixSummary}" TextWrapping="Wrap"/>
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="{Binding MatrixSummary, Mode=OneWay}" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
 
                     <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Visibility="{Binding IsMatrixRunning, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding MatrixSummary}" TextWrapping="Wrap"/>
-                            <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="{Binding MatrixBestText}" TextWrapping="Wrap" Foreground="{DynamicResource SuccessBrush}" FontWeight="SemiBold"/>
+                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding MatrixSummary, Mode=OneWay}" TextWrapping="Wrap"/>
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="{Binding MatrixBestText, Mode=OneWay}" TextWrapping="Wrap" Foreground="{DynamicResource SuccessBrush}" FontWeight="SemiBold"/>
                             <Button Style="{StaticResource PrimaryButton}" Content="✅ Применить лучшее (стратегия + DNS)" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding ApplyBestCommand}" ToolTip="Применит стратегию и DNS победителя матрицы бесшовно"/>
                         </StackPanel>
                     </Border>
