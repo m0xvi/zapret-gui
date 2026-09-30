@@ -1003,7 +1003,9 @@ CI и что требует Windows runtime.
 
 **Что НЕ менялось (сознательно):** ключи навигации и словарь `_pages`, маршрутизация старых ключей (`monitoring`/`dpi`/`deep-check`/`results` → подвкладки `diagnostics`), состав страниц и вкладок, ядро и фоновые службы, форматы `ipset`/`game_filter`, `SettingsStore`. Мёртвая `MonitoringPage` и дубли вкладок «Журнал»/«О программе» внутри настроек пока остались — это этапы 2–4.
 
-**Проверки:** `python3 tools/check_bindings.py` — 20 XAML / 93 ключа, ошибок нет. Локальная сборка невозможна (в песочнице нет .NET SDK, `dotnet: command not found`; `nuget.org`/`packages.microsoft.com` недоступны), поэтому компиляция проверяется CI на `windows-latest`.
+**Проверки:** `python3 tools/check_bindings.py` — 20 XAML / 93 ключа, ошибок нет. Локальная сборка невозможна (в песочнице нет .NET SDK, `dotnet: command not found`; `nuget.org`/`packages.microsoft.com` недоступны), поэтому компиляция проверяется CI на `windows-latest`: сборка Release, статические анализаторы (`TreatWarningsAsErrors`), `CoreLogicHarness`, `WindowsIntegrationHarness`, обе публикации — всё зелёное.
+
+**Релиз:** `v1.17.25` — публикуется тегом (см. `AGENTS.md` §6.5: любая правка кода обязана закончиться релизом, иначе пользователь не может обновиться из приложения).
 
 ---
 
