@@ -194,6 +194,7 @@ namespace ZapretGui.ViewModels
                 new() { Key = "home", Title = "Главная", Icon = "\uE80F", Hint = "Состояние обхода и включение" },
                 new() { Key = "bypass-center", Title = "Обход", Icon = "\uE8D2", Hint = "Стратегии, DNS, списки, hosts, ipset — всё в одном" },
                 new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
+                new() { Key = "automation", Title = "Автоматизация", Icon = "\uE945", Hint = "Автозапуск, присмотр за обходом и расписание" },
                 new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
                 new() { Key = "diagnostics", Title = "Проверки", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check, аудит и отчёты" },
                 new() { Key = "logs", Title = "Журнал", Icon = "\uE81C", Hint = "Ошибки, предупреждения, отладка" },

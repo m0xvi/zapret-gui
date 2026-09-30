@@ -163,6 +163,11 @@ namespace ZapretGui.ViewModels
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
             OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
             OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
+            // Переходы в «Автоматизацию» из «Настроек» и с «Главной» (v1.19.0)
+            OpenAutomationLaunchCommand = new RelayCommand(() => OpenAutomation(0));
+            OpenAutomationRecoveryCommand = new RelayCommand(() => OpenAutomation(1));
+            OpenAutomationScheduleCommand = new RelayCommand(() => OpenAutomation(2));
+            OpenProfilesCommand = new RelayCommand(() => _main.Navigate("profiles"));
             OpenUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
             OpenAboutCommand = new RelayCommand(() => _main.Navigate("about"));
             RunFullDiagnosticsAndExportCommand = new AsyncRelayCommand(RunFullDiagnosticsAndExportAsync, () => !IsRunningFullCheckCycle);
@@ -983,6 +988,53 @@ namespace ZapretGui.ViewModels
         public ICommand ApplyGamingTweaksCommand { get; }
         public ICommand RevertGamingTweaksCommand { get; }
         public ICommand OpenOverlayCommand { get; }
+        // ===== Раздел «Автоматизация» (v1.19.0) =====
+        // Настройки переехали из вкладок «Настроек» на отдельную страницу. DataContext тот же
+        // (SettingsViewModel), поэтому сохранение и логика остались ровно те же — менялось место в UI.
+
+        public string[] AutomationTabs { get; } = { "🚀 Запуск", "🔄 Восстановление", "🗓 Расписание", "🌐 Профили по сетям" };
+
+        public string AutomationTabHintText => AutomationTabIndex switch
+        {
+            0 => "Автозапуск приложения и обхода, задержка старта, безопасный режим, автодетект игр и мастер первого запуска",
+            1 => "Присмотр за обходом (Watchdog), переключение при ухудшении, фоновый мониторинг и живой RTT",
+            2 => "Обход включён по дням недели и часам — расписание применяется в фоне",
+            3 => "Какая сеть определена сейчас и где привязываются профили",
+            _ => ""
+        };
+
+        private int _automationTabIndex;
+
+        public int AutomationTabIndex
+        {
+            get => _automationTabIndex;
+            set
+            {
+                if (Set(ref _automationTabIndex, Math.Clamp(value, 0, 3)))
+                {
+                    Raise(nameof(AutomationTabHintText));
+                    Raise(nameof(IsAutomationLaunchTabSelected));
+                    Raise(nameof(IsAutomationRecoveryTabSelected));
+                    Raise(nameof(IsAutomationScheduleTabSelected));
+                    Raise(nameof(IsAutomationNetsTabSelected));
+                }
+            }
+        }
+
+        public bool IsAutomationLaunchTabSelected { get => AutomationTabIndex == 0; set { if (value) AutomationTabIndex = 0; } }
+        public bool IsAutomationRecoveryTabSelected { get => AutomationTabIndex == 1; set { if (value) AutomationTabIndex = 1; } }
+        public bool IsAutomationScheduleTabSelected { get => AutomationTabIndex == 2; set { if (value) AutomationTabIndex = 2; } }
+        public bool IsAutomationNetsTabSelected { get => AutomationTabIndex == 3; set { if (value) AutomationTabIndex = 3; } }
+
+        /// <summary>Текущая сеть по данным ProfileAutoSwitchService — только чтение (привязка профилей живёт на странице «Профили»).</summary>
+        public string AutoSwitchNetworkStatus => _main.AutoSwitchNetworkStatus;
+        public string AutoSwitchLastReason => _main.AutoSwitchLastReason;
+
+        public ICommand OpenAutomationLaunchCommand { get; }
+        public ICommand OpenAutomationRecoveryCommand { get; }
+        public ICommand OpenAutomationScheduleCommand { get; }
+        public ICommand OpenProfilesCommand { get; }
+
         public ICommand OpenLogsCommand { get; }
         public ICommand OpenUpdatesCommand { get; }
         public ICommand OpenAboutCommand { get; }
@@ -1364,6 +1416,13 @@ namespace ZapretGui.ViewModels
             Reload();
             ThemeService.Apply(_main.Settings.Theme);
             Status = "Настройки сброшены";
+        }
+
+        /// <summary>Открыть раздел «Автоматизация» на нужной подвкладке.</summary>
+        private void OpenAutomation(int tabIndex)
+        {
+            AutomationTabIndex = tabIndex;
+            _main.Navigate("automation");
         }
 
         private void RerunFirstLaunchWizard()

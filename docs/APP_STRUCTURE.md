@@ -1,6 +1,6 @@
 # Структура приложения Zapret GUI — разделы, подразделы и их функции
 
-> Версия документа: `v1.18.0` (ветка `arena/01a0f306-zapret-gui`, этапы 1–2 информационной архитектуры)
+> Версия документа: `v1.19.0` (ветка `arena/01a0f306-zapret-gui`, этапы 1–3 информационной архитектуры)
 > Стек: `C# .NET 8 + WPF (MVVM)`, движок `Flowseal/zapret-discord-youtube` (`bin/winws.exe`, `WinDivert`), служба `zapret`
 > Язык интерфейса: русский. Сборка: `windows-latest` GitHub Actions.
 
@@ -97,14 +97,25 @@
 
 ---
 
+## 4.5 АВТОМАТИЗАЦИЯ (AutomationPage / SettingsViewModel) — новое в `v1.19.0`
+
+Отдельный пункт меню `Автоматизация` (`automation`). DataContext — тот же `SettingsViewModel`, что у «Настроек»: настройки переехали из вкладок по месту, логика сохранения (`SettingsStore.Save` в сеттерах) осталась одна.
+
+*   **Подвкладки (`AutomationTabs` / `AutomationTabIndex`):** `🚀 Запуск` · `🔄 Восстановление` · `🗓 Расписание` · `🌐 Профили по сетям`.
+*   **Запуск:** `RunAtStartup`, `Status`, `CloseToTray`, `StartMinimized`; `AutoStartBypass`, `StartupDelaySeconds` (0–30), `SafeMode`, `StopBypassOnExit`; `AutoTestStrategiesOnFirstLaunch`/`AutoDiagnoseOnFirstLaunch`; `GameDetectionEnabled`/`AutoGameModeOnLaunch`; кнопка «Запустить мастер» (`RerunFirstLaunchWizardCommand`).
+*   **Восстановление:** карточка «Что делал автопилот» (`SeamlessStatus`, `SeamlessLastSwitch`, `TestSeamlessNowCommand`, `OpenLogsCommand`) + `Watchdog*` (сторожевой таймер), `Seamless*` (бесшовное переключение), `ResourceMonitoringEnabled`/`MonitoringIntervalMinutes`/`AutoRecoverStrategy`/`AutoSwitchToBestStrategy`/`MonitorNotificationsEnabled`/`BestStrategyCheckMinutes` (фоновый мониторинг), `RealTimePingEnabled`/`RealTimePingIntervalSeconds` (живой RTT).
+*   **Расписание:** `ScheduleEnabled`, `ScheduleStartTime`/`ScheduleStopTime`, дни недели (`ScheduleDay*`), `ScheduleUseService`, `ScheduleSummary`.
+*   **Профили по сетям:** только чтение — `AutoSwitchNetworkStatus`, `AutoSwitchLastReason` (проксирование `MainViewModel`) и переход `OpenProfilesCommand` в «Профили и копии», где профиль привязывается к сети. Второго экземпляра переключателей «При смене сети»/«При сбое» здесь сознательно нет — иначе одна настройка жила бы в двух местах.
+*   **Переходы:** `OpenAutomationLaunchCommand` / `OpenAutomationRecoveryCommand` / `OpenAutomationScheduleCommand` (из «Настроек» и с «Главной»).
+
 ## 5. СИСТЕМА
 
 ### 5.1 Настройки (SettingsPage / SettingsViewModel)
 *   **Общие:** тема `ThemeMode` (`System/Dark/Light`), масштаб `InterfaceZoomPercent` (80–140), `CloseToTray`, `StartMinimized`, `RunAtStartup` (планировщик/реестр), `ConfirmOnStop` (только для ручной остановки, по умолчанию выкл).
 *   **Обход и движок:** `EnginePath`, `ShowWinwsConsole`, `AutoCheckEngineUpdates`/`IncludePrerelease`/`PreserveUserDataOnUpdate`, `SelectedFakeSni` + `AutoSniRotationEnabled` + `CustomSniList`. Флаг `BatAutoUpdate` (`utils\check_updates.enabled`) с `v1.18.0` настраивается здесь (переехал с «Главной»); `GameFilterOptions`/`IpsetOptions` живут на странице «Списки» и в «Обход → Сложные сайты».
-*   **Автозапуск:** `AutoStartBypass`, `StartupDelaySeconds` (0–60), `StopBypassOnExit`, `SafeMode`.
-*   **Watchdog:** `WatchdogEnabled` (по умолчанию вкл), `WatchdogIntervalSeconds` (5–120), `WatchdogAutoRestart`, `WatchdogNotifyUser` — `WatchdogService` (15с проверка `winws`/`zapret`, автоперезапуск + `BFE` + fallback на 5 альтернативных стратегий с `v1.17.24`).
-*   **Бесшовное переключение:** `SeamlessFailoverEnabled` (вкл), `SeamlessCheckMinutes` (2–60), `SeamlessCooldownMinutes` (5–120), статус `SeamlessLastReason`/`SeamlessLastSwitchTime` — `SeamlessFailoverService` (5 мин порог 2, cooldown 10 мин, 8 кандидатов).
+*   **Автозапуск:** переехал в раздел «Автоматизация» → «Запуск» (`v1.19.0`); в «Настройках» осталась карточка-указатель с кнопкой перехода.
+*   **Watchdog:** переехал в «Автоматизация» → «Восстановление» (`v1.19.0`): `WatchdogEnabled` (по умолчанию вкл), `WatchdogIntervalSeconds` (5–120), `WatchdogAutoRestart`, `WatchdogNotifyUser` — сам сервис `WatchdogService` не менялся (15с проверка `winws`/`zapret`, автоперезапуск + `BFE` + fallback на 5 альтернативных стратегий с `v1.17.24`).
+*   **Бесшовное переключение:** переехало в «Автоматизация» → «Восстановление» (`v1.19.0`): `SeamlessFailoverEnabled` (вкл), `SeamlessCheckMinutes` (2–60), `SeamlessCooldownMinutes` (5–120), статус `SeamlessLastReason`/`SeamlessLastSwitchTime` — сам `SeamlessFailoverService` не менялся (5 мин порог 2, cooldown 10 мин, 8 кандидатов).
 *   **Профили/сеть:** `AutoSwitchProfileOnNetworkChange`/`OnFailure`, `LastNetworkFingerprint`/`LastAutoSwitchedProfileId`.
 *   **Расписание:** `ScheduleService` (`BypassScheduleService`) — время вкл/выкл.
 *   **Уведомления и метрики:** `MonitorNotificationsEnabled`, `ResourceMonitoringEnabled`/`IntervalMinutes`, `RealTimePingEnabled`/`IntervalSeconds`, `ToolbarMetricsEnabled`/`IntervalSeconds`/`VisibleTargets`, позиция `TaskbarMetricsLeft/Top`.

@@ -41,6 +41,7 @@ namespace ZapretGui.Views
             _pages["user-lists"] = new UserListsPage(_vm.UserLists);
             _pages["profiles"] = new ProfilesPage(_vm.Profiles);
             _pages["settings"] = new SettingsPage(_vm.SettingsPage);
+            _pages["automation"] = new AutomationPage(_vm.SettingsPage);
             _pages["about"] = new AboutPage(_vm);
 
             _vm.NavChanged += ShowPage;

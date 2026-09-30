@@ -30,6 +30,7 @@ SRC = os.path.join(ROOT, "src", "ZapretGUI")
 PAGE_VM = {
     "HomePage": ["HomeViewModel"],
     "BypassCenterPage": ["BypassCenterViewModel"],
+    "AutomationPage": ["SettingsViewModel"],
     "StrategiesPage": ["StrategiesViewModel"],
     "UpdatesPage": ["UpdatesViewModel"],
     "DiagnosticsPage": ["DiagnosticsViewModel"],
