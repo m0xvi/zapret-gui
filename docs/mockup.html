@@ -138,6 +138,11 @@ body.light .note .n{background:#fff;border-color:#E3E8F1;color:#5A6474}
 body.light .note .n b{color:#15191F}
 .note .n code{background:rgba(120,140,180,.22);padding:1px 5px;border-radius:5px;font-size:11.5px}
 
+/* Режимы «Простой» / «Эксперт»: в «Простом» технические блоки скрыты инлайн */
+body:not(.expert) .expert{display:none!important}
+body:not(.expert) .expert-note{display:block}
+body.expert .expert-note{display:none}
+
 /* Оверлей поиска (Ctrl+K) — этап 7 */
 .search-overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:60;display:none;align-items:flex-start;justify-content:center;padding-top:80px}
 .search-overlay.open{display:flex}
@@ -158,7 +163,7 @@ body.light .note .n b{color:#15191F}
 <body>
 
 <div class="hint">
-  <span><b>Zapret GUI</b> — интерактивный макет интерфейса. Нажимайте разделы слева, переключайте тему, кнопки и фильтры.</span>
+  <span><b>Zapret GUI</b> — интерактивный макет интерфейса (этапы 1–8 IA). Нажимайте разделы слева, переключайте тему, режим «Простой/Эксперт» (🔧 в шапке или <b>Ctrl+Shift+E</b>) и открывайте поиск по приложению — <b>Ctrl+K</b> или 🔍 в шапке.</span>
   <button onclick="toggleTheme()" id="themeBtn">🌙 Тёмная тема</button>
 </div>
 
@@ -167,7 +172,7 @@ body.light .note .n b{color:#15191F}
     <div class="logo">⚡</div>
     <div class="appname">Zapret GUI</div>
     <div class="pill"><span class="dot" style="background:var(--success)"></span><span>Обход запущен</span></div>
-    <div class="pill" style="cursor:pointer" title="Переключить режим интерфейса: простой / эксперт (Ctrl+Shift+E)">🔧 Простой режим</div>
+    <div class="pill" id="modePill" style="cursor:pointer" onclick="toggleExpert()" title="Переключить режим интерфейса: простой / эксперт (Ctrl+Shift+E)">🔧 Простой режим</div>
     <div class="pill" style="cursor:pointer" title="Поиск по приложению: разделы, настройки и команды (Ctrl+K)" onclick="openSearch()">🔍 Ctrl+K</div>
     <div class="titlebars">
       <div class="tbtn" title="Переключить тему" onclick="toggleTheme()">◐</div>
@@ -217,7 +222,7 @@ body.light .note .n b{color:#15191F}
                 <div>
                   <h2>Обход запущен</h2>
                   <div class="muted">Стратегия: general (FAKE TLS AUTO)</div>
-                  <div class="badges"><span class="badge">Время работы: 1 ч 24 мин</span><span class="badge">Процесс: PID 12844</span></div>
+                  <div class="badges"><span class="badge">Время работы: 1 ч 24 мин</span><span class="badge expert">Процесс: PID 12844</span></div>
                   <div class="dim" style="margin-top:8px">Служба не установлена</div>
                 </div>
                 <div style="width:190px" class="stack">
@@ -298,13 +303,24 @@ body.light .note .n b{color:#15191F}
 
         <div class="card" style="margin-top:16px">
           <div class="section">СОСТАВ РАЗДЕЛА (v1.21.0)</div>
-          <div class="muted"><b>🎯 Стратегия</b> — выбор .bat из каталога движка, бесшовное применение, кнопка «Открыть каталог стратегий».</div>
+          <div class="muted"><b data-label-simple="🎯 Способ обхода" data-label-expert="🎯 Стратегия">🎯 Способ обхода</b> — выбор .bat из каталога движка, бесшовное применение, кнопка «Открыть каталог стратегий».</div>
           <div class="muted" style="margin-top:6px"><b>🧠 Подбор</b> — перебор стратегий и рекомендация.</div>
           <div class="muted" style="margin-top:6px"><b>🌐 DNS</b> — профили DNS и проверка подмены (единственное место настройки DNS).</div>
           <div class="muted" style="margin-top:6px"><b>📋 Списки</b> — hosts, ipset и кнопка «Редактор списков доменов».</div>
           <div class="muted" style="margin-top:6px"><b>🔥 Сложные сайты</b> — YouTube, тяжёлые игры, фильтр трафика игр.</div>
           <div class="muted" style="margin-top:6px"><b>🛠 Дополнительно</b> — служба Windows и опасные операции (с подтверждением).</div>
           <div class="dim" style="margin-top:12px">Пунктов «Стратегии» и «Списки» в меню больше нет: их каталог и редактор открываются кнопками из этих подвкладок.</div>
+        </div>
+
+        <div class="card expert">
+          <div class="section">ТОЛЬКО В РЕЖИМЕ «ЭКСПЕРТ»</div>
+          <div class="muted">• Режимы ipset (<span class="mono">loaded / none / any</span>), пути к файлам списков и «открыть в блокноте».</div>
+          <div class="muted" style="margin-top:6px">• Пул SNI, кандидаты, история оценок способа обхода и аргументы <span class="mono">winws</span>.</div>
+          <div class="muted" style="margin-top:6px">• Матрица «Перебор с разными DNS» (92 теста) в подборе и подвкладка «Дополнительно» (режим службы, консоль winws).</div>
+        </div>
+        <div class="card expert-note">
+          <div class="section">ВКЛЮЧИТЕ «ЭКСПЕРТ»</div>
+          <div class="muted">Часть блоков скрыта: по умолчанию приложение работает в «Простом» режиме. Переключатель — 🔧 в шапке или <b>Ctrl+Shift+E</b>; те же блоки появятся на «Главной», «Проверках», «Автоматизации» и в «Настройках». Найти спрятанное можно поиском <b>Ctrl+K</b> — он ищет и по техническим терминам.</div>
         </div>
       </div>
 
@@ -348,8 +364,8 @@ body.light .note .n b{color:#15191F}
               <div class="dim" id="selDesc" style="margin-top:6px">подмена пакетов (fake) · фейк TLS с SNI www.google.com · фейк QUIC (UDP 443) · повторы 11 · fooling badseq</div>
               <div class="badge" style="margin-top:10px">FAKE TLS AUTO</div>
               <div class="divider"></div>
-              <div class="section">ПАРАМЕТРЫ WINWS.EXE</div>
-              <div class="inner-card">
+              <div class="section expert">ПАРАМЕТРЫ WINWS.EXE</div>
+              <div class="inner-card expert">
                 <div class="mono">--wf-tcp=80,443,2053,2083,2087,2096,8443,12 --wf-udp=443,19294-19344,50000-50100,12
 --filter-udp=443 --hostlist=...\lists\list-general.txt --dpi-desync=fake --dpi-desync-repeats=6 --dpi-desync-fake-quic=...\bin\quic_initial_www_google_com.bin --new
 --filter-tcp=80,443 --dpi-desync=multisplit --dpi-desync-split-pos=1 --dpi-desync-split-seqovl=568 …</div>
@@ -465,9 +481,9 @@ body.light .note .n b{color:#15191F}
           <div class="section">СОСТАВ РАЗДЕЛА (v1.20.0)</div>
           <div class="muted"><b>⚡ Быстрая проверка</b> — сайты и сервисы со статусом и задержкой, «Проверить всё», «Определить причину».</div>
           <div class="muted" style="margin-top:6px"><b>📡 Сайты и звонки</b> — DPI по 34 узлам и проверка голоса Discord с исправлением.</div>
-          <div class="muted" style="margin-top:6px"><b>🛠 Система</b> — проверка Windows и драйверов (14 пунктов) с кнопкой «Исправить»; опасные операции — внизу.</div>
-          <div class="muted" style="margin-top:6px"><b>Глубокая проверка</b> — свои хосты, многоточечная проверка, рекомендации (экспертный уровень).</div>
-          <div class="muted" style="margin-top:6px"><b>📊 История и отчёты</b> — результаты проверок, история переключений, экспорт JSON/ZIP.</div>
+          <div class="muted expert" style="margin-top:6px"><b>🛠 Система</b> — проверка Windows и драйверов (14 пунктов) с кнопкой «Исправить»; опасные операции — внизу.</div>
+          <div class="muted expert" style="margin-top:6px"><b>Глубокая проверка</b> — свои хосты, многоточечная проверка, рекомендации (экспертный уровень).</div>
+          <div class="muted expert" style="margin-top:6px"><b>📊 История и отчёты</b> — результаты проверок, история переключений, экспорт JSON/ZIP.</div>
           <div class="muted" style="margin-top:6px"><b>📄 Журнал</b> — тот же журнал, что и отдельным пунктом меню: фильтры, поиск, копирование и очистка.</div>
         </div>
 
@@ -492,7 +508,7 @@ body.light .note .n b{color:#15191F}
           </div>
 
           <div class="col-side">
-            <div class="card">
+            <div class="card expert">
               <div class="section">ИСПРАВЛЕНИЯ В ОДИН КЛИК</div>
               <div class="stack">
                 <button class="btn secondary">Полностью удалить службы</button>
@@ -530,7 +546,7 @@ body.light .note .n b{color:#15191F}
         <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 12px">
           <div class="btns" style="gap:14px">
             <span class="dim">Записей: 11</span>
-            <label class="muted"><input type="checkbox" checked> Отладка</label>
+            <label class="muted expert"><input type="checkbox" checked> Отладка</label>
             <label class="muted"><input type="checkbox" checked> Инфо</label>
             <label class="muted"><input type="checkbox" checked> Предупреждения</label>
             <label class="muted"><input type="checkbox" checked> Ошибки</label>
@@ -621,7 +637,7 @@ body.light .note .n b{color:#15191F}
               </div>
             </div>
 
-            <div class="card">
+            <div class="card expert">
               <div class="section">СИСТЕМА И ФАЙЛЫ</div>
               <div class="switch-row"><div style="font-size:13px">Запускать при входе в систему</div><div class="switch" onclick="this.classList.toggle('on')"><i></i></div></div>
               <div class="dim" style="margin-top:8px">Настройки сохранены</div>
@@ -852,11 +868,21 @@ function renderSearch(){
   }).join('');
 }
 function searchGo(page){ closeSearch(); show(page); }
+function applyMode(){
+  var expert = document.body.classList.contains('expert');
+  document.getElementById('modePill').textContent = expert ? '🔬 Эксперт' : '🔧 Простой режим';
+  document.querySelectorAll('[data-label-simple]').forEach(function(el){
+    el.textContent = expert ? el.getAttribute('data-label-expert') : el.getAttribute('data-label-simple');
+  });
+}
+function toggleExpert(){ document.body.classList.toggle('expert'); applyMode(); }
 document.addEventListener('keydown', function(e){
   if(e.ctrlKey && (e.key==='k'||e.key==='K')){ e.preventDefault(); openSearch(); }
+  else if(e.ctrlKey && e.shiftKey && (e.key==='E'||e.key==='e'||e.key==='У'||e.key==='у')){ e.preventDefault(); toggleExpert(); }
   else if(e.key==='Escape'){ closeSearch(); }
   else if(e.key==='Enter' && document.getElementById('searchOverlay').classList.contains('open')){ searchGo(SEARCH_INDEX[0].page); }
 });
+applyMode();
 </script>
 </body>
 </html>
