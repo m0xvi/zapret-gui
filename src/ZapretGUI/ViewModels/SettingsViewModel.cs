@@ -602,6 +602,19 @@ namespace ZapretGui.ViewModels
             set { Settings.PreserveUserDataOnUpdate = value; OnSettingChanged(); }
         }
 
+        /// <summary>Флаг utils\check_updates.enabled — переехал с «Главной» (v1.18.0).
+        /// Логика одна и та же: EngineService.Get/SetBatAutoUpdateFlag, ключ в файле движка, не в AppSettings.</summary>
+        public bool BatAutoUpdate
+        {
+            get => EngineService.GetBatAutoUpdateFlag(Settings.EnginePath);
+            set
+            {
+                EngineService.SetBatAutoUpdateFlag(Settings.EnginePath, value);
+                OnSettingChanged();
+                Raise(nameof(BatAutoUpdate));
+            }
+        }
+
         public bool ConfirmOnStop
         {
             get => Settings.ConfirmOnStop;
@@ -1065,6 +1078,7 @@ namespace ZapretGui.ViewModels
             Raise(nameof(AutoCheckEngineUpdates));
             Raise(nameof(IncludePrerelease));
             Raise(nameof(PreserveUserDataOnUpdate));
+            Raise(nameof(BatAutoUpdate));
             Raise(nameof(ConfirmOnStop));
             Raise(nameof(UseGameFilterOnStart));
             Raise(nameof(AutoTestStrategiesOnFirstLaunch));

@@ -88,6 +88,22 @@
                                 <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding EngineInfoText}" Margin="10,0,0,0" TextWrapping="Wrap" VerticalAlignment="Center" />
                             </Grid>
                         </Border>
+
+                        <!-- Флаг .bat-автообновления переехал с «Главной» (v1.18.0) -->
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,16,0">
+                                <TextBlock Style="{StaticResource BodyText}" Text="Проверка обновлений для .bat" FontWeight="SemiBold" />
+                                <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
+                                           Text="Флаг utils\check_updates.enabled — используется при запуске обхода через .bat-файлы. На запуск через это приложение не влияет." />
+                            </StackPanel>
+                            <CheckBox Grid.Column="1" Style="{StaticResource SwitchCheckBox}" VerticalAlignment="Center"
+                                      IsChecked="{Binding BatAutoUpdate, Mode=TwoWay}" Content=""
+                                      ToolTip="Флаг для запуска через .bat-файлы: проверять ли обновления движка при старте general*.bat." />
+                        </Grid>
                     </StackPanel>
                 </Border>
 

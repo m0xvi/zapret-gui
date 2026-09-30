@@ -185,8 +185,8 @@ body.light .note .n b{color:#15191F}
 
       <!-- ОБЗОР -->
       <div class="page active" id="page-home">
-        <h1>Обзор</h1>
-        <div class="sub">Запуск обхода, служба Windows, фильтры и состояние движка</div>
+        <h1>Главная</h1>
+        <div class="sub">Обход, состояние соединения и быстрые действия</div>
         <div class="msg ok">Стратегия «general (FAKE TLS AUTO)» запущена</div>
 
         <div class="row">
@@ -202,54 +202,25 @@ body.light .note .n b{color:#15191F}
                 </div>
                 <div style="width:190px" class="stack">
                   <button class="btn danger">Остановить обход</button>
-                  <button class="btn secondary">Установить в службу</button>
-                  <button class="btn ghost">Удалить службы</button>
+                  <button class="btn ghost">Подобрать обход заново</button>
                 </div>
               </div>
             </div>
 
             <div class="card">
-              <div class="section">ФИЛЬТРЫ</div>
-              <div class="grid2">
-                <div>
-                  <div style="font-size:13px;font-weight:600">Игровой фильтр</div>
-                  <div class="dim">Обработка портов выше 1023 (игры, сторонние сервисы). После изменения перезапустите обход.</div>
-                </div>
-                <div class="seg" data-group="game">
-                  <button>Выключен</button><button class="on">TCP + UDP</button><button>Только TCP</button><button>Только UDP</button>
-                </div>
+              <div class="section">БЫСТРЫЕ ПЕРЕХОДЫ</div>
+              <div class="muted">Проверки, подбор обхода и журнал живут в своих разделах — на главной остались только статус и одно действие.</div>
+              <div class="btns" style="margin-top:12px">
+                <button class="btn secondary">Проверить сайты → Проверки</button>
+                <button class="btn ghost">Подобрать обход заново → Обход</button>
+                <button class="btn ghost">Открыть журнал → Проверки</button>
               </div>
-              <div class="divider"></div>
-              <div class="grid2">
-                <div>
-                  <div style="font-size:13px;font-weight:600">Фильтр ipset</div>
-                  <div class="dim">loaded — проверять IP по списку, none — отключить фильтр, any — фильтровать любые IP.</div>
-                </div>
-                <div class="seg" data-group="ipset">
-                  <button class="on">Списки (loaded)</button><button>Отключён (none)</button><button>Все IP (any)</button>
-                </div>
-              </div>
-              <div class="divider"></div>
-              <div class="switch-row">
-                <div>
-                  <div style="font-size:13px;font-weight:600">Проверка обновлений для .bat</div>
-                  <div class="dim">Флаг utils\check_updates.enabled — используется при запуске обхода через .bat-файлы.</div>
-                </div>
-                <div class="switch on" onclick="this.classList.toggle('on')"><i></i></div>
-              </div>
+              <div class="dim" style="margin-top:10px">Фильтры (игровой, ipset, .bat) — на странице «Списки»; служба Windows — «Обход → Дополнительно»; флаг .bat — «Настройки».</div>
             </div>
 
             <div class="card">
-              <div class="grid2" style="margin-bottom:6px">
-                <div class="section" style="margin:0">ПРОВЕРКА СОЕДИНЕНИЯ</div>
-                <button class="btn secondary sm">Проверить</button>
-              </div>
-              <div class="dim">Быстрая проверка доступности YouTube, Discord и GitHub (нужны для загрузки обновлений).</div>
-              <div class="checks">
-                <div class="diag"><div class="ic ok">✓</div><div><h4>YouTube</h4><p>TCP 42 мс · HTTP 204</p></div></div>
-                <div class="diag"><div class="ic ok">✓</div><div><h4>Discord</h4><p>TCP 55 мс · HTTP 200</p></div></div>
-                <div class="diag"><div class="ic err">✕</div><div><h4>GitHub (обновления)</h4><p>Превышено время ожидания</p></div></div>
-              </div>
+              <div class="section">СОСТОЯНИЕ СОЕДИНЕНИЯ</div>
+              <div class="diag"><div class="ic ok">✓</div><div><h4>Последняя проверка: 26/28 OK · ср. 42 мс</h4><p>Подробности и свои адреса — «Проверки → Экспресс»</p></div></div>
             </div>
           </div>
 
@@ -653,6 +624,8 @@ body.light .note .n b{color:#15191F}
 <div class="note">
   <div class="n"><b>Что уже работает в исходниках</b>
     Запуск/остановка обхода, служба <code>zapret</code>, игровой фильтр, режимы ipset, автопроверка и установка обновлений движка с GitHub, обновление <code>ipset</code> и <code>hosts</code>, диагностика, журнал, трей, темы.</div>
+  <div class="n"><b>Версия макета</b>
+    Макет синхронизирован с v1.18.0: главная — статус и быстрые переходы, фильтры и служба переехали в «Списки» и «Обход». Структура разделов — в <code>docs/ia_prototype.html</code>.</div>
   <div class="n"><b>Куда писать пожелания</b>
     Опишите номер раздела («Обзор», «Стратегии»…) и что поменять: порядок элементов, тексты, состав кнопок, что убрать и что добавить. Я поправлю и макет, и код.</div>
   <div class="n"><b>Планы на следующие итерации</b>

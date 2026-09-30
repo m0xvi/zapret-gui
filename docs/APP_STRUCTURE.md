@@ -1,6 +1,6 @@
 # Структура приложения Zapret GUI — разделы, подразделы и их функции
 
-> Версия документа: `v1.17.24` (`arena/01a0c100-zapret-gui` `22f6d87`)  
+> Версия документа: `v1.18.0` (ветка `arena/01a0f306-zapret-gui`, этапы 1–2 информационной архитектуры)
 > Стек: `C# .NET 8 + WPF (MVVM)`, движок `Flowseal/zapret-discord-youtube` (`bin/winws.exe`, `WinDivert`), служба `zapret`
 > Язык интерфейса: русский. Сборка: `windows-latest` GitHub Actions.
 
@@ -24,8 +24,10 @@
 
 ## 2. ОСНОВНОЕ
 
-### 2.1 Обзор (HomePage / HomeViewModel) — главный экран
+### 2.1 Главная (HomePage / HomeViewModel) — главный экран
 *   **Кнопка питания (PowerButton → ToggleBypassCommand):** бесшовно вкл/выкл обхода без вопроса (с `v1.17.24` без `MessageBox`), сохраняет режим `служба/процесс`.
+*   **Быстрые переходы (`v1.18.0`):** `Проверить сайты` (`OpenChecksCommand` → «Проверки»), `Подобрать обход заново` (`OpenBypassCommand` → «Обход» с подвкладкой «Подбор»), `Открыть журнал` (`OpenLogsCommand` → «Проверки → Журнал»).
+*   **Что убрано с главного экрана в `v1.18.0` (перенесено, не удалено):** тумблер службы Windows → «Обход → Дополнительно»; блок «Продвинутые настройки» (игровой фильтр, ipset, флаг `.bat`, проверка соединения) → «Списки», «Обход → Дополнительно» и «Настройки»; список адресов и результаты проверки соединения → «Проверки → Экспресс» (там тот же `MonitorTargetStore`). На главной остались кольцо здоровья соединения (`ConnectionHealth*`) и строка `ServiceText`.
 *   **Статус обхода:** `StatusText` / `StatusKey` (`Обход запущен` / `Обход выключен` / `Ошибка`), `StrategyText`, `UptimeText`, `PidText`, `ServiceText` (`Служба запущена: ALT11` / `Служба установлена, но остановлена` / `Служба не установлена`), `BypassStateKey` для цвета.
 *   **Здоровье соединения:** `ConnectionHealthVisible/Key/Text` — кольцо `ok/total OK · avg мс` по результатам `ConnectionTester`.
 *   **Служба Windows:** тумблер `ServiceInstalled` → `ToggleServiceCommand` (без вопроса с `v1.17.24`), индикатор `IsServicePending`/`ServicePendingText` (`START_PENDING`/`STOP_PENDING`), кнопка `Обновить службу` (`ReinstallServiceCommand`).
@@ -33,7 +35,14 @@
 *   **Быстрая настройка — 1 клик (RunFullCheckCommand):** 4 шага 1–2 мин: `1) аудит системы (BFE/WinDivert)` → `2) проверка сайтов` → `3) тест 22 стратегий` → `4) рекомендация лучшей`. Прогресс `FullCheckProgress`, результат `FullCheckSummaryText/Key`, кнопка `Применить` рекомендованную `ApplyRecommendedStrategyCommand`.
 *   **Игровой режим:** `GameModeActive`, `GameStatusBadgeText`, кнопка `ToggleGameMode`, блок оптимизации сети `GamingNetworkOptimizer` (`ApplyGamingTweaks/Revert`).
 
-### 2.2 Центр обхода (BypassCenterPage / BypassCenterViewModel) — всё в одном, новое в `v1.17.22`
+### 2.2 Обход (BypassCenterPage / BypassCenterViewModel) — 6 подвкладок с `v1.18.0`
+
+*   **Подвкладки (`BypassTabs` / `SelectedSubTab`, `SegmentedControl` как в «Проверках»):** `🎯 Стратегия` · `🧠 Подбор` · `🌐 DNS` · `📋 Списки` · `🔥 Сложные сайты` · `🛠 Дополнительно`. Карточка «СТАТУС» и баннер сообщения — над вкладками, поэтому статус виден всегда. Логика, команды и все биндинги прежние: менялась только раскладка (было «всё в одном» одной простынёй).
+*   `Дополнительно` — управление службой Windows, переехавшее с «Главной»: `Home.ServiceToggleStatusText`, `Home.ServiceText`, `Home.ServiceInstalled` + `Home.ToggleServiceCommand`, `Home.ReinstallServiceCommand`, `Home.IsServicePending`/`Home.ServicePendingText` (проксируются через `BypassCenterViewModel.Home`). Плюс кнопка перехода в «Проверки → Аудит системы» (`OpenSystemCheckCommand`) для опасных операций.
+*   `Списки` — статусы `HostsStatusText`/`IpsetStatusText`, кнопки `Обновить hosts` / `Обновить ipset` / `Списки OK` и переход в полный редактор списков (`OpenListsCommand` → страница «Списки»).
+*   `Сложные сайты` — карточка YouTube (QUIC-fake, SNI, IPv4, DoH) и карточка «Тяжёлые игры» со ссылкой на фильтр игр (сам фильтр живёт на странице «Списки» — без второго экземпляра настроек).
+
+#### Прежнее содержимое (осталось внутри подвкладок)
 *   **Заголовок:** описание + кнопки `Открыть папку движка` (`OpenEngineFolderCommand`) и `Обновить статусы` (`RefreshCommand`).
 *   **Баннер сообщения:** `Message`/`MessageKey`/`MessageVisible` с крестиком `DismissMessageCommand` (без рефлексии).
 *   **Статус:** `BypassStatusText`/`BypassStatusKey`, `EngineStatusText` (`Готов · vX.Y · стратегий N`), `CurrentDnsText` (`GetCurrentDnsSummary`), `ListsStatusText`, бейджи `HostsStatusText` / `IpsetStatusText`.
@@ -92,7 +101,7 @@
 
 ### 5.1 Настройки (SettingsPage / SettingsViewModel)
 *   **Общие:** тема `ThemeMode` (`System/Dark/Light`), масштаб `InterfaceZoomPercent` (80–140), `CloseToTray`, `StartMinimized`, `RunAtStartup` (планировщик/реестр), `ConfirmOnStop` (только для ручной остановки, по умолчанию выкл).
-*   **Обход и движок:** `EnginePath`, `ShowWinwsConsole`, `AutoCheckEngineUpdates`/`IncludePrerelease`/`PreserveUserDataOnUpdate`, `SelectedFakeSni` + `AutoSniRotationEnabled` + `CustomSniList`, `GameFilterOptions`/`IpsetOptions`/`BatAutoUpdate`.
+*   **Обход и движок:** `EnginePath`, `ShowWinwsConsole`, `AutoCheckEngineUpdates`/`IncludePrerelease`/`PreserveUserDataOnUpdate`, `SelectedFakeSni` + `AutoSniRotationEnabled` + `CustomSniList`. Флаг `BatAutoUpdate` (`utils\check_updates.enabled`) с `v1.18.0` настраивается здесь (переехал с «Главной»); `GameFilterOptions`/`IpsetOptions` живут на странице «Списки» и в «Обход → Сложные сайты».
 *   **Автозапуск:** `AutoStartBypass`, `StartupDelaySeconds` (0–60), `StopBypassOnExit`, `SafeMode`.
 *   **Watchdog:** `WatchdogEnabled` (по умолчанию вкл), `WatchdogIntervalSeconds` (5–120), `WatchdogAutoRestart`, `WatchdogNotifyUser` — `WatchdogService` (15с проверка `winws`/`zapret`, автоперезапуск + `BFE` + fallback на 5 альтернативных стратегий с `v1.17.24`).
 *   **Бесшовное переключение:** `SeamlessFailoverEnabled` (вкл), `SeamlessCheckMinutes` (2–60), `SeamlessCooldownMinutes` (5–120), статус `SeamlessLastReason`/`SeamlessLastSwitchTime` — `SeamlessFailoverService` (5 мин порог 2, cooldown 10 мин, 8 кандидатов).

@@ -29,6 +29,7 @@ SRC = os.path.join(ROOT, "src", "ZapretGUI")
 # Страница -> ViewModel (DataContext задаётся в code-behind конструктором)
 PAGE_VM = {
     "HomePage": ["HomeViewModel"],
+    "BypassCenterPage": ["BypassCenterViewModel"],
     "StrategiesPage": ["StrategiesViewModel"],
     "UpdatesPage": ["UpdatesViewModel"],
     "DiagnosticsPage": ["DiagnosticsViewModel"],
@@ -48,6 +49,7 @@ PAGE_VM = {
 ITEM_TYPES = {
     "UpdatesPage": ["EngineConsistencyItem", "EngineBackupInfo"],
     "HomePage": ["ConnectionCheck", "MonitorTarget"],
+    "BypassCenterPage": ["DnsStrategyMatrixEntry"],
     "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord", "StrategySwitchRecord", "MonitorTarget", "AutoTunerStepResult", "SniTestResult", "SniCandidate"],
     "ProfilesPage": ["UserProfile", "BackupArchiveInfo"],
     "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult", "MonitorTarget", "ResourceProbeResult", "DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "DiscordVoiceServerCheck"],
@@ -63,7 +65,7 @@ ITEM_TYPES = {
 # Типы, для которых второй сегмент не проверяем
 SKIP_SECOND = {
     "string", "bool", "int", "double", "ICommand", "AppSettings", "void", "",
-    "ObservableCollection<string>", "ObservableCollection<MonitorTarget>", "ObservableCollection<ConnectionCheck>", "ObservableCollection<EngineBackupInfo>", "ObservableCollection<LogEntry>", "ObservableCollection<GameFilterProfile>", "ObservableCollection<DnsProfile>", "ObservableCollection<UserProfile>", "ObservableCollection<BackupArchiveInfo>", "List<string>", "ICollectionView",
+    "ObservableCollection<string>", "ObservableCollection<MonitorTarget>", "ObservableCollection<ConnectionCheck>", "ObservableCollection<DnsStrategyMatrixEntry>", "ObservableCollection<StrategyInfo>", "ObservableCollection<EngineBackupInfo>", "ObservableCollection<LogEntry>", "ObservableCollection<GameFilterProfile>", "ObservableCollection<DnsProfile>", "ObservableCollection<UserProfile>", "ObservableCollection<BackupArchiveInfo>", "List<string>", "ICollectionView",
 }
 
 

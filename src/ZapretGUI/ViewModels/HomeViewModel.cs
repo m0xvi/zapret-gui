@@ -70,6 +70,14 @@ namespace ZapretGui.ViewModels
             EditConnectionTargetCommand = new RelayCommand(EditConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             RemoveConnectionTargetCommand = new RelayCommand(RemoveConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             CheckUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
+            // Переходы вместо блоков на главном экране (v1.18.0): проверки, подбор и журнал — в своих разделах
+            OpenChecksCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
+            OpenBypassCommand = new RelayCommand(() =>
+            {
+                _main.BypassCenter.SelectedSubTab = 1; // «Подбор»
+                _main.Navigate("bypass-center");
+            });
+            OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
             OpenDiagnosticsCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
             OpenFirstLaunchCommand = new RelayCommand(() => _main.Navigate("first-run"));
             OpenStrategiesCommand = new RelayCommand(() => _main.Navigate("strategies"));
@@ -552,6 +560,9 @@ namespace ZapretGui.ViewModels
         public ICommand RemoveServiceCommand { get; }
         public ICommand ToggleServiceCommand { get; }
         public ICommand ReapplyServiceCommand { get; }
+        public ICommand OpenChecksCommand { get; }
+        public ICommand OpenBypassCommand { get; }
+        public ICommand OpenLogsCommand { get; }
         public ICommand TestConnectionCommand { get; }
         public ICommand AddConnectionTargetCommand { get; }
         public ICommand EditConnectionTargetCommand { get; }

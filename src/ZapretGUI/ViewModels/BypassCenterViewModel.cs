@@ -43,6 +43,7 @@ namespace ZapretGui.ViewModels
         private string _matrixSummary = "Готов к проверке — нажми «Проверить всё»";
         private string _matrixBestText = "—";
         private DnsStrategyMatrixEntry? _selectedMatrixEntry;
+        private int _selectedSubTab;
 
         public BypassCenterViewModel(MainViewModel main)
         {
@@ -64,14 +65,67 @@ namespace ZapretGui.ViewModels
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             ApplyStrategyCommand = new AsyncRelayCommand(ApplySelectedStrategyAsync, () => SelectedStrategy != null && !IsMatrixRunning);
             DismissMessageCommand = new RelayCommand(() => { Message = ""; MessageKey = "Info"; });
+            OpenListsCommand = new RelayCommand(() => _main.Navigate("user-lists"));
+            OpenSystemCheckCommand = new RelayCommand(() =>
+            {
+                _main.Diagnostics.SelectedSubTab = 3; // «Аудит системы» в разделе «Проверки»
+                _main.Navigate("diagnostics");
+            });
 
             RefreshAll();
             _main.Bypass.GetStatus(); // warm
             try { _main.Strategies.PropertyChanged += (_, __) => RefreshStrategies(); } catch { }
         }
 
+        // ===== Подвкладки раздела «Обход» (v1.18.0) =====
+        // Страница больше не «свалка всё в одном»: статус всегда сверху, дальше — 6 подвкладок.
+        // Логика и команды те же, что были на одной странице, — менялась только раскладка.
+
+        public string[] BypassTabs { get; } = { "🎯 Стратегия", "🧠 Подбор", "🌐 DNS", "📋 Списки", "🔥 Сложные сайты", "🛠 Дополнительно" };
+
+        public string BypassTabHintText => SelectedSubTab switch
+        {
+            0 => "Выбор способа обхода из каталога движка • применяется бесшовно (служба/процесс сохраняется)",
+            1 => "Подбор: 4 шага (аудит → сайты → стратегии → рекомендация) и перебор каждой стратегии с каждым DNS",
+            2 => "DNS-профили, применение и проверка подмены",
+            3 => "Списки доменов, hosts и ipset • полный редактор — на странице «Списки»",
+            4 => "Тонкая настройка под YouTube/Discord и фильтр трафика игр",
+            5 => "Служба Windows, папка движка и переход к опасным операциям",
+            _ => ""
+        };
+
+        public int SelectedSubTab
+        {
+            get => _selectedSubTab;
+            set
+            {
+                if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 5)))
+                {
+                    Raise(nameof(BypassTabHintText));
+                    Raise(nameof(IsStrategyTabSelected));
+                    Raise(nameof(IsPickTabSelected));
+                    Raise(nameof(IsDnsTabSelected));
+                    Raise(nameof(IsListsTabSelected));
+                    Raise(nameof(IsHardTabSelected));
+                    Raise(nameof(IsAdvancedTabSelected));
+                }
+            }
+        }
+
+        public bool IsStrategyTabSelected { get => _selectedSubTab == 0; set { if (value) SelectedSubTab = 0; } }
+        public bool IsPickTabSelected { get => _selectedSubTab == 1; set { if (value) SelectedSubTab = 1; } }
+        public bool IsDnsTabSelected { get => _selectedSubTab == 2; set { if (value) SelectedSubTab = 2; } }
+        public bool IsListsTabSelected { get => _selectedSubTab == 3; set { if (value) SelectedSubTab = 3; } }
+        public bool IsHardTabSelected { get => _selectedSubTab == 4; set { if (value) SelectedSubTab = 4; } }
+        public bool IsAdvancedTabSelected { get => _selectedSubTab == 5; set { if (value) SelectedSubTab = 5; } }
+
+
         public AppSettings Settings => _main.Settings;
         public StrategyStore Strategies => _main.Strategies;
+
+        /// <summary>Главная: оттуда в «Обход → Дополнительно» переехали управление службой и статус соединения.
+        /// Логика остаётся одна — в HomeViewModel, здесь только проксирование для биндингов.</summary>
+        public HomeViewModel Home => _main.Home;
         public ObservableCollection<DnsStrategyMatrixEntry> MatrixResults { get; }
         public IReadOnlyList<DnsProfile> DnsProfiles { get; }
 
@@ -130,6 +184,8 @@ namespace ZapretGui.ViewModels
         public ICommand RunMatrixCommand { get; }
         public ICommand CancelMatrixCommand { get; }
         public ICommand ApplyBestCommand { get; }
+        public ICommand OpenListsCommand { get; }
+        public ICommand OpenSystemCheckCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand ApplyStrategyCommand { get; }
 
