@@ -93,6 +93,10 @@ namespace ZapretGui.ViewModels
         public StrategiesViewModel(MainViewModel main)
         {
             _main = main;
+            _main.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
+            };
 
             View = CollectionViewSource.GetDefaultView(Store.Items);
             View.Filter = FilterItem;
@@ -102,7 +106,6 @@ namespace ZapretGui.ViewModels
             _evaluationHistory = StrategyEvaluationHistoryStore.Load();
 
             Categories = new[] { "Все категории", "FAKE TLS AUTO", "ALT", "SIMPLE FAKE", "БАЗОВАЯ", "EXP", "АВТОКОНСТРУКТОР" };
-            SubTabs = new[] { "Каталог стратегий", "Конструктор параметров", "Умный автоподбор", "Пул TLS SNI", "Контрольные адреса" };
 
             // Инициализация контрольных адресов
             TargetEndpoints = new ObservableCollection<MonitorTarget>(main.Settings.MonitorTargets);
@@ -185,15 +188,38 @@ namespace ZapretGui.ViewModels
         public ICollectionView View { get; }
         public ICollectionView CandidateEvaluationsView => _candidateEvaluationView;
         public string[] Categories { get; }
-        public string[] SubTabs { get; }
+        private static readonly string[] AllSubTabs = { "Каталог стратегий", "Конструктор параметров", "Умный автоподбор", "Пул TLS SNI", "Контрольные адреса" };
+        private static readonly string[] SimpleSubTabs = { "Каталог стратегий" };
+        private static readonly int[] ExpertTabMap = { 0, 1, 2, 3, 4 };
+        private static readonly int[] SimpleTabMap = { 0 };
+
+        /// <summary>Подвкладки каталога: в «Простом» режиме остаётся сам каталог, технические подвкладки скрыты (§7).</summary>
+        public string[] SubTabs => ExpertMode ? AllSubTabs : SimpleSubTabs;
+
+        /// <summary>Индекс выбранной подвкладки в видимом списке.</summary>
+        public int VisibleSubTab
+        {
+            get
+            {
+                var index = Array.IndexOf(VisibleIndexMap, _selectedSubTabIndex);
+                return index < 0 ? 0 : index;
+            }
+            set
+            {
+                if (value >= 0 && value < VisibleIndexMap.Length) SelectedSubTabIndex = VisibleIndexMap[value];
+            }
+        }
+
+        private int[] VisibleIndexMap => ExpertMode ? ExpertTabMap : SimpleTabMap;
 
         public int SelectedSubTabIndex
         {
             get => _selectedSubTabIndex;
             set
             {
-                if (Set(ref _selectedSubTabIndex, Math.Clamp(value, 0, SubTabs.Length - 1)))
+                if (Set(ref _selectedSubTabIndex, Math.Clamp(value, 0, AllSubTabs.Length - 1)))
                 {
+                    Raise(nameof(VisibleSubTab));
                     Raise(nameof(IsCatalogTabVisible));
                     Raise(nameof(IsBuilderTabVisible));
                     Raise(nameof(IsAutoTunerTabVisible));
@@ -2041,6 +2067,17 @@ namespace ZapretGui.ViewModels
             SelectedFakeSni = next.Domain;
             Message = $"🔄 Ротация SNI: активирован {next.DisplayText}";
             _main.Home.ShowSuccess($"🔄 Активирован TLS SNI: {next.Domain}");
+        }
+
+        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
+        public bool ExpertMode => _main.ExpertMode;
+
+        private void OnExpertModeChanged()
+        {
+            Raise(nameof(ExpertMode));
+            Raise(nameof(SubTabs));
+            Raise(nameof(VisibleSubTab));
+            if (!VisibleIndexMap.Contains(_selectedSubTabIndex)) SelectedSubTabIndex = 0;
         }
     }
 }

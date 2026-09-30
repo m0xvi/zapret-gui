@@ -128,6 +128,10 @@ namespace ZapretGui.ViewModels
         public SettingsViewModel(MainViewModel main)
         {
             _main = main;
+            _main.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
+            };
             _enginePath = main.Settings.EnginePath;
             _themeIndex = (int)main.Settings.Theme;
             SyncProviderDraft();
@@ -980,7 +984,29 @@ namespace ZapretGui.ViewModels
         // Настройки переехали из вкладок «Настроек» на отдельную страницу. DataContext тот же
         // (SettingsViewModel), поэтому сохранение и логика остались ровно те же — менялось место в UI.
 
-        public string[] AutomationTabs { get; } = { "🚀 Запуск", "🔄 Восстановление", "🗓 Расписание", "🌐 Профили по сетям" };
+        private static readonly string[] AllAutomationTabs = { "🚀 Запуск", "🔄 Восстановление", "🗓 Расписание", "🌐 Профили по сетям" };
+        private static readonly string[] SimpleAutomationTabs = { "🚀 Запуск", "🔄 Восстановление", "🗓 Расписание" };
+        private static readonly int[] AutomationExpertMap = { 0, 1, 2, 3 };
+        private static readonly int[] AutomationSimpleMap = { 0, 1, 2 };
+
+        /// <summary>Подвкладки «Автоматизации»: таблица сетей — экспертная (§7).</summary>
+        public string[] AutomationTabs => ExpertMode ? AllAutomationTabs : SimpleAutomationTabs;
+
+        /// <summary>Индекс выбранной подвкладки «Автоматизации» в видимом списке.</summary>
+        public int VisibleAutomationTab
+        {
+            get
+            {
+                var index = Array.IndexOf(VisibleAutomationMap, _automationTabIndex);
+                return index < 0 ? 0 : index;
+            }
+            set
+            {
+                if (value >= 0 && value < VisibleAutomationMap.Length) AutomationTabIndex = VisibleAutomationMap[value];
+            }
+        }
+
+        private int[] VisibleAutomationMap => ExpertMode ? AutomationExpertMap : AutomationSimpleMap;
 
         public string AutomationTabHintText => AutomationTabIndex switch
         {
@@ -1001,6 +1027,7 @@ namespace ZapretGui.ViewModels
                 if (Set(ref _automationTabIndex, Math.Clamp(value, 0, 3)))
                 {
                     Raise(nameof(AutomationTabHintText));
+                    Raise(nameof(VisibleAutomationTab));
                     Raise(nameof(IsAutomationLaunchTabSelected));
                     Raise(nameof(IsAutomationRecoveryTabSelected));
                     Raise(nameof(IsAutomationScheduleTabSelected));
@@ -1471,6 +1498,22 @@ namespace ZapretGui.ViewModels
             }
             catch { return "Резервных копий пока нет"; }
         }
+        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
+        public bool ExpertMode => _main.ExpertMode;
+        /// <summary>Переключатель режима для карточки «Настройки → Общие» (команда живёт во MainViewModel).</summary>
+        public RelayCommand ToggleExpertModeCommand => _main.ToggleExpertModeCommand;
+        public string ExpertModeToggleText => _main.ExpertModeToggleText;
+        public string ExpertModeToggleHint => _main.ExpertModeToggleHint;
+        private void OnExpertModeChanged()
+        {
+            Raise(nameof(ExpertMode));
+            Raise(nameof(ExpertModeToggleText));
+            Raise(nameof(ExpertModeToggleHint));
+            Raise(nameof(AutomationTabs));
+            Raise(nameof(VisibleAutomationTab));
+            if (!VisibleAutomationMap.Contains(_automationTabIndex)) AutomationTabIndex = 0;
+        }
+    }
     }
     public sealed class MetricHostOption : ObservableObject
     {
@@ -1488,6 +1531,5 @@ namespace ZapretGui.ViewModels
         public bool IsEnabled { get; set; } = true;
         public bool IsSelected { get => _isSelected; set { if (Set(ref _isSelected, value) && IsEnabled) _parent.UpdateToolbarMetricsHostsFromSelection(); } }
         public string DisplayText => string.IsNullOrWhiteSpace(Host) ? Name : $"{Name} ({Host})";
-    }
 
 }

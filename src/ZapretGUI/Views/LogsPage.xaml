@@ -25,7 +25,7 @@
         <StackPanel Grid.Row="1" Margin="0,16,0,12">
             <WrapPanel Orientation="Horizontal">
                 <TextBlock Style="{StaticResource DimText}" Text="{Binding CountText}" VerticalAlignment="Center" Margin="2,0,16,0" />
-                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Отладка" IsChecked="{Binding ShowDebug, Mode=TwoWay}"
+                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Отладка" IsChecked="{Binding ShowDebug, Mode=TwoWay}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"
                           ToolTip="Подробные записи: живой вывод winws.exe, технические детали. Выключите, чтобы журнал стал короче" />
                 <CheckBox Style="{StaticResource CheckBoxApp}" Content="Инфо" Margin="12,0,0,0" IsChecked="{Binding ShowInfo, Mode=TwoWay}"
                           ToolTip="Обычные события: запуски, обновления, проверки" />

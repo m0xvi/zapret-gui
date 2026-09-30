@@ -116,6 +116,13 @@
                                    Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
                     </WrapPanel>
                 </Button>
+                <Button Style="{StaticResource GhostButton}" Padding="8,3" Margin="6,0,0,0"
+                        Command="{Binding ToggleExpertModeCommand}"
+                        ToolTip="{Binding ExpertModeToggleHint}"
+                        AutomationProperties.Name="Переключить режим интерфейса: простой или эксперт">
+                    <TextBlock Text="{Binding ExpertModeToggleText}" FontSize="11" FontWeight="SemiBold"
+                               VerticalAlignment="Center" />
+                </Button>
             </WrapPanel>
 
             <WrapPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
@@ -189,6 +196,13 @@
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding Home.EnginePathText}"
                                            TextTrimming="CharacterEllipsis" ToolTip="{Binding Home.EnginePathText}" />
                             </StackPanel>
+                        </Border>
+                        <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}"
+                                HorizontalAlignment="Center" Margin="0,0,0,6"
+                                Visibility="{Binding ExpertModeBadgeVisible, Converter={StaticResource BoolToVis}}"
+                                ToolTip="Включён режим «Эксперт»: видны технические блоки (Ctrl+Shift+E)">
+                            <TextBlock Text="{Binding ExpertModeBadgeText}" FontSize="10" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentBrush}" />
                         </Border>
                         <TextBlock Style="{StaticResource DimText}"
                                    Text="{Binding AppVersion, StringFormat=Zapret GUI {0} · лицензия MIT}"

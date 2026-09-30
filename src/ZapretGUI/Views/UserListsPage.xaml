@@ -71,7 +71,7 @@
                             <Button Style="{StaticResource SecondaryButton}" Content="Обновить списки с GitHub"
                                     Command="{Binding UpdateListsFromGithubCommand}"
                                     ToolTip="Загрузить свежие списки general, discord, youtube и ipset от Flowseal" />
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть в Блокноте" Margin="8,0,0,0"
+                            <Button Style="{StaticResource GhostButton}" Content="Открыть в Блокноте" Margin="8,0,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding OpenInNotepadCommand}" ToolTip="Открыть этот файл в стандартном Блокноте" />
                         </WrapPanel>
                     </Grid>
@@ -494,7 +494,7 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Style="{StaticResource InnerCard}" Margin="0,0,8,0" Padding="14,12">
+                        <Border Grid.Column="0" Style="{StaticResource InnerCard}" Margin="0,0,8,0" Padding="14,12" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionText}" Text="ФИЛЬТРАЦИЯ IP (IPSET)" />
                                 <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"

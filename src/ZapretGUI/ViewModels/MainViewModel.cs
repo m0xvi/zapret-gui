@@ -117,6 +117,14 @@ namespace ZapretGui.ViewModels
                 ToggleMiniOverlay();
             });
 
+            Hotkeys.ToggleExpertModeRequested += () => Application.Current?.Dispatcher?.Invoke(() =>
+            {
+                ToggleExpertMode();
+                WatchdogNotificationRequested?.Invoke(Settings.ExpertModeEnabled
+                    ? "🔧 Режим «Эксперт» включён — технические блоки видны"
+                    : "🙂 Включён «Простой» режим — технические блоки скрыты");
+            });
+
             Watchdog = new WatchdogService(settings, Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended, () => Strategies.Items.ToList());
             Watchdog.EventLogged += msg =>
             {
@@ -205,10 +213,11 @@ namespace ZapretGui.ViewModels
             RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
-            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 2; Navigate("diagnostics"); });
+            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.OpenSystemSubTab(); Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
             NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
             NavigateActiveCheckCommand = new RelayCommand(NavigateToActiveCheck);
+            ToggleExpertModeCommand = new RelayCommand(ToggleExpertMode);
 
             Strategies.Refresh();
             Home.ReloadFromEngine();
@@ -303,6 +312,58 @@ namespace ZapretGui.ViewModels
         public string ReadinessDetails => CurrentReadiness.Details;
 
         public string AppVersion => GuiUpdateService.CurrentVersion;
+
+        /// <summary>Экспертный режим интерфейса: технические блоки видимы (по умолчанию выключен — «Простой»).</summary>
+        public bool ExpertMode => Settings.ExpertModeEnabled;
+
+        /// <summary>Инверсия для привязок видимости простых блоков.</summary>
+        public bool SimpleMode => !ExpertMode;
+
+        /// <summary>Бейдж режима рядом с версией: «Эксперт» показывается только в экспертном режиме.</summary>
+        public string ExpertModeBadgeText => ExpertMode ? "Эксперт" : "";
+
+        public bool ExpertModeBadgeVisible => ExpertMode;
+
+        public string ExpertModeToggleText => ExpertMode ? "Простой режим" : "Режим «Эксперт»";
+
+        public string ExpertModeToggleHint => ExpertMode
+            ? "Скрыть технические блоки (Ctrl+Shift+E)"
+            : "Показать технические блоки: матрица 92 тестов, SNI-пул, режимы ipset и другое (Ctrl+Shift+E)";
+
+        public RelayCommand ToggleExpertModeCommand { get; }
+
+        /// <summary>Переключение режима «Простой/Эксперт». Сам переключатель находится в шапке (Ctrl+Shift+E),
+        /// режим сохраняется в настройках и считается источником истины для видимости экспертных блоков.</summary>
+        public void ToggleExpertMode()
+        {
+            SetExpertMode(!Settings.ExpertModeEnabled);
+        }
+
+        public void SetExpertMode(bool enabled)
+        {
+            if (Settings.ExpertModeEnabled == enabled) return;
+            Settings.ExpertModeEnabled = enabled;
+            SettingsStore.Save(Settings);
+            Raise(nameof(ExpertMode));
+            Raise(nameof(SimpleMode));
+            Raise(nameof(ExpertModeBadgeText));
+            Raise(nameof(ExpertModeBadgeVisible));
+            Raise(nameof(ExpertModeToggleText));
+            Raise(nameof(ExpertModeToggleHint));
+            AppLog.Info(enabled ? "[UI] Включён режим «Эксперт»" : "[UI] Включён «Простой» режим");
+        }
+
+        /// <summary>Миграция v1.22.0: если у пользователя есть нестандартные экспертные параметры,
+        /// показываем один баллун с предложением включить «Эксперт» (без модального окна).</summary>
+        public bool ShouldSuggestExpertMode()
+        {
+            if (Settings.ExpertModeEnabled || Settings.ExpertModeHintShown) return false;
+            if (Settings.CustomSniList.Count > 0) return true;
+            if (Settings.HostSpecificStrategies.Count > 0) return true;
+            if (Settings.AutoSniRotationEnabled) return true;
+            if (Settings.UseDohForBlockedHosts) return true;
+            return !string.IsNullOrWhiteSpace(Settings.YoutubeSniOverride);
+        }
 
         public string EngineVersionText
         {
@@ -630,6 +691,8 @@ namespace ZapretGui.ViewModels
                     "logs" => 5,         // Журнал
                     _ => 0
                 };
+                // В «Простом» режиме экспертных подразделов нет — ведём на быструю проверку.
+                if (!ExpertMode && tab is 2 or 3 or 4) tab = 0;
                 Diagnostics.SelectedSubTab = tab;
                 key = "diagnostics";
             }

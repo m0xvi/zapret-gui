@@ -51,6 +51,10 @@ namespace ZapretGui.ViewModels
         public HomeViewModel(MainViewModel main)
         {
             _main = main;
+            _main.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
+            };
             MonitorTargetStore.EnsureDefaults(main.Settings);
             SettingsStore.Save(main.Settings);
             foreach (var target in main.Settings.MonitorTargets.Where(t => !t.IsGame))
@@ -1345,6 +1349,14 @@ namespace ZapretGui.ViewModels
         {
             MessageKey = key;
             Message = message;
+        }
+
+        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
+        public bool ExpertMode => _main.ExpertMode;
+
+        private void OnExpertModeChanged()
+        {
+            Raise(nameof(ExpertMode));
         }
     }
 }

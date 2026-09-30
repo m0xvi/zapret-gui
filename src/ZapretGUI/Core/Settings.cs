@@ -213,6 +213,15 @@ namespace ZapretGui.Core
         /// <summary>Горячая клавиша открытия мини-виджета (по умолчанию Ctrl+Shift+O).</summary>
         public string HotkeyToggleMiniOverlay { get; set; } = "Ctrl+Shift+O";
 
+        /// <summary>Горячая клавиша переключения режима интерфейса «Простой/Эксперт» (по умолчанию Ctrl+Shift+E).</summary>
+        public string HotkeyToggleExpertMode { get; set; } = "Ctrl+Shift+E";
+
+        /// <summary>Экспертный режим интерфейса: показывает технические блоки (по умолчанию «Простой»).</summary>
+        public bool ExpertModeEnabled { get; set; }
+
+        /// <summary>Баллун «включить режим „Эксперт“?» уже показывался (миграция v1.22.0).</summary>
+        public bool ExpertModeHintShown { get; set; }
+
         /// <summary>Координата X мини-виджета на экране (-1 = по умолчанию).</summary>
         public double MiniOverlayLeft { get; set; } = -1;
 

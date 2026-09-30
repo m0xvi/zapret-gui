@@ -46,6 +46,34 @@
             <!-- ===================== ВКЛАДКА 0: ОБЩИЕ ===================== -->
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsGeneralTabSelected, Converter={StaticResource BoolToVis}}">
 
+                <!-- Режим интерфейса (v1.22.0, docs/IA_REDESIGN.md §7): «Простой» по умолчанию, «Эксперт» показывает
+                     технические блоки. Дублирует переключатель в шапке и Ctrl+Shift+E. -->
+                <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Top">
+                                <TextBlock Text="&#xE7EF;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,12,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="РЕЖИМ ИНТЕРФЕЙСА" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource DimText}" Text="«Простой» — только повседневное. «Эксперт» показывает технические блоки: матрицу 92 тестов, пул SNI, режимы ipset, опасные операции." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" VerticalAlignment="Center"
+                                    Command="{Binding ToggleExpertModeCommand}"
+                                    ToolTip="{Binding ExpertModeToggleHint}">
+                                <TextBlock Text="{Binding ExpertModeToggleText}" FontWeight="SemiBold" />
+                            </Button>
+                        </Grid>
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.85" Margin="0,8,0,0"
+                                   Text="{Binding ExpertModeToggleHint}" TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
                 <!-- Движок -->
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
@@ -326,7 +354,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -410,7 +438,7 @@
                         <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" FontSize="11" Opacity="0.8" Text="Подсказка: эти же настройки теперь в разделе «Обход» — там же исчерпывающая проверка стратегия×DNS за один клик. После смены SNI/QUIC запустите «Проверка пула SNI» и «Автоподбор»." TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -518,7 +546,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>

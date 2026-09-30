@@ -58,7 +58,7 @@
                                     <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}">
                                         <TextBlock Style="{StaticResource DimText}" Text="{Binding UptimeText, StringFormat=Время работы: {0}}" />
                                     </Border>
-                                    <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="8,0,0,0">
+                                    <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="8,0,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                                         <TextBlock Style="{StaticResource DimText}" Text="{Binding PidText, StringFormat=Процесс: {0}}" />
                                     </Border>
                                 </WrapPanel>
@@ -71,7 +71,7 @@
                                         <TextBlock Text=" • проверьте YouTube/Discord" Style="{StaticResource DimText}" FontSize="10" Margin="6,0,0,0" VerticalAlignment="Center" Opacity="0.8" />
                                     </WrapPanel>
                                 </Border>
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding ServiceText}" Margin="0,8,0,0" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding ServiceText}" Margin="0,8,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}" />
                                 <WrapPanel Margin="0,8,0,0" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
                                     <Border Style="{StaticResource BusySpinner}">
                                         <TextBlock Text="…" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center" />

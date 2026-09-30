@@ -49,6 +49,10 @@ namespace ZapretGui.ViewModels
         public DiagnosticsViewModel(MainViewModel main)
         {
             _main = main;
+            _main.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
+            };
 
             RunCommand = new AsyncRelayCommand(RunAsync, () => !IsRunning && !IsDpiRunning);
             FixItemCommand = new AsyncRelayCommand(FixItemAsync, _ => !IsRunning && !IsDpiRunning);
@@ -123,7 +127,32 @@ namespace ZapretGui.ViewModels
 
         private int _selectedSubTab;
 
-        public string[] DiagnosticsTabs { get; } = new[] { "⚡ Быстрая проверка", "📡 Сайты и звонки", "🛠 Система", "Глубокая проверка", "📊 История и отчёты", "📄 Журнал" };
+        private static readonly string[] AllDiagnosticsTabs = { "⚡ Быстрая проверка", "📡 Сайты и звонки", "🛠 Система", "Глубокая проверка", "📊 История и отчёты", "📄 Журнал" };
+        private static readonly string[] SimpleDiagnosticsTabs = { "⚡ Быстрая проверка", "📡 Сайты и звонки", "📄 Журнал" };
+        private static readonly int[] ExpertTabMap = { 0, 1, 2, 3, 4, 5 };
+        private static readonly int[] SimpleTabMap = { 0, 1, 5 };
+
+        /// <summary>Видимые подразделы «Проверок»: «Система», «Глубокая проверка» и «История» — только в «Эксперте» (§7).</summary>
+        public string[] DiagnosticsTabs => ExpertMode ? AllDiagnosticsTabs : SimpleDiagnosticsTabs;
+
+        /// <summary>Индекс выбранного подраздела в видимом списке (часть подразделов скрыта в «Простом»).</summary>
+        public int VisibleSubTab
+        {
+            get
+            {
+                var index = Array.IndexOf(VisibleIndexMap, _selectedSubTab);
+                return index < 0 ? 0 : index;
+            }
+            set
+            {
+                if (value >= 0 && value < VisibleIndexMap.Length) SelectedSubTab = VisibleIndexMap[value];
+            }
+        }
+
+        private int[] VisibleIndexMap => ExpertMode ? ExpertTabMap : SimpleTabMap;
+
+        /// <summary>Открыть «Проверки → Система»: в «Простом» режиме раздела нет, ведём на быструю проверку.</summary>
+        public void OpenSystemSubTab() => SelectedSubTab = ExpertMode ? 2 : 0;
 
         public string DiagnosticsTabHintText => SelectedSubTab switch
         {
@@ -144,6 +173,7 @@ namespace ZapretGui.ViewModels
                 if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 5)))
                 {
                     Raise(nameof(DiagnosticsTabHintText));
+                    Raise(nameof(VisibleSubTab));
                     Raise(nameof(IsExpressTabSelected));
                     Raise(nameof(IsComplexSitesTabSelected));
                     Raise(nameof(IsSystemTabSelected));
@@ -1329,6 +1359,17 @@ namespace ZapretGui.ViewModels
         {
             MessageKey = key;
             Message = message;
+        }
+
+        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
+        public bool ExpertMode => _main.ExpertMode;
+
+        private void OnExpertModeChanged()
+        {
+            Raise(nameof(ExpertMode));
+            Raise(nameof(DiagnosticsTabs));
+            Raise(nameof(VisibleSubTab));
+            if (!VisibleIndexMap.Contains(_selectedSubTab)) SelectedSubTab = 0;
         }
     }
 }

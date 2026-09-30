@@ -163,6 +163,27 @@ namespace ZapretGui.Views
                 }));
             }
 
+            // Миграция v1.22.0: нестандартные экспертные параметры → один баллун с предложением
+            // включить режим «Эксперт» (docs/IA_REDESIGN.md §7, правило 4; без модальных окон)
+            _ = System.Threading.Tasks.Task.Run(async () =>
+            {
+                try
+                {
+                    await System.Threading.Tasks.Task.Delay(9000);
+                    if (_vm.Settings.SafeMode) return;
+                    if (!_vm.ShouldSuggestExpertMode()) return;
+                    _vm.Settings.ExpertModeHintShown = true;
+                    SettingsStore.Save(_vm.Settings);
+                    await Dispatcher.InvokeAsync(() => _tray?.ShowBalloon("Режим «Эксперт»",
+                        "У вас настроены продвинутые параметры (SNI, стратегии для отдельных сайтов). " +
+                        "Включить режим «Эксперт», чтобы они были видны? Переключатель — в шапке окна или Ctrl+Shift+E."));
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("Ошибка подсказки режима «Эксперт»: " + ex.Message);
+                }
+            });
+
             // Проверка конфликта со старым запретом — с задержкой, чтобы сначала
             // отработали автоустановка движка и автозапуск обхода
             _ = System.Threading.Tasks.Task.Run(async () =>

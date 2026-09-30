@@ -48,6 +48,10 @@ namespace ZapretGui.ViewModels
         public BypassCenterViewModel(MainViewModel main)
         {
             _main = main;
+            _main.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
+            };
             MatrixResults = new ObservableCollection<DnsStrategyMatrixEntry>();
             DnsProfiles = DnsManagementService.PredefinedProfiles;
             SelectedDnsProfile = DnsProfiles.FirstOrDefault(p => p.Id == "cloudflare") ?? DnsProfiles[0];
@@ -68,7 +72,7 @@ namespace ZapretGui.ViewModels
             OpenListsCommand = new RelayCommand(() => _main.Navigate("user-lists"));
             OpenSystemCheckCommand = new RelayCommand(() =>
             {
-                _main.Diagnostics.SelectedSubTab = 2; // «Система» в разделе «Проверки»
+                _main.Diagnostics.OpenSystemSubTab(); // «Система» в разделе «Проверки» (в «Простом» — быстрая проверка)
                 _main.Navigate("diagnostics");
             });
 
@@ -81,7 +85,29 @@ namespace ZapretGui.ViewModels
         // Страница больше не «свалка всё в одном»: статус всегда сверху, дальше — 6 подвкладок.
         // Логика и команды те же, что были на одной странице, — менялась только раскладка.
 
-        public string[] BypassTabs { get; } = { "🎯 Стратегия", "🧠 Подбор", "🌐 DNS", "📋 Списки", "🔥 Сложные сайты", "🛠 Дополнительно" };
+        private static readonly string[] AllBypassTabs = { "🎯 Стратегия", "🧠 Подбор", "🌐 DNS", "📋 Списки", "🔥 Сложные сайты", "🛠 Дополнительно" };
+        private static readonly string[] SimpleBypassTabs = { "🎯 Стратегия", "🧠 Подбор", "🌐 DNS", "📋 Списки", "🔥 Сложные сайты" };
+        private static readonly int[] ExpertTabMap = { 0, 1, 2, 3, 4, 5 };
+        private static readonly int[] SimpleTabMap = { 0, 1, 2, 3, 4 };
+
+        /// <summary>Видимые подвкладки: в «Простом» режиме «Дополнительно» скрыта целиком (docs/IA_REDESIGN.md §7).</summary>
+        public string[] BypassTabs => ExpertMode ? AllBypassTabs : SimpleBypassTabs;
+
+        /// <summary>Индекс выбранной подвкладки в видимом списке (часть вкладок может быть скрыта режимом).</summary>
+        public int VisibleSubTab
+        {
+            get
+            {
+                var index = Array.IndexOf(VisibleIndexMap, _selectedSubTab);
+                return index < 0 ? 0 : index;
+            }
+            set
+            {
+                if (value >= 0 && value < VisibleIndexMap.Length) SelectedSubTab = VisibleIndexMap[value];
+            }
+        }
+
+        private int[] VisibleIndexMap => ExpertMode ? ExpertTabMap : SimpleTabMap;
 
         public string BypassTabHintText => SelectedSubTab switch
         {
@@ -102,6 +128,7 @@ namespace ZapretGui.ViewModels
                 if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 5)))
                 {
                     Raise(nameof(BypassTabHintText));
+                    Raise(nameof(VisibleSubTab));
                     Raise(nameof(IsStrategyTabSelected));
                     Raise(nameof(IsPickTabSelected));
                     Raise(nameof(IsDnsTabSelected));
@@ -470,6 +497,17 @@ namespace ZapretGui.ViewModels
             _main.Home.RefreshStatus();
             Raise(nameof(CurrentDnsText));
             Raise(nameof(BypassStatusText));
+        }
+
+        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
+        public bool ExpertMode => _main.ExpertMode;
+
+        private void OnExpertModeChanged()
+        {
+            Raise(nameof(ExpertMode));
+            Raise(nameof(BypassTabs));
+            Raise(nameof(VisibleSubTab));
+            if (!VisibleIndexMap.Contains(_selectedSubTab)) SelectedSubTab = 0;
         }
     }
 }

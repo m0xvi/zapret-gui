@@ -53,7 +53,7 @@
                         <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Padding="7,3">
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding HostsStatusText, Mode=OneWay}"/>
                         </Border>
-                        <Border Style="{StaticResource Badge}" Margin="0,6,0,0" Background="{DynamicResource ElevatedBrush}" Padding="7,3">
+                        <Border Style="{StaticResource Badge}" Margin="0,6,0,0" Background="{DynamicResource ElevatedBrush}" Padding="7,3" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding IpsetStatusText, Mode=OneWay}"/>
                         </Border>
                     </StackPanel>
@@ -62,7 +62,7 @@
 
             <!-- Подвкладки раздела -->
             <StackPanel Margin="0,16,0,0">
-                <controls:SegmentedControl ItemsSource="{Binding BypassTabs}" SelectedIndex="{Binding SelectedSubTab, Mode=TwoWay}" MinWidth="760" HorizontalAlignment="Left"/>
+                <controls:SegmentedControl ItemsSource="{Binding BypassTabs}" SelectedIndex="{Binding VisibleSubTab, Mode=TwoWay}" MinWidth="760" HorizontalAlignment="Left"/>
                 <TextBlock Style="{StaticResource DimText}" Text="{Binding BypassTabHintText, Mode=OneWay}" Margin="2,8,0,0" TextWrapping="Wrap" FontSize="11"/>
             </StackPanel>
 
@@ -110,7 +110,7 @@
 
             <!-- ============ 2. ПОДБОР ============ -->
             <StackPanel Visibility="{Binding IsPickTabSelected, Converter={StaticResource BoolToVis}}">
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2">
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -237,7 +237,7 @@
                         </Grid>
                         <WrapPanel Margin="0,10,0,0">
                             <Button Style="{StaticResource SecondaryButton}" Content="Обновить hosts" Command="{Binding UpdateHostsCommand}"/>
-                            <Button Style="{StaticResource GhostButton}" Content="Обновить ipset" Margin="8,0,0,0" Command="{Binding UpdateIpsetCommand}"/>
+                            <Button Style="{StaticResource GhostButton}" Content="Обновить ipset" Margin="8,0,0,0" Command="{Binding UpdateIpsetCommand}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"/>
                             <Button Style="{StaticResource GhostButton}" Content="Списки OK" Margin="8,0,0,0" Command="{Binding EnsureListsCommand}"/>
                             <Button Style="{StaticResource GhostButton}" Content="Редактор списков доменов →" Margin="8,0,0,0" Command="{Binding OpenListsCommand}" ToolTip="Отдельная страница «Списки»: домены, пользовательские добавления, режимы ipset и игрового фильтра"/>
                         </WrapPanel>
@@ -263,8 +263,8 @@
                                 <TextBlock Style="{StaticResource DimText}" Text="Влияет на обход YouTube, превью и Shorts. Попробуй после «Проверить всё» на подвкладке «Подбор»." TextWrapping="Wrap" FontSize="11"/>
                             </StackPanel>
                         </Grid>
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отключить QUIC fake (помогает когда YouTube режется, но Discord ок)" Margin="0,12,0,0" IsChecked="{Binding DisableQuicFake, Mode=TwoWay}"/>
-                        <Grid Margin="0,10,0,0">
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отключить QUIC fake (помогает когда YouTube режется, но Discord ок)" Margin="0,12,0,0" IsChecked="{Binding DisableQuicFake, Mode=TwoWay}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"/>
+                        <Grid Margin="0,10,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="180"/>
@@ -272,8 +272,8 @@
                             <TextBlock Style="{StaticResource DimText}" Text="SNI для YouTube QUIC-блока" VerticalAlignment="Center"/>
                             <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" ItemsSource="{Binding YoutubeSniOptions}" SelectedItem="{Binding YoutubeSniOverride, Mode=TwoWay}"/>
                         </Grid>
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Приоритет IPv4 (помогает при fec0:: DNS)" Margin="0,10,0,0" IsChecked="{Binding PreferIPv4, Mode=TwoWay}"/>
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="DoH для заблокированных (1.1.1.1)" Margin="0,10,0,0" IsChecked="{Binding UseDohForBlocked, Mode=TwoWay}"/>
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Приоритет IPv4 (помогает при fec0:: DNS)" Margin="0,10,0,0" IsChecked="{Binding PreferIPv4, Mode=TwoWay}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"/>
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="DoH для заблокированных (1.1.1.1)" Margin="0,10,0,0" IsChecked="{Binding UseDohForBlocked, Mode=TwoWay}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"/>
                     </StackPanel>
                 </Border>
 
