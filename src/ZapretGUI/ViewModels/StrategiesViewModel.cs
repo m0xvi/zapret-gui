@@ -1289,10 +1289,7 @@ namespace ZapretGui.ViewModels
         {
             if (Selected == null || IsBusy) return;
 
-            var answer = MessageBox.Show(
-                $"Установить «{Selected.Name}» как системную службу zapret?",
-                "Установка службы", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (answer != MessageBoxResult.Yes) return;
+            // Установка службы без вопроса — бесшовно (1.17.24)
 
             IsBusy = true;
             Message = $"Устанавливаю службу с «{Selected.Name}»…";
@@ -1342,38 +1339,33 @@ namespace ZapretGui.ViewModels
             var needsSwitch = wasRunning && !string.Equals(runningName, Selected.Name, StringComparison.OrdinalIgnoreCase);
             if (needsSwitch)
             {
-                var answer = MessageBox.Show(
-                    $"Сделать «{Selected.Name}» основной и сразу бесшовно переключить обход с «{runningName}» на «{Selected.Name}»?\n\nТекущий обход будет перезапущен без ручной остановки.\n\nНажмите «Да» для переключения сейчас или «Нет» чтобы только запомнить выбор.",
-                    "Сделать основной", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (answer == MessageBoxResult.Yes)
+                // Бесшовное переключение без вопроса — сразу применяем (1.17.24)
+                if (!Shell.IsAdmin())
                 {
-                    if (!Shell.IsAdmin())
+                    Message = "Для переключения стратегии нужны права администратора.";
+                    return;
+                }
+                IsBusy = true;
+                try
+                {
+                    var mode = EngineService.GetGameFilterMode(Store.Folder);
+                    var res = await Bypass.SwitchToStrategyAsync(Selected, mode, Settings.ShowWinwsConsole);
+                    if (!res.Ok)
                     {
-                        Message = "Для переключения стратегии нужны права администратора.";
+                        Message = res.Message;
                         return;
                     }
-                    IsBusy = true;
-                    try
-                    {
-                        var mode = EngineService.GetGameFilterMode(Store.Folder);
-                        var res = await Bypass.SwitchToStrategyAsync(Selected, mode, Settings.ShowWinwsConsole);
-                        if (!res.Ok)
-                        {
-                            Message = res.Message;
-                            return;
-                        }
-                        Settings.SelectedStrategy = Selected.Name;
-                        SettingsStore.Save(Settings);
-                        _main.Home.RefreshStatus();
-                        RefreshRunButton();
-                        AppendSwitchHistory(Selected.Name, runningName, "сделать основной", true, res.Message);
-                        Message = $"«{Selected.Name}» установлена как основная и сразу применена";
-                        return;
-                    }
-                    finally
-                    {
-                        IsBusy = false;
-                    }
+                    Settings.SelectedStrategy = Selected.Name;
+                    SettingsStore.Save(Settings);
+                    _main.Home.RefreshStatus();
+                    RefreshRunButton();
+                    AppendSwitchHistory(Selected.Name, runningName, "сделать основной", true, res.Message);
+                    Message = $"«{Selected.Name}» установлена как основная и сразу применена";
+                    return;
+                }
+                finally
+                {
+                    IsBusy = false;
                 }
             }
             Settings.SelectedStrategy = Selected.Name;
@@ -1937,26 +1929,21 @@ namespace ZapretGui.ViewModels
             var needsSwitch = wasRunning && !string.Equals(runningName, CandidatePreview.Name, StringComparison.OrdinalIgnoreCase);
             if (needsSwitch)
             {
-                var answer = MessageBox.Show(
-                    $"Сделать кандидата «{CandidatePreview.Name}» основной и сразу бесшовно переключить обход с «{runningName}» на него?",
-                    "Сделать основной", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                if (answer == MessageBoxResult.Yes)
+                // Бесшовно переключаем кандидата без вопроса (1.17.24)
+                if (!Shell.IsAdmin())
                 {
-                    if (!Shell.IsAdmin())
-                    {
-                        Message = "Для переключения стратегии нужны права администратора.";
-                        return;
-                    }
-                    var candidateInfo = new StrategyInfo { Name = CandidatePreview.Name, Args = CandidatePreview.Args, Category = "АВТОКОНСТРУКТОР", Description = CandidatePreview.MutationDescription };
-                    var mode = EngineService.GetGameFilterMode(Store.Folder);
-                    IsBusy = true;
-                    try
-                    {
-                        var res = await Bypass.SwitchToStrategyAsync(candidateInfo, mode, Settings.ShowWinwsConsole);
-                        if (!res.Ok) { Message = res.Message; return; }
-                    }
-                    finally { IsBusy = false; }
+                    Message = "Для переключения стратегии нужны права администратора.";
+                    return;
                 }
+                var candidateInfo = new StrategyInfo { Name = CandidatePreview.Name, Args = CandidatePreview.Args, Category = "АВТОКОНСТРУКТОР", Description = CandidatePreview.MutationDescription };
+                var mode = EngineService.GetGameFilterMode(Store.Folder);
+                IsBusy = true;
+                try
+                {
+                    var res = await Bypass.SwitchToStrategyAsync(candidateInfo, mode, Settings.ShowWinwsConsole);
+                    if (!res.Ok) { Message = res.Message; return; }
+                }
+                finally { IsBusy = false; }
             }
             Settings.SelectedStrategy = CandidatePreview.Name;
             SettingsStore.Save(Settings);

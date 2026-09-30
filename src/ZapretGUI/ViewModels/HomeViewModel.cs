@@ -825,8 +825,7 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
-            if (!Confirm("Запуск обхода", $"Будет запущен winws.exe со стратегией «{strategy.Name}». Это изменит обработку сетевого трафика и может потребовать WinDivert. Запустить вручную сейчас?"))
-                return;
+            // Авто-запуск без вопроса — пользователь просил бесшовно без окон (1.17.24)
 
             IsBusy = true;
             ShowInfo("Запускаю обход…");
@@ -905,8 +904,7 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
-            if (!Confirm("Установка службы", $"Будет создана и запущена служба zapret со стратегией «{strategy.Name}». Это изменит системную службу, WinDivert и TCP timestamps. Продолжить?"))
-                return;
+            // Установка службы без подтверждения — бесшовно (1.17.24)
 
             IsBusy = true;
             ShowInfo("Устанавливаю службу zapret…");
@@ -933,8 +931,7 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
-            if (!Confirm("Переустановка службы", $"Служба zapret будет переустановлена со стратегией «{strategy.Name}». Продолжить?"))
-                return;
+            // Переустановка службы без вопроса — бесшовно (1.17.24)
 
             IsBusy = true;
             ShowInfo("Переустанавливаю службу zapret…");
@@ -953,8 +950,7 @@ namespace ZapretGui.ViewModels
 
         private async Task RemoveServiceAsync()
         {
-            if (!Confirm("Удаление службы", "Будут остановлены обход и служба zapret, а также удалены связанные службы WinDivert. Продолжить?"))
-                return;
+            // Удаление службы по явному клику тумблера — без лишнего вопроса, только по действию пользователя (1.17.24)
 
             IsBusy = true;
             ShowInfo("Удаляю службы zapret и WinDivert…");

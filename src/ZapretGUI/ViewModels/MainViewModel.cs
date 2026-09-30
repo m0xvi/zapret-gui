@@ -118,7 +118,7 @@ namespace ZapretGui.ViewModels
                 ToggleMiniOverlay();
             });
 
-            Watchdog = new WatchdogService(settings, Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended);
+            Watchdog = new WatchdogService(settings, Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended, () => Strategies.Items.ToList());
             Watchdog.EventLogged += msg =>
             {
                 if (Settings.WatchdogNotifyUser)
