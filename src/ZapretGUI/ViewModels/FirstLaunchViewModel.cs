@@ -58,7 +58,7 @@ namespace ZapretGui.ViewModels
             SkipWizardCommand = new RelayCommand(() => FinishWizard(true));
             OpenUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
             AddCustomHostCommand = new RelayCommand(AddCustomHost, () => !string.IsNullOrWhiteSpace(CustomHostInput) && !IsBusy);
-            SkipCustomHostsCommand = new RelayCommand(() => SetStatus("Добавление своих сайтов пропущено — вы всегда можете добавить их позже в «Обзор → Проверка соединения» или «Проверка → Экспресс»", "Info"));
+            SkipCustomHostsCommand = new RelayCommand(() => SetStatus("Добавление своих сайтов пропущено — вы всегда можете добавить их позже в «Главная → Проверка соединения» или «Проверки → Экспресс»", "Info"));
             RunWizardFullCheckCommand = new AsyncRelayCommand(RunWizardFullCheckAsync, () => !IsBusy && !IsEngineReady == false);
 
         }

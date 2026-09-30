@@ -13,7 +13,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                    <TextBlock Style="{StaticResource DisplayText}" Text="Обзор" />
+                    <TextBlock Style="{StaticResource DisplayText}" Text="Главная" />
                     <TextBlock Style="{StaticResource MutedText}"
                                Text="Запуск обхода, служба Windows, фильтры и состояние движка" />
                 </StackPanel>

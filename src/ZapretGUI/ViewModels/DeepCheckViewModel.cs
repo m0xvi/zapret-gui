@@ -369,7 +369,7 @@ namespace ZapretGui.ViewModels
 
                 var service = await Task.Run(ServiceHealthCache.Capture, ct).ConfigureAwait(true);
                 AddFinding("Службы", "BFE", service.BfeText,
-                    service.BfeNeedsRecovery ? "BFE нужна драйверу WinDivert; исправление доступно на странице «Диагностика»." : "",
+                    service.BfeNeedsRecovery ? "BFE нужна драйверу WinDivert; исправление доступно в разделе «Проверки»." : "",
                     service.Bfe == ServiceState.Running ? "Success" : "Warning");
                 AddFinding("Службы", "WinDivert", service.WinDivertText + "; WinDivert14: " + service.WinDivert14Text,
                     service.HasWinDivertLeftovers ? "Остаточные службы удаляйте только отдельной подтверждённой операцией." : "",
@@ -965,7 +965,7 @@ namespace ZapretGui.ViewModels
                 {
                     Title = item.Title,
                     Details = item.FixHint,
-                    ActionText = item.HasAutoFix ? "Доступно отдельное исправление на странице «Диагностика»" : "Только после ручной проверки",
+                    ActionText = item.HasAutoFix ? "Доступно отдельное исправление в разделе «Проверки»" : "Только после ручной проверки",
                     StatusKey = item.SeverityKey,
                     IsAutomatic = false
                 });

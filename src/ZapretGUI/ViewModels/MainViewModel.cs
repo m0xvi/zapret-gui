@@ -185,21 +185,28 @@ namespace ZapretGui.ViewModels
                 ProfileAutoSwitch.Start();
             }
 
+            // Навигация v1.17.25: имена разделов на языке пользователя (см. docs/IA_REDESIGN.md).
+            // Журнал, Обновления и О программе раньше были недостижимы из меню (только ссылками со страниц) —
+            // теперь это полноценные пункты. Логика страниц и ключей не менялась.
             NavItems = new ObservableCollection<NavItem>
             {
                 new() { Key = "group-main", Title = "ОСНОВНОЕ", IsSectionHeader = true },
-                new() { Key = "home", Title = "Обзор", Icon = "\uE80F", Hint = "Состояние обхода" },
-                new() { Key = "bypass-center", Title = "Центр обхода", Icon = "\uE8D2", Hint = "Всё в одном — стратегии, DNS, hosts, ipset и тяжёлый YouTube" },
+                new() { Key = "home", Title = "Главная", Icon = "\uE80F", Hint = "Состояние обхода и включение" },
+                new() { Key = "bypass-center", Title = "Обход", Icon = "\uE8D2", Hint = "Стратегии, DNS, списки, hosts, ipset — всё в одном" },
                 new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
                 new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
-                new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check и результаты" },
+                new() { Key = "diagnostics", Title = "Проверки", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check, аудит и отчёты" },
+                new() { Key = "logs", Title = "Журнал", Icon = "\uE81C", Hint = "Ошибки, предупреждения, отладка" },
                 new() { Key = "group-data", Title = "СПИСКИ И ФИЛЬТРЫ", IsSectionHeader = true },
                 new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
-                new() { Key = "profiles", Title = "Профили", Icon = "\uE753", Hint = "Пресеты настроек и полные бэкапы" },
+                new() { Key = "profiles", Title = "Профили и копии", Icon = "\uE753", Hint = "Пресеты настроек, копии и сети" },
                 new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
-                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация, журнал и о программе" },
+                new() { Key = "updates", Title = "Обновления", Icon = "\uE895", Hint = "Движок zapret и приложение" },
+                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Тема, автозапуск, уведомления, служба" },
+                new() { Key = "about", Title = "О программе", Icon = "\uE946", Hint = "Версии, лицензия, ссылки" },
             };
-            _selectedNav = NavItems[1];
+            // Стартовый пункт ищем по ключу, а не по индексу: состав меню меняется.
+            _selectedNav = NavItems.First(i => i.Key == "home");
 
             _isAdmin = Shell.IsAdmin();
 

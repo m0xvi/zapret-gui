@@ -1192,7 +1192,7 @@ namespace ZapretGui.ViewModels
                     await _main.Diagnostics.RunAsync();
                     var diagSummary = _main.Diagnostics.Summary ?? "";
                     var diagKey = _main.Diagnostics.SummaryKey ?? "Info";
-                    if (diagKey == "Danger") FullCheckAdviceText = "⚠️ Найдены критичные системные проблемы — откройте «Проверка → Аудит системы» и нажмите «Исправить». ";
+                    if (diagKey == "Danger") FullCheckAdviceText = "⚠️ Найдены критичные системные проблемы — откройте «Проверки → Аудит системы» и нажмите «Исправить». ";
                     else if (diagKey == "Warning") FullCheckAdviceText = "⚠️ Есть предупреждения в аудите системы — рекомендуем исправить перед подбором. ";
                     else FullCheckAdviceText = "✅ Система в порядке. ";
                 }

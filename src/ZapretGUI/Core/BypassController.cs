@@ -319,7 +319,7 @@ namespace ZapretGui.Core
                 return new StrategyTestResult
                 {
                     Strategy = strategy,
-                    ErrorMessage = "Найден другой запущенный запрет. Сначала разрешите конфликт на странице «Обзор»."
+                    ErrorMessage = "Найден другой запущенный запрет. Сначала разрешите конфликт на странице «Главная»."
                 };
             }
 

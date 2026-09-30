@@ -236,7 +236,7 @@
                     <!-- Подсказка: максимально минималистично, не растянута -->
                     <TextBlock Grid.Row="4" Margin="0,4,0,6" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Opacity="0.7" MaxWidth="720" HorizontalAlignment="Left">
                         <Run FontFamily="{DynamicResource IconFont}" Text="&#xE946; " Foreground="{DynamicResource TextMutedBrush}" FontSize="11" />
-                        <Run Text="Списки — точечный обход: добавь домен → сохрани в «Профили». Двойной клик/Enter — править, «Проверка» — диагностика." />
+                        <Run Text="Списки — точечный обход: добавь домен → сохрани в «Профили и копии». Двойной клик/Enter — править, «Проверки» — диагностика." />
                     </TextBlock>
 
                     <!-- Таблица / Список записей -->

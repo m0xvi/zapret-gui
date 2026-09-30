@@ -171,7 +171,7 @@ src/ZapretGUI/
 │  ├─ ConnectionTester.cs     проверка доступности YouTube/Discord/GitHub
 │  ├─ Settings.cs, AppPaths.cs, AppLog.cs, Shell.cs, Tray.cs, Converters.cs, Mvvm.cs
 ├─ ViewModels/               модели представления (MVVM)
-├─ Views/                    страницы XAML (Обзор, Стратегии, Обновления, …)
+├─ Views/                    страницы XAML (Главная, Обход, Стратегии, Проверки, …)
 └─ Themes/                   Dark.xaml, Light.xaml, Controls.xaml
 
 tools/

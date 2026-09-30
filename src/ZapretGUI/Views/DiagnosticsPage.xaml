@@ -17,7 +17,7 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                    <TextBlock Style="{StaticResource DisplayText}" Text="Проверка и диагностика" />
+                    <TextBlock Style="{StaticResource DisplayText}" Text="Проверки и диагностика" />
                     <TextBlock Style="{StaticResource MutedText}"
                                Text="Единый центр проверки доступности, DPI-метрик, глубокого анализа сети и системных компонентов." TextWrapping="Wrap" />
                 </StackPanel>
