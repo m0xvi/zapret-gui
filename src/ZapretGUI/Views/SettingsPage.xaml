@@ -410,7 +410,7 @@
                         </WrapPanel>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1">
+                <Border Style="{StaticResource CardWarning}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -421,7 +421,7 @@
                                 <TextBlock Text="&#xE7C5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="YouTube (Тяжелый случай)" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource SectionText}" Text="YOUTUBE (ТЯЖЕЛЫЙ СЛУЧАЙ)" Margin="0,0,0,2" />
                             </StackPanel>
                         </Grid>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отключить QUIC fake для YouTube (тест 6→ без QUIC, помогает когда QUIC режется)" Margin="0,14,0,0" IsChecked="{Binding DisableQuicFake, Mode=TwoWay}" ToolTip="Удаляет --dpi-desync-fake-quic, оставляет только TCP fake. Попробуйте если YouTube не открывается." />
@@ -684,7 +684,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                <Border Style="{StaticResource CardInfo}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="💡 Подсказка для игр" />
                         <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="Если в игре скачет пинг — попробуйте на «Обзоре» включить игровой фильтр TCP+UDP, а на странице «Стратегии» подобрать SNI с низким RTT (вкладка «Пул TLS SNI»)." TextWrapping="Wrap" />

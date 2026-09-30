@@ -293,7 +293,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,12,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА ГОЛОСА DISCORD (RTC / WebRTC / UDP)" />
+                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА ГОЛОСА DISCORD (RTC / WEBRTC / UDP)" />
                                 <TextBlock Style="{StaticResource MutedText}"
                                            Text="Диагностика голосовых шлюзов Discord (Роттердам, Франкфурт, Стокгольм и др.), измерение RTT, проверка прохождения UDP-пакетов сквозь ТСПУ и устранение зависания «Подключение к RTC»." TextWrapping="Wrap" />
                             </StackPanel>

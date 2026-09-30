@@ -124,6 +124,29 @@
         </Setter>
     </Style>
 
+    <!-- ==================== СЕМАНТИЧЕСКИЕ КАРТОЧКИ (v1.26.0) ====================
+         Смысл важнее цвета: акцент, предупреждение, успех, подсказка. Разметка не задаёт
+         кисти вручную — иначе тема и семантика разъедутся. Проверяется tools/check_bindings.py. -->
+    <Style x:Key="CardAccent" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
+    <Style x:Key="CardWarning" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}" />
+    </Style>
+
+    <Style x:Key="CardSuccess" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Background" Value="{DynamicResource SuccessSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
+    </Style>
+
+    <Style x:Key="CardInfo" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Background" Value="{DynamicResource InfoSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource InfoBrush}" />
+    </Style>
+
     <Style x:Key="InnerCard" TargetType="Border">
         <Setter Property="Background" Value="{DynamicResource ElevatedBrush}" />
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />

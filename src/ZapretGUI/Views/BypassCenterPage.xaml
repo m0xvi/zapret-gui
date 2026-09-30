@@ -35,7 +35,7 @@
             </Border>
 
             <!-- Статус: общий для всех подвкладок, всегда сверху -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" BorderBrush="{DynamicResource BorderBrush}">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
@@ -111,7 +111,7 @@
 
             <!-- ============ 2. ПОДБОР ============ -->
             <StackPanel Visibility="{Binding IsPickTabSelected, Converter={StaticResource BoolToVis}}">
-                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource CardAccent}" Margin="{DynamicResource CardGap}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -249,7 +249,7 @@
 
             <!-- ============ 5. СЛОЖНЫЕ САЙТЫ ============ -->
             <StackPanel Visibility="{Binding IsHardTabSelected, Converter={StaticResource BoolToVis}}">
-                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1">
+                <Border Style="{StaticResource CardWarning}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -260,7 +260,7 @@
                                 <TextBlock Text="&#xE7C5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="YouTube (Тяжелый случай) — тонкая настройка"/>
+                                <TextBlock Style="{StaticResource SectionText}" Text="YOUTUBE (ТЯЖЕЛЫЙ СЛУЧАЙ) — ТОНКАЯ НАСТРОЙКА"/>
                                 <TextBlock Style="{StaticResource DimText}" Text="Влияет на обход YouTube, превью и Shorts. Попробуй после «Проверить всё» на подвкладке «Подбор»." TextWrapping="Wrap"/>
                             </StackPanel>
                         </Grid>

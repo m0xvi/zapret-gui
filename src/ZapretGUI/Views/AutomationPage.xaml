@@ -185,7 +185,7 @@
             <!-- ============ 2. ВОССТАНОВЛЕНИЕ ============ -->
             <StackPanel Visibility="{Binding IsAutomationRecoveryTabSelected, Converter={StaticResource BoolToVis}}">
 
-                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource CardAccent}" Margin="{DynamicResource CardGap}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -241,7 +241,7 @@
                                     </StackPanel>
                                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1">
+                <Border Style="{StaticResource CardSuccess}" Margin="{DynamicResource CardGap}">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>

@@ -420,7 +420,7 @@
                                 <TextBlock Text="&#xE9CE;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА ПОДМЕНЫ DNS (СИСТЕМНЫЙ vs DoH)"/>
+                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА ПОДМЕНЫ DNS (СИСТЕМНЫЙ VS DOH)"/>
                                 <TextBlock Style="{StaticResource DimText}" Text="Сравнивает ответы провайдерского DNS с эталонным Cloudflare DoH для 4 доменов" />
                             </StackPanel>
                             <WrapPanel Grid.Column="2" VerticalAlignment="Center">

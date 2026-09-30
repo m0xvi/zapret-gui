@@ -19,6 +19,9 @@ check_bindings.py — статическая проверка XAML проект�
      (CardPadding/CardPaddingCompact/CardPaddingList/CardGap), литеральные цвета — только в Themes/,
      кегль текста — только из текстовых стилей, у карточки есть заголовок, у иконочной кнопки —
      подпись для экранного диктора. Ошибки стиля валят проверку, предупреждения печатаются списком.
+  6. Семантика (v1.26.0): карточкам запрещено задавать Background/BorderBrush/BorderThickness
+     вручную — для этого есть CardAccent/CardWarning/CardSuccess/CardInfo; надзаголовок
+     SectionText пишется ЗАГЛАВНЫМИ (TitleText и SubtitleText — обычный регистр).
 
 Запуск из корня репозитория:  python3 tools/check_bindings.py
 Код возврата: 0 — проблем нет (могут быть предупреждения), 1 — найдены ошибки.
@@ -80,6 +83,9 @@ SKIP_SECOND = {
 CARD_PADDING_TOKENS = {"{DynamicResource CardPadding}", "{DynamicResource CardPaddingCompact}",
                        "{DynamicResource CardPaddingList}", "0"}
 CARD_HEADING_TOKENS = ("SectionText", "TitleText", "SubtitleText")
+SEMANTIC_CARD_STYLES = ("CardAccent", "CardWarning", "CardSuccess", "CardInfo")
+CARD_FAMILY = ("Card",) + SEMANTIC_CARD_STYLES
+ENTITY_RE = re.compile(r'&[a-zA-Z]+;|&#x?[0-9A-Fa-f]+;')
 CARD_CONTAINER_TAGS = ("ListBox", "ItemsControl", "ScrollViewer", "TextBox", "TreeView")
 # У этих экранов карточка-панель по смыслу без заголовка (журнал, оверлеи, sticky-панель)
 CARD_HEADING_EXEMPT = {"LogsPage.xaml", "SearchOverlay.xaml"}
@@ -183,12 +189,17 @@ def check_card_style(path, text, problems, warnings):
                         f'кисти живут только в Themes/ (v1.26.0 переведёт остатки на ключи)')
 
     for start, end, tag in iter_tags(text, 'Border'):
-        if style_of(tag) != 'Card':
+        if style_of(tag) not in CARD_FAMILY:
             continue
         padding = get_attr(tag, 'Padding')
         if padding is not None and padding not in CARD_PADDING_TOKENS:
             problems.append(f'{rel}: карточка с Padding="{padding}" — используйте CardPadding, '
                             f'CardPaddingCompact или CardPaddingList (docs/UI_CARD_AUDIT.md §7)')
+        for attr in ('Background', 'BorderBrush', 'BorderThickness'):
+            value = get_attr(tag, attr)
+            if value and not value.startswith('{Binding'):
+                problems.append(f'{rel}: карточка с ручным {attr}="{value}" — '
+                                f'используйте {" / ".join(SEMANTIC_CARD_STYLES)} (v1.26.0)')
         margin = get_attr(tag, 'Margin')
         if margin and re.fullmatch(r'0,\d+,0,0', margin):
             problems.append(f'{rel}: карточка с литеральным отступом Margin="{margin}" — '
@@ -210,6 +221,13 @@ def check_card_style(path, text, problems, warnings):
         warnings.append(f"{rel}: карточка без заголовка ({', '.join(CARD_HEADING_TOKENS)}) — строка {line}")
 
     for start, end, tag in iter_tags(text, 'TextBlock'):
+        if style_of(tag) == 'SectionText':
+            caption = get_attr(tag, 'Text') or ''
+            if not caption.startswith('{Binding'):
+                plain = ENTITY_RE.sub('', caption)
+                if re.search('[а-яёa-z]', plain):
+                    warnings.append(f'{rel}: надзаголовок SectionText не ЗАГЛАВНЫМИ — '
+                                    f'строка {text[:start].count(chr(10)) + 1}: "{caption[:60]}"')
         size = get_attr(tag, 'FontSize')
         if not size or style_of(tag) or 'FontFamily=' in tag:
             continue

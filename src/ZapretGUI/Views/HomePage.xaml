@@ -95,7 +95,7 @@
 
                     <!-- Быстрая настройка: Проверить всё — главный сценарий первого запуска (1 клик) -->
                     <!-- ПЕРЕДЕЛАНО v1.6.5: убран блюр/полупрозрачная заглушка, результат — чёткая карточка с галочкой; кнопка в углу снимает заглушку -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2" ClipToBounds="True">
+                    <Border Style="{StaticResource CardAccent}" Margin="{DynamicResource CardGap}" ClipToBounds="True">
                         <Grid>
                             <StackPanel>
                                 <!-- Заголовок — всегда чёткий, без блюра -->
