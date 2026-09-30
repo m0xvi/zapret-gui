@@ -35,7 +35,7 @@
             <!-- Кнопка закрытия — маленький крестик в правом верхнем углу без заголовка -->
             <Button Style="{StaticResource SmallIconButton}" Content="&#xE8BB;" FontSize="8" Foreground="White" Opacity="0.5" Width="16" Height="16"
                     HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0"
-                    Click="Close_Click" ToolTip="Скрыть метрики (включить снова в Настройки → Сеть → Метрики)" Cursor="Hand" />
+                    Click="Close_Click" ToolTip="Скрыть метрики (включить снова в Настройки → Сеть → Метрики)" Cursor="Hand" AutomationProperties.Name="Скрыть метрики (включить снова в Настройки → Сеть → Метрики)" />
             <!-- Ручка изменения размера — правый нижний угол -->
             <Border x:Name="ResizeGrip" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2"
                     Background="Transparent" Cursor="SizeNWSE" MouseLeftButtonDown="ResizeGrip_MouseLeftButtonDown" ToolTip="Потяните для изменения размера">

@@ -59,7 +59,7 @@
                             <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
                                       ItemsSource="{Binding ListOptions}"
                                       SelectedValuePath="Key"
-                                      SelectedValue="{Binding SelectedListKey, Mode=TwoWay}">
+                                      SelectedValue="{Binding SelectedListKey, Mode=TwoWay}" AutomationProperties.Name="ВЫБОР ФАЙЛА СПИСКА">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Title}" />
@@ -109,7 +109,7 @@
 
                         <Grid Margin="0,0,8,0">
                             <TextBox Style="{StaticResource SearchBox}" Text="{Binding QuickDomainInput, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Введите домен или IP (например, twitch.tv или open.spotify.com)" />
+                                     ToolTip="Введите домен или IP (например, twitch.tv или open.spotify.com)" AutomationProperties.Name="Новый домен или IP" />
                             <TextBlock Style="{StaticResource DimText}" Text="Быстрое добавление домена (например, twitch.tv)…" Margin="13,0,0,0"
                                        VerticalAlignment="Center" IsHitTestVisible="False"
                                        Visibility="{Binding QuickDomainInput, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
@@ -144,7 +144,7 @@
                                     <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding BulkLineCountText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource AccentBrush}" />
                                 </Grid>
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding BulkDetailedCountText}" Margin="0,3,0,6" TextWrapping="Wrap" Opacity="0.9" />
-                                <TextBox Style="{StaticResource InputBox}" Text="{Binding BulkPasteText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="96" MinHeight="56" ToolTip="Вставьте много доменов — каждый с новой строки (поддерживает https://, пробелы обрежутся). Пустые и дубликаты пропускаются." />
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding BulkPasteText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="96" MinHeight="56" ToolTip="Вставьте много доменов — каждый с новой строки (поддерживает https://, пробелы обрежутся). Пустые и дубликаты пропускаются." AutomationProperties.Name="Массовое добавление доменов" />
                                 <!-- Превью первых 8 нормализованных доменов как чипы -->
                                 <ItemsControl ItemsSource="{Binding BulkPreviewItems}" Margin="0,8,0,0" Visibility="{Binding BulkHasPreview, Converter={StaticResource BoolToVis}}">
                                     <ItemsControl.ItemsPanel>
@@ -167,24 +167,24 @@
 
                     <!-- Баннеры состояния -->
                     <StackPanel Grid.Row="2" Margin="0,0,0,8">
-                        <Border Padding="10,8" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
-                                Visibility="{Binding IsBuiltInList, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
-                            <TextBlock Style="{StaticResource BodyText}" Text="🔒 Встроенный список Flowseal — только чтение. Редактируйте пользовательскую копию (list-*-user.txt)." TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold"/>
+                        <Border
+                                Visibility="{Binding IsBuiltInList, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6" Style="{StaticResource NoticeWarning}">
+                            <TextBlock Style="{StaticResource BodyText}" Text="Встроенный список Flowseal — только чтение. Редактируйте пользовательскую копию (list-*-user.txt)." TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold"/>
                         </Border>
 
-                        <Border Padding="10,8" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
-                                Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
+                        <Border
+                                Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6" Style="{StaticResource NoticeWarning}">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource BodyText}" Text="⚠ Есть несохранённые изменения" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}"/>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="Есть несохранённые изменения" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}"/>
                                     <TextBlock Style="{StaticResource DimText}" Text="Нажмите «Сохранить» чтобы записать на диск, или «Отменить» чтобы откатить."/>
                                 </StackPanel>
                                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <Button Style="{StaticResource PrimaryButton}" Content="💾 Сохранить" Command="{Binding SaveCommand}" ToolTip="Записать список на диск"/>
+                                    <Button Style="{StaticResource PrimaryButton}" Content="Сохранить" Command="{Binding SaveCommand}" ToolTip="Записать список на диск"/>
                                     <Button Style="{StaticResource GhostButton}" Content="Отменить" Margin="6,0,0,0" Command="{Binding CancelChangesCommand}" ToolTip="Отменить несохранённые правки"/>
                                 </WrapPanel>
                             </Grid>
@@ -216,13 +216,13 @@
                             </Grid.ColumnDefinitions>
                             <Grid>
                                 <TextBox Style="{StaticResource SearchBox}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="Поиск и фильтрация строк в текущем списке" />
+                                         ToolTip="Поиск и фильтрация строк в текущем списке" AutomationProperties.Name="Поиск по списку" />
                                 <TextBlock Style="{StaticResource DimText}" Text="Поиск в списке…" Margin="13,0,0,0"
                                            VerticalAlignment="Center" IsHitTestVisible="False"
                                            Visibility="{Binding SearchText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
                             </Grid>
-                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="✕" Margin="4,0,0,0" Padding="6,2" FontSize="11"
-                                    Command="{Binding ClearSearchCommand}" ToolTip="Сбросить поиск" Visibility="{Binding SearchText, Converter={StaticResource StringToVis}}"/>
+                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="&#xE711;" FontFamily="{DynamicResource IconFont}" Margin="4,0,0,0" Padding="6,2" FontSize="11"
+                                    Command="{Binding ClearSearchCommand}" ToolTip="Сбросить поиск" Visibility="{Binding SearchText, Converter={StaticResource StringToVis}}" AutomationProperties.Name="Сбросить поиск"/>
                         </Grid>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
@@ -263,11 +263,11 @@
                                             <Button Style="{StaticResource SmallIconButton}" Content="&#xE70F;"
                                                     ToolTip="Изменить запись (Enter)"
                                                     Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                    CommandParameter="{Binding}" />
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="Изменить запись (Enter)" />
                                             <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;" Margin="4,0,0,0"
                                                     ToolTip="Удалить запись (Del)"
                                                     Command="{Binding DataContext.RemoveEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                    CommandParameter="{Binding}" />
+                                                    CommandParameter="{Binding}" AutomationProperties.Name="Удалить запись (Del)" />
                                         </WrapPanel>
                                     </Grid>
                                 </DataTemplate>
@@ -278,7 +278,7 @@
                         <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="8" Padding="16" VerticalAlignment="Center" HorizontalAlignment="Center"
                                 Visibility="{Binding IsFilteredEmpty, Converter={StaticResource BoolToVis}}" Margin="0,20,0,0">
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="🔍" FontSize="22" HorizontalAlignment="Center" Opacity="0.7"/>
+                                <TextBlock Text="&#xE721;" FontFamily="{DynamicResource IconFont}" FontSize="22" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Opacity="0.7"/>
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding EmptyStateText}" Margin="0,6,0,0" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360"/>
                                 <Button Style="{StaticResource GhostButton}" Content="Сбросить поиск" Margin="0,8,0,0" Command="{Binding ClearSearchCommand}" HorizontalAlignment="Center"/>
                             </StackPanel>
@@ -286,7 +286,7 @@
                         <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="8" Padding="16" VerticalAlignment="Center" HorizontalAlignment="Center"
                                 Visibility="{Binding IsListEmpty, Converter={StaticResource BoolToVis}}" Margin="0,20,0,0">
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="📄" FontSize="22" HorizontalAlignment="Center" Opacity="0.7"/>
+                                <TextBlock Text="&#xE8A5;" FontFamily="{DynamicResource IconFont}" FontSize="22" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Opacity="0.7"/>
                                 <TextBlock Style="{StaticResource BodyText}" Text="Список пуст" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                                 <TextBlock Style="{StaticResource DimText}" Text="Добавьте первый домен через поле выше или импортируйте файл." Margin="0,4,0,0" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360"/>
                             </StackPanel>
@@ -317,7 +317,7 @@
                             <ComboBox Style="{StaticResource AppComboBox}" Margin="0,4,0,10"
                                       ItemsSource="{Binding DnsProfiles}"
                                       SelectedItem="{Binding SelectedDnsProfile, Mode=TwoWay}"
-                                      ToolTip="Выберите безопасный DNS-сервер">
+                                      ToolTip="Выберите безопасный DNS-сервер" AutomationProperties.Name="Выберите безопасный DNS-сервер">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding DisplayTitle}" />
@@ -425,7 +425,7 @@
                             </StackPanel>
                             <WrapPanel Grid.Column="2" VerticalAlignment="Center">
                                 <Button Style="{StaticResource SecondaryButton}" Content="Проверить подмену" Command="{Binding CheckHijackCommand}" ToolTip="Сравнить системный DNS и DoH-ответы" />
-                                <Button Style="{StaticResource PrimaryButton}" Content="🛡 Защитить DNS" Margin="8,0,0,0" Command="{Binding ApplySecureDnsCommand}" ToolTip="При подмене — одним кликом установить Cloudflare 1.1.1.1"/>
+                                <Button Style="{StaticResource PrimaryButton}" Content="Защитить DNS" Margin="8,0,0,0" Command="{Binding ApplySecureDnsCommand}" ToolTip="При подмене — одним кликом установить Cloudflare 1.1.1.1"/>
                             </WrapPanel>
                         </Grid>
 
@@ -500,7 +500,7 @@
                                 <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
                                           ItemsSource="{Binding IpsetOptions}"
                                           SelectedIndex="{Binding IpsetModeIndex, Mode=TwoWay}"
-                                          ToolTip="Режим фильтрации IP: по файлу ipset-all.txt, все адреса (Any) или отключено (None)" />
+                                          ToolTip="Режим фильтрации IP: по файлу ipset-all.txt, все адреса (Any) или отключено (None)" AutomationProperties.Name="Режим фильтрации IP: по файлу ipset-all.txt, все адреса (Any) или отключено (None)" />
                                 <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
                                            Text="• По списку ipset-all.txt (рекомендуется) — обрабатывает только IP заблокированных сервисов, снижая нагрузку на процессор.&#x0a;• Все IP / Any — максимальный охват без ограничений по IP.&#x0a;• Без фильтрации / None — отключение ipset фильтрации." TextWrapping="Wrap" />
                             </StackPanel>
@@ -512,7 +512,7 @@
                                 <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
                                           ItemsSource="{Binding GameFilterOptions}"
                                           SelectedIndex="{Binding GameFilterIndex, Mode=TwoWay}"
-                                          ToolTip="Игровой фильтр: обрабатывать ли трафик игр, Discord голосовых каналов и сторонних сервисов" />
+                                          ToolTip="Игровой фильтр: обрабатывать ли трафик игр, Discord голосовых каналов и сторонних сервисов" AutomationProperties.Name="Игровой фильтр: обрабатывать ли трафик игр, Discord голосовых каналов и сторонних сервисов" />
                                 <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
                                            Text="• TCP + UDP — оптимально для голосовых серверов Discord (UDP 50000-65535) и онлайн-игр.&#x0a;• Только TCP / Только UDP — выборочный перехват протоколов.&#x0a;• Выключен — обрабатываются только стандартные порты 80 и 443." TextWrapping="Wrap" />
 
@@ -521,7 +521,7 @@
                                           ItemsSource="{Binding GameFilterProfiles}"
                                           DisplayMemberPath="Name"
                                           SelectedItem="{Binding SelectedGameFilterProfile, Mode=TwoWay}"
-                                          ToolTip="Выберите профиль портов для исключения античитов и оптимизации задержки" />
+                                          ToolTip="Выберите профиль портов для исключения античитов и оптимизации задержки" AutomationProperties.Name="Выберите профиль портов для исключения античитов и оптимизации задержки" />
                                 <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0"
                                            Text="{Binding SelectedGameFilterProfile.Description}" TextWrapping="Wrap" />
 
@@ -534,15 +534,15 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" Margin="0,0,4,0">
                                             <TextBlock Style="{StaticResource SectionText}" Text="TCP ПОРТЫ" />
-                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterTcpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterTcpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="TCP ПОРТЫ" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" Margin="4,0,0,0">
                                             <TextBlock Style="{StaticResource SectionText}" Text="UDP ПОРТЫ" />
-                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterUdpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterUdpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="UDP ПОРТЫ" />
                                         </StackPanel>
                                     </Grid>
                                     <TextBlock Style="{StaticResource SectionText}" Text="ИСКЛЮЧЁННЫЕ ПОРТЫ" Margin="0,6,0,0" />
-                                    <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomExcludedPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                    <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomExcludedPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="ИСКЛЮЧЁННЫЕ ПОРТЫ" />
                                 </StackPanel>
 
                                 <Button Style="{StaticResource SecondaryButton}" Content="Применить настройки портов" Margin="0,10,0,0"

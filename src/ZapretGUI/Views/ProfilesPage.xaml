@@ -107,7 +107,7 @@
                                     <TextBlock Style="{StaticResource DimText}" Text="Отпечаток:" Margin="0,2,0,2" VerticalAlignment="Center"/>
                                     <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding CurrentNetworkFingerprint}" TextWrapping="Wrap" Opacity="0.8" Margin="0,2,0,2"/>
                                     <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="⎘" Padding="6,2" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"
-                                            Command="{Binding CopyNetworkFingerprintCommand}" ToolTip="Скопировать отпечаток в буфер обмена" />
+                                            Command="{Binding CopyNetworkFingerprintCommand}" ToolTip="Скопировать отпечаток в буфер обмена" AutomationProperties.Name="Скопировать отпечаток в буфер обмена" />
                                 </Grid>
                                 <Border Style="{StaticResource Divider}" Margin="0,10,0,10"/>
                                 <Grid>
@@ -125,9 +125,9 @@
                         </Border>
 
                         <WrapPanel>
-                            <Button Style="{StaticResource SecondaryButton}" Content="📌 Привязать выбранный к текущей сети" Padding="12,6" FontSize="11"
+                            <Button Style="{StaticResource SecondaryButton}" Content="Привязать выбранный к текущей сети" Padding="12,6" FontSize="11"
                                     Command="{Binding BindToCurrentNetworkCommand}" ToolTip="Сохранить текущую сеть (SSID/шлюз) в выбранный профиль — он будет включаться автоматически"/>
-                            <Button Style="{StaticResource GhostButton}" Content="✕ Отвязать" Margin="8,0,0,0" Padding="12,6" FontSize="11"
+                            <Button Style="{StaticResource GhostButton}" Content="Отвязать" Margin="8,0,0,0" Padding="12,6" FontSize="11"
                                     Command="{Binding UnbindNetworkCommand}" ToolTip="Снять привязку профиля к сети"/>
                         </WrapPanel>
                         <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" TextWrapping="Wrap"

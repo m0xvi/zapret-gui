@@ -22,6 +22,9 @@ check_bindings.py — статическая проверка XAML проект�
   6. Семантика (v1.26.0): карточкам запрещено задавать Background/BorderBrush/BorderThickness
      вручную — для этого есть CardAccent/CardWarning/CardSuccess/CardInfo; надзаголовок
      SectionText пишется ЗАГЛАВНЫМИ (TitleText и SubtitleText — обычный регистр).
+  7. Иконки и доступность (v1.27.0): иконочные кнопки (Content без букв) и поля ввода обязаны иметь
+     AutomationProperties.Name; эмодзи в кнопках и заголовках не используются — словарь иконок MDL2;
+     плашки-уведомления задаются стилями NoticeSuccess/NoticeWarning/NoticeInfo/NoticeDanger.
 
 Запуск из корня репозитория:  python3 tools/check_bindings.py
 Код возврата: 0 — проблем нет (могут быть предупреждения), 1 — найдены ошибки.
@@ -84,6 +87,11 @@ CARD_PADDING_TOKENS = {"{DynamicResource CardPadding}", "{DynamicResource CardPa
                        "{DynamicResource CardPaddingList}", "0"}
 CARD_HEADING_TOKENS = ("SectionText", "TitleText", "SubtitleText")
 SEMANTIC_CARD_STYLES = ("CardAccent", "CardWarning", "CardSuccess", "CardInfo")
+NOTICE_STYLES = ("Notice", "NoticeSuccess", "NoticeWarning", "NoticeInfo", "NoticeDanger", "NoticeAccent")
+NOTICE_BY_FAMILY = {"Accent": "NoticeAccent", "Success": "NoticeSuccess", "Warning": "NoticeWarning",
+                    "Info": "NoticeInfo", "Danger": "NoticeDanger"}
+FIELD_TAGS = ("TextBox", "ComboBox", "Slider")
+EMOJI_RE = re.compile('[\U0001F300-\U0001FAFF\u2600-\u26FF\u2700-\u27BF\u2B00-\u2BFF]')
 CARD_FAMILY = ("Card",) + SEMANTIC_CARD_STYLES
 ENTITY_RE = re.compile(r'&[a-zA-Z]+;|&#x?[0-9A-Fa-f]+;')
 CARD_CONTAINER_TAGS = ("ListBox", "ItemsControl", "ScrollViewer", "TextBox", "TreeView")
@@ -221,6 +229,9 @@ def check_card_style(path, text, problems, warnings):
         warnings.append(f"{rel}: карточка без заголовка ({', '.join(CARD_HEADING_TOKENS)}) — строка {line}")
 
     for start, end, tag in iter_tags(text, 'TextBlock'):
+        if style_of(tag) in ('SectionText', 'TitleText', 'SubtitleText') and EMOJI_RE.search(get_attr(tag, 'Text') or ''):
+            warnings.append(f'{rel}: эмодзи в заголовке — словарь MDL2 '
+                            f'(строка {text[:start].count(chr(10)) + 1})')
         if style_of(tag) == 'SectionText':
             caption = get_attr(tag, 'Text') or ''
             if not caption.startswith('{Binding'):
@@ -236,14 +247,39 @@ def check_card_style(path, text, problems, warnings):
         warnings.append(f'{rel}: TextBlock с FontSize="{size}" без стиля — '
                         f'строка {text[:start].count(chr(10)) + 1}')
 
+    for start, end, tag in iter_tags(text, 'Border'):
+        current = style_of(tag)
+        if current in CARD_FAMILY or current in NOTICE_STYLES or current in ('InnerCard', 'Badge', 'Dot'):
+            continue
+        background = get_attr(tag, 'Background') or ''
+        border = get_attr(tag, 'BorderBrush') or ''
+        family = re.match(r'\{DynamicResource (Accent|Success|Warning|Info|Danger)SoftBrush\}', background)
+        if not family or (family.group(1) + 'Brush' not in border):
+            continue
+        width, height = get_attr(tag, 'Width'), get_attr(tag, 'Height')
+        if (width and width.isdigit() and int(width) <= 64) or (height and height.isdigit() and int(height) <= 64):
+            continue  # иконочная плашка, не уведомление
+        if (get_attr(tag, 'Padding') or '') == '0':
+            continue  # баннер с собственной внутренней вёрсткой
+        problems.append(f'{rel}: плашка с ручными кистями — используйте '
+                        f'{NOTICE_BY_FAMILY[family.group(1)]} (строка {text[:start].count(chr(10)) + 1})')
+
     for start, end, tag in iter_tags(text, 'Button'):
         content = get_attr(tag, 'Content') or ''
-        if not content or len(content) > 3:
-            continue
-        if 'AutomationProperties.Name' in tag or 'ToolTip' in tag:
-            continue
-        warnings.append(f'{rel}: иконочная кнопка без AutomationProperties.Name/ToolTip — '
-                        f'строка {text[:start].count(chr(10)) + 1}')
+        line = text[:start].count(chr(10)) + 1
+        plain = ENTITY_RE.sub('', content).strip()
+        icon_only = bool(content) and (not plain or not re.search('[A-Za-zА-Яа-я0-9]', plain))
+        if icon_only and 'AutomationProperties.Name' not in tag:
+            problems.append(f'{rel}: иконочная кнопка без AutomationProperties.Name — '
+                            f'строка {line} (скринридер прочитает "{plain}")')
+        if EMOJI_RE.search(content):
+            warnings.append(f'{rel}: эмодзи в кнопке — словарь MDL2 (строка {line}): "{content[:40]}"')
+
+    for name in FIELD_TAGS:
+        for start, end, tag in iter_tags(text, name):
+            if 'AutomationProperties.Name' not in tag:
+                warnings.append(f'{rel}: {name} без AutomationProperties.Name — '
+                                f'строка {text[:start].count(chr(10)) + 1}')
 
 
 def read(path):

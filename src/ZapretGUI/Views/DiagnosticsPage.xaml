@@ -142,7 +142,7 @@
                                                 <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
                                                         Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
-                                                        ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" />
+                                                        ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" AutomationProperties.Name="Убрать пользовательский ресурс из мониторинга" />
                                             </StackPanel>
                                         </Grid>
                                     </DataTemplate>
@@ -212,7 +212,7 @@
                             <TextBlock Style="{StaticResource SectionText}" Text="ПОЛЬЗОВАТЕЛЬСКИЙ ХОСТ (НЕОБЯЗАТЕЛЬНО)" />
                             <TextBox Style="{StaticResource InputBox}" Margin="0,6,0,0"
                                      Text="{Binding DpiCustomHost, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Необязательно: один собственный HTTPS-хост для проверки вместо общего набора узлов" />
+                                     ToolTip="Необязательно: один собственный HTTPS-хост для проверки вместо общего набора узлов" AutomationProperties.Name="Необязательно: один собственный HTTPS-хост для проверки вместо общего набора узлов" />
                         </StackPanel>
                     </Border>
 
@@ -317,7 +317,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource SectionText}" Text="⚡ ОЧИСТКА КЭША DISCORD И СЕТЕВОГО СТЕКА (1 КЛИК)" />
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ОЧИСТКА КЭША DISCORD И СЕТЕВОГО СТЕКА (1 КЛИК)" />
                                     <TextBlock Style="{StaticResource DimText}" Text="{Binding DiscordCacheStatusText}" Margin="0,2,0,0" />
                                 </StackPanel>
                                 <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Обновить размер"
@@ -329,13 +329,13 @@
                                        Text="Закрывает процессы Discord, удаляет медиа/RTC-кэш, шейдеры GPU, сбрасывает DNS-кэш, ARP-таблицу шлюзов и включает TCP Timestamps для WinDivert. Устраняет зависания «Подключение к RTC» и «Маршрут не найден»." />
 
                             <WrapPanel Margin="0,12,0,0">
-                                <Button Style="{StaticResource PrimaryButton}" Content="⚡ Очистить кэш и сбросить сеть (1 клик)"
+                                <Button Style="{StaticResource PrimaryButton}" Content="Очистить кэш и сбросить сеть (1 клик)"
                                         Command="{Binding CleanDiscordAndNetworkCommand}"
                                         ToolTip="Закрыть Discord, очистить кэш всех редакций, сбросить DNS/ARP и включить TCP Timestamps" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="🔄 Очистить и перезапустить Discord" Margin="8,0,0,0"
+                                <Button Style="{StaticResource SecondaryButton}" Content="Очистить и перезапустить Discord" Margin="8,0,0,0"
                                         Command="{Binding CleanAndRestartDiscordCommand}"
                                         ToolTip="Выполнить очистку кэша и сети, а затем автоматически запустить Discord" />
-                                <Button Style="{StaticResource DangerButton}" Content="🧹 Глубокий сброс сетевого стека" Margin="8,0,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"
+                                <Button Style="{StaticResource DangerButton}" Content="Глубокий сброс сетевого стека" Margin="8,0,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"
                                         Command="{Binding DeepNetworkResetCommand}"
                                         ToolTip="Полный сброс Winsock, TCP/IP стека, WinHTTP прокси, DNS и ARP (потребуется перезагрузка)" />
                             </WrapPanel>
@@ -673,10 +673,10 @@
                             <Button Style="{StaticResource SecondaryButton}" Content="Включить TCP timestamps" Margin="0,8,0,0"
                                     Command="{Binding FixTimestampsCommand}"
                                     ToolTip="Выполнить netsh interface tcp set global timestamps=enabled" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="⚡ Очистить кэш Discord и сбросить сеть (1 клик)" Margin="0,8,0,0"
+                            <Button Style="{StaticResource SecondaryButton}" Content="Очистить кэш Discord и сбросить сеть (1 клик)" Margin="0,8,0,0"
                                     Command="{Binding CleanDiscordAndNetworkCommand}"
                                     ToolTip="Закрыть Discord, удалить кэш всех версий, сбросить DNS/ARP и включить TCP Timestamps" />
-                            <Button Style="{StaticResource DangerButton}" Content="🧹 Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
+                            <Button Style="{StaticResource DangerButton}" Content="Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
                                     Command="{Binding ResetNetworkCommand}"
                                     ToolTip="netsh winsock reset, netsh int ip reset all, netsh winhttp reset proxy, ipconfig /flushdns" />
                         </StackPanel>

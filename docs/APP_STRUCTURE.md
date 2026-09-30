@@ -1,6 +1,6 @@
 # Структура приложения Zapret GUI — разделы, подразделы и их функции
 
-> Версия документа: `v1.26.0` (ветка `arena/01a0f306-zapret-gui`; этапы 1–8 информационной архитектуры внедрены, `v1.25.0` — единый стиль карточек, `v1.26.0` — семантика и регистр заголовков)
+> Версия документа: `v1.27.0` (ветка `arena/01a0f306-zapret-gui`; этапы 1–8 информационной архитектуры внедрены, `v1.25.0` — единый стиль карточек, `v1.26.0` — семантика и регистр, `v1.27.0` — иконки, доступность и плашки)
 > Стек: `C# .NET 8 + WPF (MVVM)`, движок `Flowseal/zapret-discord-youtube` (`bin/winws.exe`, `WinDivert`), служба `zapret`
 > Язык интерфейса: русский. Сборка: `windows-latest` GitHub Actions.
 
@@ -163,8 +163,9 @@
 
 ## 7. Сборка и версия
 
-*   **csproj:** `<Version>1.26.0</Version>` / `AssemblyVersion`/`FileVersion`/`InformationalVersion` `1.26.0.0`, `LangVersion latest`, `System.Text.Encoding.CodePages`.
+*   **csproj:** `<Version>1.27.0</Version>` / `AssemblyVersion`/`FileVersion`/`InformationalVersion` `1.27.0.0`, `LangVersion latest`, `System.Text.Encoding.CodePages`.
 *   **Workflow:** `.github/workflows/build.yml` (`windows-latest`, `dotnet 8.0.x`, `restore → build → WindowsIntegrationHarness → CoreLogicHarness → publish portable / framework-dependent → release` на `v*`).
-*   **Проверка привязок и стиля:** `python3 tools/check_bindings.py` — 22 `XAML` / 113 ключей (включая оверлей поиска: карта `SearchOverlay → SearchViewModel`/`SearchResultItem`), `Run Text Mode=OneWay` для `read-only`. С `v1.25.0` — плюс 5 правил стиля, с `v1.26.0` — ещё 2: карточка с `Padding` вне токенов или с ручными `Background`/`BorderBrush`/`BorderThickness` = ошибка; литеральный цвет вне `Themes/`, `TextBlock` с `FontSize` без стиля, карточка без заголовка, надзаголовок не ЗАГЛАВНЫМИ и иконочная кнопка без подписи = предупреждения.
-*   **Токены стиля (`v1.25.0`):** `CardPadding` 18 · `CardPaddingCompact` 14,12 · `CardPaddingList` 8 · `InnerCardPadding` 14 · `CardGap` 0,14 · `BlockGap` 0,12 (`Themes/Controls.xaml`), шкала кеглей **11 · 13 · 17 · 20 · 25**, стиль `SubtitleText`; кисти-исключения оверлеев и метрик панели задач — в `Themes/Dark.xaml` + `Themes/Light.xaml` (44/44). Семантические карточки `CardAccent`/`CardWarning`/`CardSuccess`/`CardInfo` — на базе `Card`.
+*   **Проверка привязок и стиля:** `python3 tools/check_bindings.py` — 22 `XAML` / 118 ключей (включая оверлей поиска: карта `SearchOverlay → SearchViewModel`/`SearchResultItem`), `Run Text Mode=OneWay` для `read-only`. С `v1.25.0` — плюс 5 правил стиля, с `v1.26.0` — ещё 2, с `v1.27.0` — ещё 4: карточка с `Padding` вне токенов, ручные кисти у карточки или плашки, иконочная кнопка без `AutomationProperties.Name` = ошибки; литеральный цвет вне `Themes/`, `TextBlock` с `FontSize` без стиля, карточка без заголовка, надзаголовок не ЗАГЛАВНЫМИ, эмодзи в кнопке/заголовке и поле ввода без подписи = предупреждения.
+*   **Токены стиля (`v1.25.0`):** `CardPadding` 18 · `CardPaddingCompact` 14,12 · `CardPaddingList` 8 · `InnerCardPadding` 14 · `CardGap` 0,14 · `BlockGap` 0,12 (`Themes/Controls.xaml`), шкала кеглей **11 · 13 · 17 · 20 · 25**, стиль `SubtitleText`; кисти-исключения оверлеев и метрик панели задач — в `Themes/Dark.xaml` + `Themes/Light.xaml` (44/44). Семантические карточки `CardAccent`/`CardWarning`/`CardSuccess`/`CardInfo` — на базе `Card`; плашки `Notice*` — фон + рамка по смыслу.
+*   **Доступность (`v1.27.0`):** 79 `AutomationProperties.Name` — все иконочные кнопки и поля ввода; иконки интерфейса — MDL2 через `IconFont`, эмодзи — только в подписях навигации.
 

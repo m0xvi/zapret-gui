@@ -155,7 +155,7 @@
                                       ItemsSource="{Binding AvailableEngineBackups}"
                                       SelectedItem="{Binding SelectedEngineBackup, Mode=TwoWay}"
                                       DisplayMemberPath="DisplayText"
-                                      ToolTip="Выберите сохранённую версию движка для ручного отката" />
+                                      ToolTip="Выберите сохранённую версию движка для ручного отката" AutomationProperties.Name="Выберите сохранённую версию движка для ручного отката" />
                             <Button Style="{StaticResource SecondaryButton}" Content="Вернуться к выбранной версии"
                                     HorizontalAlignment="Left" Margin="0,8,0,0"
                                     Command="{Binding RollbackEngineCommand}"

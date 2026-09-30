@@ -268,7 +268,7 @@
                             <ComboBox Style="{StaticResource AppComboBox}" MinWidth="220" MaxWidth="340" Margin="10,0,0,0"
                                       ItemsSource="{Binding StrategyNames}"
                                       SelectedItem="{Binding SelectedStrategyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      ToolTip="Выберите стратегию обхода из списка" />
+                                      ToolTip="Выберите стратегию обхода из списка" AutomationProperties.Name="Выберите стратегию обхода из списка" />
                             <Button Style="{StaticResource SecondaryButton}" Content="Сохранить выбор"
                                     Margin="8,0,0,0" Command="{Binding SaveSelectedStrategyCommand}" />
                         </WrapPanel>
@@ -284,7 +284,7 @@
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
                                     <TextBox Style="{StaticResource InputBox}" MinHeight="70" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                             Text="{Binding CustomHostInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding CustomHostsHint}" />
+                                             Text="{Binding CustomHostInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding CustomHostsHint}" AutomationProperties.Name="Свой хост для проверки" />
                                     <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top">
                                         <Button Style="{StaticResource SecondaryButton}" Content="Добавить" Padding="14,6"
                                                 Command="{Binding AddCustomHostCommand}" ToolTip="Добавить адреса в список проверки" />
@@ -295,7 +295,7 @@
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding CustomHostsStatus}" Margin="0,6,0,0" />
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding CustomHostsHint}" Margin="0,2,0,0" FontStyle="Italic" TextWrapping="Wrap" />
                                 <WrapPanel Margin="0,10,0,0">
-                                    <Button Style="{StaticResource PrimaryButton}" Content="✨ Проверить всё (система → сайты → стратегии)" Padding="14,7"
+                                    <Button Style="{StaticResource PrimaryButton}" Content="Проверить всё (система → сайты → стратегии)" Padding="14,7"
                                             Command="{Binding RunWizardFullCheckCommand}" ToolTip="То же, что кнопка «Проверить всё» на странице Обзор: выполнит все проверки по очереди и подскажет лучшую стратегию" />
                                 </WrapPanel>
                             </StackPanel>

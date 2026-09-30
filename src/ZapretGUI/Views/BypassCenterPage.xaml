@@ -22,14 +22,14 @@
                 </WrapPanel>
             </Grid>
 
-            <Border Margin="0,12,0,0" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="10" Padding="12,10" Visibility="{Binding MessageVisible, Converter={StaticResource BoolToVis}}">
+            <Border Margin="0,12,0,0" Visibility="{Binding MessageVisible, Converter={StaticResource BoolToVis}}" Style="{StaticResource NoticeSuccess}">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message, Mode=OneWay}" TextWrapping="Wrap" Foreground="{Binding MessageKey, Converter={StaticResource SeverityBrush}}" VerticalAlignment="Center"/>
-                    <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="✕" Margin="8,0,0,0" Command="{Binding DismissMessageCommand}"
+                    <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="&#xE711;" FontFamily="{DynamicResource IconFont}" Margin="8,0,0,0" Command="{Binding DismissMessageCommand}"
                             ToolTip="Скрыть сообщение" AutomationProperties.Name="Скрыть сообщение" />
                 </Grid>
             </Border>
@@ -89,7 +89,7 @@
                                 <ColumnDefinition Width="*"/>
                                 <ColumnDefinition Width="Auto"/>
                             </Grid.ColumnDefinitions>
-                            <ComboBox Style="{StaticResource AppComboBox}" ItemsSource="{Binding Strategies.Items}" SelectedItem="{Binding SelectedStrategy, Mode=TwoWay}" DisplayMemberPath="Name" ToolTip="Выбери стратегию из списка" />
+                            <ComboBox Style="{StaticResource AppComboBox}" ItemsSource="{Binding Strategies.Items}" SelectedItem="{Binding SelectedStrategy, Mode=TwoWay}" DisplayMemberPath="Name" ToolTip="Выбери стратегию из списка" AutomationProperties.Name="Выбери стратегию из списка" />
                             <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Применить" Margin="8,0,0,0" Command="{Binding ApplyStrategyCommand}"/>
                         </Grid>
                         <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="{Binding SelectedStrategy.Description}" TextWrapping="Wrap" Opacity="0.9"/>
@@ -151,14 +151,14 @@
                             <StackPanel>
                                 <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding MatrixSummary, Mode=OneWay}" TextWrapping="Wrap"/>
                                 <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="{Binding MatrixBestText, Mode=OneWay}" TextWrapping="Wrap" Foreground="{DynamicResource SuccessBrush}" FontWeight="SemiBold"/>
-                                <Button Style="{StaticResource PrimaryButton}" Content="✅ Применить лучшее (стратегия + DNS)" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding ApplyBestCommand}" ToolTip="Применит стратегию и DNS победителя матрицы бесшовно"/>
+                                <Button Style="{StaticResource PrimaryButton}" Content="Применить лучшее (стратегия + DNS)" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding ApplyBestCommand}" ToolTip="Применит стратегию и DNS победителя матрицы бесшовно"/>
                             </StackPanel>
                         </Border>
 
                         <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Visibility="{Binding MatrixResults.Count, Converter={StaticResource CountToVis}}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ МАТРИЦЫ (СТРАТЕГИЯ × DNS)"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="Зелёные — работают, жёлтые — частично, красные — блок. Лучшая помечена ⭐"/>
+                                <TextBlock Style="{StaticResource DimText}" Text="Зелёные — работают, жёлтые — частично, красные — блок. Лучшая помечена звёздочкой"/>
                                 <ListView Margin="0,8,0,0" MaxHeight="420" ItemsSource="{Binding MatrixResults}" SelectedItem="{Binding SelectedMatrixEntry, Mode=TwoWay}" ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListView.View>
                                         <GridView>
@@ -175,7 +175,7 @@
                                             <GridViewColumn Header="⭐" Width="30">
                                                 <GridViewColumn.CellTemplate>
                                                     <DataTemplate>
-                                                        <TextBlock Text="⭐" Visibility="{Binding IsBest, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Center"/>
+                                                        <TextBlock Text="&#xE735;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource AccentBrush}" Visibility="{Binding IsBest, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Center"/>
                                                     </DataTemplate>
                                                 </GridViewColumn.CellTemplate>
                                             </GridViewColumn>
@@ -207,7 +207,7 @@
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding CurrentDnsText, Mode=OneWay}" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Grid>
-                        <ComboBox Style="{StaticResource AppComboBox}" Margin="0,10,0,0" ItemsSource="{Binding DnsProfiles}" SelectedItem="{Binding SelectedDnsProfile, Mode=TwoWay}" DisplayMemberPath="DisplayTitle"/>
+                        <ComboBox Style="{StaticResource AppComboBox}" Margin="0,10,0,0" ItemsSource="{Binding DnsProfiles}" SelectedItem="{Binding SelectedDnsProfile, Mode=TwoWay}" DisplayMemberPath="DisplayTitle" AutomationProperties.Name="DNS"/>
                         <WrapPanel Margin="0,10,0,0">
                             <Button Style="{StaticResource SecondaryButton}" Content="Применить DNS" Command="{Binding ApplyDnsCommand}"/>
                             <Button Style="{StaticResource GhostButton}" Content="Проверить подмену" Margin="8,0,0,0" Command="{Binding CheckHijackCommand}"/>
@@ -271,7 +271,7 @@
                                 <ColumnDefinition Width="180"/>
                             </Grid.ColumnDefinitions>
                             <TextBlock Style="{StaticResource DimText}" Text="SNI для YouTube QUIC-блока" VerticalAlignment="Center"/>
-                            <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" ItemsSource="{Binding YoutubeSniOptions}" SelectedItem="{Binding YoutubeSniOverride, Mode=TwoWay}"/>
+                            <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" ItemsSource="{Binding YoutubeSniOptions}" SelectedItem="{Binding YoutubeSniOverride, Mode=TwoWay}" AutomationProperties.Name="SNI для YouTube QUIC-блока"/>
                         </Grid>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Приоритет IPv4 (помогает при fec0:: DNS)" Margin="0,10,0,0" IsChecked="{Binding PreferIPv4, Mode=TwoWay}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"/>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="DoH для заблокированных (1.1.1.1)" Margin="0,10,0,0" IsChecked="{Binding UseDohForBlocked, Mode=TwoWay}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"/>

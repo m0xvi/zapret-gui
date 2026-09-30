@@ -60,7 +60,7 @@
                     </WrapPanel>
                     <TextBlock Style="{StaticResource DimText}" Text="{Binding BestStrategyDetailsText}" Margin="0,3,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" Opacity="0.85" />
                 </StackPanel>
-                <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="⚡ Применить лидер" Padding="16,8" MinHeight="36" FontWeight="SemiBold"
+                <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="Применить лидер" Padding="16,8" MinHeight="36" FontWeight="SemiBold"
                         Command="{Binding ApplyBestRecommendedCommand}" ToolTip="Запустить рекомендованную для вашей сети стратегию" VerticalAlignment="Center" />
             </Grid>
         </Border>
@@ -125,7 +125,7 @@
 
                     <Grid>
                         <TextBox Style="{StaticResource SearchBox}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                 ToolTip="Поиск по названию стратегии и параметрам winws.exe" />
+                                 ToolTip="Поиск по названию стратегии и параметрам winws.exe" AutomationProperties.Name="Поиск по названию стратегии и параметрам winws.exe" />
                         <TextBlock Style="{StaticResource DimText}" Text="Поиск по названию или параметрам…" Margin="13,0,0,0"
                                    VerticalAlignment="Center" IsHitTestVisible="False"
                                    Visibility="{Binding SearchText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
@@ -133,7 +133,7 @@
 
                     <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" MinWidth="140" MaxWidth="220" Margin="10,0,0,0"
                               ItemsSource="{Binding Categories}" SelectedIndex="{Binding CategoryIndex, Mode=TwoWay}"
-                              ToolTip="Фильтр по группе стратегий: FAKE TLS AUTO, ALT, SIMPLE FAKE, базовая, автоконструктор" />
+                              ToolTip="Фильтр по группе стратегий: FAKE TLS AUTO, ALT, SIMPLE FAKE, базовая, автоконструктор" AutomationProperties.Name="Фильтр по группе стратегий: FAKE TLS AUTO, ALT, SIMPLE FAKE, базовая, автоконструктор" />
 
                     <!-- Фильтры «Только рекомендуемые»/«Рекомендуемая» удалены 23.09 — загромождали поиск -->
                 </Grid>
@@ -356,7 +356,7 @@
                             <!-- Название стратегии -->
                             <TextBlock Style="{StaticResource DimText}" Text="НАЗВАНИЕ СТРАТЕГИИ" />
                             <TextBox Style="{StaticResource SearchBox}" Text="{Binding BuilderStrategyName, UpdateSourceTrigger=PropertyChanged}"
-                                     Margin="0,4,0,4" ToolTip="Имя стратегии для сохранения в каталог — без расширения .bat" />
+                                     Margin="0,4,0,4" ToolTip="Имя стратегии для сохранения в каталог — без расширения .bat" AutomationProperties.Name="Имя стратегии для сохранения в каталог — без расширения .bat" />
                             <TextBlock Style="{StaticResource DimText}" Margin="0,0,0,6"
                                        Text="{Binding BuilderNameValidationText}" Foreground="{DynamicResource WarningBrush}"
                                        Visibility="{Binding BuilderNameValidationText, Converter={StaticResource StringToVis}}" TextWrapping="Wrap"/>
@@ -365,7 +365,7 @@
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
-                                <Button Style="{StaticResource GhostButton}" Content="⬇ Загрузить из выбранной в каталоге" Padding="8,3" FontSize="11"
+                                <Button Style="{StaticResource GhostButton}" Content="Загрузить из выбранной в каталоге" Padding="8,3" FontSize="11"
                                         Command="{Binding LoadBuilderFromSelectedCommand}" ToolTip="Скопировать параметры выбранной стратегии из каталога в конструктор" />
                                 <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="→ правите и сохраняете как новую" VerticalAlignment="Center" Margin="8,0,0,0" Opacity="0.7"/>
                             </Grid>
@@ -378,7 +378,7 @@
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <ComboBox Style="{StaticResource AppComboBox}" ItemsSource="{Binding BuilderPresets}" DisplayMemberPath="DisplayText"
-                                          SelectedItem="{Binding SelectedBuilderPreset, Mode=TwoWay}" ToolTip="Готовые шаблоны: стандарт, агрессивный, лёгкий, игровой" />
+                                          SelectedItem="{Binding SelectedBuilderPreset, Mode=TwoWay}" ToolTip="Готовые шаблоны: стандарт, агрессивный, лёгкий, игровой" AutomationProperties.Name="Готовые шаблоны: стандарт, агрессивный, лёгкий, игровой" />
                                 <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Применить" Margin="6,0,0,0" Padding="10,3" FontSize="11"
                                         Command="{Binding ApplyBuilderPresetCommand}" ToolTip="Заполнить форму выбранным пресетом"/>
                             </Grid>
@@ -393,13 +393,13 @@
                                     <TextBlock Style="{StaticResource DimText}" Text="РЕЖИМ DPI-DESYNC" />
                                     <ComboBox Style="{StaticResource AppComboBox}" Margin="0,4,0,0"
                                               ItemsSource="{Binding BuilderDesyncModes}" SelectedItem="{Binding BuilderDesyncMode, Mode=TwoWay}"
-                                              ToolTip="Метод расщепления пакетов (split2, disorder2, fake...)" />
+                                              ToolTip="Метод расщепления пакетов (split2, disorder2, fake...)" AutomationProperties.Name="Метод расщепления пакетов (split2, disorder2, fake...)" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="4,0,0,0">
                                     <TextBlock Style="{StaticResource DimText}" Text="ПОЗИЦИЯ SPLIT-POS" />
                                     <ComboBox Style="{StaticResource AppComboBox}" Margin="0,4,0,0"
                                               ItemsSource="{Binding BuilderSplitPositions}" SelectedItem="{Binding BuilderSplitPos, Mode=TwoWay}"
-                                              ToolTip="Позиция разделения (midsld - середина SNI, 1, 2, 3...)" />
+                                              ToolTip="Позиция разделения (midsld - середина SNI, 1, 2, 3...)" AutomationProperties.Name="Позиция разделения (midsld - середина SNI, 1, 2, 3...)" />
                                 </StackPanel>
                             </Grid>
 
@@ -413,13 +413,13 @@
                                     <TextBlock Style="{StaticResource DimText}" Text="ПОДДЕЛЬНЫЙ SNI (FAKE TLS)" />
                                     <ComboBox Style="{StaticResource AppComboBox}" Margin="0,4,0,0"
                                               ItemsSource="{Binding BuilderFakeSnis}" SelectedItem="{Binding BuilderFakeSni, Mode=TwoWay}"
-                                              ToolTip="Доменное имя, подставляемое в первый фейковый пакет" />
+                                              ToolTip="Доменное имя, подставляемое в первый фейковый пакет" AutomationProperties.Name="Доменное имя, подставляемое в первый фейковый пакет" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="4,0,0,0">
                                     <TextBlock Style="{StaticResource DimText}" Text="TTL (ВРЕМЯ ЖИЗНИ ПАКЕТА)" />
                                     <ComboBox Style="{StaticResource AppComboBox}" Margin="0,4,0,0"
                                               ItemsSource="{Binding BuilderTtls}" SelectedItem="{Binding BuilderTtl, Mode=TwoWay}"
-                                              ToolTip="Значение TTL для фейкового пакета (auto или фиксированное число)" />
+                                              ToolTip="Значение TTL для фейкового пакета (auto или фиксированное число)" AutomationProperties.Name="Значение TTL для фейкового пакета (auto или фиксированное число)" />
                                 </StackPanel>
                             </Grid>
 
@@ -427,23 +427,26 @@
                             <TextBlock Style="{StaticResource DimText}" Text="FOOLING (МЕТОД ИСКАЖЕНИЯ)" />
                             <ComboBox Style="{StaticResource AppComboBox}" Margin="0,4,0,10"
                                       ItemsSource="{Binding BuilderFoolings}" SelectedItem="{Binding BuilderFooling, Mode=TwoWay}"
-                                      ToolTip="Способ сделать фейковый пакет незаметным для сервера (badsum, badseq...)" />
+                                      ToolTip="Способ сделать фейковый пакет незаметным для сервера (badsum, badseq...)" AutomationProperties.Name="Способ сделать фейковый пакет незаметным для сервера (badsum, badseq...)" />
 
                             <!-- Чекбоксы дополнительных опций -->
-                            <TextBlock Style="{StaticResource SectionText}" Text="ДОПОЛНИТЕЛЬНЫЕ МОДУЛИ" Margin="0,6,0,6" />
-                            <CheckBox Style="{StaticResource CheckBoxApp}" Content="Игровой UDP фильтр (порты 50000-65535, голос Discord)"
-                                      IsChecked="{Binding BuilderUseGameUdp, Mode=TwoWay}"
-                                      Foreground="{DynamicResource TextBrush}" Margin="0,3,0,6" />
-                            <CheckBox Style="{StaticResource CheckBoxApp}" Content="Включить multisplit seqovl"
-                                      IsChecked="{Binding BuilderUseMultisplit, Mode=TwoWay}"
-                                      Foreground="{DynamicResource TextBrush}" Margin="0,3,0,6" />
-                            <CheckBox Style="{StaticResource CheckBoxApp}" Content="Применять списки hostlist (list-general.txt)"
-                                      IsChecked="{Binding BuilderUseHostlist, Mode=TwoWay}"
-                                      Foreground="{DynamicResource TextBrush}" Margin="0,3,0,6" />
-                            <CheckBox Style="{StaticResource CheckBoxApp}" Content="Применять IP-фильтры ipset (ipset-all.txt)"
-                                      IsChecked="{Binding BuilderUseIpSet, Mode=TwoWay}"
-                                      Foreground="{DynamicResource TextBrush}" Margin="0,3,0,6" />
-                        </StackPanel>
+                            <Border Style="{StaticResource InnerCard}" Margin="0,6,0,0">
+                            <StackPanel>
+    <TextBlock Style="{StaticResource SectionText}" Text="ДОПОЛНИТЕЛЬНЫЕ МОДУЛИ" Margin="0,0,0,6" />
+                                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Игровой UDP фильтр (порты 50000-65535, голос Discord)"
+                                          IsChecked="{Binding BuilderUseGameUdp, Mode=TwoWay}"
+                                          Foreground="{DynamicResource TextBrush}" Margin="0,3,0,6" />
+                                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Включить multisplit seqovl"
+                                          IsChecked="{Binding BuilderUseMultisplit, Mode=TwoWay}"
+                                          Foreground="{DynamicResource TextBrush}" Margin="0,3,0,6" />
+                                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Применять списки hostlist (list-general.txt)"
+                                          IsChecked="{Binding BuilderUseHostlist, Mode=TwoWay}"
+                                          Foreground="{DynamicResource TextBrush}" Margin="0,3,0,6" />
+                                <CheckBox Style="{StaticResource CheckBoxApp}" Content="Применять IP-фильтры ipset (ipset-all.txt)"
+                                          IsChecked="{Binding BuilderUseIpSet, Mode=TwoWay}"
+                                          Foreground="{DynamicResource TextBrush}" Margin="0,3,0,6" />
+                            </StackPanel>
+                        </Border></StackPanel>
                     </Border>
 
                     <!-- ПРАВАЯ КОЛОНКА: Предпросмотр аргументов, тест и сохранение -->
@@ -524,23 +527,23 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0">
-                            <TextBlock Style="{StaticResource TitleText}" Text="🧠 Глубокий интеллектуальный автоподбор DPI-стратегий" FontWeight="Bold" />
+                            <TextBlock Style="{StaticResource TitleText}" Text="Глубокий интеллектуальный автоподбор DPI-стратегий" FontWeight="Bold" />
                             <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap" Margin="0,4,0,0"
                                        Text="Автономный движок последовательно синтезирует и тестирует передовые комбинации обхода (split2, sniext, disoob, fake sni, badsum, md5sig, multisplit) в изолированном тестовом контуре с замером RTT и процента успешных ответов контрольных ресурсов." />
                         </StackPanel>
                         <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
                             <Button Style="{StaticResource PrimaryButton}"
-                                    Content="🚀 Запустить глубокий автоподбор"
+                                    Content="Запустить глубокий автоподбор"
                                     Command="{Binding StartSmartAutoTuningCommand}"
                                     Visibility="{Binding IsAutoTuningRunning, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
                                     ToolTip="Запустить многопроходное тестирование комбинаций и генерацию оптимальной стратегии" />
                             <Button Style="{StaticResource DangerButton}"
-                                    Content="🛑 Остановить"
+                                    Content="Остановить"
                                     Command="{Binding CancelSmartAutoTuningCommand}"
                                     Visibility="{Binding IsAutoTuningRunning, Converter={StaticResource BoolToVis}}"
                                     ToolTip="Остановить тестирование текущей очереди гипотез" />
                             <Button Style="{StaticResource PrimaryButton}" Margin="8,0,0,0"
-                                    Content="⚡ Применить найденный оптимум"
+                                    Content="Применить найденный оптимум"
                                     Command="{Binding ApplyWinnerStrategyCommand}"
                                     Visibility="{Binding HasWinnerCandidate, Converter={StaticResource BoolToVis}}"
                                     ToolTip="Сделать найденную оптимальную стратегию основной и запустить постоянный обход" />
@@ -565,9 +568,8 @@
                     </Grid>
 
                     <!-- Баннер победителя (если найден) -->
-                    <Border Grid.Row="2" Margin="0,14,0,0" Padding="14,12" CornerRadius="8"
-                            Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1"
-                            Visibility="{Binding HasWinnerCandidate, Converter={StaticResource BoolToVis}}">
+                    <Border Grid.Row="2" Margin="0,14,0,0"
+                            Visibility="{Binding HasWinnerCandidate, Converter={StaticResource BoolToVis}}" Style="{StaticResource NoticeSuccess}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*" />
@@ -669,10 +671,10 @@
                                        Text="Winws десинхронизирует TLS-трафик, подставляя доверенный SNI в фейковый ClientHello. Выберите домен с наивысшим доверием у вашего провайдера или запустите автоподбор." TextWrapping="Wrap" />
                         </StackPanel>
                         <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
-                            <Button Style="{StaticResource PrimaryButton}" Content="⚡ Подобрать лучший SNI"
+                            <Button Style="{StaticResource PrimaryButton}" Content="Подобрать лучший SNI"
                                     Command="{Binding AutoSelectBestSniCommand}"
                                     ToolTip="Провести параллельное TLS-тестирование всех SNI и выбрать самый быстрый и стабильный" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="🔄 Сменить SNI" Margin="8,0,0,0"
+                            <Button Style="{StaticResource SecondaryButton}" Content="Сменить SNI" Margin="8,0,0,0"
                                     Command="{Binding RotateToNextSniCommand}"
                                     ToolTip="Переключить на следующий домен из пула высокой надежности" />
                         </WrapPanel>
@@ -689,7 +691,7 @@
                             <ComboBox Style="{StaticResource AppComboBox}" Margin="0,4,0,0"
                                       ItemsSource="{Binding SniCandidates}"
                                       SelectedItem="{Binding SelectedSniCandidate, Mode=TwoWay}"
-                                      ToolTip="Выберите домен, который будет отправляться ТСПУ в фейковом TLS ClientHello">
+                                      ToolTip="Выберите домен, который будет отправляться ТСПУ в фейковом TLS ClientHello" AutomationProperties.Name="Выберите домен, который будет отправляться ТСПУ в фейковом TLS ClientHello">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding DisplayText}" />
@@ -800,9 +802,9 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBox Style="{StaticResource SearchBox}" Text="{Binding NewTargetName, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Название (например, Twitch, Spotify, Notion, Discord Voice)" Margin="0,0,6,0" />
+                                     ToolTip="Название (например, Twitch, Spotify, Notion, Discord Voice)" Margin="0,0,6,0" AutomationProperties.Name="Название (например, Twitch, Spotify, Notion, Discord Voice)" />
                             <TextBox Grid.Column="1" Style="{StaticResource SearchBox}" Text="{Binding NewTargetUrl, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="URL или хост (например, https://twitch.tv или https://open.spotify.com)" Margin="6,0,6,0" />
+                                     ToolTip="URL или хост (например, https://twitch.tv или https://open.spotify.com)" Margin="6,0,6,0" AutomationProperties.Name="URL или хост (например, https://twitch.tv или https://open.spotify.com)" />
                             <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="Добавить адрес" Margin="6,0,0,0"
                                     Command="{Binding AddTargetCommand}" ToolTip="Добавить сайт в список контрольных проверок" />
                         </Grid>
@@ -846,7 +848,7 @@
                                                     FontFamily="{DynamicResource IconFont}" FontSize="11"
                                                     Command="{Binding DataContext.RemoveTargetCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                     CommandParameter="{Binding}"
-                                                    ToolTip="Удалить этот контрольный адрес" Opacity="0.6" />
+                                                    ToolTip="Удалить этот контрольный адрес" Opacity="0.6" AutomationProperties.Name="Удалить этот контрольный адрес" />
                                         </WrapPanel>
                                     </Grid>
                                 </Border>

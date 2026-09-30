@@ -90,7 +90,7 @@
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                 <Slider Minimum="0" Maximum="30" Width="120" TickFrequency="5" IsSnapToTickEnabled="True"
-                                        Value="{Binding StartupDelaySeconds, Mode=TwoWay}" ToolTip="0-30 сек" VerticalAlignment="Center" />
+                                        Value="{Binding StartupDelaySeconds, Mode=TwoWay}" ToolTip="0-30 сек" VerticalAlignment="Center" AutomationProperties.Name="Отложенный старт при включении, секунды" />
                                 <Border Style="{StaticResource Badge}" Margin="10,0,0,0" Background="{DynamicResource ElevatedBrush}">
                                     <TextBlock Style="{StaticResource DimText}" Text="{Binding StartupDelaySeconds, StringFormat={}{0} сек}" />
                                 </Border>
@@ -98,7 +98,7 @@
                         </Grid>
 
                         <Border Style="{StaticResource Divider}" />
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="🔒 Безопасный режим" FontWeight="SemiBold"
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Безопасный режим" FontWeight="SemiBold"
                                   IsChecked="{Binding SafeMode, Mode=TwoWay}"
                                   ToolTip="Не запускать обход автоматически и не менять службу/сеть без подтверждения. Диагностика остаётся доступной." />
                         <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="В безопасном режиме служба, hosts, proxy и WinDivert меняются только вручную после вашего подтверждения." TextWrapping="Wrap" />
@@ -134,7 +134,7 @@
                                             <TextBlock Style="{StaticResource DimText}" Text="Интервал пинга" VerticalAlignment="Center" />
                                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                 <Slider Minimum="5" Maximum="60" Width="120" TickFrequency="5" IsSnapToTickEnabled="True"
-                                                        Value="{Binding RealTimePingIntervalSeconds, Mode=TwoWay}" VerticalAlignment="Center" />
+                                                        Value="{Binding RealTimePingIntervalSeconds, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="Интервал пинга" />
                                                 <Border Style="{StaticResource Badge}" Margin="10,0,0,0" Background="{DynamicResource ElevatedBrush}">
                                                     <TextBlock Style="{StaticResource DimText}" Text="{Binding RealTimePingIntervalSeconds, StringFormat={}{0} сек}" />
                                                 </Border>
@@ -232,7 +232,7 @@
                                             <TextBlock Style="{StaticResource DimText}" Text="Интервал проверки" VerticalAlignment="Center" />
                                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" IsEnabled="{Binding WatchdogEnabled}">
                                                 <Slider Minimum="5" Maximum="60" Width="120" TickFrequency="5" IsSnapToTickEnabled="True"
-                                                        Value="{Binding WatchdogIntervalSeconds, Mode=TwoWay}" VerticalAlignment="Center" />
+                                                        Value="{Binding WatchdogIntervalSeconds, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="Интервал проверки" />
                                                 <Border Style="{StaticResource Badge}" Margin="10,0,0,0" Background="{DynamicResource ElevatedBrush}">
                                                     <TextBlock Style="{StaticResource DimText}" Text="{Binding WatchdogIntervalSeconds, StringFormat={}{0} сек}" />
                                                 </Border>
@@ -267,7 +267,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Style="{StaticResource DimText}" Text="Проверка каждые" VerticalAlignment="Center" />
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                                        <Slider Minimum="2" Maximum="30" Width="110" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding SeamlessCheckMinutes, Mode=TwoWay}" VerticalAlignment="Center" />
+                                                        <Slider Minimum="2" Maximum="30" Width="110" TickFrequency="1" IsSnapToTickEnabled="True" Value="{Binding SeamlessCheckMinutes, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="Проверка каждые" />
                                                         <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource ElevatedBrush}">
                                                             <TextBlock Style="{StaticResource DimText}" Text="{Binding SeamlessCheckMinutes, StringFormat={}{0} мин}" />
                                                         </Border>
@@ -280,7 +280,7 @@
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Style="{StaticResource DimText}" Text="Cooldown между переключениями" VerticalAlignment="Center" />
                                                     <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                                        <Slider Minimum="5" Maximum="60" Width="110" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding SeamlessCooldownMinutes, Mode=TwoWay}" VerticalAlignment="Center" />
+                                                        <Slider Minimum="5" Maximum="60" Width="110" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding SeamlessCooldownMinutes, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="Cooldown между переключениями" />
                                                         <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource ElevatedBrush}">
                                                             <TextBlock Style="{StaticResource DimText}" Text="{Binding SeamlessCooldownMinutes, StringFormat={}{0} мин}" />
                                                         </Border>
@@ -350,11 +350,11 @@
                                                     </Grid.ColumnDefinitions>
                                                     <StackPanel>
                                                         <TextBlock Style="{StaticResource DimText}" Text="СТАРТ (HH:MM)" />
-                                                        <TextBox Style="{StaticResource InputBox}" Margin="0,4,0,0" Text="{Binding ScheduleStartTime, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например 09:00" />
+                                                        <TextBox Style="{StaticResource InputBox}" Margin="0,4,0,0" Text="{Binding ScheduleStartTime, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например 09:00" AutomationProperties.Name="Старт расписания, время ЧЧ:ММ" />
                                                     </StackPanel>
                                                     <StackPanel Grid.Column="2">
                                                         <TextBlock Style="{StaticResource DimText}" Text="СТОП (HH:MM)" />
-                                                        <TextBox Style="{StaticResource InputBox}" Margin="0,4,0,0" Text="{Binding ScheduleStopTime, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например 23:00" />
+                                                        <TextBox Style="{StaticResource InputBox}" Margin="0,4,0,0" Text="{Binding ScheduleStopTime, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например 23:00" AutomationProperties.Name="Стоп расписания, время ЧЧ:ММ" />
                                                     </StackPanel>
                                                 </Grid>
                                                 <TextBlock Style="{StaticResource DimText}" Text="ДНИ НЕДЕЛИ" Margin="0,12,0,4" />
@@ -396,7 +396,7 @@
                                                           ToolTip="Каждые N минут тихо тестирует топ-стратегии и переключает на самую быструю 14/14. Сейчас выключено — включается только по вашему желанию." />
                                                 <StackPanel Orientation="Horizontal" Margin="24,6,0,0" Visibility="{Binding AutoSwitchToBestStrategy, Converter={StaticResource BoolToVis}}">
                                                     <TextBlock Style="{StaticResource DimText}" Text="Интервал, мин:" VerticalAlignment="Center" />
-                                                    <Slider Minimum="5" Maximum="120" Width="120" Margin="10,0,0,0" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding BestStrategyCheckMinutes, Mode=TwoWay}" VerticalAlignment="Center" />
+                                                    <Slider Minimum="5" Maximum="120" Width="120" Margin="10,0,0,0" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding BestStrategyCheckMinutes, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="Интервал, мин" />
                                                     <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                                                         <TextBlock Text="{Binding BestStrategyCheckMinutes}" Foreground="{DynamicResource TextMutedBrush}" Style="{StaticResource DimText}" />
                                                     </Border>
@@ -417,7 +417,7 @@
                                             <TextBlock Style="{StaticResource DimText}" Text="Интервал проверки" VerticalAlignment="Center" />
                                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                                 <Slider Minimum="5" Maximum="120" Width="120" TickFrequency="5" IsSnapToTickEnabled="True"
-                                                        Value="{Binding MonitoringIntervalMinutes, Mode=TwoWay}" VerticalAlignment="Center" />
+                                                        Value="{Binding MonitoringIntervalMinutes, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="Интервал проверки" />
                                                 <Border Style="{StaticResource Badge}" Margin="10,0,0,0" Background="{DynamicResource ElevatedBrush}">
                                                     <TextBlock Style="{StaticResource DimText}" Text="{Binding MonitoringIntervalMinutes, StringFormat={}{0} мин}" />
                                                 </Border>

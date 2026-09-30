@@ -27,7 +27,7 @@
                 <Grid>
                     <TextBlock Text="{Binding Message}" Style="{StaticResource BodyText}" Margin="0,0,30,0" />
                     <Button Style="{StaticResource IconButton}" Content="&#xE894;" Width="26" Height="26"
-                            HorizontalAlignment="Right" Command="{Binding ClearMessageCommand}" ToolTip="Скрыть" />
+                            HorizontalAlignment="Right" Command="{Binding ClearMessageCommand}" ToolTip="Скрыть" AutomationProperties.Name="Скрыть" />
                 </Grid>
             </Border>
 
@@ -121,8 +121,8 @@
                                            Text="4 шага за 1–2 минуты: система → сайты → 22 стратегии → подсказка." />
 
                                 <!-- Гейт готовности: показываем, если приложение не готово -->
-                                <Border Margin="0,10,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
-                                        Visibility="{Binding ReadinessActionVisible, Converter={StaticResource BoolToVis}}">
+                                <Border Margin="0,10,0,0"
+                                        Visibility="{Binding ReadinessActionVisible, Converter={StaticResource BoolToVis}}" Style="{StaticResource NoticeWarning}">
                                     <Grid>
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
@@ -145,7 +145,7 @@
 
                                 <!-- Исходные действия — видны только когда нет ни прогресса, ни результата -->
                                 <WrapPanel Margin="0,12,0,0" Visibility="{Binding IsQuickSetupIdle, Converter={StaticResource BoolToVis}}">
-                                    <Button Style="{StaticResource PrimaryButton}" Content="✨ Проверить всё и подобрать стратегию" Padding="18,9" MinHeight="40"
+                                    <Button Style="{StaticResource PrimaryButton}" Content="Проверить всё и подобрать стратегию" Padding="18,9" MinHeight="40"
                                             Command="{Binding RunFullCheckCommand}"
                                             ToolTip="Запустить все проверки по очереди: система → соединение → подбор стратегии. Займёт 1–2 минуты." />
                                     <Button Style="{StaticResource GhostButton}" Content="Открыть мастер" Margin="8,0,0,0" Padding="14,7"
@@ -243,7 +243,7 @@
                                         <WrapPanel Margin="0,12,0,0" Visibility="{Binding HasRecommendedStrategy, Converter={StaticResource BoolToVis}}">
                                             <Border Style="{StaticResource Badge}" Background="{DynamicResource SuccessSoftBrush}" Margin="0,0,8,0" Padding="8,4" VerticalAlignment="Center">
                                                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="⚡ " FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                                                    <TextBlock Text="&#xE945;" FontFamily="{DynamicResource IconFont}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
                                                     <TextBlock Text="{Binding RecommendedStrategyName}" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="260" />
                                                 </WrapPanel>
                                             </Border>
@@ -330,7 +330,7 @@
                                 </StackPanel>
                                 <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Padding="12,6" MinHeight="30" VerticalAlignment="Center" Command="{Binding ToggleGameModeCommand}" ToolTip="Переключить игровой режим (UDP для минимального пинга)">
                                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                        <TextBlock Text="🎮" FontSize="12" VerticalAlignment="Center" />
+                                        <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                                         <TextBlock Text=" Игровой режим" FontWeight="SemiBold" VerticalAlignment="Center" Margin="2,0,0,0" Style="{StaticResource DimText}" />
                                     </WrapPanel>
                                 </Button>

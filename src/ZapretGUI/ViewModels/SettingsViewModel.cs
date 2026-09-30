@@ -162,6 +162,13 @@ namespace ZapretGui.ViewModels
             OpenProfilesCommand = new RelayCommand(() => _main.Navigate("profiles"));
             OpenUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
             OpenAboutCommand = new RelayCommand(() => _main.Navigate("about"));
+            // «YouTube (Тяжелый случай)» живёт в «Обходе» (v1.27.0): здесь — только переход,
+            // чтобы одна настройка не существовала в двух местах (правило §7.2).
+            OpenBypassHardSitesCommand = new RelayCommand(() =>
+            {
+                _main.BypassCenter.SelectedSubTab = 4; // «Сложные сайты»
+                _main.Navigate("dpi");
+            });
             RunFullDiagnosticsAndExportCommand = new AsyncRelayCommand(RunFullDiagnosticsAndExportAsync, () => !IsRunningFullCheckCycle);
             CancelFullDiagnosticsCommand = new RelayCommand(CancelFullDiagnostics, () => IsRunningFullCheckCycle);
             CopyTelemetryMarkdownCommand = new RelayCommand(CopyTelemetryMarkdown);
@@ -1053,6 +1060,7 @@ namespace ZapretGui.ViewModels
         public ICommand OpenLogsCommand { get; }
         public ICommand OpenUpdatesCommand { get; }
         public ICommand OpenAboutCommand { get; }
+        public ICommand OpenBypassHardSitesCommand { get; }
 
         public void RefreshGamingOptimization()
         {

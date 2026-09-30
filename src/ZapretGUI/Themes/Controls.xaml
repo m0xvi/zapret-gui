@@ -124,6 +124,37 @@
         </Setter>
     </Style>
 
+    <!-- ================= ПЛАШКИ-УВЕДОМЛЕНИЯ (v1.27.0) =================
+         Фон + рамка одного смысла: сообщение об успехе, предупреждение, подсказка,
+         ошибка. Не карточка: без тени, тонкая рамка, плотность 12,10.
+         Проверяется tools/check_bindings.py. -->
+    <Style x:Key="Notice" TargetType="Border">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlRadius}" />
+        <Setter Property="Padding" Value="12,10" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style x:Key="NoticeSuccess" TargetType="Border" BasedOn="{StaticResource Notice}">
+        <Setter Property="Background" Value="{DynamicResource SuccessSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
+    </Style>
+
+    <Style x:Key="NoticeWarning" TargetType="Border" BasedOn="{StaticResource Notice}">
+        <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}" />
+    </Style>
+
+    <Style x:Key="NoticeInfo" TargetType="Border" BasedOn="{StaticResource Notice}">
+        <Setter Property="Background" Value="{DynamicResource InfoSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource InfoBrush}" />
+    </Style>
+
+    <Style x:Key="NoticeDanger" TargetType="Border" BasedOn="{StaticResource Notice}">
+        <Setter Property="Background" Value="{DynamicResource DangerSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
+    </Style>
+
     <!-- ==================== СЕМАНТИЧЕСКИЕ КАРТОЧКИ (v1.26.0) ====================
          Смысл важнее цвета: акцент, предупреждение, успех, подсказка. Разметка не задаёт
          кисти вручную — иначе тема и семантика разъедутся. Проверяется tools/check_bindings.py. -->

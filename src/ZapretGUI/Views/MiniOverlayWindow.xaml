@@ -74,12 +74,12 @@
                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="0,2,0,4">
                     <Button Style="{StaticResource SmallIconButton}" Content="&#xE76B;" Width="18" Height="18" FontSize="9"
                             Command="{Binding PrevStrategyCommand}"
-                            ToolTip="Предыдущая стратегия обхода" Margin="0,0,4,0" VerticalAlignment="Center" />
+                            ToolTip="Предыдущая стратегия обхода" Margin="0,0,4,0" VerticalAlignment="Center" AutomationProperties.Name="Предыдущая стратегия обхода" />
                     <TextBlock Text="{Binding StrategyName}" Style="{StaticResource DimText}" FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis" MaxWidth="155" VerticalAlignment="Center" />
                     <Button Style="{StaticResource SmallIconButton}" Content="&#xE76C;" Width="18" Height="18" FontSize="9"
                             Command="{Binding NextStrategyCommand}"
-                            ToolTip="Следующая стратегия обхода" Margin="4,0,0,0" VerticalAlignment="Center" />
+                            ToolTip="Следующая стратегия обхода" Margin="4,0,0,0" VerticalAlignment="Center" AutomationProperties.Name="Следующая стратегия обхода" />
                 </WrapPanel>
 
                 <!-- Строка 3: Бейджи пинга и игры -->
@@ -109,15 +109,15 @@
                         Command="{Binding ToggleGameModeCommand}"
                         Content="&#xE7FC;"
                         Foreground="{Binding GameModeActive, Converter={StaticResource BoolToAccentBrush}}"
-                        ToolTip="{Binding GameModeStatusText}" />
+                        ToolTip="{Binding GameModeStatusText}" AutomationProperties.Name="Игровой режим" />
                 <!-- Развернуть главное окно -->
                 <Button Style="{StaticResource SmallIconButton}" Content="&#xE8A7;" Margin="0,0,4,0"
                         Command="{Binding OpenMainWindowCommand}"
-                        ToolTip="Развернуть главное окно Zapret GUI" />
+                        ToolTip="Развернуть главное окно Zapret GUI" AutomationProperties.Name="Развернуть главное окно Zapret GUI" />
                 <!-- Скрыть виджет -->
                 <Button Style="{StaticResource SmallIconButton}" Content="&#xE8BB;"
                         Command="{Binding CloseOverlayCommand}"
-                        ToolTip="Скрыть мини-виджет (доступен в трее)" />
+                        ToolTip="Скрыть мини-виджет (доступен в трее)" AutomationProperties.Name="Скрыть мини-виджет (доступен в трее)" />
             </StackPanel>
         </Grid>
     </Border>

@@ -96,7 +96,7 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <TextBox Style="{StaticResource InputBox}" Text="{Binding EnginePath, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Папка со сборкой zapret: внутри должны быть bin, lists и .bat файлы" />
+                                     ToolTip="Папка со сборкой zapret: внутри должны быть bin, lists и .bat файлы" AutomationProperties.Name="Папка со сборкой zapret" />
                             <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Обзор…" Margin="8,0,0,0"
                                     Command="{Binding BrowseEnginePathCommand}" ToolTip="Выбрать папку с движком" />
                         </Grid>
@@ -316,12 +316,12 @@
                             <StackPanel Margin="0,0,8,0">
                                 <TextBlock Style="{StaticResource DimText}" Text="Имя провайдера" />
                                 <TextBox Style="{StaticResource InputBox}" Margin="0,5,0,0"
-                                         Text="{Binding ProviderName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Можно оставить пустым" />
+                                         Text="{Binding ProviderName, UpdateSourceTrigger=PropertyChanged}" ToolTip="Можно оставить пустым" AutomationProperties.Name="Имя провайдера" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Margin="8,0,0,0">
                                 <TextBlock Style="{StaticResource DimText}" Text="ASN" />
                                 <TextBox Style="{StaticResource InputBox}" Margin="0,5,0,0"
-                                         Text="{Binding ProviderAsn, UpdateSourceTrigger=PropertyChanged}" ToolTip="AS12345 или 12345" />
+                                         Text="{Binding ProviderAsn, UpdateSourceTrigger=PropertyChanged}" ToolTip="AS12345 или 12345" AutomationProperties.Name="ASN провайдера" />
                             </StackPanel>
                         </Grid>
                         <Grid Margin="0,12,0,0">
@@ -337,7 +337,7 @@
                                 <TextBlock Style="{StaticResource DimText}" Text="Уверенность" />
                                 <ComboBox Style="{StaticResource AppComboBox}" Margin="0,5,0,0"
                                           ItemsSource="{Binding ProviderConfidenceOptions}"
-                                          SelectedIndex="{Binding ProviderConfidenceIndex, Mode=TwoWay}" />
+                                          SelectedIndex="{Binding ProviderConfidenceIndex, Mode=TwoWay}" AutomationProperties.Name="Уверенность" />
                             </StackPanel>
                         </Grid>
                         <TextBlock Style="{StaticResource DimText}" Text="{Binding ProviderCheckedAtText}" Margin="0,10,0,0" />
@@ -390,8 +390,8 @@
                                 <Button Style="{StaticResource GhostButton}" Content="Остановить" HorizontalAlignment="Right" Margin="0,8,0,0" Command="{Binding CancelFullDiagnosticsCommand}" />
                             </StackPanel>
                         </Border>
-                        <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="8" Padding="12,10" Margin="0,10,0,0"
-                                Visibility="{Binding FullCheckCompleted, Converter={StaticResource BoolToVis}}">
+                        <Border Margin="0,10,0,0"
+                                Visibility="{Binding FullCheckCompleted, Converter={StaticResource BoolToVis}}" Style="{StaticResource NoticeSuccess}">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource SuccessBrush}" FontSize="16" VerticalAlignment="Center" Margin="0,0,8,0" />
                                 <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Готово — отчёт в буфере обмена (Ctrl+V в чат)" VerticalAlignment="Center" TextWrapping="Wrap" />
@@ -422,20 +422,11 @@
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                                 <TextBlock Style="{StaticResource SectionText}" Text="YOUTUBE (ТЯЖЕЛЫЙ СЛУЧАЙ)" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource DimText}" Text="QUIC fake, SNI, приоритет IPv4 и DoH — в «Обходе», вкладка «Сложные сайты» (в режиме «Эксперт»). Одна настройка живёт в одном месте." TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отключить QUIC fake для YouTube (тест 6→ без QUIC, помогает когда QUIC режется)" Margin="0,14,0,0" IsChecked="{Binding DisableQuicFake, Mode=TwoWay}" ToolTip="Удаляет --dpi-desync-fake-quic, оставляет только TCP fake. Попробуйте если YouTube не открывается." />
-                        <Grid Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="160" />
-                            </Grid.ColumnDefinitions>
-                            <TextBlock Style="{StaticResource DimText}" Text="SNI для YouTube QUIC-блока" VerticalAlignment="Center" ToolTip="Какой SNI подставлять в QUIC fake" />
-                            <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" ItemsSource="{Binding YoutubeSniOptions}" SelectedItem="{Binding YoutubeSniOverride, Mode=TwoWay}" ToolTip="Пусто=как в стратегии, иначе googlevideo.com / google.com" />
-                        </Grid>
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Приоритет IPv4 (отключает IPv6 для обхода, помогает при fec0:: DNS)" Margin="0,10,0,0" IsChecked="{Binding PreferIPv4ForBypass, Mode=TwoWay}" />
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="DoH для заблокированных (1.1.1.1)" Margin="0,10,0,0" IsChecked="{Binding UseDohForBlockedHosts, Mode=TwoWay}" ToolTip="Использует DNS-over-HTTPS для youtube.com" />
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Opacity="0.8" Text="Подсказка: эти же настройки теперь в разделе «Обход» — там же исчерпывающая проверка стратегия×DNS за один клик. После смены SNI/QUIC запустите «Проверка пула SNI» и «Автоподбор»." TextWrapping="Wrap" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Открыть «Обход → Сложные сайты»" Margin="0,12,0,0" HorizontalAlignment="Left"
+                                Command="{Binding OpenBypassHardSitesCommand}" ToolTip="Перейти в «Обход», вкладка «Сложные сайты» — там QUIC fake, SNI, IPv4 и DoH для YouTube" />
                     </StackPanel>
                 </Border>
                 <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
@@ -464,7 +455,7 @@
                             <TextBlock Style="{StaticResource DimText}" Text="Опрос каждые" VerticalAlignment="Center" Margin="0,0,8,0" />
                             <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" MinWidth="160" HorizontalAlignment="Left"
                                       ItemsSource="{Binding ToolbarMetricsIntervalOptions}" SelectedIndex="{Binding ToolbarMetricsIntervalIndex, Mode=TwoWay}"
-                                      ToolTip="Выберите интервал опроса (секунды)">
+                                      ToolTip="Выберите интервал опроса (секунды)" AutomationProperties.Name="Интервал опроса, секунды">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">
@@ -489,7 +480,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </Border>
-                            <TextBlock Style="{StaticResource DimText}" Text="Окно без заголовка — только хосты и мс. Перетащите за любую область, тяните за правый нижний угол для размера, двойной клик — сброс к трею, ✕ скрывает." Margin="0,8,0,0" Opacity="0.7" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Окно без заголовка — только хосты и мс. Перетащите за любую область, тяните за правый нижний угол для размера, двойной клик — сброс к трею, крестик в углу — скрыть." Margin="0,8,0,0" Opacity="0.7" TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -533,7 +524,7 @@
                             <TextBlock Style="{StaticResource BodyText}" Text="Масштаб интерфейса" VerticalAlignment="Center" />
                             <Slider Grid.Column="1" HorizontalAlignment="Stretch" MinWidth="80" Minimum="80" Maximum="140"
                                     TickFrequency="10" IsSnapToTickEnabled="True"
-                                    Value="{Binding ZoomPercent, Mode=TwoWay}" VerticalAlignment="Center" />
+                                    Value="{Binding ZoomPercent, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="Масштаб интерфейса" />
                             <Border Grid.Column="2" Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource ElevatedBrush}">
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding ZoomPercent, StringFormat={}{0}%}" />
                             </Border>
@@ -574,7 +565,7 @@
                                         <TextBlock Style="{StaticResource BodyText}" Text="Вкл/выкл обхода" />
                                         <TextBlock Style="{StaticResource DimText}" Text="Быстро без мыши" />
                                     </StackPanel>
-                                    <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleBypass, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например: Ctrl+Shift+Z" />
+                                    <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleBypass, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например: Ctrl+Shift+Z" AutomationProperties.Name="Горячая клавиша: вкл/выкл обхода" />
                                 </Grid>
                                 <Grid Margin="0,0,0,8">
                                     <Grid.ColumnDefinitions>
@@ -585,7 +576,7 @@
                                         <TextBlock Style="{StaticResource BodyText}" Text="Игровой режим" />
                                         <TextBlock Style="{StaticResource DimText}" Text="Переключение пропуска UDP" />
                                     </StackPanel>
-                                    <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleGameMode, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например: Ctrl+Shift+G" />
+                                    <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleGameMode, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например: Ctrl+Shift+G" AutomationProperties.Name="Горячая клавиша: игровой режим" />
                                 </Grid>
                                 <Grid>
                                     <Grid.ColumnDefinitions>
@@ -596,7 +587,7 @@
                                         <TextBlock Style="{StaticResource BodyText}" Text="HUD виджет" />
                                         <TextBlock Style="{StaticResource DimText}" Text="Показать/скрыть оверлей" />
                                     </StackPanel>
-                                    <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleMiniOverlay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например: Ctrl+Shift+O" />
+                                    <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleMiniOverlay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например: Ctrl+Shift+O" AutomationProperties.Name="Горячая клавиша: HUD виджет" />
                                 </Grid>
                             </StackPanel>
                         </Border>
@@ -628,7 +619,7 @@
                             <TextBlock Style="{StaticResource DimText}" Text="Прозрачность" VerticalAlignment="Center" />
                             <StackPanel Grid.Column="1" Orientation="Horizontal">
                                 <Slider Minimum="50" Maximum="100" Width="120" TickFrequency="5" IsSnapToTickEnabled="True"
-                                        Value="{Binding MiniOverlayOpacity, Mode=TwoWay}" VerticalAlignment="Center" />
+                                        Value="{Binding MiniOverlayOpacity, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="Прозрачность" />
                                 <Border Style="{StaticResource Badge}" Margin="10,0,0,0" Background="{DynamicResource ElevatedBrush}">
                                     <TextBlock Style="{StaticResource DimText}" Text="{Binding MiniOverlayOpacity, StringFormat={}{0}%}" />
                                 </Border>
@@ -686,7 +677,7 @@
 
                 <Border Style="{StaticResource CardInfo}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="💡 Подсказка для игр" />
+                        <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Подсказка для игр" />
                         <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="Если в игре скачет пинг — попробуйте на «Обзоре» включить игровой фильтр TCP+UDP, а на странице «Стратегии» подобрать SNI с низким RTT (вкладка «Пул TLS SNI»)." TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
@@ -745,8 +736,8 @@
                                 </StackPanel>
                             </Border>
                         </Grid>
-                        <Border Margin="16,10,16,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1"
-                                Visibility="{Binding Home.UpdateAvailable, Converter={StaticResource BoolToVis}}">
+                        <Border Margin="16,10,16,0"
+                                Visibility="{Binding Home.UpdateAvailable, Converter={StaticResource BoolToVis}}" Style="{StaticResource NoticeSuccess}">
                             <WrapPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE73E;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
                                 <TextBlock Style="{StaticResource DimText}" Text="Доступно обновление — списки и флаги сохранятся" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextWrapping="Wrap" />
