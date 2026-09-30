@@ -42,6 +42,7 @@ PAGE_VM = {
     "ProfilesPage": ["ProfilesViewModel"],
     "LogsPage": ["LogsViewModel"],
     "HelpPage": ["HelpViewModel"],
+    "SearchOverlay": ["SearchViewModel"],
     "SettingsPage": ["SettingsViewModel"],
     "AboutPage": ["MainViewModel"],
     "MainWindow": ["MainViewModel"],
@@ -61,6 +62,7 @@ ITEM_TYPES = {
     "LogsPage": ["LogEntry"],
     "SettingsPage": ["MetricHostOption"],
     "MainWindow": ["NavItem"],
+    "SearchOverlay": ["SearchResultItem"],
 }
 
 # Типы, для которых второй сегмент не проверяем

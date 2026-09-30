@@ -457,6 +457,19 @@ namespace ZapretGui.Views
             if (key == "home") _vm.Home.RefreshStatus();
         }
 
+        /// <summary>Поиск (этап 7): при открытии оверлея ставим курсор в строку ввода,
+        /// при закрытии возвращаем фокус окну.</summary>
+        private void SearchOverlay_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
+        {
+            if (SearchOverlayControl.IsVisible)
+            {
+                SearchOverlayControl.FocusInput();
+                return;
+            }
+
+            SearchOverlayControl.Dispatcher.BeginInvoke(new Action(() => Focus()));
+        }
+
         private static void PlayPageTransition(UIElement page)
         {
             page.Opacity = 0;

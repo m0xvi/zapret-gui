@@ -70,6 +70,7 @@ namespace ZapretGui.ViewModels
             Logs = new LogsViewModel(this);
             SettingsPage = new SettingsViewModel(this);
             Help = new HelpViewModel(this);
+            Search = new SearchViewModel(this);
 
             GameDetector = new GameDetectionService(settings);
             Hotkeys = new GlobalHotkeyService(settings);
@@ -227,6 +228,7 @@ namespace ZapretGui.ViewModels
             NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
             NavigateActiveCheckCommand = new RelayCommand(NavigateToActiveCheck);
             ToggleExpertModeCommand = new RelayCommand(ToggleExpertMode);
+            OpenSearchCommand = new RelayCommand(Search.Open);
 
             Strategies.Refresh();
             Home.ReloadFromEngine();
@@ -273,6 +275,9 @@ namespace ZapretGui.ViewModels
 
         /// <summary>«Помощь» — только тексты и переходы (этап 6, docs/IA_REDESIGN.md §3.6).</summary>
         public HelpViewModel Help { get; }
+
+        /// <summary>Поиск по приложению `Ctrl+K` (этап 7): разделы, настройки, команды, сценарии.</summary>
+        public SearchViewModel Search { get; }
 
         /// <summary>Пять разделов верхнего уровня (основной список меню).</summary>
         public ObservableCollection<NavItem> NavSections { get; }
@@ -391,6 +396,9 @@ namespace ZapretGui.ViewModels
             : "Показать технические блоки: матрица 92 тестов, SNI-пул, режимы ipset и другое (Ctrl+Shift+E)";
 
         public RelayCommand ToggleExpertModeCommand { get; }
+
+        /// <summary>Открыть оверлей поиска (кнопка в шапке и `Ctrl+K`).</summary>
+        public RelayCommand OpenSearchCommand { get; }
 
         /// <summary>Переключение режима «Простой/Эксперт». Сам переключатель находится в шапке (Ctrl+Shift+E),
         /// режим сохраняется в настройках и считается источником истины для видимости экспертных блоков.</summary>

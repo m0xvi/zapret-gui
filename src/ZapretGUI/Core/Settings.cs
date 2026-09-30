@@ -216,6 +216,12 @@ namespace ZapretGui.Core
         /// <summary>Горячая клавиша переключения режима интерфейса «Простой/Эксперт» (по умолчанию Ctrl+Shift+E).</summary>
         public string HotkeyToggleExpertMode { get; set; } = "Ctrl+Shift+E";
 
+        /// <summary>Поиск (этап 7): последние места, куда переходили из поиска, — до 5 идентификаторов.</summary>
+        public List<string> SearchRecentIds { get; set; } = new();
+
+        /// <summary>Поиск (этап 7): избранное — идентификаторы пунктов, отмеченных звёздочкой.</summary>
+        public List<string> SearchFavoriteIds { get; set; } = new();
+
         /// <summary>Экспертный режим интерфейса: показывает технические блоки (по умолчанию «Простой»).</summary>
         public bool ExpertModeEnabled { get; set; }
 

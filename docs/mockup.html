@@ -137,6 +137,22 @@ body.light .note .n{background:#fff;border-color:#E3E8F1;color:#5A6474}
 .note .n b{color:#EAEDF3;display:block;margin-bottom:6px}
 body.light .note .n b{color:#15191F}
 .note .n code{background:rgba(120,140,180,.22);padding:1px 5px;border-radius:5px;font-size:11.5px}
+
+/* Оверлей поиска (Ctrl+K) — этап 7 */
+.search-overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:60;display:none;align-items:flex-start;justify-content:center;padding-top:80px}
+.search-overlay.open{display:flex}
+.search-card{width:620px;max-height:500px;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
+.search-head{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--border)}
+.search-head .ic{opacity:.7}
+.search-head input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font:inherit;font-size:13.5px}
+.search-body{overflow:auto;padding:6px 4px}
+.search-foot{padding:9px 16px;background:var(--elevated);border-top:1px solid var(--border);color:var(--dim);font-size:10.5px;line-height:1.45}
+.srow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;cursor:pointer}
+.srow:hover,.srow.on{background:var(--card-hover)}
+.srow .ic{width:22px;text-align:center;opacity:.7}
+.srow .name{font-size:13px;color:var(--text)}
+.srow .meta{font-size:10.5px;color:var(--dim)}
+.sempty{padding:18px 16px;color:var(--dim);font-size:12px}
 </style>
 </head>
 <body>
@@ -152,6 +168,7 @@ body.light .note .n b{color:#15191F}
     <div class="appname">Zapret GUI</div>
     <div class="pill"><span class="dot" style="background:var(--success)"></span><span>Обход запущен</span></div>
     <div class="pill" style="cursor:pointer" title="Переключить режим интерфейса: простой / эксперт (Ctrl+Shift+E)">🔧 Простой режим</div>
+    <div class="pill" style="cursor:pointer" title="Поиск по приложению: разделы, настройки и команды (Ctrl+K)" onclick="openSearch()">🔍 Ctrl+K</div>
     <div class="titlebars">
       <div class="tbtn" title="Переключить тему" onclick="toggleTheme()">◐</div>
       <div class="tbtn" title="Открыть папку движка">🗀</div>
@@ -171,6 +188,7 @@ body.light .note .n b{color:#15191F}
         <div class="nav-item" data-page="settings"><span class="ic">⚙</span>Настройки</div>
         <div style="height:1px;background:var(--border);margin:10px 14px"></div>
         <div class="nav-item" id="nav-help" data-page="help"><span class="ic">?</span>Помощь</div>
+        <div class="dim" style="padding:10px 12px 4px">v1.24.0: поиск <b>Ctrl+K</b> (кнопка 🔍 в шапке) ищет по разделам, подразделам, настройкам, командам и сценариям «Помощи», включая прежние термины — watchdog, бесшовное, матрица, SNI, DPI, Voice RTC, Deep Check, аудит, бэкап, SSID. Внутри поиска — избранное (звёздочка) и пять недавних мест.</div>
         <div class="dim" style="padding:10px 12px 4px">v1.23.0: режим «Простой» (по умолчанию) скрывает технические блоки — матрицу 92 тестов, пул SNI, режимы ipset, интервалы; их показывает «Эксперт» (кнопка в шапке или Ctrl+Shift+E). «Стратегии», «Списки», «Журнал», «Профили и копии», «Обновления» и «О программе» открываются кнопками внутри разделов.</div>
       </div>
       <div class="side-foot">
@@ -787,6 +805,58 @@ function demoProgress(){
     if(p>=100) clearInterval(t);
   },90);
 }
+</script>
+<!-- Оверлей поиска (Ctrl+K) — этап 7 -->
+<div class="search-overlay" id="searchOverlay" onclick="if(event.target===this) closeSearch()">
+  <div class="search-card">
+    <div class="search-head">
+      <span class="ic">🔍</span>
+      <input id="searchInput" placeholder="Раздел, настройка или команда: «журнал», «стратегия», «watchdog»…" oninput="renderSearch()">
+      <div class="tbtn" title="Закрыть (Esc)" onclick="closeSearch()">✕</div>
+    </div>
+    <div class="search-body" id="searchBody"></div>
+    <div class="search-foot">↑ ↓ — выбор · Enter — открыть · Esc — закрыть · Индекс включает прежние термины: watchdog, бесшовное, матрица, SNI, DPI, Voice RTC, Deep Check, аудит, бэкап, SSID</div>
+  </div>
+</div>
+
+<script>
+var SEARCH_INDEX = [
+  {t:'Главная', p:'Раздел', page:'home', a:'статус обзор включить обход'},
+  {t:'Обход', p:'Раздел · способ обхода, подбор, DNS, списки', page:'bypass', a:'bypass способ обхода стратегия dns списки'},
+  {t:'Способ обхода (стратегия)', p:'Подраздел · Обход', page:'bypass', a:'стратегия способ обхода winws alt11 sni аргументы'},
+  {t:'Подбор способа обхода', p:'Подраздел · Обход', page:'bypass', a:'подбор матрица 92 теста автоподбор'},
+  {t:'Сложные сайты', p:'Подраздел · Обход', page:'bypass', a:'youtube discord quic sni ipv4 doh'},
+  {t:'Проверки', p:'Раздел · быстрая проверка, сайты и звонки, журнал', page:'diagnostics', a:'проверка диагностика тест'},
+  {t:'Быстрая проверка', p:'Подраздел · Проверки', page:'diagnostics', a:'быстрая мониторинг проверить всё youtube'},
+  {t:'Сайты и звонки (DPI)', p:'Подраздел · Проверки', page:'diagnostics', a:'dpi voice rtc discord голос звонки 34 узла'},
+  {t:'Журнал', p:'Подраздел · Проверки', page:'diagnostics', a:'журнал логи лог отладка debug ошибки'},
+  {t:'Автоматизация', p:'Раздел', page:'automation', a:'автозапуск watchdog расписание автопилот'},
+  {t:'Восстановление (присмотр)', p:'Подраздел · Автоматизация', page:'automation', a:'watchdog бесшовное переключение seamless автоперезапуск кулдаун'},
+  {t:'Профили по сетям', p:'Подраздел · Автоматизация', page:'automation', a:'ssid сети профиль по сети'},
+  {t:'Настройки', p:'Раздел · движок, обновления, профили и копии', page:'settings', a:'настройка параметры конфиг тема'},
+  {t:'Профили и копии', p:'Настройка · Настройки', page:'settings', a:'профили бэкап архив восстановить экспорт импорт'},
+  {t:'Помощь', p:'Подвал меню · пять сценариев', page:'help', a:'не работает что делать сценарии инструкция'},
+  {t:'Проверить обновления движка', p:'Команда', page:'updates', a:'обновление движок update'},
+];
+function openSearch(){ document.getElementById('searchOverlay').classList.add('open'); var i=document.getElementById('searchInput'); i.value=''; renderSearch(); i.focus(); }
+function closeSearch(){ document.getElementById('searchOverlay').classList.remove('open'); }
+function searchHit(item, tokens){ var hay=(item.t+' '+item.p+' '+item.a).toLowerCase().replace(/ё/g,'е'); return tokens.every(function(t){ return hay.indexOf(t)>=0; }); }
+function renderSearch(){
+  var q=document.getElementById('searchInput').value.toLowerCase().replace(/ё/g,'е').trim();
+  var body=document.getElementById('searchBody');
+  var tokens=q?q.split(/\s+/):[];
+  var list=tokens.length?SEARCH_INDEX.filter(function(i){ return searchHit(i,tokens); }):SEARCH_INDEX.slice(0,6);
+  if(!list.length){ body.innerHTML='<div class="sempty">Ничего не найдено по запросу «'+q+'». Попробуйте «журнал», «стратегия», «watchdog» или «отчёт».</div>'; return; }
+  body.innerHTML=list.map(function(i,idx){
+    return '<div class="srow'+(idx===0?' on':'')+'" onclick="searchGo(\''+i.page+'\')"><span class="ic">•</span><span><span class="name">'+i.t+'</span><br><span class="meta">'+i.p+'</span></span><span style="margin-left:auto;opacity:.55">☆</span></div>';
+  }).join('');
+}
+function searchGo(page){ closeSearch(); show(page); }
+document.addEventListener('keydown', function(e){
+  if(e.ctrlKey && (e.key==='k'||e.key==='K')){ e.preventDefault(); openSearch(); }
+  else if(e.key==='Escape'){ closeSearch(); }
+  else if(e.key==='Enter' && document.getElementById('searchOverlay').classList.contains('open')){ searchGo(SEARCH_INDEX[0].page); }
+});
 </script>
 </body>
 </html>
