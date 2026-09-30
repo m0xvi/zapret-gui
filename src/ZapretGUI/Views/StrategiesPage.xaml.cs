@@ -15,6 +15,13 @@ namespace ZapretGui.Views
             DataContext = viewModel;
         }
 
+        /// <summary>«Стратегии» — часть раздела «Обход» с v1.21.0: отдельного пункта меню больше нет.</summary>
+        private void BackToBypass_Click(object sender, RoutedEventArgs e)
+        {
+            var main = (Application.Current.MainWindow as MainWindow)?.DataContext as MainViewModel;
+            main?.Navigate("bypass-center");
+        }
+
         private void StrategyList_MouseDoubleClick(object sender, MouseButtonEventArgs e)
         {
             if (DataContext is not StrategiesViewModel viewModel) return;

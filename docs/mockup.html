@@ -164,13 +164,11 @@ body.light .note .n b{color:#15191F}
     <div class="sidebar">
       <div class="nav" id="nav">
         <div class="nav-item active" data-page="home"><span class="ic">⌂</span>Главная</div>
-        <div class="nav-item" data-page="strategies"><span class="ic">☰</span>Стратегии</div>
-        <div class="nav-item" data-page="automation"><span class="ic">⚡</span>Автоматизация</div>
-        <div class="nav-item" data-page="updates"><span class="ic">⟳</span>Обновления</div>
+        <div class="nav-item" data-page="bypass"><span class="ic">🛡</span>Обход</div>
         <div class="nav-item" data-page="diagnostics"><span class="ic">🛠</span>Проверки</div>
-        <div class="nav-item" data-page="logs"><span class="ic">🗎</span>Журнал</div>
+        <div class="nav-item" data-page="automation"><span class="ic">⚡</span>Автоматизация</div>
         <div class="nav-item" data-page="settings"><span class="ic">⚙</span>Настройки</div>
-        <div class="nav-item" data-page="about"><span class="ic">ⓘ</span>О программе</div>
+        <div class="dim" style="padding:10px 12px 4px">v1.21.0: «Стратегии», «Списки», «Журнал», «Профили и копии», «Обновления» и «О программе» открываются кнопками внутри разделов.</div>
       </div>
       <div class="side-foot">
         <div class="inner-card">
@@ -268,7 +266,29 @@ body.light .note .n b{color:#15191F}
         </div>
       </div>
 
+      <div class="page" id="page-bypass">
+        <div class="row">
+          <div>
+            <h1>Обход</h1>
+            <div class="sub">Чем и что обходим: способ обхода, подбор, DNS, списки и сложные сайты</div>
+          </div>
+          <div style="margin-left:auto"><button class="btn primary">Включить обход</button></div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="section">СОСТАВ РАЗДЕЛА (v1.21.0)</div>
+          <div class="muted"><b>🎯 Стратегия</b> — выбор .bat из каталога движка, бесшовное применение, кнопка «Открыть каталог стратегий».</div>
+          <div class="muted" style="margin-top:6px"><b>🧠 Подбор</b> — перебор стратегий и рекомендация.</div>
+          <div class="muted" style="margin-top:6px"><b>🌐 DNS</b> — профили DNS и проверка подмены (единственное место настройки DNS).</div>
+          <div class="muted" style="margin-top:6px"><b>📋 Списки</b> — hosts, ipset и кнопка «Редактор списков доменов».</div>
+          <div class="muted" style="margin-top:6px"><b>🔥 Сложные сайты</b> — YouTube, тяжёлые игры, фильтр трафика игр.</div>
+          <div class="muted" style="margin-top:6px"><b>🛠 Дополнительно</b> — служба Windows и опасные операции (с подтверждением).</div>
+          <div class="dim" style="margin-top:12px">Пунктов «Стратегии» и «Списки» в меню больше нет: их каталог и редактор открываются кнопками из этих подвкладок.</div>
+        </div>
+      </div>
+
       <div class="page" id="page-strategies">
+        <button class="btn ghost sm goto" data-page="bypass">← В «Обход»</button>
         <div class="row">
           <div>
             <h1>Стратегии</h1>
@@ -327,6 +347,7 @@ body.light .note .n b{color:#15191F}
 
       <!-- ОБНОВЛЕНИЯ -->
       <div class="page" id="page-updates">
+        <button class="btn ghost sm goto" data-page="settings">← В «Настройки»</button>
         <div class="row">
           <div>
             <h1>Обновления</h1>
@@ -471,6 +492,7 @@ body.light .note .n b{color:#15191F}
 
       <!-- ЖУРНАЛ -->
       <div class="page" id="page-logs">
+        <button class="btn ghost sm goto" data-page="diagnostics">← В «Проверки»</button>
         <div class="row">
           <div>
             <h1>Журнал</h1>
@@ -596,6 +618,7 @@ body.light .note .n b{color:#15191F}
 
       <!-- О ПРОГРАММЕ -->
       <div class="page" id="page-about">
+        <button class="btn ghost sm goto" data-page="settings">← В «Настройки»</button>
         <div style="display:flex;gap:16px;align-items:center">
           <div style="width:56px;height:56px;border-radius:16px;background:var(--accent);display:grid;place-items:center;font-size:26px">⚡</div>
           <div><h1 style="margin:0">Zapret GUI</h1><div class="sub" style="margin:2px 0 0">Удобный графический интерфейс для zapret-discord-youtube</div></div>
@@ -658,7 +681,7 @@ body.light .note .n b{color:#15191F}
 </div>
 
 <script>
-document.querySelectorAll('#nav .nav-item').forEach(function(item){
+document.querySelectorAll('#nav .nav-item, .goto').forEach(function(item){
   item.addEventListener('click', function(){ show(item.dataset.page); });
 });
 function show(page){

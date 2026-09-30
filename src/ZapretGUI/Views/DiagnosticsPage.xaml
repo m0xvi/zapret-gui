@@ -796,7 +796,7 @@
                         </StackPanel>
                     </Border>
                     <!-- Отрицательный отступ гасит внутренние поля страницы журнала, чтобы карточки совпадали по краям. -->
-                    <views:LogsPage DataContext="{Binding Logs}" ShowBackButton="False" Height="640"
+                    <views:LogsPage DataContext="{Binding Logs}" Height="640"
                                     Margin="-24,-20,-20,-26" />
                 </StackPanel>
 

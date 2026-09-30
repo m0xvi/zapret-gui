@@ -16,7 +16,6 @@ namespace ZapretGui.ViewModels
         public string Title { get; init; } = "";
         public string Icon { get; init; } = "";
         public string Hint { get; init; } = "";
-        public bool IsSectionHeader { get; init; }
     }
 
     /// <summary>Главная модель: держит настройки, контроллер обхода и все подстраницы.</summary>
@@ -185,26 +184,17 @@ namespace ZapretGui.ViewModels
                 ProfileAutoSwitch.Start();
             }
 
-            // Навигация v1.17.25: имена разделов на языке пользователя (см. docs/IA_REDESIGN.md).
-            // Журнал, Обновления и О программе раньше были недостижимы из меню (только ссылками со страниц) —
-            // теперь это полноценные пункты. Логика страниц и ключей не менялась.
+            // Навигация v1.21.0 (этап 4.5, docs/IA_REDESIGN.md §2): плоский список из 5 разделов, без групп.
+            // Прежние пункты «Стратегии», «Списки», «Журнал», «Профили и копии», «Обновления» и «О программе»
+            // больше не верхний уровень: их страницы открываются кнопками внутри своих разделов
+            // (ключи `_pages` и `Navigate` не тронуты — трей, шапка и старые ссылки работают как раньше).
             NavItems = new ObservableCollection<NavItem>
             {
-                new() { Key = "group-main", Title = "ОСНОВНОЕ", IsSectionHeader = true },
                 new() { Key = "home", Title = "Главная", Icon = "\uE80F", Hint = "Состояние обхода и включение" },
-                new() { Key = "bypass-center", Title = "Обход", Icon = "\uE8D2", Hint = "Стратегии, DNS, списки, hosts, ipset — всё в одном" },
-                new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
+                new() { Key = "bypass-center", Title = "Обход", Icon = "\uE8D2", Hint = "Способ обхода, подбор, DNS, списки, сложные сайты" },
+                new() { Key = "diagnostics", Title = "Проверки", Icon = "\uE90F", Hint = "Быстрая проверка, сайты и звонки, система, журнал" },
                 new() { Key = "automation", Title = "Автоматизация", Icon = "\uE945", Hint = "Автозапуск, присмотр за обходом и расписание" },
-                new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
-                new() { Key = "diagnostics", Title = "Проверки", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check, аудит и отчёты" },
-                new() { Key = "logs", Title = "Журнал", Icon = "\uE81C", Hint = "Ошибки, предупреждения, отладка" },
-                new() { Key = "group-data", Title = "СПИСКИ И ФИЛЬТРЫ", IsSectionHeader = true },
-                new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
-                new() { Key = "profiles", Title = "Профили и копии", Icon = "\uE753", Hint = "Пресеты настроек, копии и сети" },
-                new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
-                new() { Key = "updates", Title = "Обновления", Icon = "\uE895", Hint = "Движок zapret и приложение" },
-                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Тема, автозапуск, уведомления, служба" },
-                new() { Key = "about", Title = "О программе", Icon = "\uE946", Hint = "Версии, лицензия, ссылки" },
+                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Движок и обновления, профили и копии, оформление" },
             };
             // Стартовый пункт ищем по ключу, а не по индексу: состав меню меняется.
             _selectedNav = NavItems.First(i => i.Key == "home");
@@ -626,7 +616,9 @@ namespace ZapretGui.ViewModels
 
         public void Navigate(string key)
         {
-            if (key is "monitoring" or "dpi" or "deep-check" or "results")
+            // «Журнал» с v1.21.0 живёт внутри «Проверок» (вкладка 5), отдельного пункта меню нет —
+            // ключ сохранён, чтобы трей, «Настройки» и «Главная» продолжали работать.
+            if (key is "monitoring" or "dpi" or "deep-check" or "results" or "logs")
             {
                 // Индексы подразделов «Проверок» v1.20.0 (docs/IA_REDESIGN.md §3.3).
                 var tab = key switch
@@ -635,6 +627,7 @@ namespace ZapretGui.ViewModels
                     "dpi" => 1,          // Сложные сайты и звонки
                     "deep-check" => 3,   // Глубокая проверка
                     "results" => 4,      // История и отчёты
+                    "logs" => 5,         // Журнал
                     _ => 0
                 };
                 Diagnostics.SelectedSubTab = tab;
@@ -646,6 +639,25 @@ namespace ZapretGui.ViewModels
                 if (item.Key != key) continue;
                 SelectedNav = item;
                 return;
+            }
+
+            // Вложенные экраны (этап 4.5): самого пункта в меню нет, но подсвечиваем родительский
+            // раздел — так видно, где пользователь находится («Стратегии»/«Списки» → «Обход»,
+            // «Профили и копии»/«Обновления»/«О программе» → «Настройки»).
+            var parentKey = key switch
+            {
+                "strategies" or "user-lists" => "bypass-center",
+                "profiles" or "updates" or "about" => "settings",
+                _ => null
+            };
+            if (parentKey != null)
+            {
+                var parent = NavItems.FirstOrDefault(i => i.Key == parentKey);
+                if (parent != null && !ReferenceEquals(_selectedNav, parent))
+                {
+                    Set(ref _selectedNav, parent, nameof(SelectedNav));
+                    Raise(nameof(SelectedNavKey));
+                }
             }
 
             NavChanged?.Invoke(key);

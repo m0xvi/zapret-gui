@@ -22,16 +22,6 @@ namespace ZapretGui.Views
             DataContextChanged += (_, e) => Attach(e.NewValue as LogsViewModel);
         }
 
-        /// <summary>Кнопка «Назад в Настройки» нужна только на отдельной странице журнала.</summary>
-        public static readonly DependencyProperty ShowBackButtonProperty = DependencyProperty.Register(
-            nameof(ShowBackButton), typeof(bool), typeof(LogsPage), new PropertyMetadata(true));
-
-        public bool ShowBackButton
-        {
-            get => (bool)GetValue(ShowBackButtonProperty);
-            set => SetValue(ShowBackButtonProperty, value);
-        }
-
         private void Attach(LogsViewModel? viewModel)
         {
             if (ReferenceEquals(_viewModel, viewModel)) return;

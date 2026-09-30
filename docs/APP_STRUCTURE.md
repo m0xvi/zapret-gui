@@ -1,6 +1,6 @@
 # Структура приложения Zapret GUI — разделы, подразделы и их функции
 
-> Версия документа: `v1.20.0` (ветка `arena/01a0f306-zapret-gui`, этапы 1–4 информационной архитектуры)
+> Версия документа: `v1.21.0` (ветка `arena/01a0f306-zapret-gui`, этапы 1–4.5 информационной архитектуры)
 > Стек: `C# .NET 8 + WPF (MVVM)`, движок `Flowseal/zapret-discord-youtube` (`bin/winws.exe`, `WinDivert`), служба `zapret`
 > Язык интерфейса: русский. Сборка: `windows-latest` GitHub Actions.
 
@@ -13,7 +13,7 @@
 ## 1. Навигация и каркас
 
 *   **Боковое меню (MainWindow + MainViewModel.NavItems):** переключение страниц, бейджи `Watchdog/Seamless/Мониторинг`, индикатор `BypassState`. Группы `ОСНОВНОЕ / ПРОВЕРКИ / СПИСКИ И ФИЛЬТРЫ / СИСТЕМА`.
-*   **Пункты меню (`v1.17.25`):** `Главная` (`home`) · `Обход` (`bypass-center`) · `Стратегии` (`strategies`) · `Проверки` (`diagnostics`) · `Журнал` (`logs`) · `Списки` (`user-lists`) · `Профили и копии` (`profiles`) · `Обновления` (`updates`) · `Настройки` (`settings`) · `О программе` (`about`). До `v1.17.25` пункты `Журнал`, `Обновления`, `О программе` были недостижимы из меню (открывались только ссылками со страниц), а `Мониторинг` (`monitoring`) — мёртвый ключ. С `v1.20.0` мёртвый экран `MonitoringPage` удалён, а ключи `monitoring`/`dpi`/`deep-check`/`results` в `Navigate` ведут на подвкладки 0/1/3/4 раздела «Проверки» (совместимость со старыми ссылками и треем сохранена). План дальнейшей перестройки — `docs/IA_REDESIGN.md`.
+*   **Пункты меню (`v1.21.0`, этап 4.5 — плоский список из 5 разделов, без групп):** `Главная` (`home`) · `Обход` (`bypass-center`) · `Проверки` (`diagnostics`) · `Автоматизация` (`automation`) · `Настройки` (`settings`). Прежние пункты переехали внутрь разделов (страницы сохранены в `_pages`, вход — кнопками): `Стратегии` — «Обход → Стратегия → Открыть каталог стратегий», `Списки` — «Обход → Списки → Редактор списков доменов», `Журнал` — «Проверки → Журнал» (отдельной страницы нет, ключ `logs` в `Navigate` ведёт на подвкладку 5), `Профили и копии` — «Настройки → Общие → Профили и копии» (и «Автоматизация → Профили по сетям»), `Обновления` — «Настройки → Обновления → Перейти к обновлениям», `О программе` — карточка «Система и информация» в «Настройках». У `Стратегий`, `Списков`, `Профилей` и `Обновлений` есть кнопка возврата в родительский раздел; `NavItem.IsSectionHeader` и его стиль удалены. До `v1.17.25` пункты `Журнал`, `Обновления`, `О программе` были недостижимы из меню (открывались только ссылками со страниц), а `Мониторинг` (`monitoring`) — мёртвый ключ. С `v1.20.0` мёртвый экран `MonitoringPage` удалён, а ключи `monitoring`/`dpi`/`deep-check`/`results` в `Navigate` ведут на подвкладки 0/1/3/4 раздела «Проверки»; с `v1.21.0` туда же ведёт `logs` (подвкладка 5 «Журнал») — совместимость со старыми ссылками, треем и шапкой сохранена. План дальнейшей перестройки — `docs/IA_REDESIGN.md`.
 *   **Шапка и трей:** `TrayIcon` — двойной клик возвращает окно, меню `Запустить/Остановить обход`, `Смена стратегии/DNS/Профиля`, `Игровой режим`, `Логи`, `Выход`. `Balloon` — мягкие уведомления `Watchdog`/`Seamless`/`Мониторинг` без модальных окон.
 *   **Горячие клавиши (GlobalHotkeyService):** `Ctrl+Shift+Z` — переключить обход, `Ctrl+Shift+G` — игровой режим, `Ctrl+Shift+O` — мини-оверлей. Регистрируются на `MainWindow`.
 *   **Мини-оверлей (MiniOverlayWindow / MiniOverlayViewModel):** компактное окно поверх игр — статус обхода, `Uptime`, `Ping`, быстрый `Start/Stop`.
@@ -52,7 +52,7 @@
 *   **YouTube (Тяжёлый случай) — тонкая настройка:** вынесено из глубины настроек — `DisableQuicFake`, `YoutubeSniOverride` (список `YoutubeSniOptions`: `google.com`/`googlevideo.com`/`yt3.ggpht.com`...), `PreferIPv4`, `UseDohForBlocked` — прокси в `AppSettings` → `SettingsStore.Save`.
 *   **Исчерпывающая матрица стратегия×DNS:** `RunMatrixCommand` — `23 стратегии × 4 DNS = 92 теста` (каждый — `TestStrategyAsync` на 16 эндпоинтах `Dns+Tcp+Http`), прогресс `MatrixProgress/Max/Text/Percent/Summary`, `CancelMatrixCommand`, карточка лучшего `MatrixBestText` + `ApplyBestCommand` (`ApplyDnsProfileAsync` + `SwitchTo/InstallService` + `hosts`), таблица `ListView MatrixResults` (`Strategy/Dns/Status/Summary/⭐ IsBest`), `SelectedMatrixEntry`. При прерывании восстанавливает исходный `DNS` и обход.
 
-### 2.3 Стратегии (StrategiesPage / StrategiesViewModel)
+### 2.3 Стратегии (StrategiesPage / StrategiesViewModel) — отдельный экран внутри «Обхода» с `v1.21.0`
 *   **Каталог:** `StrategyStore.Items` — парсинг `general*.bat` (`StrategyParser`), имя/категория `ALT`/`GENERAL`/`EXP`, `ArgsPreview`, `IsRecommended`, `TestResult` (`Passed/Total/AvgMs`).
 *   **Выбор и применение:** `Selected` → `RunAsync` (`StartAsync`/`SwitchTo`/`InstallService` через `StrategyApplicationService.ApplyAsync` бесшовно, без вопроса с `v1.17.24`), `SelectAsDefault` без вопроса.
 *   **Тестирование:** `TestStrategyAsync` (одна стратегия, `ConnectionTester.RunAsync` + `Progress`), `TestAllAsync` (перебор 22-х с `CancellationToken`), `TestProgress`, `IsTestingAll`, кандидаты `StrategyCandidateStore`/`CandidatePreview` (`MakeCandidatePrimary` бесшовно).
@@ -89,13 +89,13 @@
 
 ## 4. СПИСКИ И ФИЛЬТРЫ
 
-### 4.1 Списки (UserListsPage / UserListsViewModel)
+### 4.1 Списки (UserListsPage / UserListsViewModel) — отдельный экран внутри «Обхода» с `v1.21.0`
 *   **Списки:** `list-general.txt` (68), `list-youtube.txt` (38), `list-discord.txt` (23) + `list-*-user.txt` (пользовательские добавления) + `list-general-user` и т.д. Счётчики `CountLines`, двойной клик/Enter — правка.
 *   **IPSet:** `ipset-all.txt` (33048), `ipset-discord.txt`, `ipset-user.txt`, режим `IpsetMode` (`Loaded/None/Any` через `EngineService.Get/SetIpsetMode`), `UpdateIpsetAsync` (скачивание), `SystemIpsText`/`DohIpsText`.
 *   **Игровой фильтр:** `GameFilterMode` (`Disabled/TcpAndUdp/TcpOnly/UdpOnly`), `GameFilterProfileId` + кастом порты, чекбокс `UseGameFilterOnStart`.
 *   **DNS внутри списков:** выбор профиля `SelectedDnsProfile`, отображение `PrimaryServer/SecondaryServer/DohUrl`.
 
-### 4.2 Профили (ProfilesPage / ProfilesViewModel)
+### 4.2 Профили (ProfilesPage / ProfilesViewModel) — открывается из «Настроек» с `v1.21.0`
 *   **Пресеты:** `ProfileManager` — сохранение `AppSettings` + `EnginePath` + `WatchdogEnabled` и т.д. в `UserProfile`. Список `Profiles`, применение `ApplyProfileAsync`, удаление `DeleteProfile` (с `MessageBox`).
 *   **Бэкапы:** `BackupRestoreService` — полные архивы `BackupHistory`, `RestoreBackup`, `DeleteBackup`, `ClearSystem`.
 *   **Сеть:** `NetworkDetector` → `NetworkIdentity` (`Fingerprint/Ssid/DisplayName`), `ProfileAutoSwitchService` (таймер 30с + `NetworkAddressChanged` с дебаунсом 3с, `Cooldown 60с`).
@@ -129,7 +129,7 @@
 *   **Горячие клавиши и игры:** `GameDetectionEnabled`, `AutoGameModeOnLaunch`, `Hotkey` настройки.
 *   **Сброс:** `ResetSettings` → `MessageBox`.
 
-### 5.2 Обновления (UpdatesPage / UpdatesViewModel)
+### 5.2 Обновления (UpdatesPage / UpdatesViewModel) — открывается из «Настроек» с `v1.21.0`
 *   **Движок:** текущая `EngineVersion` (`ReadVersion`), последняя `LatestVersionText` (`GetLatestVersionTextAsync`), `UpdateAvailable` (`CompareVersions`), кнопка `UpdateEngine` (`PrepareForEngineUpdateAsync` → остановка `zapret`+`WinDivert` → `WaitForDriverUnloadAsync` → `CopyEngine` → восстановление), `AutoCheckEngineUpdates`.
 *   **GUI:** `GuiUpdateService` (`CheckGuiUpdates`, `DefaultRepository` `m0xvi/zapret-gui`), `AutoCheckGuiUpdates`, `InstallGuiUpdate` (замена `exe` через копию).
 

@@ -708,28 +708,6 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-        <Style.Triggers>
-            <DataTrigger Binding="{Binding IsSectionHeader}" Value="True">
-                <Setter Property="IsHitTestVisible" Value="False" />
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="Cursor" Value="Arrow" />
-                <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
-                <Setter Property="FontSize" Value="10.5" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Padding" Value="12,12,12,4" />
-                <Setter Property="Margin" Value="10,8,10,0" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="ListBoxItem">
-                            <TextBlock Text="{Binding Title}" Foreground="{TemplateBinding Foreground}"
-                                       FontSize="{TemplateBinding FontSize}"
-                                       FontWeight="{TemplateBinding FontWeight}"
-                                       Padding="{TemplateBinding Padding}" />
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </DataTrigger>
-        </Style.Triggers>
     </Style>
 
     <Style x:Key="RowItemStyle" TargetType="ListBoxItem">

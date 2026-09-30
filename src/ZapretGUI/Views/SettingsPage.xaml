@@ -146,6 +146,23 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Профили и копии: с v1.21.0 отдельного пункта меню нет — вход из «Настроек» -->
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ПРОФИЛИ И КОПИИ" Margin="0,0,0,2" />
+                            <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
+                                       Text="Пресеты настроек, полные резервные копии (ZIP), перенос на другой ПК и «сбросить всё» — на отдельном экране." />
+                        </StackPanel>
+                        <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Открыть профили и копии" VerticalAlignment="Center"
+                                Command="{Binding OpenProfilesCommand}" ToolTip="Профили, резервные копии и портативный режим" />
+                    </Grid>
+                </Border>
+
                 <!-- О путях — свёрнуто, для продвинутых -->
                 <Expander Margin="0,14,0,0" IsExpanded="False" Background="Transparent" BorderThickness="0">
                     <Expander.Header>
@@ -730,7 +747,7 @@
                 <Border Style="{StaticResource Card}" Margin="0,12,0,0">
                     <StackPanel>
                         <TextBlock Style="{StaticResource SectionText}" Text="ДРУГИЕ РАЗДЕЛЫ" />
-                        <TextBlock Style="{StaticResource DimText}" Text="Журнал и О программе — отдельные вкладки справа, или через боковое меню." FontSize="11" TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource DimText}" Text="Журнал живёт в разделе «Проверки» (вкладка «Журнал»); «О программе» — отдельный экран." FontSize="11" TextWrapping="Wrap" />
                         <WrapPanel Margin="0,10,0,0">
                             <Button Style="{StaticResource SecondaryButton}" Content="Журнал" Padding="12,7" Command="{Binding OpenLogsCommand}" />
                             <Button Style="{StaticResource GhostButton}" Content="О программе" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenAboutCommand}" />

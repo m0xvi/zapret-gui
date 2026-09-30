@@ -36,7 +36,6 @@ namespace ZapretGui.Views
             _pages["diagnostics"] = new DiagnosticsPage(_vm.Diagnostics);
             _pages["deep-check"] = new DeepCheckPage(_vm.DeepCheck);
             _pages["dpi"] = new DpiPage(_vm.Diagnostics);
-            _pages["logs"] = new LogsPage(_vm.Logs);
             _pages["user-lists"] = new UserListsPage(_vm.UserLists);
             _pages["profiles"] = new ProfilesPage(_vm.Profiles);
             _pages["settings"] = new SettingsPage(_vm.SettingsPage);
@@ -344,7 +343,7 @@ namespace ZapretGui.Views
                 // TakeOver / Import: запускаем обход через GUI
                 if (!EngineService.IsEngineReady(_vm.Settings.EnginePath))
                 {
-                    _vm.Home.ShowWarning("Старый запрет выключен. Установите движок на странице «Обновления».");
+                    _vm.Home.ShowWarning("Старый запрет выключен. Установите движок в «Настройках» → «Обновления».");
                     _vm.Navigate("updates");
                     return;
                 }
