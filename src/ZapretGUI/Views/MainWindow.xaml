@@ -403,13 +403,13 @@
                             <TextBlock Text="{Binding GlobalOverlay.Status}" Margin="0,10,0,0"
                                        Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" TextAlignment="Center" FontWeight="SemiBold" Style="{StaticResource BodyText}" />
                             <!-- Анимированный процесс: серый текст, растворение вниз / появление сверху вместо статичного 'не закрывайте окно' -->
-                            <TextBlock x:Name="OverlayDetailsText" Text="{Binding GlobalOverlay.Details, NotifyOnTargetUpdated=True}" Margin="0,6,0,0" Style="{StaticResource DimText}"
+                            <TextBlock x:Name="OverlayDetailsText" Text="{Binding GlobalOverlay.Details, NotifyOnTargetUpdated=True}" Margin="0,6,0,0"
                                        Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" Opacity="0.85">
                                 <TextBlock.RenderTransform>
                                     <TranslateTransform Y="0" />
                                 </TextBlock.RenderTransform>
                                 <TextBlock.Style>
-                                    <Style TargetType="TextBlock">
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource DimText}">
                                         <Style.Triggers>
                                             <EventTrigger RoutedEvent="Binding.TargetUpdated">
                                                 <BeginStoryboard>
