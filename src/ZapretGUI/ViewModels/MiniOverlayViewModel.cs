@@ -60,7 +60,8 @@ namespace ZapretGui.ViewModels
 
             if (_main.Bypass.GetStatus().IsRunning)
             {
-                await _main.Bypass.StartAsync(nextStrat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+                var res = await _main.Bypass.SwitchToStrategyAsync(nextStrat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+                if (!res.Ok) AppLog.SvcWarn("Смена стратегии через мини-оверлей не удалась: " + res.Message);
             }
 
             _main.Home.RefreshStatus();

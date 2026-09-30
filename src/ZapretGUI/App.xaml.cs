@@ -24,6 +24,35 @@ namespace ZapretGui
         {
             base.OnStartup(e);
 
+            // Фикс бага селектов в ScrollViewer: при скролле Popup остаётся на старом месте и скроллится вместе со страницей (скрин 2: метрики 60 сек)
+            // Глобально закрываем все открытые ComboBox при любом скролле
+            System.Windows.EventManager.RegisterClassHandler(typeof(System.Windows.Controls.ScrollViewer), System.Windows.Controls.ScrollViewer.ScrollChangedEvent, new System.Windows.Controls.ScrollChangedEventHandler((s, e) =>
+            {
+                if (e.VerticalChange == 0 && e.HorizontalChange == 0) return;
+                try
+                {
+                    foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                    {
+                        CloseOpenComboBoxes(win);
+                    }
+                }
+                catch {}
+            }));
+
+            void CloseOpenComboBoxes(System.Windows.DependencyObject depObj)
+            {
+                if (depObj == null) return;
+                int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(depObj);
+                for (int i = 0; i < count; i++)
+                {
+                    var child = System.Windows.Media.VisualTreeHelper.GetChild(depObj, i);
+                    if (child is System.Windows.Controls.ComboBox cb && cb.IsDropDownOpen)
+                        cb.IsDropDownOpen = false;
+                    else
+                        CloseOpenComboBoxes(child);
+                }
+            }
+
             // Временная копия приложения выполняет замену exe после завершения
             // основного процесса и не создаёт обычное окно.
             if (GuiUpdateService.IsUpdaterMode(e.Args))

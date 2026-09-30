@@ -86,12 +86,21 @@ namespace ZapretGui.Core
                 if (Buffer.Count > MaxBuffer) Buffer.RemoveRange(0, Buffer.Count - MaxBuffer);
             }
 
+            // Файл — в фоне, чтобы UI-поток не вис при живой отладке winws.exe
             try
             {
-                Rotate();
-                File.AppendAllText(AppPaths.LogFile, entry + Environment.NewLine, Encoding.UTF8);
+                var line = entry + Environment.NewLine;
+                System.Threading.Tasks.Task.Run(() =>
+                {
+                    try
+                    {
+                        lock (Gate) { Rotate(); }
+                        File.AppendAllText(AppPaths.LogFile, line, Encoding.UTF8);
+                    }
+                    catch { }
+                });
             }
-            catch { /* логи не должны ломать приложение */ }
+            catch { }
 
             try { EntryAdded?.Invoke(entry); } catch { }
         }
