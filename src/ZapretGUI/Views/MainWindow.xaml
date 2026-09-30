@@ -10,6 +10,26 @@
         StateChanged="Window_StateChanged"
         AutomationProperties.Name="Главное окно Zapret GUI">
 
+    <Window.Resources>
+        <!-- Шаблон пункта меню: используется и списком разделов, и подвалом («Помощь»). -->
+        <DataTemplate x:Key="NavItemTemplate">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding Icon}" FontFamily="{DynamicResource IconFont}"
+                           FontSize="15" Width="24" VerticalAlignment="Center" />
+                <StackPanel Grid.Column="1" Margin="2,0,0,0" VerticalAlignment="Center">
+                    <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding Hint}" Style="{StaticResource DimText}" FontSize="10.5"
+                               TextTrimming="CharacterEllipsis" Opacity="0.85"
+                               Visibility="{Binding Hint, Converter={StaticResource StringToVis}}" />
+                </StackPanel>
+            </Grid>
+        </DataTemplate>
+    </Window.Resources>
+
     <shell:WindowChrome.WindowChrome>
         <shell:WindowChrome CaptionHeight="46" ResizeBorderThickness="6" GlassFrameThickness="0"
                             CornerRadius="0" UseAeroCaptionButtons="False" />
@@ -162,51 +182,44 @@
                         <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
 
+                    <!-- Пять разделов (этап 4.5). «Помощь» — отдельно, в подвале меню ниже. -->
                     <ListBox x:Name="NavList" Style="{StaticResource PlainListBox}" Margin="0,12,0,0"
                              KeyboardNavigation.TabNavigation="Local"
                              AutomationProperties.Name="Разделы приложения"
-                             ItemsSource="{Binding NavItems}" SelectedItem="{Binding SelectedNav, Mode=TwoWay}"
-                             ItemContainerStyle="{StaticResource NavItemStyle}">
-                        <ListBox.ItemTemplate>
-                            <DataTemplate>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="Auto" />
-                                        <ColumnDefinition Width="*" />
-                                    </Grid.ColumnDefinitions>
-                                    <TextBlock Text="{Binding Icon}" FontFamily="{DynamicResource IconFont}"
-                                               FontSize="15" Width="24" VerticalAlignment="Center" />
-                                    <StackPanel Grid.Column="1" Margin="2,0,0,0" VerticalAlignment="Center">
-                                        <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
-                                        <TextBlock Text="{Binding Hint}" Style="{StaticResource DimText}" FontSize="10.5"
-                                                   TextTrimming="CharacterEllipsis" Opacity="0.85"
-                                                   Visibility="{Binding Hint, Converter={StaticResource StringToVis}}" />
-                                    </StackPanel>
-                                </Grid>
-                            </DataTemplate>
-                        </ListBox.ItemTemplate>
-                    </ListBox>
+                             ItemsSource="{Binding NavSections}" SelectedItem="{Binding SelectedNav, Mode=TwoWay}"
+                             ItemContainerStyle="{StaticResource NavItemStyle}"
+                             ItemTemplate="{StaticResource NavItemTemplate}" />
 
-                    <StackPanel Grid.Row="1" Margin="14,0,14,14">
-                        <Border Style="{StaticResource InnerCard}" Margin="0,0,0,10">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource DimText}" Text="ВЕРСИЯ ДВИЖКА" />
-                                <TextBlock Text="{Binding EngineVersionText}" FontSize="14" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextBrush}" Margin="0,3,0,3" />
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Home.EnginePathText}"
-                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Home.EnginePathText}" />
-                            </StackPanel>
-                        </Border>
-                        <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}"
-                                HorizontalAlignment="Center" Margin="0,0,0,6"
-                                Visibility="{Binding ExpertModeBadgeVisible, Converter={StaticResource BoolToVis}}"
-                                ToolTip="Включён режим «Эксперт»: видны технические блоки (Ctrl+Shift+E)">
-                            <TextBlock Text="{Binding ExpertModeBadgeText}" FontSize="10" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource AccentBrush}" />
-                        </Border>
-                        <TextBlock Style="{StaticResource DimText}"
-                                   Text="{Binding AppVersion, StringFormat=Zapret GUI {0} · лицензия MIT}"
+                    <StackPanel Grid.Row="1" Margin="0,0,0,14">
+                        <!-- Подвал меню: «Помощь» — утилита вне пяти разделов (этап 6, docs/IA_REDESIGN.md §3.6) -->
+                        <Border Height="1" Background="{DynamicResource BorderBrush}" Margin="14,0,14,10" />
+                        <ListBox x:Name="NavUtilityList" Style="{StaticResource PlainListBox}" Margin="0,0,0,10"
+                                 KeyboardNavigation.TabNavigation="Local"
+                                 AutomationProperties.Name="Помощь"
+                                 ItemsSource="{Binding NavUtilities}" SelectedItem="{Binding SelectedUtility, Mode=TwoWay}"
+                                 ItemContainerStyle="{StaticResource NavItemStyle}"
+                                 ItemTemplate="{StaticResource NavItemTemplate}" />
+                        <StackPanel Margin="14,0,14,0">
+                            <Border Style="{StaticResource InnerCard}" Margin="0,0,0,10">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource DimText}" Text="ВЕРСИЯ ДВИЖКА" />
+                                    <TextBlock Text="{Binding EngineVersionText}" FontSize="14" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextBrush}" Margin="0,3,0,3" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding Home.EnginePathText}"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding Home.EnginePathText}" />
+                                </StackPanel>
+                            </Border>
+                            <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}"
+                                    HorizontalAlignment="Center" Margin="0,0,0,6"
+                                    Visibility="{Binding ExpertModeBadgeVisible, Converter={StaticResource BoolToVis}}"
+                                    ToolTip="Включён режим «Эксперт»: видны технические блоки (Ctrl+Shift+E)">
+                                <TextBlock Text="{Binding ExpertModeBadgeText}" FontSize="10" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentBrush}" />
+                            </Border>
+                            <TextBlock Style="{StaticResource DimText}"
+                                       Text="{Binding AppVersion, StringFormat=Zapret GUI {0} · лицензия MIT}"
                                    HorizontalAlignment="Center" />
+                        </StackPanel>
                     </StackPanel>
                 </Grid>
             </Border>

@@ -12,7 +12,8 @@ check_bindings.py — статическая проверка XAML проект�
       StrategyCandidateEvaluation, SavedStrategyCandidate, ConnectionCheck,
       DiagnosticItem, LogEntry, NavItem).
   2. Второй сегмент пути (Some.Property) — существует ли свойство у типа-владельца.
-  3. {StaticResource X} / {DynamicResource X} — объявлен ли ключ в Themes/ или App.xaml.
+  3. {StaticResource X} / {DynamicResource X} — объявлен ли ключ в Themes/, App.xaml или локальных
+     ресурсах страниц (Views/*.xaml).
   4. Click="Handler" — есть ли метод Handler в соответствующем code-behind.
 
 Запуск из корня репозитория:  python3 tools/check_bindings.py
@@ -40,6 +41,7 @@ PAGE_VM = {
     "UserListsPage": ["UserListsViewModel"],
     "ProfilesPage": ["ProfilesViewModel"],
     "LogsPage": ["LogsViewModel"],
+    "HelpPage": ["HelpViewModel"],
     "SettingsPage": ["SettingsViewModel"],
     "AboutPage": ["MainViewModel"],
     "MainWindow": ["MainViewModel"],
@@ -127,8 +129,15 @@ def collect_members():
 
 
 def collect_resource_keys():
+    """Ключи ресурсов: темы и App.xaml + локальные ресурсы страниц (Window.Resources и т.п.).
+
+    Локальный ключ виден только внутри своей страницы, поэтому проверка «ключ объявлен»
+    остаётся приблизительной — она ловит опечатки, а не области видимости.
+    """
     keys = set()
-    for path in glob.glob(os.path.join(SRC, "Themes", "*.xaml")) + [os.path.join(SRC, "App.xaml")]:
+    for path in glob.glob(os.path.join(SRC, "Themes", "*.xaml")) + \
+                glob.glob(os.path.join(SRC, "Views", "*.xaml")) + \
+                [os.path.join(SRC, "App.xaml")]:
         keys.update(re.findall(r'x:Key="([^"]+)"', read(path)))
     return keys
 

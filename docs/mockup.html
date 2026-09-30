@@ -169,7 +169,9 @@ body.light .note .n b{color:#15191F}
         <div class="nav-item" data-page="diagnostics"><span class="ic">🛠</span>Проверки</div>
         <div class="nav-item" data-page="automation"><span class="ic">⚡</span>Автоматизация</div>
         <div class="nav-item" data-page="settings"><span class="ic">⚙</span>Настройки</div>
-        <div class="dim" style="padding:10px 12px 4px">v1.22.0: режим «Простой» (по умолчанию) скрывает технические блоки — матрицу 92 тестов, пул SNI, режимы ipset, интервалы; их показывает «Эксперт» (кнопка в шапке или Ctrl+Shift+E). «Стратегии», «Списки», «Журнал», «Профили и копии», «Обновления» и «О программе» открываются кнопками внутри разделов.</div>
+        <div style="height:1px;background:var(--border);margin:10px 14px"></div>
+        <div class="nav-item" id="nav-help" data-page="help"><span class="ic">?</span>Помощь</div>
+        <div class="dim" style="padding:10px 12px 4px">v1.23.0: режим «Простой» (по умолчанию) скрывает технические блоки — матрицу 92 тестов, пул SNI, режимы ipset, интервалы; их показывает «Эксперт» (кнопка в шапке или Ctrl+Shift+E). «Стратегии», «Списки», «Журнал», «Профили и копии», «Обновления» и «О программе» открываются кнопками внутри разделов.</div>
       </div>
       <div class="side-foot">
         <div class="inner-card">
@@ -618,6 +620,66 @@ body.light .note .n b{color:#15191F}
       </div>
 
       <!-- О ПРОГРАММЕ -->
+      <div class="page" id="page-help">
+        <div style="display:flex;gap:16px;align-items:center">
+          <div style="width:56px;height:56px;border-radius:16px;background:var(--info);display:grid;place-items:center;font-size:26px">?</div>
+          <div><h1 style="margin:0">Помощь</h1><div class="sub" style="margin:2px 0 0">Пять частых ситуаций и что делать. Помощь объясняет — Проверки делают.</div></div>
+        </div>
+
+        <div class="card" style="margin-top:18px">
+          <div class="section">НЕ ОТКРЫВАЕТСЯ YOUTUBE</div>
+          <div class="muted">1. Включите обход на «Главной» (Ctrl+Shift+Z).<br>2. «Проверки → Быстрая проверка» — 2–3 минуты, обход не останавливается.<br>3. Не помогло — «Обход → Сложные сайты»: QUIC fake и другой способ обхода.</div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn primary sm goto" data-page="diagnostics">Проверить YouTube</button>
+            <button class="btn ghost sm goto" data-page="bypass">Открыть «Сложные сайты»</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section">ПРОПАЛ ГОЛОС В DISCORD</div>
+          <div class="muted">1. Убедитесь, что обход включён.<br>2. «Проверки → Сайты и звонки» → «Проверить голос Discord».<br>3. Висит «Подключение к RTC» — там же «Очистить кэш и сбросить сеть (1 клик)» и перезапуск Discord.</div>
+          <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm goto" data-page="diagnostics">Проверить голос</button></div>
+        </div>
+
+        <div class="card">
+          <div class="section">ПРОПАЛ ИНТЕРНЕТ ПОСЛЕ УСТАНОВКИ</div>
+          <div class="muted">1. Нажмите «Выключить обход» (та же кнопка, что на «Главной»).<br>2. Не помогло — «Проверки → Система»: «Сбросить сеть (winsock + ip)» и перезагрузка.<br>3. Предупреждение про старую сборку — «Решить конфликт» в баннере на «Главной».</div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn sm goto" data-page="home">Выключить обход</button>
+            <button class="btn ghost sm goto" data-page="diagnostics">Полный сброс сети</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section">ЛАГАЮТ ИГРЫ</div>
+          <div class="muted">1. Включите «Игровой режим» (Ctrl+Shift+G).<br>2. Обход не выключайте: часть лаунчеров и голосовых каналов работает только с ним.<br>3. Нужен фильтр портов — «Обход → Сложные сайты → Тяжёлые игры».</div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn sm goto" data-page="home">Игровой режим</button>
+            <button class="btn ghost sm goto" data-page="bypass">Фильтр трафика игр</button>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="section">ХОЧУ ВЕРНУТЬ КАК БЫЛО</div>
+          <div class="muted">1. «Настройки → Профили и копии» → «Восстановить из выбранного архива».<br>2. Нет архива — «Создать полный архив (ZIP)»: настройки, профили, списки и история.<br>3. Убрать всё — «Полная очистка следов в Windows» (движок и ваши списки останутся).</div>
+          <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm goto" data-page="settings">Открыть «Профили и копии»</button></div>
+        </div>
+
+        <div class="card">
+          <div class="section">КАК ЭТО РАБОТАЕТ</div>
+          <div class="muted">• Обход — не VPN: пакеты переписываются на месте, трафик не идёт через чужой сервер.<br>• Способ обхода (стратегия) — набор правил для winws.exe; у разных провайдеров работают разные.<br>• Служба держит обход включённым до входа в Windows и после закрытия приложения.<br>• DNS — «телефонная книга»: при подмене ответов сайт не откроется даже с рабочим обходом («Обход → DNS»).<br>• Иногда не помогает, потому что провайдер меняет правила — помогает новый подбор, другой DNS или переключение QUIC fake.</div>
+        </div>
+
+        <div class="card">
+          <div class="section">НЕ ПОМОГЛО? ОТПРАВЬТЕ ОТЧЁТ</div>
+          <div class="muted">Архив собирает журнал, результаты проверок и версии в один файл. Приложение ничего не отправляет само — файл сохраняется туда, куда вы укажете.</div>
+          <div style="display:flex;gap:8px;margin-top:10px">
+            <button class="btn primary sm goto" data-page="diagnostics">Собрать архив отчёта (ZIP)</button>
+            <button class="btn ghost sm goto" data-page="logs">Открыть журнал</button>
+          </div>
+        </div>
+      </div>
+
       <div class="page" id="page-about">
         <button class="btn ghost sm goto" data-page="settings">← В «Настройки»</button>
         <div style="display:flex;gap:16px;align-items:center">
@@ -682,11 +744,11 @@ body.light .note .n b{color:#15191F}
 </div>
 
 <script>
-document.querySelectorAll('#nav .nav-item, .goto').forEach(function(item){
+document.querySelectorAll('#nav .nav-item, #nav-help, .goto').forEach(function(item){
   item.addEventListener('click', function(){ show(item.dataset.page); });
 });
 function show(page){
-  document.querySelectorAll('#nav .nav-item').forEach(function(i){ i.classList.toggle('active', i.dataset.page===page); });
+  document.querySelectorAll('#nav .nav-item, #nav-help').forEach(function(i){ i.classList.toggle('active', i.dataset.page===page); });
   document.querySelectorAll('.page').forEach(function(p){ p.classList.toggle('active', p.id==='page-'+page); });
   document.querySelector('.content').scrollTop = 0;
 }

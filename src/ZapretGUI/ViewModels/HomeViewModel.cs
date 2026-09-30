@@ -82,6 +82,8 @@ namespace ZapretGui.ViewModels
                 _main.Navigate("bypass-center");
             });
             OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
+            // «Требует внимания» → сценарии «Помощи» (этап 6): объяснение без технических терминов
+            OpenHelpCommand = new RelayCommand(() => _main.Navigate("help"));
             OpenDiagnosticsCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
             OpenFirstLaunchCommand = new RelayCommand(() => _main.Navigate("first-run"));
             OpenStrategiesCommand = new RelayCommand(() => _main.Navigate("strategies"));
@@ -567,6 +569,7 @@ namespace ZapretGui.ViewModels
         public ICommand OpenChecksCommand { get; }
         public ICommand OpenBypassCommand { get; }
         public ICommand OpenLogsCommand { get; }
+        public ICommand OpenHelpCommand { get; }
         public ICommand TestConnectionCommand { get; }
         public ICommand AddConnectionTargetCommand { get; }
         public ICommand EditConnectionTargetCommand { get; }

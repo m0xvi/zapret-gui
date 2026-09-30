@@ -134,8 +134,12 @@
                                             <TextBlock Text="Сначала проверьте готовность" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="12" Foreground="{DynamicResource TextBrush}" />
                                             <TextBlock Text="{Binding ReadinessDetails}" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0" />
                                         </StackPanel>
-                                        <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Исправить" Padding="12,6" MinHeight="30" VerticalAlignment="Center"
-                                                Command="{Binding OpenDiagnosticsCommand}" ToolTip="Открыть диагностику и исправить проблемы (BFE, прокси, VPN)" />
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                            <Button Style="{StaticResource SecondaryButton}" Content="Исправить" Padding="12,6" MinHeight="30"
+                                                    Command="{Binding OpenDiagnosticsCommand}" ToolTip="Открыть диагностику и исправить проблемы (BFE, прокси, VPN)" />
+                                            <Button Style="{StaticResource GhostButton}" Content="Что это значит?" Margin="0,6,0,0" Padding="10,5" MinHeight="26" FontSize="11"
+                                                    Command="{Binding OpenHelpCommand}" ToolTip="Открыть «Помощь»: простыми словами, что делать в этой ситуации" />
+                                        </StackPanel>
                                     </Grid>
                                 </Border>
 

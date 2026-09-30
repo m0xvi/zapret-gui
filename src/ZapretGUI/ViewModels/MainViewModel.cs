@@ -24,7 +24,9 @@ namespace ZapretGui.ViewModels
         private readonly DispatcherTimer _timer;
         private readonly DispatcherTimer _toolbarMetricsTimer;
         private Views.TaskbarMetricsWindow? _taskbarMetricsWindow;
-        private NavItem _selectedNav;
+        private NavItem? _selectedNav;
+        private NavItem? _selectedUtility;
+        private bool _isHelpActive;
         private bool _isAdmin;
         private DateTime _lastPingProbeTime = DateTime.MinValue;
         private bool _isPingProbing;
@@ -67,6 +69,7 @@ namespace ZapretGui.ViewModels
             FirstLaunch = new FirstLaunchViewModel(this);
             Logs = new LogsViewModel(this);
             SettingsPage = new SettingsViewModel(this);
+            Help = new HelpViewModel(this);
 
             GameDetector = new GameDetectionService(settings);
             Hotkeys = new GlobalHotkeyService(settings);
@@ -193,10 +196,11 @@ namespace ZapretGui.ViewModels
             }
 
             // Навигация v1.21.0 (этап 4.5, docs/IA_REDESIGN.md §2): плоский список из 5 разделов, без групп.
+            // «Помощь» (этап 6) — утилита в подвале меню: своя коллекция, поэтому разделов по-прежнему пять.
             // Прежние пункты «Стратегии», «Списки», «Журнал», «Профили и копии», «Обновления» и «О программе»
             // больше не верхний уровень: их страницы открываются кнопками внутри своих разделов
             // (ключи `_pages` и `Navigate` не тронуты — трей, шапка и старые ссылки работают как раньше).
-            NavItems = new ObservableCollection<NavItem>
+            NavSections = new ObservableCollection<NavItem>
             {
                 new() { Key = "home", Title = "Главная", Icon = "\uE80F", Hint = "Состояние обхода и включение" },
                 new() { Key = "bypass-center", Title = "Обход", Icon = "\uE8D2", Hint = "Способ обхода, подбор, DNS, списки, сложные сайты" },
@@ -204,8 +208,13 @@ namespace ZapretGui.ViewModels
                 new() { Key = "automation", Title = "Автоматизация", Icon = "\uE945", Hint = "Автозапуск, присмотр за обходом и расписание" },
                 new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Движок и обновления, профили и копии, оформление" },
             };
+            NavUtilities = new ObservableCollection<NavItem>
+            {
+                new() { Key = "help", Title = "Помощь", Icon = "\uE897", Hint = "Не работает? Пять сценариев и переходы" },
+            };
+            NavItems = new ObservableCollection<NavItem>(NavSections.Concat(NavUtilities));
             // Стартовый пункт ищем по ключу, а не по индексу: состав меню меняется.
-            _selectedNav = NavItems.First(i => i.Key == "home");
+            _selectedNav = NavSections.First(i => i.Key == "home");
 
             _isAdmin = Shell.IsAdmin();
 
@@ -262,15 +271,26 @@ namespace ZapretGui.ViewModels
         public LogsViewModel Logs { get; }
         public MonitoringViewModel Monitoring { get; }
 
+        /// <summary>«Помощь» — только тексты и переходы (этап 6, docs/IA_REDESIGN.md §3.6).</summary>
+        public HelpViewModel Help { get; }
+
+        /// <summary>Пять разделов верхнего уровня (основной список меню).</summary>
+        public ObservableCollection<NavItem> NavSections { get; }
+
+        /// <summary>Утилиты подвала меню: «Помощь». Отдельная коллекция, чтобы разделов оставалось пять.</summary>
+        public ObservableCollection<NavItem> NavUtilities { get; }
+
+        /// <summary>Все пункты навигации (разделы + подвал) — для `Navigate` и подсветки.</summary>
         public ObservableCollection<NavItem> NavItems { get; }
 
-        public NavItem SelectedNav
+        public NavItem? SelectedNav
         {
             get => _selectedNav;
             set
             {
                 if (Set(ref _selectedNav, value))
                 {
+                    if (value != null) SetSelectedUtility(null);
                     Raise(nameof(SelectedNavKey));
                     NavChanged?.Invoke(value?.Key ?? "home");
                 }
@@ -278,6 +298,46 @@ namespace ZapretGui.ViewModels
         }
 
         public string SelectedNavKey => _selectedNav?.Key ?? "home";
+
+        /// <summary>Выбор в подвале меню («Помощь»). Отдельно от <see cref="SelectedNav"/>: два списка
+        /// не должны сбрасывать выбор друг друга (сброс основного списка уводил бы на «Главную»).</summary>
+        public NavItem? SelectedUtility
+        {
+            get => _selectedUtility;
+            set
+            {
+                if (!Set(ref _selectedUtility, value)) return;
+                if (value != null) OpenHelp();
+            }
+        }
+
+        /// <summary>Подсвечена ли «Помощь» — для стиля пункта в подвале меню.</summary>
+        public bool IsHelpActive
+        {
+            get => _isHelpActive;
+            private set => Set(ref _isHelpActive, value);
+        }
+
+        /// <summary>Открыть «Помощь»: раздел вне пяти разделов, поэтому подсветку разделов снимаем
+        /// без `NavChanged` (иначе сработала бы навигация на «Главную»).</summary>
+        public void OpenHelp()
+        {
+            if (_selectedNav != null)
+            {
+                Set(ref _selectedNav, null, nameof(SelectedNav));
+                Raise(nameof(SelectedNavKey));
+            }
+            IsHelpActive = true;
+            NavChanged?.Invoke("help");
+        }
+
+        /// <summary>Подсветка пункта подвала меню (этап 6).</summary>
+        private void SetSelectedUtility(NavItem? item)
+        {
+            if (ReferenceEquals(_selectedUtility, item)) return;
+            _selectedUtility = item;
+            Raise(nameof(SelectedUtility));
+        }
 
         public event Action<string>? NavChanged;
 
@@ -677,6 +737,13 @@ namespace ZapretGui.ViewModels
 
         public void Navigate(string key)
         {
+            // «Помощь» живёт в подвале меню (этап 6) — открывается своим путём.
+            if (key == "help")
+            {
+                OpenHelp();
+                return;
+            }
+
             // «Журнал» с v1.21.0 живёт внутри «Проверок» (вкладка 5), отдельного пункта меню нет —
             // ключ сохранён, чтобы трей, «Настройки» и «Главная» продолжали работать.
             if (key is "monitoring" or "dpi" or "deep-check" or "results" or "logs")
@@ -703,6 +770,10 @@ namespace ZapretGui.ViewModels
                 SelectedNav = item;
                 return;
             }
+
+            // Вложенный экран или старый ключ: подсветка «Помощи» в подвале снимается.
+            IsHelpActive = false;
+            SetSelectedUtility(null);
 
             // Вложенные экраны (этап 4.5): самого пункта в меню нет, но подсвечиваем родительский
             // раздел — так видно, где пользователь находится («Стратегии»/«Списки» → «Обход»,
