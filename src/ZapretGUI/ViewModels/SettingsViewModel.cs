@@ -25,7 +25,9 @@ namespace ZapretGui.ViewModels
         private bool _isProviderLookupBusy;
         private int _selectedTabIndex;
 
-        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления", "📄 Журнал", "ℹ️ О программе" };
+        // v1.20.0: вкладки «Журнал» и «О программе» убраны — журнал живёт в «Проверках»,
+        // о программе — отдельным пунктом меню (docs/IA_REDESIGN.md §4.1).
+        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления" };
 
         public int SelectedTabIndex
         {
@@ -40,8 +42,6 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsAppearanceTabSelected));
                     Raise(nameof(IsGamingTabSelected));
                     Raise(nameof(IsUpdatesTabSelected));
-                    Raise(nameof(IsLogsTabSelected));
-                    Raise(nameof(IsAboutTabSelected));
                     Raise(nameof(SelectedTabHint));
                 }
             }
@@ -81,18 +81,6 @@ namespace ZapretGui.ViewModels
         {
             get => _selectedTabIndex == 5;
             set { if (value) SelectedTabIndex = 5; }
-        }
-
-        public bool IsLogsTabSelected
-        {
-            get => _selectedTabIndex == 6;
-            set { if (value) SelectedTabIndex = 6; }
-        }
-
-        public bool IsAboutTabSelected
-        {
-            get => _selectedTabIndex == 7;
-            set { if (value) SelectedTabIndex = 7; }
         }
 
         public bool SeamlessFailoverEnabled

@@ -63,12 +63,15 @@ namespace ZapretGui.ViewModels
             RunDpiCommand = new AsyncRelayCommand(RunDpiAsync, () => !IsRunning && !IsDpiRunning);
             CancelDpiCommand = new RelayCommand(CancelDpi, () => IsDpiRunning);
             OpenDpiCommand = new RelayCommand(() => _main.Navigate("dpi"));
+            // Индексы вкладок v1.20.0 (docs/IA_REDESIGN.md §3.3): 0 Быстрая проверка · 1 Сложные сайты и звонки
+            // (DPI + голос Discord) · 2 Система · 3 Глубокая проверка · 4 История и отчёты · 5 Журнал.
             SelectExpressTabCommand = new RelayCommand(() => SelectedSubTab = 0);
             SelectDpiTabCommand = new RelayCommand(() => SelectedSubTab = 1);
-            SelectDeepCheckTabCommand = new RelayCommand(() => SelectedSubTab = 2);
-            SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 3);
+            SelectVoiceRtcTabCommand = new RelayCommand(() => SelectedSubTab = 1);
+            SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 2);
+            SelectDeepCheckTabCommand = new RelayCommand(() => SelectedSubTab = 3);
             SelectResultsTabCommand = new RelayCommand(() => SelectedSubTab = 4);
-            SelectVoiceRtcTabCommand = new RelayCommand(() => SelectedSubTab = 5);
+            SelectLogsTabCommand = new RelayCommand(() => SelectedSubTab = 5);
             RunVoiceRtcAuditCommand = new AsyncRelayCommand(RunVoiceRtcAuditAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
             OptimizeDiscordVoiceCommand = new AsyncRelayCommand(OptimizeDiscordVoiceAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
             CleanDiscordAndNetworkCommand = new AsyncRelayCommand(() => CleanDiscordAndNetworkAsync(false), () => !IsCleaningDiscord && !IsRunning);
@@ -120,16 +123,16 @@ namespace ZapretGui.ViewModels
 
         private int _selectedSubTab;
 
-        public string[] DiagnosticsTabs { get; } = new[] { "⚡ Экспресс", "🌐 DPI 34 узла", "🔬 Deep Check", "🛠 Аудит", "📊 Результаты", "🎙️ Voice RTC" };
+        public string[] DiagnosticsTabs { get; } = new[] { "⚡ Быстрая проверка", "📡 Сайты и звонки", "🛠 Система", "Глубокая проверка", "📊 История и отчёты", "📄 Журнал" };
 
         public string DiagnosticsTabHintText => SelectedSubTab switch
         {
-            0 => "Быстрая проверка ресурсов • ~10 сек • без остановки обхода",
-            1 => "34 узла DPI • ~2 мин • может временно перезапустить обход",
-            2 => "Матрица Deep Check • до 30 мин • под каждой стратегией",
-            3 => "Аудит системы • ~5 сек • службы, драйвер,hosts",
-            4 => "Сводные результаты и экспорт • история проверок",
-            5 => "Discord Voice • WebRTC/STUN • ~15 сек",
+            0 => "Сайты и сервисы • ~10 сек • без остановки обхода",
+            1 => "34 узла DPI и голос Discord • ~2 мин • обход может кратко перезапуститься",
+            2 => "Проверка системы • ~5 сек • службы, драйвер, hosts",
+            3 => "Глубокая проверка • матрица тестов, до 30 мин",
+            4 => "История проверок, сводный отчёт и экспорт",
+            5 => "Журнал приложения и службы • фильтры по уровню и источнику",
             _ => ""
         };
 
@@ -142,13 +145,14 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(DiagnosticsTabHintText));
                     Raise(nameof(IsExpressTabSelected));
-                    Raise(nameof(IsDpiTabSelected));
-                    Raise(nameof(IsDeepCheckTabSelected));
+                    Raise(nameof(IsComplexSitesTabSelected));
                     Raise(nameof(IsSystemTabSelected));
+                    Raise(nameof(IsDeepCheckTabSelected));
                     Raise(nameof(IsResultsTabSelected));
-                    Raise(nameof(IsVoiceRtcTabSelected));
+                    Raise(nameof(IsLogsTabSelected));
 
-                    if (_selectedSubTab == 3 || _selectedSubTab == 5)
+                    // Голос Discord (1) и проверка системы (2) показывают состояние кэша Discord.
+                    if (_selectedSubTab is 1 or 2)
                     {
                         RefreshDiscordCacheStatus();
                     }
@@ -162,19 +166,20 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedSubTab = 0; }
         }
 
-        public bool IsDpiTabSelected
+        /// <summary>Вкладка 1: DPI по 34 узлам и проверка голоса Discord — один подраздел.</summary>
+        public bool IsComplexSitesTabSelected
         {
             get => _selectedSubTab == 1;
             set { if (value) SelectedSubTab = 1; }
         }
 
-        public bool IsDeepCheckTabSelected
+        public bool IsSystemTabSelected
         {
             get => _selectedSubTab == 2;
             set { if (value) SelectedSubTab = 2; }
         }
 
-        public bool IsSystemTabSelected
+        public bool IsDeepCheckTabSelected
         {
             get => _selectedSubTab == 3;
             set { if (value) SelectedSubTab = 3; }
@@ -186,7 +191,8 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedSubTab = 4; }
         }
 
-        public bool IsVoiceRtcTabSelected
+        /// <summary>Вкладка 5: журнал переехал в «Проверки» (docs/IA_REDESIGN.md §3.3).</summary>
+        public bool IsLogsTabSelected
         {
             get => _selectedSubTab == 5;
             set { if (value) SelectedSubTab = 5; }
@@ -305,6 +311,9 @@ namespace ZapretGui.ViewModels
         public bool HasDiscordCleanSummary => _lastDiscordCleanSummary != null;
 
         public MonitoringViewModel Monitoring => _main.Monitoring;
+
+        /// <summary>Журнал внутри «Проверок»: тот же LogsViewModel, что и на отдельной странице.</summary>
+        public LogsViewModel Logs => _main.Logs;
         public DeepCheckViewModel DeepCheck => _main.DeepCheck;
         public HomeViewModel Home => _main.Home;
         public MainViewModel Main => _main;
@@ -524,6 +533,7 @@ namespace ZapretGui.ViewModels
         public ICommand SelectDeepCheckTabCommand { get; }
         public ICommand SelectSystemTabCommand { get; }
         public ICommand SelectResultsTabCommand { get; }
+        public ICommand SelectLogsTabCommand { get; }
         public ICommand SelectVoiceRtcTabCommand { get; }
         public ICommand RunVoiceRtcAuditCommand { get; }
         public ICommand OptimizeDiscordVoiceCommand { get; }

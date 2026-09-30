@@ -68,7 +68,7 @@ namespace ZapretGui.ViewModels
             OpenListsCommand = new RelayCommand(() => _main.Navigate("user-lists"));
             OpenSystemCheckCommand = new RelayCommand(() =>
             {
-                _main.Diagnostics.SelectedSubTab = 3; // «Аудит системы» в разделе «Проверки»
+                _main.Diagnostics.SelectedSubTab = 2; // «Система» в разделе «Проверки»
                 _main.Navigate("diagnostics");
             });
 

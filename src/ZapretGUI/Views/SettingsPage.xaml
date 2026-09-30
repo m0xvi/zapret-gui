@@ -740,66 +740,6 @@
                 </Border>
             </StackPanel>
 
-            <!-- ===================== ВКЛАДКА 6: ЖУРНАЛ ===================== -->
-            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsLogsTabSelected, Converter={StaticResource BoolToVis}}">
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
-                                <TextBlock Text="&#xE7C3;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ЖУРНАЛ" />
-                                <TextBlock Style="{StaticResource DimText}" Text="События приложения и службы — фильтры по уровню и источнику." FontSize="11" TextWrapping="Wrap" />
-                            </StackPanel>
-                            <Border Grid.Column="2" Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="6,3" VerticalAlignment="Center">
-                                <TextBlock Text="ЖУРНАЛ" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.85" />
-                            </Border>
-                        </Grid>
-                        <WrapPanel Margin="0,14,0,0">
-                            <Button Style="{StaticResource SecondaryButton}" Content="Открыть журнал" Padding="14,7" Command="{Binding OpenLogsCommand}" ToolTip="Перейти на страницу Журнала" />
-                            <Button Style="{StaticResource GhostButton}" Content="Папка логов" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenLogsFolderCommand}" ToolTip="Открыть папку логов" />
-                            <Button Style="{StaticResource GhostButton}" Content="Очистить" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenLogsCommand}" ToolTip="Открыть журнал и очистить там" />
-                        </WrapPanel>
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" FontSize="11" Text="На странице Журнала: 4000 последних записей, виртуализация, авто-прокрутка. Тяжёлая фильтрация теперь в фоне — зависания нет." TextWrapping="Wrap" Opacity="0.9" />
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-
-            <!-- ===================== ВКЛАДКА 7: О ПРОГРАММЕ ===================== -->
-            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsAboutTabSelected, Converter={StaticResource BoolToVis}}">
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
-                                <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="О ПРОГРАММЕ" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Версия, лицензия и ссылки — без отдельного пункта в меню." FontSize="11" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Grid>
-                        <StackPanel Margin="0,14,0,0">
-                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Zapret GUI v1.15.0" />
-                            <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="Графический интерфейс для zapret-discord-youtube. Портативный EXE, автообновление движка и GUI, профили и автопереключение." TextWrapping="Wrap" />
-                            <WrapPanel Margin="0,12,0,0">
-                                <Button Style="{StaticResource SecondaryButton}" Content="Открыть о программе" Padding="14,7" Command="{Binding OpenAboutCommand}" ToolTip="Перейти на страницу О программе" />
-                                <Button Style="{StaticResource GhostButton}" Content="Репозиторий GUI" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenRepoCommand}" ToolTip="Открыть m0xvi/zapret-gui" />
-                            </WrapPanel>
-                        </StackPanel>
-                    </StackPanel>
-                </Border>
-            </StackPanel>
-
             <!-- Система и информация — перенесённые разделы Журнал / Обновления / О программе -->
             <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
@@ -813,7 +753,7 @@
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМА И ИНФОРМАЦИЯ" />
-                            <TextBlock Style="{StaticResource DimText}" Text="Журнал, обновления движка/GUI и о программе — теперь здесь." FontSize="11" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Полезные переходы: журнал, обновления движка и приложения, о программе." FontSize="11" TextWrapping="Wrap" />
                         </StackPanel>
                     </Grid>
                     <WrapPanel Margin="0,14,0,0">

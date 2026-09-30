@@ -32,7 +32,6 @@ namespace ZapretGui.Views
             _pages["bypass-center"] = new BypassCenterPage { DataContext = _vm.BypassCenter };
             _pages["first-run"] = new FirstLaunchPage(_vm.FirstLaunch);
             _pages["strategies"] = new StrategiesPage(_vm.StrategiesPage);
-            _pages["monitoring"] = new MonitoringPage(_vm.Monitoring);
             _pages["updates"] = new UpdatesPage(_vm.Updates);
             _pages["diagnostics"] = new DiagnosticsPage(_vm.Diagnostics);
             _pages["deep-check"] = new DeepCheckPage(_vm.DeepCheck);

@@ -221,7 +221,7 @@ body.light .note .n b{color:#15191F}
 
             <div class="card">
               <div class="section">СОСТОЯНИЕ СОЕДИНЕНИЯ</div>
-              <div class="diag"><div class="ic ok">✓</div><div><h4>Последняя проверка: 26/28 OK · ср. 42 мс</h4><p>Подробности и свои адреса — «Проверки → Экспресс»</p></div></div>
+              <div class="diag"><div class="ic ok">✓</div><div><h4>Последняя проверка: 26/28 OK · ср. 42 мс</h4><p>Подробности и свои адреса — «Проверки → Быстрая проверка»</p></div></div>
             </div>
           </div>
 
@@ -413,10 +413,20 @@ body.light .note .n b{color:#15191F}
       <div class="page" id="page-diagnostics">
         <div class="row">
           <div>
-            <h1>Диагностика</h1>
-            <div class="sub">Проверка типичных причин, из-за которых обход не работает (аналог Run Diagnostics)</div>
+            <h1>Проверки</h1>
+            <div class="sub">Что-то не работает — найти причину и починить: сайты, звонки, система, глубокая проверка, история и журнал</div>
           </div>
-          <div style="margin-left:auto"><button class="btn primary">Запустить проверку</button></div>
+          <div style="margin-left:auto"><button class="btn primary">Проверить всё</button></div>
+        </div>
+
+        <div class="card" style="margin-top:16px">
+          <div class="section">СОСТАВ РАЗДЕЛА (v1.20.0)</div>
+          <div class="muted"><b>⚡ Быстрая проверка</b> — сайты и сервисы со статусом и задержкой, «Проверить всё», «Определить причину».</div>
+          <div class="muted" style="margin-top:6px"><b>📡 Сайты и звонки</b> — DPI по 34 узлам и проверка голоса Discord с исправлением.</div>
+          <div class="muted" style="margin-top:6px"><b>🛠 Система</b> — проверка Windows и драйверов (14 пунктов) с кнопкой «Исправить»; опасные операции — внизу.</div>
+          <div class="muted" style="margin-top:6px"><b>Глубокая проверка</b> — свои хосты, многоточечная проверка, рекомендации (экспертный уровень).</div>
+          <div class="muted" style="margin-top:6px"><b>📊 История и отчёты</b> — результаты проверок, история переключений, экспорт JSON/ZIP.</div>
+          <div class="muted" style="margin-top:6px"><b>📄 Журнал</b> — тот же журнал, что и отдельным пунктом меню: фильтры, поиск, копирование и очистка.</div>
         </div>
 
         <div class="msg warn" style="margin-top:16px">Критичных проблем нет, предупреждений: 2</div>
@@ -464,7 +474,7 @@ body.light .note .n b{color:#15191F}
         <div class="row">
           <div>
             <h1>Журнал</h1>
-            <div class="sub">Все действия приложения, вывод winws.exe, ошибки обновлений и служб</div>
+            <div class="sub">Все действия приложения, вывод winws.exe, ошибки обновлений и служб. С v1.20.0 журнал живёт и внутри «Проверок» (подраздел «Журнал») — данные и фильтры одни и те же</div>
           </div>
           <div style="margin-left:auto" class="btns">
             <button class="btn secondary sm">Сохранить в файл</button>

@@ -60,7 +60,7 @@
                                    Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
                     </WrapPanel>
                 </Button>
-                <!-- Метрики хостов — кликабельно: ведёт к настройке списка хостов (Экспресс-проверка) -->
+                <!-- Метрики хостов — кликабельно: ведёт к настройке списка хостов (Быстрая проверка) -->
                 <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
                         Command="{Binding NavigateMonitoringCommand}"
                         ToolTip="{Binding MonitoringSummaryTooltip}">
@@ -108,7 +108,7 @@
                 <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
                         Background="{Binding ReadinessKey, Converter={StaticResource SoftSeverityBrush}}"
                         Command="{Binding NavigateDiagnosticsCommand}"
-                        ToolTip="{Binding ReadinessDetails, StringFormat='{}{0} — нажмите, чтобы открыть аудит системы и исправить проблемы'}">
+                        ToolTip="{Binding ReadinessDetails, StringFormat='{}{0} — нажмите, чтобы открыть проверку системы и исправить проблемы'}">
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource Dot}"
                                 Background="{Binding ReadinessKey, Converter={StaticResource SeverityBrush}}" />

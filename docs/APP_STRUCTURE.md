@@ -1,6 +1,6 @@
 # Структура приложения Zapret GUI — разделы, подразделы и их функции
 
-> Версия документа: `v1.19.0` (ветка `arena/01a0f306-zapret-gui`, этапы 1–3 информационной архитектуры)
+> Версия документа: `v1.20.0` (ветка `arena/01a0f306-zapret-gui`, этапы 1–4 информационной архитектуры)
 > Стек: `C# .NET 8 + WPF (MVVM)`, движок `Flowseal/zapret-discord-youtube` (`bin/winws.exe`, `WinDivert`), служба `zapret`
 > Язык интерфейса: русский. Сборка: `windows-latest` GitHub Actions.
 
@@ -13,7 +13,7 @@
 ## 1. Навигация и каркас
 
 *   **Боковое меню (MainWindow + MainViewModel.NavItems):** переключение страниц, бейджи `Watchdog/Seamless/Мониторинг`, индикатор `BypassState`. Группы `ОСНОВНОЕ / ПРОВЕРКИ / СПИСКИ И ФИЛЬТРЫ / СИСТЕМА`.
-*   **Пункты меню (`v1.17.25`):** `Главная` (`home`) · `Обход` (`bypass-center`) · `Стратегии` (`strategies`) · `Проверки` (`diagnostics`) · `Журнал` (`logs`) · `Списки` (`user-lists`) · `Профили и копии` (`profiles`) · `Обновления` (`updates`) · `Настройки` (`settings`) · `О программе` (`about`). До `v1.17.25` пункты `Журнал`, `Обновления`, `О программе` были недостижимы из меню (открывались только ссылками со страниц), а `Мониторинг` (`monitoring`) — мёртвый ключ: `Navigate` перенаправляет его в подвкладку «Экспресс». План дальнейшей перестройки — `docs/IA_REDESIGN.md`.
+*   **Пункты меню (`v1.17.25`):** `Главная` (`home`) · `Обход` (`bypass-center`) · `Стратегии` (`strategies`) · `Проверки` (`diagnostics`) · `Журнал` (`logs`) · `Списки` (`user-lists`) · `Профили и копии` (`profiles`) · `Обновления` (`updates`) · `Настройки` (`settings`) · `О программе` (`about`). До `v1.17.25` пункты `Журнал`, `Обновления`, `О программе` были недостижимы из меню (открывались только ссылками со страниц), а `Мониторинг` (`monitoring`) — мёртвый ключ. С `v1.20.0` мёртвый экран `MonitoringPage` удалён, а ключи `monitoring`/`dpi`/`deep-check`/`results` в `Navigate` ведут на подвкладки 0/1/3/4 раздела «Проверки» (совместимость со старыми ссылками и треем сохранена). План дальнейшей перестройки — `docs/IA_REDESIGN.md`.
 *   **Шапка и трей:** `TrayIcon` — двойной клик возвращает окно, меню `Запустить/Остановить обход`, `Смена стратегии/DNS/Профиля`, `Игровой режим`, `Логи`, `Выход`. `Balloon` — мягкие уведомления `Watchdog`/`Seamless`/`Мониторинг` без модальных окон.
 *   **Горячие клавиши (GlobalHotkeyService):** `Ctrl+Shift+Z` — переключить обход, `Ctrl+Shift+G` — игровой режим, `Ctrl+Shift+O` — мини-оверлей. Регистрируются на `MainWindow`.
 *   **Мини-оверлей (MiniOverlayWindow / MiniOverlayViewModel):** компактное окно поверх игр — статус обхода, `Uptime`, `Ping`, быстрый `Start/Stop`.
@@ -63,8 +63,12 @@
 
 ## 3. ПРОВЕРКИ
 
-### 3.1 Проверка (DiagnosticsPage / DiagnosticsViewModel — бывший Аудит)
-*   **Экспресс-диагностика:** `RunAsync` — 14 пунктов: `BFE`, `WinDivert/WinDivert14`, админ-права, `TCP timestamps`, служба `zapret`, `ipset`/`lists`, `hosts`, `DNS`. Карточки `StatusKey` (`Success/Warning/Danger`), `FixHint`/`FixId`.
+### 3.1 Проверки (DiagnosticsPage / DiagnosticsViewModel) — 6 подразделов с `v1.20.0`
+*   **Подвкладки (`DiagnosticsTabs` / `SelectedSubTab`, `SegmentedControl`):** `⚡ Быстрая проверка` (0) · `📡 Сайты и звонки` (1, = DPI по 34 узлам + проверка голоса Discord) · `🛠 Система` (2) · `Глубокая проверка` (3) · `📊 История и отчёты` (4) · `📄 Журнал` (5).
+*   **Журнал внутри «Проверок»:** вкладка 5 хостит `LogsPage` с `DataContext="{Binding Logs}"` — тот же `LogsViewModel`, что и у страницы «Журнал» (без второго экземпляра данных); кнопка «Назад в Настройки» на вкладке скрыта (`ShowBackButton="False"`).
+*   **Внешние переходы:** `Navigate("monitoring")→0`, `("dpi")→1`, `("deep-check")→3`, `("results")→4`; «Проверки → Система» — `OpenSystemCheckCommand` из «Обхода» и `NavigateDiagnosticsCommand` из шапки.
+*   **Прежнее содержимое вкладок (осталось внутри подразделов):**
+*   **Система (аудит):** `RunAsync` — 14 пунктов: `BFE`, `WinDivert/WinDivert14`, админ-права, `TCP timestamps`, служба `zapret`, `ipset`/`lists`, `hosts`, `DNS`. Карточки `StatusKey` (`Success/Warning/Danger`), `FixHint`/`FixId`.
 *   **Исправления:** `FixAsync` (`bfe`, `timestamps`, `zapretstuck`...), `RemoveServiceAsync`, `ChangeTcpTimestamps`, `DeepResetNetwork` — с подтверждениями `MessageBox` (только здесь).
 *   **DPI-suite:** `RunDpiCheckAsync` (`temporaryStrategy`, `ipset any` на время, восстановление), прогресс `ProgressVisible/ProgressText`.
 *   **Экспорт:** `ExportDiagnostics` — `DiagnosticsExportReport` (`DiagnosticsHistoryStore`, `StrategyEvaluationHistory`, `RecoveryJournal`) + `ProviderTelemetryExporter`.
@@ -74,7 +78,8 @@
 *   **Запуск:** `RunDeepCheckAsync` — многоточечная проверка, `ProgressVisible/Text/Percent`, `IsRunning`, `Findings`/`Metrics`/`Recommendations`.
 *   **Кандидат:** `GeneratedCandidateName/Summary/Features`, `HasGeneratedCandidate`, `SaveCandidate`, `ApplyCandidate`.
 
-### 3.3 Мониторинг ресурсов (MonitoringPage / MonitoringViewModel)
+### 3.3 Быстрая проверка сайтов (бывший «Мониторинг», `MonitoringViewModel`)
+*   **Экран удалён (`v1.20.0`):** `MonitoringPage.xaml`/`.xaml.cs` больше нет, UI живёт во вкладке «Проверки → Быстрая проверка» (`IsExpressTabSelected`). `MonitoringViewModel` остался — им пользуются «Главная» (плитка соединения), шапка (`MonitoringSummaryText`) и та же вкладка.
 *   **Цели:** `Targets` (`MonitorTargetStore.EnsureDefaults` + пользовательские), `Results` (`ResourceProbe.CheckAsync`), `SelectedTarget`, `LastCheckText`.
 *   **Ручная проверка:** `CheckAllCommand` → `CheckAllAsync` с прогрессом `ProgressValue/Maximum/Text`, `Diagnosis` (`DiagnoseSelectedAsync`).
 *   **Фон:** `ResourceMonitoringEnabled` (`DispatcherTimer` `GetInterval()` 5–120 мин), `AutoRecoverStrategy` (при `StrategyBreaks` → `DiagnoseAndRecoverAsync` → `ProfileAutoSwitch.TrySwitchOnFailure` → `TestAll` → `SelectAsDefault` + `StartSelectedStrategyAsync` без окон), `AutoSwitchToBestStrategy` (`TrySwitchToBestStrategyAsync`).
@@ -111,6 +116,7 @@
 ## 5. СИСТЕМА
 
 ### 5.1 Настройки (SettingsPage / SettingsViewModel)
+*   **Подвкладки (`SettingsTabs`, 6 шт. с `v1.20.0`):** `⚙ Общие` · `🛡 Обход` · `🌐 Сеть` · `🎨 Интерфейс` · `🎮 Игры` · `🔄 Обновления`. Табы «Журнал» и «О программе» удалены как дубли: журнал живёт в «Проверках → Журнал», «О программе» — отдельным пунктом меню; переходы к ним остались в карточке «Система и информация» внизу страницы.
 *   **Общие:** тема `ThemeMode` (`System/Dark/Light`), масштаб `InterfaceZoomPercent` (80–140), `CloseToTray`, `StartMinimized`, `RunAtStartup` (планировщик/реестр), `ConfirmOnStop` (только для ручной остановки, по умолчанию выкл).
 *   **Обход и движок:** `EnginePath`, `ShowWinwsConsole`, `AutoCheckEngineUpdates`/`IncludePrerelease`/`PreserveUserDataOnUpdate`, `SelectedFakeSni` + `AutoSniRotationEnabled` + `CustomSniList`. Флаг `BatAutoUpdate` (`utils\check_updates.enabled`) с `v1.18.0` настраивается здесь (переехал с «Главной»); `GameFilterOptions`/`IpsetOptions` живут на странице «Списки» и в «Обход → Сложные сайты».
 *   **Автозапуск:** переехал в раздел «Автоматизация» → «Запуск» (`v1.19.0`); в «Настройках» осталась карточка-указатель с кнопкой перехода.

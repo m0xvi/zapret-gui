@@ -86,7 +86,7 @@
                     <!-- Быстрые переходы (v1.18.0): сами проверки, подбор и журнал живут в своих разделах -->
                     <WrapPanel Margin="0,12,0,0">
                         <Button Style="{StaticResource SecondaryButton}" Content="Проверить сайты" Command="{Binding OpenChecksCommand}"
-                                ToolTip="Раздел «Проверки»: экспресс-проверка сайтов, DPI-проверка и журнал" />
+                                ToolTip="Раздел «Проверки»: быстрая проверка сайтов, сложные сайты и звонки, журнал" />
                         <Button Style="{StaticResource GhostButton}" Content="Подобрать обход заново" Margin="8,0,0,0" Command="{Binding OpenBypassCommand}"
                                 ToolTip="Раздел «Обход» → подвкладка «Подбор»: аудит, проверка сайтов, перебор стратегий и рекомендация" />
                         <Button Style="{StaticResource GhostButton}" Content="Открыть журнал" Margin="8,0,0,0" Command="{Binding OpenLogsCommand}"

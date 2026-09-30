@@ -349,8 +349,8 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource SectionText}" Text="ОПАСНЫЕ ОПЕРАЦИИ"/>
                         <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" TextWrapping="Wrap" FontSize="11"
-                                   Text="Переустановка и удаление служб, TCP timestamps, полный сброс сети и «удалить всё, что установил Zapret GUI» — в разделе «Проверки» на подвкладке «Аудит системы». Там каждое действие с подтверждением, чтобы случайно не сломать обход."/>
-                        <Button Style="{StaticResource GhostButton}" Content="Открыть «Проверки → Аудит системы»" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding OpenSystemCheckCommand}"/>
+                                   Text="Переустановка и удаление служб, TCP timestamps, полный сброс сети и «удалить всё, что установил Zapret GUI» — в разделе «Проверки» на подвкладке «Система». Там каждое действие с подтверждением, чтобы случайно не сломать обход."/>
+                        <Button Style="{StaticResource GhostButton}" Content="Открыть «Проверки → Система»" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding OpenSystemCheckCommand}"/>
                     </StackPanel>
                 </Border>
             </StackPanel>

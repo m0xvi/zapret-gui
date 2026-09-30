@@ -215,7 +215,7 @@ namespace ZapretGui.ViewModels
             RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
-            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 3; Navigate("diagnostics"); });
+            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 2; Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
             NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
             NavigateActiveCheckCommand = new RelayCommand(NavigateToActiveCheck);
@@ -576,7 +576,7 @@ namespace ZapretGui.ViewModels
             }
             else if (DeepCheck.IsRunning)
             {
-                Diagnostics.SelectedSubTab = 2;
+                Diagnostics.SelectedSubTab = 3;
                 Navigate("diagnostics");
             }
             else if (StrategiesPage.IsTestingAll || StrategiesPage.IsEvaluatingCandidates)
@@ -585,7 +585,7 @@ namespace ZapretGui.ViewModels
             }
             else if (Diagnostics.IsRunning)
             {
-                Diagnostics.SelectedSubTab = 3;
+                Diagnostics.SelectedSubTab = 2;
                 Navigate("diagnostics");
             }
             else if (Monitoring.IsBusy)
@@ -628,12 +628,13 @@ namespace ZapretGui.ViewModels
         {
             if (key is "monitoring" or "dpi" or "deep-check" or "results")
             {
+                // Индексы подразделов «Проверок» v1.20.0 (docs/IA_REDESIGN.md §3.3).
                 var tab = key switch
                 {
-                    "monitoring" => 0,
-                    "dpi" => 1,
-                    "deep-check" => 2,
-                    "results" => 4,
+                    "monitoring" => 0,   // Быстрая проверка
+                    "dpi" => 1,          // Сложные сайты и звонки
+                    "deep-check" => 3,   // Глубокая проверка
+                    "results" => 4,      // История и отчёты
                     _ => 0
                 };
                 Diagnostics.SelectedSubTab = tab;
