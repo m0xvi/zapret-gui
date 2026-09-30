@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Zapret GUI — прототип информационной архитектуры v2</title>
+<style>
+  :root{
+    --bg:#12141a; --panel:#181b23; --card:#1e222c; --card-hover:#252a36; --border:#2b3140;
+    --text:#e8ecf4; --muted:#98a2b8; --dim:#6b7488; --accent:#5b8cff; --accent-soft:rgba(91,140,255,.14);
+    --ok:#3ecf8e; --warn:#f0b429; --danger:#f2545b; --expert:#a878ff;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font:14px/1.45 "Segoe UI",Roboto,system-ui,sans-serif;background:var(--bg);color:var(--text)}
+  .app{display:flex;min-height:100vh}
+  /* ---------- сайдбар ---------- */
+  .side{width:248px;flex:0 0 248px;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+  .brand{padding:18px 18px 10px}
+  .brand b{font-size:15px}
+  .brand span{display:block;color:var(--dim);font-size:11.5px;margin-top:2px}
+  .nav{display:flex;flex-direction:column;gap:2px;padding:8px 10px;flex:1}
+  .nav-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;color:var(--muted);cursor:pointer;font-size:13.5px}
+  .nav-item:hover{background:var(--card-hover);color:var(--text)}
+  .nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
+  .nav-item .ic{width:20px;text-align:center;font-size:15px}
+  .side-foot{padding:12px 16px;border-top:1px solid var(--border);color:var(--dim);font-size:11px}
+  /* ---------- шапка ---------- */
+  .main{flex:1;min-width:0;display:flex;flex-direction:column}
+  .top{display:flex;align-items:center;gap:12px;padding:14px 24px;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0;z-index:5}
+  .crumb{color:var(--muted);font-size:12.5px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .crumb b{color:var(--text)}
+  .badge-clicks{background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:5px 11px;font-size:12px;font-weight:600;white-space:nowrap}
+  .badge-clicks.hit{background:rgba(62,207,142,.16);color:var(--ok)}
+  .badge-clicks.over{background:rgba(242,84,91,.16);color:var(--danger)}
+  .switch{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);cursor:pointer;user-select:none;white-space:nowrap}
+  .switch input{accent-color:var(--expert);width:16px;height:16px}
+  .btn{background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:7px 12px;font-size:12.5px;cursor:pointer}
+  .btn:hover{background:var(--card-hover)}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#0b1020;font-weight:600}
+  .btn.ghost{background:transparent}
+  /* ---------- контент ---------- */
+  .content{padding:22px 24px 48px;max-width:1080px}
+  h1{font-size:22px;margin:0 0 4px}
+  .lead{color:var(--muted);margin:0 0 16px}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 18px}
+  .tab{background:var(--card);border:1px solid var(--border);color:var(--muted);border-radius:999px;padding:7px 14px;font-size:12.5px;cursor:pointer}
+  .tab:hover{color:var(--text)}
+  .tab.active{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);font-weight:600}
+  .tab.expert{border-style:dashed;color:var(--expert)}
+  .tab.expert.active{background:rgba(168,120,255,.14);color:var(--expert);border-color:var(--expert)}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px}
+  .card.expert{border-color:rgba(168,120,255,.45)}
+  .card h3{margin:0 0 6px;font-size:14.5px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .card p.desc{color:var(--muted);font-size:12.5px;margin:0 0 12px}
+  .lvl{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border-radius:999px;padding:3px 8px;border:1px solid var(--border);color:var(--dim)}
+  .lvl.extra{color:var(--warn);border-color:rgba(240,180,41,.4)}
+  .lvl.expert{color:var(--expert);border-color:rgba(168,120,255,.4)}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 0;border-top:1px solid var(--border)}
+  .row:first-of-type{border-top:0}
+  .row .label{font-size:13px}
+  .row .label small{display:block;color:var(--dim);font-size:11.5px}
+  .chip{font-size:11.5px;color:var(--muted);border:1px solid var(--border);border-radius:999px;padding:3px 9px}
+  .chip.ok{color:var(--ok);border-color:rgba(62,207,142,.4)}
+  .chip.warn{color:var(--warn);border-color:rgba(240,180,41,.4)}
+  .chip.danger{color:var(--danger);border-color:rgba(242,84,91,.4)}
+  .mini-sw{width:38px;height:20px;border-radius:999px;background:#2d3444;position:relative;flex:0 0 38px;cursor:pointer}
+  .mini-sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#8a94a8;transition:.15s}
+  .mini-sw.on{background:rgba(91,140,255,.35)}
+  .mini-sw.on::after{left:20px;background:var(--accent)}
+  ul.list{margin:0;padding-left:18px;color:var(--muted);font-size:12.5px}
+  ul.list li{margin:3px 0}
+  .goto{color:var(--accent);cursor:pointer;font-size:12.5px;text-decoration:underline dotted;white-space:nowrap}
+  .goto:hover{color:#8fb2ff}
+  .note{margin-top:16px;color:var(--dim);font-size:11.5px}
+  .flash{animation:flash 1.1s ease}
+  @keyframes flash{0%{box-shadow:0 0 0 0 rgba(91,140,255,.7)}100%{box-shadow:0 0 0 14px rgba(91,140,255,0)}}
+  /* ---------- поиск ---------- */
+  .overlay{position:fixed;inset:0;background:rgba(8,10,14,.66);display:none;z-index:50;padding-top:12vh}
+  .overlay.on{display:block}
+  .palette{width:min(660px,92vw);margin:0 auto;background:var(--panel);border:1px solid var(--border);border-radius:16px;overflow:hidden;box-shadow:0 24px 60px rgba(0,0,0,.5)}
+  .palette input{width:100%;border:0;outline:0;background:transparent;color:var(--text);font-size:16px;padding:16px 18px;border-bottom:1px solid var(--border)}
+  .results{max-height:52vh;overflow:auto}
+  .res{padding:10px 18px;cursor:pointer;display:flex;justify-content:space-between;gap:14px;align-items:baseline}
+  .res:hover,.res.sel{background:var(--accent-soft)}
+  .res .path{color:var(--dim);font-size:11.5px;white-space:nowrap}
+  .hint{padding:10px 18px;color:var(--dim);font-size:11.5px;border-top:1px solid var(--border)}
+  /* ---------- дерево ---------- */
+  .tree{font-size:12.5px;columns:2;column-gap:28px}
+  .tree h4{margin:10px 0 4px;font-size:12.5px;color:var(--accent)}
+  .tree div{color:var(--muted);margin:2px 0 2px 10px}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand"><b>Zapret GUI</b><span>прототип ИА · 5 разделов</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="side-foot">
+      Клик по разделу, табу и ссылке считается.<br />Цель: любая функция ≤ 3 клика.
+    </div>
+  </aside>
+
+  <div class="main">
+    <header class="top">
+      <div class="crumb" id="crumb"></div>
+      <span class="badge-clicks" id="clicks">кликов: 0</span>
+      <button class="btn ghost" id="btn-tree">Дерево</button>
+      <button class="btn" id="btn-search">Поиск ⌃K</button>
+      <label class="switch"><input type="checkbox" id="expert" /> Эксперт</label>
+    </header>
+    <div class="content" id="content"></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay">
+  <div class="palette">
+    <input id="q" placeholder="Найти раздел, настройку или действие: «журнал», «dns», «автозапуск», «сни sni»…" />
+    <div class="results" id="results"></div>
+    <div class="hint">Enter — перейти · Esc — закрыть · поиск страхует спрятанное в «Эксперте»</div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   Модель информационной архитектуры (docs/IA_REDESIGN.md, §3)
+   ============================================================ */
+const IA = [
+  {key:"home", icon:"⌂", title:"Главная", hint:"Работает или нет — включить/выключить", tabs:[
+    {key:"home", title:"Статус", blocks:[
+      {title:"Обход", lvl:"", desc:"Одно крупное действие на весь экран.", items:[
+        {t:"status", label:"Обход включён", sub:"Стратегия ALT11 · работает 2 ч 14 мин", chip:"ok"},
+        {t:"button", label:"Выключить обход", primary:true, count:true},
+        {t:"text", text:"Без вопросов и подтверждений — режим «служба/процесс» сохраняется."}
+      ]},
+      {title:"Состояние", lvl:"", desc:"Три плитки: понять за 3 секунды.", items:[
+        {t:"chip", label:"Соединение", value:"OK 26/28 · ср. 42 мс", chip:"ok"},
+        {t:"chip", label:"Игровой режим", value:"выключен", chip:""},
+        {t:"chip", label:"Автопилот", value:"следит за обходом", chip:"ok"}
+      ]},
+      {title:"Требует внимания", lvl:"", desc:"Появляется, только если есть проблема и действие.", items:[
+        {t:"chip", label:"Права администратора", value:"не выданы", chip:"danger"},
+        {t:"button", label:"Запустить от администратора"},
+        {t:"goto", label:"Подробнее → Проверки → Система", goto:{s:"checks", t:"system"}}
+      ]},
+      {title:"Не работает?", lvl:"", desc:"Три ссылки вместо мастеров и тестов на главном экране.", items:[
+        {t:"goto", label:"Подобрать обход заново → Обход → Подбор", goto:{s:"bypass", t:"pick"}},
+        {t:"goto", label:"Проверить сайты → Проверки → Быстрая проверка", goto:{s:"checks", t:"fast"}},
+        {t:"goto", label:"Открыть журнал → Проверки → Журнал", goto:{s:"checks", t:"log"}}
+      ]},
+      {title:"Служебная строка", lvl:"expert", desc:"Только для экспертов: технические детали.", items:[
+        {t:"text", text:"Режим: служба Windows · PID 4112 · движок v1.10.2 · ipset: loaded · hosts: применён"},
+        {t:"button", label:"Переустановить службу"},
+        {t:"button", label:"Открыть папку движка"}
+      ]}
+    ]}
+  ]},
+
+  {key:"bypass", icon:"⇄", title:"Обход", hint:"Чем, что и как обходим", tabs:[
+    {key:"strategy", title:"Стратегия", blocks:[
+      {title:"Текущая стратегия", lvl:"", desc:"Название + человеческое описание.", items:[
+        {t:"status", label:"ALT11 — «обход через подмену пакетов»", sub:"Работает 2 дня · 26/28 сайтов OK", chip:"ok"},
+        {t:"button", label:"Проверить эту стратегию", count:true},
+        {t:"goto", label:"Подобрать другую → Подбор", goto:{s:"bypass", t:"pick"}}
+      ]},
+      {title:"Список стратегий", lvl:"", desc:"Поиск, фильтр, «Применить» — без остановки обхода.", items:[
+        {t:"text", text:"Поиск по названию и категории · фильтр «рекомендуемые» · метка «проверена»"},
+        {t:"button", label:"Применить выбранную", primary:true, count:true},
+        {t:"text", text:"Все стратегии парсятся из general*.bat — новые появляются автоматически."}
+      ]},
+      {title:"Аргументы и SNI", lvl:"expert", desc:"Скрыто в «Простом» режиме.", items:[
+        {t:"text", text:"Аргументы winws, категории ALT/GENERAL/EXP, пул SNI, кандидаты, история оценок."}
+      ]}
+    ]},
+    {key:"pick", title:"Подбор", blocks:[
+      {title:"Подобрать обход заново", lvl:"", desc:"4 шага, 1–2 минуты, без остановки работы.", items:[
+        {t:"text", text:"1) аудит системы → 2) проверка сайтов → 3) перебор стратегий → 4) рекомендация"},
+        {t:"button", label:"Подобрать", primary:true, count:true},
+        {t:"button", label:"Применить рекомендованную", count:true}
+      ]},
+      {title:"Перебор с разными DNS", lvl:"expert", desc:"Бывшая «матрица 23×4 = 92 теста». До получаса, с отменой и восстановлением.", items:[
+        {t:"button", label:"Запустить перебор", count:true},
+        {t:"text", text:"При прерывании возвращает исходные DNS и состояние обхода."}
+      ]}
+    ]},
+    {key:"dns", title:"DNS", blocks:[
+      {title:"DNS", lvl:"", desc:"Единственное место, где настраивается DNS (было 3).", items:[
+        {t:"status", label:"Сейчас: Cloudflare 1.1.1.1", sub:"DoH для заблокированных подключён", chip:"ok"},
+        {t:"text", text:"Профили: Cloudflare · Quad9 · Google · DHCP"},
+        {t:"button", label:"Применить профиль", primary:true, count:true},
+        {t:"button", label:"Проверить подмену DNS", count:true}
+      ]}
+    ]},
+    {key:"lists", title:"Списки", blocks:[
+      {title:"Мои сайты", lvl:"", desc:"Пользовательские добавления — самое частое действие.", items:[
+        {t:"text", text:"Добавить домен · список своих сайтов · удалить · перенести"},
+        {t:"button", label:"Добавить домен", primary:true, count:true}
+      ]},
+      {title:"Списки", lvl:"", desc:"general 68 · youtube 38 · discord 23.", items:[
+        {t:"chip", label:"Обновлены", value:"3 дня назад", chip:"ok"},
+        {t:"button", label:"Обновить списки", count:true}
+      ]},
+      {title:"hosts", lvl:"extra", desc:"Системный файл hosts.", items:[
+        {t:"text", text:"Состояние: применён блок Zapret GUI · резервная копия есть"},
+        {t:"button", label:"Применить / обновить", count:true},
+        {t:"button", label:"Открыть в блокноте"}
+      ]},
+      {title:"ipset", lvl:"expert", desc:"Режимы loaded / none / any — техническая деталь.", items:[
+        {t:"text", text:"ipset-all.txt — 33 048 сетей · ipset-discord.txt"},
+        {t:"button", label:"Обновить ipset", count:true}
+      ]}
+    ]},
+    {key:"hard", title:"Сложные сайты", blocks:[
+      {title:"YouTube не грузит", lvl:"", desc:"Пресет вместо четырёх тумблеров.", items:[
+        {t:"button", label:"Применить исправление для YouTube", primary:true, count:true},
+        {t:"goto", label:"Сначала проверить → Проверки → Сложные сайты", goto:{s:"checks", t:"hard"}}
+      ]},
+      {title:"Discord Voice не работает", lvl:"", desc:"Проверка голоса и фикс.", items:[
+        {t:"goto", label:"Открыть проверку голоса → Проверки → Сложные сайты", goto:{s:"checks", t:"hard"}}
+      ]},
+      {title:"Тяжёлые игры", lvl:"extra", desc:"Фильтр трафика игр и сетевые твики (было в 3 местах).", items:[
+        {t:"text", text:"Режим фильтра: TCP и UDP · профиль «Игры онлайн» · применять при старте"},
+        {t:"button", label:"Настроить фильтр игр", count:true}
+      ]},
+      {title:"Тонкая настройка", lvl:"expert", desc:"Разворачивается на месте, без переезда в другие разделы.", items:[
+        {t:"text", text:"QUIC-fake · подмена SNI · предпочтение IPv4 · DoH для заблокированных · стратегии для отдельных хостов"}
+      ]}
+    ]},
+    {key:"adv", title:"Дополнительно", expertOnly:true, blocks:[
+      {title:"Режим работы обхода", lvl:"expert", desc:"Служба Windows или отдельный процесс.", items:[
+        {t:"text", text:"Служба: обход работает до входа в систему · Процесс: проще отладить"},
+        {t:"button", label:"Установить / переустановить службу", count:true},
+        {t:"button", label:"Удалить службу"},
+        {t:"text", text:"Показывать консоль winws · откат на предыдущую стратегию"}
+      ]}
+    ]}
+  ]},
+
+  {key:"checks", icon:"◎", title:"Проверки", hint:"Что-то не работает — найти причину и починить", tabs:[
+    {key:"fast", title:"Быстрая проверка", blocks:[
+      {title:"Проверить всё", lvl:"", desc:"~10 секунд, без остановки обхода.", items:[
+        {t:"button", label:"Проверить сейчас", primary:true, count:true},
+        {t:"chip", label:"YouTube", value:"OK · 38 мс", chip:"ok"},
+        {t:"chip", label:"Discord", value:"OK · 61 мс", chip:"ok"},
+        {t:"chip", label:"Пример.сайт", value:"не открывается", chip:"danger"},
+        {t:"button", label:"Определить причину", count:true},
+        {t:"text", text:"Ответ по-русски: «виновата стратегия» / «ограничение провайдера» / «сервер недоступен»."}
+      ]},
+      {title:"Слежение в фоне", lvl:"extra", desc:"Цели и фон — в одном месте.", items:[
+        {t:"text", text:"Проверять каждые 15 минут · уведомлять о сбоях · показывать задержку на панели задач"},
+        {t:"button", label:"Добавить сайт или игру", count:true}
+      ]},
+      {title:"Свои цели", lvl:"", desc:"Добавить сайт/игру можно и отсюда, и из отчёта о проблеме.", items:[
+        {t:"text", text:"Контекстное действие у проблемного ресурса: «Добавить в обход» → списки в разделе «Обход»."}
+      ]}
+    ]},
+    {key:"hard", title:"Сложные сайты и звонки", blocks:[
+      {title:"Фильтрация провайдера (DPI)", lvl:"", desc:"34 узла: DNS, TCP, HTTP, TLS 1.2/1.3.", items:[
+        {t:"button", label:"Запустить проверку", primary:true, count:true},
+        {t:"text", text:"Результат простыми словами + кнопка «Применить исправление»."}
+      ]},
+      {title:"Голос Discord", lvl:"", desc:"Проверка голосового канала и фикс.", items:[
+        {t:"button", label:"Проверить голос", count:true}
+      ]}
+    ]},
+    {key:"system", title:"Система", blocks:[
+      {title:"Проверка системы", lvl:"extra", desc:"14 пунктов: права, BFE, WinDivert, TCP timestamps, служба, hosts, ipset, DNS.", items:[
+        {t:"button", label:"Запустить проверку", primary:true, count:true},
+        {t:"button", label:"Исправить всё безопасное", count:true},
+        {t:"text", text:"Каждый пункт — оценка + «исправить». Опасные операции — ниже и за подтверждением."}
+      ]},
+      {title:"Опасные операции", lvl:"expert", desc:"Всегда за подтверждением, в любом режиме.", items:[
+        {t:"button", label:"Переустановить службы"},
+        {t:"button", label:"Полный сброс сети"},
+        {t:"button", label:"Удалить всё, что установил Zapret GUI"}
+      ]}
+    ]},
+    {key:"deep", title:"Глубокая проверка", expertOnly:true, blocks:[
+      {title:"Глубокая проверка", lvl:"expert", desc:"Свои хосты, контекст провайдера, многоточечный замер.", items:[
+        {t:"text", text:"Цели: targets.txt · провайдер и регион: МТС, Московская обл."},
+        {t:"button", label:"Запустить глубокую проверку", count:true},
+        {t:"button", label:"Сохранить / применить найденный вариант", count:true}
+      ]}
+    ]},
+    {key:"history", title:"История и отчёты", blocks:[
+      {title:"История", lvl:"extra", desc:"Проверки, переключения стратегий, восстановления.", items:[
+        {t:"text", text:"Результаты за 30 дней · что делал автопилот · когда менялась стратегия"},
+        {t:"button", label:"Экспортировать отчёт (JSON / ZIP)", count:true}
+      ]},
+      {title:"Телеметрия провайдера", lvl:"expert", desc:"Только по согласию, вручную.", items:[
+        {t:"button", label:"Собрать и отправить отчёт"}
+      ]}
+    ]},
+    {key:"log", title:"Журнал", blocks:[
+      {title:"Журнал", lvl:"", desc:"По умолчанию — только важное (аналог «было 4 места, стало 1»).", items:[
+        {t:"text", text:"Фильтр по уровню · поиск по тексту · копировать · автопрокрутка"},
+        {t:"button", label:"Показать отладку", count:true},
+        {t:"button", label:"Открыть папку логов"}
+      ]}
+    ]}
+  ]},
+
+  {key:"auto", icon:"⟲", title:"Автоматизация", hint:"Работает и чинится само", tabs:[
+    {key:"start", title:"Запуск", blocks:[
+      {title:"Запуск", lvl:"", desc:"Раньше это было раскидано по «Настройкам» и «Первым запуском».", items:[
+        {t:"toggle", label:"Запускать приложение при входе в Windows"},
+        {t:"toggle", label:"Запускать свёрнутым в трей", on:true},
+        {t:"toggle", label:"Включать обход при старте приложения", on:true},
+        {t:"toggle", label:"Останавливать обход при выходе", on:true},
+        {t:"toggle", label:"Безопасный режим (не поднимать обход самому)"}
+      ]}
+    ]},
+    {key:"recover", title:"Восстановление", blocks:[
+      {title:"Присмотр за обходом", lvl:"", desc:"Бывший Watchdog: в UI — человеческое название.", items:[
+        {t:"toggle", label:"Перезапускать обход при сбое", on:true, sub:"проверка каждые 15 с · уведомлять в трее"},
+        {t:"text", text:"При трёх падениях подряд — переход на запасную стратегию."}
+      ]},
+      {title:"Переключение при ухудшении", lvl:"", desc:"Бывшее «бесшовное переключение».", items:[
+        {t:"toggle", label:"Переключаться на рабочий вариант самому", on:true, sub:"проверка раз в 5 мин · не чаще раза в 10 мин"},
+        {t:"status", label:"Последнее переключение", sub:"ALT11 → ALT9, вчера 21:40 · «YouTube деградировал»", chip:"warn"},
+        {t:"button", label:"Проверить сейчас", count:true}
+      ]},
+      {title:"Автоподбор и автовосстановление", lvl:"extra", desc:"Один тумблер вместо трёх настроек в разных местах.", items:[
+        {t:"toggle", label:"Автоматически выбирать лучшую стратегию", on:true},
+        {t:"toggle", label:"Восстанавливать обход при обрыве", on:true},
+        {t:"goto", label:"Что делал автопилот → Проверки → История и отчёты", goto:{s:"checks", t:"history"}}
+      ]}
+    ]},
+    {key:"schedule", title:"Расписание", blocks:[
+      {title:"Расписание", lvl:"extra", desc:"Обход включён по дням и часам.", items:[
+        {t:"text", text:"Пн–Пт: 09:00–24:00 · Сб–Вс: круглосуточно"},
+        {t:"button", label:"Изменить расписание", count:true}
+      ]}
+    ]},
+    {key:"nets", title:"Профили по сетям", blocks:[
+      {title:"Профили по сетям", lvl:"extra", desc:"Правило автопереключения; сами профили — в «Настройках».", items:[
+        {t:"status", label:"Сейчас: Домашний Wi-Fi", sub:"профиль «Дом» применён 2 ч назад", chip:"ok"},
+        {t:"toggle", label:"Переключать профиль при смене сети", on:true},
+        {t:"toggle", label:"Переключать профиль при сбое", on:true},
+        {t:"goto", label:"Управлять профилями → Настройки → Профили и копии", goto:{s:"settings", t:"profiles"}}
+      ]}
+    ]}
+  ]},
+
+  {key:"settings", icon:"⚙", title:"Настройки", hint:"Приложение, движок и мои данные", tabs:[
+    {key:"app", title:"Приложение", blocks:[
+      {title:"Оформление", lvl:"", desc:"", items:[
+        {t:"text", text:"Тема: системная / тёмная / светлая · масштаб интерфейса 100%"},
+        {t:"toggle", label:"Закрывать в трей", on:true},
+        {t:"toggle", label:"Показывать мини-оверлей в играх", on:true}
+      ]},
+      {title:"Горячие клавиши", lvl:"extra", desc:"Раньше жили только в настройках «Интерфейса».", items:[
+        {t:"text", text:"Ctrl+Shift+Z — обход · Ctrl+Shift+G — игровой режим · Ctrl+Shift+O — оверлей"}
+      ]},
+      {title:"Метрики на панели задач", lvl:"extra", desc:"Цели берутся из «Проверки → Быстрая проверка», здесь — только показ.", items:[
+        {t:"toggle", label:"Показывать задержку у часов", on:true},
+        {t:"text", text:"Интервал обновления · какие сайты показывать · позиция окна"}
+      ]},
+      {title:"Уведомления", lvl:"", desc:"", items:[
+        {t:"toggle", label:"Уведомлять о сбоях и переключениях", on:true},
+        {t:"toggle", label:"Уведомлять о доступных обновлениях", on:true}
+      ]},
+      {title:"Мой провайдер", lvl:"extra", desc:"Используется в «Подборе» и «Глубокой проверке».", items:[
+        {t:"text", text:"Провайдер: МТС · регион: Московская область · известные ограничения"}
+      ]}
+    ]},
+    {key:"engine", title:"Движок и обновления", blocks:[
+      {title:"Движок", lvl:"", desc:"Единственное место для установки и обновления движка (раньше — 4 входа).", items:[
+        {t:"status", label:"Движок готов", sub:"v1.10.2 · 22 стратегии · папка C:\\zapret", chip:"ok"},
+        {t:"button", label:"Обновить движок", primary:true, count:true},
+        {t:"toggle", label:"Проверять обновления автоматически", on:true},
+        {t:"toggle", label:"Сохранять мои списки и настройки при обновлении", on:true},
+        {t:"button", label:"Открыть папку движка"}
+      ]},
+      {title:"Обновления приложения", lvl:"", desc:"", items:[
+        {t:"text", text:"Текущая версия 1.18.0 · проверять автоматически · включать предварительные версии"},
+        {t:"button", label:"Проверить обновления", count:true}
+      ]},
+      {title:"Дополнительно", lvl:"expert", desc:"", items:[
+        {t:"toggle", label:"Показывать консоль winws"},
+        {t:"toggle", label:"Автообновление .bat-списков"}
+      ]}
+    ]},
+    {key:"profiles", title:"Профили и копии", blocks:[
+      {title:"Профили", lvl:"extra", desc:"Пресеты настроек: создать, применить, переименовать.", items:[
+        {t:"text", text:"«Дом» · «Работа» · «Мобильный интернет»"},
+        {t:"button", label:"Создать профиль", count:true}
+      ]},
+      {title:"Резервные копии", lvl:"extra", desc:"", items:[
+        {t:"text", text:"Последняя копия: вчера 19:02"},
+        {t:"button", label:"Создать копию", count:true},
+        {t:"button", label:"Восстановить из копии", count:true}
+      ]},
+      {title:"Опасная зона", lvl:"expert", desc:"Всегда за подтверждением.", items:[
+        {t:"button", label:"Сбросить настройки"},
+        {t:"button", label:"Удалить всё, что установил Zapret GUI"}
+      ]}
+    ]},
+    {key:"about", title:"О программе", blocks:[
+      {title:"О программе", lvl:"", desc:"Редко используемое — глубже, но находится поиском.", items:[
+        {t:"text", text:"Приложение 1.18.0 · движок v1.10.2 · лицензия MIT"},
+        {t:"goto", label:"Журнал → Проверки → Журнал", goto:{s:"checks", t:"log"}}
+      ]}
+    ]}
+  ]}
+];
+
+/* ============================================================ */
+const state = {s:"home", t:"home", clicks:0, expert:false, path:[]};
+const $ = (id) => document.getElementById(id);
+
+function section(k){ return IA.find(x => x.key === k); }
+function tabOf(s,k){ const s0 = section(s); return s0.tabs.find(t => t.key === k) || s0.tabs[0]; }
+
+function renderNav(){
+  $("nav").innerHTML = IA.map(s =>
+    `<div class="nav-item ${s.key===state.s?"active":""}" data-s="${s.key}">
+       <span class="ic">${s.icon}</span><span>${s.title}</span>
+     </div>`).join("");
+  document.querySelectorAll("#nav .nav-item").forEach(el =>
+    el.onclick = () => { state.clicks++; go(el.dataset.s, section(el.dataset.s).tabs[0].key); });
+}
+
+function render(){
+  const s = section(state.s), t = tabOf(state.s, state.t);
+  const visible = s.tabs.filter(x => !x.expertOnly || state.expert);
+  if(!visible.includes(t)){ state.t = visible[0].key; return render(); }
+
+  $("crumb").innerHTML = `<b>${s.title}</b> → ${t.title} <span style="color:var(--dim)">· ${s.hint}</span>`;
+  $("clicks").textContent = "кликов: " + state.clicks;
+  $("clicks").className = "badge-clicks" + (state.clicks === 0 ? "" : state.clicks <= 3 ? " hit" : " over");
+
+  const tabs = visible.map(x =>
+    `<div class="tab ${x.key===state.t?"active":""} ${x.expertOnly?"expert":""}" data-t="${x.key}">${x.title}${x.expertOnly?" ⚡":""}</div>`).join("");
+
+  const cards = t.blocks.filter(b => b.lvl !== "expert" || state.expert).map(b => {
+    const items = b.items.map(it => renderItem(it)).join("");
+    return `<div class="card ${b.lvl==="expert"?"expert":""}">
+      <h3>${b.title} ${b.lvl==="expert"?'<span class="lvl expert">Эксперт</span>':b.lvl==="extra"?'<span class="lvl extra">Дополнительно</span>':""}</h3>
+      ${b.desc?`<p class="desc">${b.desc}</p>`:""}
+      ${items}
+    </div>`;
+  }).join("");
+
+  $("content").innerHTML = `<h1>${s.title}</h1><p class="lead">${s.hint}</p>
+    <div class="tabs">${tabs}</div><div class="grid">${cards}</div>
+    <div class="note">Режим: <b>${state.expert?"Эксперт":"Простой"}</b> · в «Простом» блоки с меткой «Эксперт» скрыты.
+    Проверьте: до любой функции ≤ 3 клика от раздела — счётчик в шапке.</div>`;
+
+  document.querySelectorAll(".tab").forEach(el =>
+    el.onclick = () => { state.clicks++; go(state.s, el.dataset.t); });
+  bindItems();
+}
+
+function renderItem(it){
+  if(it.t === "text")   return `<div class="row"><span class="label"><small>${it.text}</small></span></div>`;
+  if(it.t === "button") return `<div class="row"><span class="label">${it.label}</span>
+      <button class="btn ${it.primary?"primary":""}" data-act="1" ${it.count?'data-count="1"':""}>Выполнить</button></div>`;
+  if(it.t === "chip")   return `<div class="row"><span class="label">${it.label}</span><span class="chip ${it.chip||""}">${it.value}</span></div>`;
+  if(it.t === "status") return `<div class="row"><span class="label">${it.label}<small>${it.sub||""}</small></span><span class="chip ${it.chip||""}">●</span></div>`;
+  if(it.t === "toggle") return `<div class="row"><span class="label">${it.label}${it.sub?`<small>${it.sub}</small>`:""}</span>
+      <span class="mini-sw ${it.on?"on":""}" data-sw="1"></span></div>`;
+  if(it.t === "goto")   return `<div class="row"><span class="label">${it.label}</span>
+      <span class="goto" data-goto-s="${it.goto.s}" data-goto-t="${it.goto.t}">перейти →</span></div>`;
+  return "";
+}
+
+function bindItems(){
+  document.querySelectorAll("[data-sw]").forEach(el => el.onclick = () => el.classList.toggle("on"));
+  document.querySelectorAll("[data-count]").forEach(el => el.onclick = () => { state.clicks++; renderHeaderOnly(); flash(el.closest(".card")); });
+  document.querySelectorAll("[data-goto-s]").forEach(el => el.onclick = () => {
+    state.clicks++;
+    go(el.dataset.gotoS, el.dataset.gotoT, el.closest(".card"));
+  });
+}
+
+function renderHeaderOnly(){
+  $("clicks").textContent = "кликов: " + state.clicks;
+  $("clicks").className = "badge-clicks" + (state.clicks <= 3 ? " hit" : " over");
+}
+function flash(card){ if(!card) return; card.classList.remove("flash"); void card.offsetWidth; card.classList.add("flash"); }
+
+function go(s, t, card){
+  state.s = s; state.t = t || section(s).tabs[0].key;
+  renderNav(); render();
+  if(card) flash($("content").querySelector(".card"));
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+/* ---------- поиск ---------- */
+function index(){
+  const out = [];
+  IA.forEach(s => s.tabs.forEach(t => t.blocks.forEach(b => {
+    out.push({s:s.key, t:t.key, label:b.title, path:`${s.title} → ${t.title}`});
+    b.items.forEach(it => { if(it.label) out.push({s:s.key, t:t.key, label:it.label, path:`${s.title} → ${t.title} → ${b.title}`}); });
+  })));
+  return out;
+}
+const INDEX = index();
+function openSearch(){ $("overlay").classList.add("on"); $("q").value=""; drawResults(""); $("q").focus(); }
+function closeSearch(){ $("overlay").classList.remove("on"); }
+function drawResults(q){
+  const query = q.trim().toLowerCase();
+  const hits = !query ? [{title:"Недавние", items:index().slice(0,5)}] : [];
+  const found = INDEX.filter(x => x.label.toLowerCase().includes(query) || x.path.toLowerCase().includes(query)).slice(0,12);
+  let html = "";
+  if(!query){
+    html = `<div class="res"><span>Подсказка</span><span class="path">введите «журнал», «dns», «автозапуск»…</span></div>`
+      + INDEX.slice(0,6).map((x,i) => `<div class="res ${i===0?"sel":""}" data-i="${INDEX.indexOf(x)}"><span>${x.label}</span><span class="path">${x.path}</span></div>`).join("");
+  } else {
+    html = found.length
+      ? found.map((x,i) => `<div class="res ${i===0?"sel":""}" data-i="${INDEX.indexOf(x)}"><span>${x.label}</span><span class="path">${x.path}</span></div>`).join("")
+      : `<div class="res"><span>Ничего не найдено</span><span class="path">попробуйте другое слово</span></div>`;
+  }
+  $("results").innerHTML = html;
+  document.querySelectorAll(".res[data-i]").forEach(el => el.onclick = () => {
+    const x = INDEX[+el.dataset.i];
+    closeSearch(); go(x.s, x.t);
+  });
+}
+
+/* ---------- дерево ---------- */
+function showTree(){
+  $("content").innerHTML = `<h1>Дерево разделов</h1><p class="lead">5 разделов · ${IA.reduce((n,s)=>n+s.tabs.length,0)} подразделов · глубина 2</p>
+    <div class="card"><div class="tree">${IA.map(s => `<h4>${s.icon} ${s.title}</h4>` +
+      s.tabs.map(t => `<div>${t.title}${t.expertOnly?" <span class='lvl expert'>эксперт</span>":""} · ${t.blocks.length} блока(ов)</div>`).join("")).join("")}</div></div>
+    <div class="note">Рост функционала: новая функция добавляется блоком внутрь существующего подраздела — верхний уровень не меняется.</div>`;
+}
+
+/* ---------- события ---------- */
+$("expert").onchange = (e) => { state.expert = e.target.checked; renderNav(); render(); };
+$("btn-search").onclick = openSearch;
+$("btn-tree").onclick = () => { state.clicks++; showTree(); };
+$("q").oninput = (e) => drawResults(e.target.value);
+$("overlay").onclick = (e) => { if(e.target.id === "overlay") closeSearch(); };
+document.addEventListener("keydown", (e) => {
+  if((e.ctrlKey||e.metaKey) && e.key.toLowerCase() === "k"){ e.preventDefault(); openSearch(); }
+  if(e.key === "Escape") closeSearch();
+  if(e.key === "Enter" && $("overlay").classList.contains("on")){
+    state.clicks++; document.querySelector(".res.sel")?.click();
+  }
+});
+
+renderNav(); render();
+</script>
+</body>
+</html>
