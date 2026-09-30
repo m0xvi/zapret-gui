@@ -47,7 +47,7 @@
             </Grid.RowDefinitions>
 
             <!-- Выбор списка и панель автообновления -->
-            <Border Grid.Row="0" Style="{StaticResource Card}" Padding="14,12" Margin="0,0,0,10">
+            <Border Grid.Row="0" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}" Margin="0,0,0,10">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -88,7 +88,7 @@
             </Border>
 
             <!-- Содержимое списка и визуальный редактор -->
-            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="14,12">
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -141,9 +141,9 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <TextBlock Style="{StaticResource SectionText}" Text="МАССОВАЯ ВСТАВКА (ПАЧКОЙ)" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding BulkLineCountText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource AccentBrush}" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding BulkLineCountText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource AccentBrush}" />
                                 </Grid>
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding BulkDetailedCountText}" Margin="0,3,0,6" FontSize="11" TextWrapping="Wrap" Opacity="0.9" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding BulkDetailedCountText}" Margin="0,3,0,6" TextWrapping="Wrap" Opacity="0.9" />
                                 <TextBox Style="{StaticResource InputBox}" Text="{Binding BulkPasteText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="96" MinHeight="56" ToolTip="Вставьте много доменов — каждый с новой строки (поддерживает https://, пробелы обрежутся). Пустые и дубликаты пропускаются." />
                                 <!-- Превью первых 8 нормализованных доменов как чипы -->
                                 <ItemsControl ItemsSource="{Binding BulkPreviewItems}" Margin="0,8,0,0" Visibility="{Binding BulkHasPreview, Converter={StaticResource BoolToVis}}">
@@ -153,12 +153,12 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border CornerRadius="6" Padding="7,3" Margin="0,0,6,6" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                                                <TextBlock Text="{Binding}" FontSize="11" Foreground="{DynamicResource TextBrush}" />
+                                                <TextBlock Text="{Binding}" Foreground="{DynamicResource TextBrush}" Style="{StaticResource DimText}" />
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Style="{StaticResource DimText}" Text="Показаны первые 8 из пачки — остальные проверятся при добавлении" FontSize="10" Margin="0,2,0,0" Opacity="0.7" Visibility="{Binding BulkHasPreview, Converter={StaticResource BoolToVis}}" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Показаны первые 8 из пачки — остальные проверятся при добавлении" Margin="0,2,0,0" Opacity="0.7" Visibility="{Binding BulkHasPreview, Converter={StaticResource BoolToVis}}" />
                             </StackPanel>
                             <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Добавить пачкой" Margin="12,0,0,0" VerticalAlignment="Bottom" Padding="16,7" MinHeight="36"
                                     Command="{Binding BulkAddCommand}" ToolTip="Разобрать строки, почистить, проверить формат и сохранить в файл" />
@@ -181,7 +181,7 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center">
                                     <TextBlock Style="{StaticResource BodyText}" Text="⚠ Есть несохранённые изменения" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}"/>
-                                    <TextBlock Style="{StaticResource DimText}" Text="Нажмите «Сохранить» чтобы записать на диск, или «Отменить» чтобы откатить." FontSize="11"/>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Нажмите «Сохранить» чтобы записать на диск, или «Отменить» чтобы откатить."/>
                                 </StackPanel>
                                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                                     <Button Style="{StaticResource PrimaryButton}" Content="💾 Сохранить" Command="{Binding SaveCommand}" ToolTip="Записать список на диск"/>
@@ -228,7 +228,7 @@
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
                             <TextBlock Style="{StaticResource DimText}" Text=" · " Visibility="{Binding FileInfoText, Converter={StaticResource StringToVis}}" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding FileInfoText}" Opacity="0.8" FontSize="11" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding FileInfoText}" Opacity="0.8" />
                         </StackPanel>
 
                         <TextBlock Grid.Column="2" Style="{StaticResource DimText}" Text="{Binding CountText}"
@@ -236,7 +236,7 @@
                     </Grid>
 
                     <!-- Подсказка: максимально минималистично, не растянута -->
-                    <TextBlock Grid.Row="4" Margin="0,4,0,6" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Opacity="0.7" MaxWidth="720" HorizontalAlignment="Left">
+                    <TextBlock Grid.Row="4" Margin="0,4,0,6" Style="{StaticResource DimText}" TextWrapping="Wrap" Opacity="0.7" MaxWidth="720" HorizontalAlignment="Left">
                         <Run FontFamily="{DynamicResource IconFont}" Text="&#xE946; " Foreground="{DynamicResource TextMutedBrush}" FontSize="11" />
                         <Run Text="Списки — точечный обход: добавь домен → сохрани в «Профили и копии». Двойной клик/Enter — править, «Проверки» — диагностика." />
                     </TextBlock>
@@ -307,7 +307,7 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- ЛЕВАЯ КОЛОНКА: Выбор и применение безопасного DNS -->
-                    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,6,0" Padding="16,14">
+                    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,6,0" Padding="{DynamicResource CardPaddingCompact}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="НАСТРОЙКА БЕЗОПАСНОГО DNS" />
                             <TextBlock Style="{StaticResource MutedText}"
@@ -371,7 +371,7 @@
                     </Border>
 
                     <!-- ПРАВАЯ КОЛОНКА: Статус DNS в системе и диагностика -->
-                    <Border Grid.Column="1" Style="{StaticResource Card}" Margin="6,0,0,0" Padding="16,14">
+                    <Border Grid.Column="1" Style="{StaticResource Card}" Margin="6,0,0,0" Padding="{DynamicResource CardPaddingCompact}">
                         <StackPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -408,7 +408,7 @@
                 </Grid>
 
                 <!-- Проверка подмены DNS — DoH эталон -->
-                <Border Style="{StaticResource Card}" Padding="16,14">
+                <Border Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -421,7 +421,7 @@
                             </Border>
                             <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
                                 <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА ПОДМЕНЫ DNS (СИСТЕМНЫЙ vs DoH)"/>
-                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="Сравнивает ответы провайдерского DNS с эталонным Cloudflare DoH для 4 доменов" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Сравнивает ответы провайдерского DNS с эталонным Cloudflare DoH для 4 доменов" />
                             </StackPanel>
                             <WrapPanel Grid.Column="2" VerticalAlignment="Center">
                                 <Button Style="{StaticResource SecondaryButton}" Content="Проверить подмену" Command="{Binding CheckHijackCommand}" ToolTip="Сравнить системный DNS и DoH-ответы" />
@@ -432,7 +432,7 @@
                         <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="8" Background="{Binding HijackSummaryKey, Converter={StaticResource SoftSeverityBrush}}" Visibility="{Binding HijackSummary, Converter={StaticResource StringToVis}}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding HijackSummary}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding HijackCheckedAtText}" Margin="0,4,0,0" FontSize="11"/>
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding HijackCheckedAtText}" Margin="0,4,0,0"/>
                             </StackPanel>
                         </Border>
 
@@ -450,20 +450,20 @@
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Style="{StaticResource BodyText}" Text="{Binding Domain}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <StackPanel Grid.Column="1" Margin="8,0,8,0">
-                                                        <TextBlock Style="{StaticResource MonoText}" FontSize="11" TextWrapping="Wrap">
+                                                        <TextBlock Style="{StaticResource MonoText}" TextWrapping="Wrap">
                                                             <Run Text="Системный: "/><Run Text="{Binding SystemIpsText, Mode=OneWay}"/><Run Text=" · DoH: "/><Run Text="{Binding DohIpsText, Mode=OneWay}"/>
                                                         </TextBlock>
-                                                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding Details}" TextWrapping="Wrap" Opacity="0.8"/>
+                                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" TextWrapping="Wrap" Opacity="0.8"/>
                                                     </StackPanel>
                                                     <Border Grid.Column="2" Style="{StaticResource Badge}" Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="Bold" Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}"/>
+                                                        <TextBlock Text="{Binding StatusText}" FontWeight="Bold" Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" Style="{StaticResource DimText}"/>
                                                     </Border>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
+                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" TextWrapping="Wrap"
                                            Text="Примечание: разные IP не всегда означают подмену — CDN могут отдавать разные адреса по гео. Красный статус ставится только при приватных/заглушечных IP или полном отсутствии ответа системы при успехе DoH."/>
                             </StackPanel>
                         </Border>
@@ -482,7 +482,7 @@
 
         <!-- ============================== ВКЛАДКА 3: РЕЖИМЫ ФИЛЬТРАЦИИ ============================== -->
         <Grid Grid.Row="2" Visibility="{Binding IsFiltersTabVisible, Converter={StaticResource BoolToVis}}">
-            <Border Style="{StaticResource Card}" Padding="18,16">
+            <Border Style="{StaticResource Card}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="РЕЖИМЫ ФИЛЬТРАЦИИ IP И ПОРТОВ (IPSET / GAMES)" />
                     <TextBlock Style="{StaticResource MutedText}"

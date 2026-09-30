@@ -41,37 +41,37 @@
             <Border Grid.Column="0" Style="{StaticResource InnerCard}" Margin="0,0,4,0" Padding="10,8"
                     Background="{Binding CurrentStep, Converter={StaticResource WizardStepBrush}, ConverterParameter=0}"
                     Opacity="{Binding CurrentStep, Converter={StaticResource WizardStepOpacity}, ConverterParameter=0}">
-                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="1. ПРАВА" /><TextBlock Style="{StaticResource DimText}" Text="Администратор" FontSize="11" /></StackPanel>
+                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="1. ПРАВА" /><TextBlock Style="{StaticResource DimText}" Text="Администратор" /></StackPanel>
             </Border>
             <Border Grid.Column="1" Style="{StaticResource InnerCard}" Margin="4,0" Padding="10,8"
                     Background="{Binding CurrentStep, Converter={StaticResource WizardStepBrush}, ConverterParameter=1}"
                     Opacity="{Binding CurrentStep, Converter={StaticResource WizardStepOpacity}, ConverterParameter=1}">
-                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="2. ДВИЖОК" /><TextBlock Style="{StaticResource DimText}" Text="Файлы zapret" FontSize="11" /></StackPanel>
+                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="2. ДВИЖОК" /><TextBlock Style="{StaticResource DimText}" Text="Файлы zapret" /></StackPanel>
             </Border>
             <Border Grid.Column="2" Style="{StaticResource InnerCard}" Margin="4,0" Padding="10,8"
                     Background="{Binding CurrentStep, Converter={StaticResource WizardStepBrush}, ConverterParameter=2}"
                     Opacity="{Binding CurrentStep, Converter={StaticResource WizardStepOpacity}, ConverterParameter=2}">
-                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="3. ДИАГНОСТИКА" /><TextBlock Style="{StaticResource DimText}" Text="Службы и сеть" FontSize="11" /></StackPanel>
+                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="3. ДИАГНОСТИКА" /><TextBlock Style="{StaticResource DimText}" Text="Службы и сеть" /></StackPanel>
             </Border>
             <Border Grid.Column="3" Style="{StaticResource InnerCard}" Margin="4,0" Padding="10,8"
                     Background="{Binding CurrentStep, Converter={StaticResource WizardStepBrush}, ConverterParameter=3}"
                     Opacity="{Binding CurrentStep, Converter={StaticResource WizardStepOpacity}, ConverterParameter=3}">
-                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="4. СТРАТЕГИЯ" /><TextBlock Style="{StaticResource DimText}" Text="Выбор обхода" FontSize="11" /></StackPanel>
+                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="4. СТРАТЕГИЯ" /><TextBlock Style="{StaticResource DimText}" Text="Выбор обхода" /></StackPanel>
             </Border>
             <Border Grid.Column="4" Style="{StaticResource InnerCard}" Margin="4,0" Padding="10,8"
                     Background="{Binding CurrentStep, Converter={StaticResource WizardStepBrush}, ConverterParameter=4}"
                     Opacity="{Binding CurrentStep, Converter={StaticResource WizardStepOpacity}, ConverterParameter=4}">
-                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="5. ПРОБА" /><TextBlock Style="{StaticResource DimText}" Text="Тест соединения" FontSize="11" /></StackPanel>
+                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="5. ПРОБА" /><TextBlock Style="{StaticResource DimText}" Text="Тест соединения" /></StackPanel>
             </Border>
             <Border Grid.Column="5" Style="{StaticResource InnerCard}" Margin="4,0,0,0" Padding="10,8"
                     Background="{Binding CurrentStep, Converter={StaticResource WizardStepBrush}, ConverterParameter=5}"
                     Opacity="{Binding CurrentStep, Converter={StaticResource WizardStepOpacity}, ConverterParameter=5}">
-                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="6. ГОТОВО" /><TextBlock Style="{StaticResource DimText}" Text="Завершение" FontSize="11" /></StackPanel>
+                <StackPanel><TextBlock Style="{StaticResource SectionText}" Text="6. ГОТОВО" /><TextBlock Style="{StaticResource DimText}" Text="Завершение" /></StackPanel>
             </Border>
         </Grid>
 
         <!-- Содержимое текущего шага -->
-        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="20,18">
+        <Border Grid.Row="2" Style="{StaticResource Card}">
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
                 <StackPanel>
                     <Grid>
@@ -81,7 +81,7 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="{Binding StepTitleText}" />
-                            <TextBlock Style="{StaticResource TitleText}" Text="{Binding CurrentStepTitle}" FontSize="18" Margin="0,4,0,0" />
+                            <TextBlock Style="{StaticResource TitleText}" Text="{Binding CurrentStepTitle}" Margin="0,4,0,0" />
                             <TextBlock Style="{StaticResource MutedText}" Text="{Binding CurrentStepDescription}" TextWrapping="Wrap" Margin="0,4,0,0" />
                         </StackPanel>
                         <Border Grid.Column="1" Style="{StaticResource Badge}" VerticalAlignment="Top"

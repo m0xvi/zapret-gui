@@ -46,9 +46,9 @@
                 <TextBlock Text="{Binding Icon}" FontFamily="{DynamicResource IconFont}" FontSize="14"
                            Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" Margin="4,0,10,0" VerticalAlignment="Center">
-                    <TextBlock Text="{Binding Title}" FontSize="13" Foreground="{DynamicResource TextBrush}"
-                               TextTrimming="CharacterEllipsis" />
-                    <TextBlock Text="{Binding MetaText}" Style="{StaticResource DimText}" FontSize="10.5"
+                    <TextBlock Text="{Binding Title}" Foreground="{DynamicResource TextBrush}"
+                               TextTrimming="CharacterEllipsis" Style="{StaticResource BodyText}" />
+                    <TextBlock Text="{Binding MetaText}" Style="{StaticResource DimText}"
                                TextTrimming="CharacterEllipsis" />
                 </StackPanel>
                 <Button Grid.Column="2" Style="{StaticResource SmallIconButton}" Content="{Binding StarGlyph}"
@@ -60,7 +60,7 @@
 
     <Grid>
         <!-- Затемнение: клик вне карточки закрывает поиск -->
-        <Border Background="#AA000000" MouseLeftButtonUp="Scrim_Click" />
+        <Border Background="{DynamicResource OverlayScrimBrush}" MouseLeftButtonUp="Scrim_Click" />
 
         <Border Style="{StaticResource Card}" Padding="0" Width="620" MaxHeight="500"
                 Margin="0,70,0,40" HorizontalAlignment="Center" VerticalAlignment="Top">
@@ -86,7 +86,7 @@
                                  Background="Transparent" Padding="0"
                                  Text="{Binding Query, UpdateSourceTrigger=PropertyChanged}"
                                  AutomationProperties.Name="Поисковый запрос" />
-                        <TextBlock Text="{Binding QueryHint}" Style="{StaticResource DimText}" FontSize="12.5"
+                        <TextBlock Text="{Binding QueryHint}" Style="{StaticResource DimText}"
                                    VerticalAlignment="Center" IsHitTestVisible="False"
                                    Visibility="{Binding QueryPlaceholderVisible, Converter={StaticResource BoolToVis}}" />
                     </Grid>
@@ -119,7 +119,7 @@
                                          ItemContainerStyle="{StaticResource SearchRowItem}"
                                          ItemTemplate="{StaticResource SearchRowTemplate}" />
                             </StackPanel>
-                            <TextBlock Style="{StaticResource DimText}" FontSize="10.5" Margin="16,10,16,4"
+                            <TextBlock Style="{StaticResource DimText}" Margin="16,10,16,4"
                                        TextWrapping="Wrap"
                                        Visibility="{Binding HasFavorites, Converter={StaticResource BoolToVis}}"
                                        Text="Звёздочка в строке — добавить место в избранное." />
@@ -145,8 +145,8 @@
                 <!-- Подвал: подсказки -->
                 <Border Grid.Row="3" Background="{DynamicResource ElevatedBrush}" Padding="16,9">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource DimText}" FontSize="10.5" Text="{Binding FooterHint}" />
-                        <TextBlock Style="{StaticResource DimText}" FontSize="10.5" TextWrapping="Wrap"
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding FooterHint}" />
+                        <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
                                    Margin="0,3,0,0" Text="{Binding IndexHint}" />
                     </StackPanel>
                 </Border>

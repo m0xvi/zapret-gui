@@ -15,9 +15,13 @@ check_bindings.py — статическая проверка XAML проект�
   3. {StaticResource X} / {DynamicResource X} — объявлен ли ключ в Themes/, App.xaml или локальных
      ресурсах страниц (Views/*.xaml).
   4. Click="Handler" — есть ли метод Handler в соответствующем code-behind.
+  5. Стиль карточек (v1.25.0): плотность и вертикальный отступ — только из токенов
+     (CardPadding/CardPaddingCompact/CardPaddingList/CardGap), литеральные цвета — только в Themes/,
+     кегль текста — только из текстовых стилей, у карточки есть заголовок, у иконочной кнопки —
+     подпись для экранного диктора. Ошибки стиля валят проверку, предупреждения печатаются списком.
 
 Запуск из корня репозитория:  python3 tools/check_bindings.py
-Код возврата: 0 — проблем нет, 1 — найдены проблемы.
+Код возврата: 0 — проблем нет (могут быть предупреждения), 1 — найдены ошибки.
 """
 import glob
 import os
@@ -70,6 +74,158 @@ SKIP_SECOND = {
     "string", "bool", "int", "double", "ICommand", "AppSettings", "void", "",
     "ObservableCollection<string>", "ObservableCollection<MonitorTarget>", "ObservableCollection<ConnectionCheck>", "ObservableCollection<DnsStrategyMatrixEntry>", "ObservableCollection<StrategyInfo>", "ObservableCollection<EngineBackupInfo>", "ObservableCollection<LogEntry>", "ObservableCollection<GameFilterProfile>", "ObservableCollection<DnsProfile>", "ObservableCollection<UserProfile>", "ObservableCollection<BackupArchiveInfo>", "List<string>", "ICollectionView",
 }
+
+
+# --- Стиль карточек (v1.25.0, docs/UI_CARD_AUDIT.md) -------------------------------------
+CARD_PADDING_TOKENS = {"{DynamicResource CardPadding}", "{DynamicResource CardPaddingCompact}",
+                       "{DynamicResource CardPaddingList}", "0"}
+CARD_HEADING_TOKENS = ("SectionText", "TitleText", "SubtitleText")
+CARD_CONTAINER_TAGS = ("ListBox", "ItemsControl", "ScrollViewer", "TextBox", "TreeView")
+# У этих экранов карточка-панель по смыслу без заголовка (журнал, оверлеи, sticky-панель)
+CARD_HEADING_EXEMPT = {"LogsPage.xaml", "SearchOverlay.xaml"}
+COLOR_ATTRS = ("Background", "Foreground", "BorderBrush", "Fill", "Color", "Stroke")
+COLOR_RE = re.compile(r'\b(' + '|'.join(COLOR_ATTRS) + r')="(#[0-9A-Fa-f]{3,8})"')
+GLYPH_RE = re.compile('&#x[0-9A-Fa-f]{4};|[\U0001F300-\U0001FAFF\u2600-\u27BF\u2B00-\u2BFF]')
+HEADING_RE = re.compile(r'StaticResource (' + '|'.join(CARD_HEADING_TOKENS) + r')\}')
+BOLD_RE = re.compile(r'FontWeight="(SemiBold|Bold)"')
+
+
+def iter_tags(text, name):
+    """Все теги <name ...> с корректной обработкой кавычек: (start, end, tagtext)."""
+    out = []
+    for match in re.finditer(r'<' + name + r'(?=[\s/>])', text):
+        start = match.start()
+        index = start + len(name) + 1
+        quote = None
+        while index < len(text):
+            ch = text[index]
+            if quote:
+                if ch == quote:
+                    quote = None
+            elif ch in '"\'':
+                quote = ch
+            elif ch == '>':
+                break
+            index += 1
+        out.append((start, index + 1, text[start:index + 1]))
+    return out
+
+
+def get_attr(tag, attr):
+    match = re.search(r'\s' + attr + r'="([^"]*)"', tag)
+    return match.group(1) if match else None
+
+
+def style_of(tag):
+    match = re.search(r'Style="\{StaticResource (\w+)\}"', tag)
+    return match.group(1) if match else None
+
+
+def element_bodies(text, name):
+    """Диапазоны тел всех элементов <name ...>…</name> в порядке появления."""
+    pattern = re.compile(r'<' + name + r'(?=[\s/>])')
+    close_re = re.compile(r'</' + name + r'\s*>')
+    bodies = []
+    for match in pattern.finditer(text):
+        start = match.start()
+        if '>' not in text[start:]:
+            continue
+        depth = 0
+        index = start
+        while index < len(text):
+            nxt_open = pattern.search(text, index)
+            nxt_close = close_re.search(text, index)
+            if not nxt_close:
+                break
+            if nxt_open and nxt_open.start() < nxt_close.start():
+                tag_end = text.find('>', nxt_open.start())
+                if not text[nxt_open.start():tag_end + 1].rstrip().endswith('/>'):
+                    depth += 1
+                index = tag_end + 1
+                continue
+            depth -= 1
+            if depth <= 0:
+                bodies.append((start, nxt_close.end()))
+                break
+            index = nxt_close.end()
+    return bodies
+
+
+def border_body(text, start, tag_end):
+    """Тело конкретного <Border> от открывающего тега до парного закрывающего."""
+    for body_start, body_end in element_bodies(text, 'Border'):
+        if body_start == start:
+            return text[body_start:body_end]
+    return text[start:tag_end]
+
+
+def first_textblock(body):
+    """Первый содержательный TextBlock карточки: иконки и глифы пропускаем."""
+    for start, tag_end, tag in iter_tags(body, 'TextBlock'):
+        if 'IconFont' in tag:
+            continue
+        text_value = get_attr(tag, 'Text') or ''
+        if GLYPH_RE.search(text_value) and len(text_value.strip()) <= 3:
+            continue
+        return tag
+    return None
+
+
+EXPANDER_BODIES = {}
+
+
+def check_card_style(path, text, problems, warnings):
+    """Токены плотности/отступа, литеральные цвета, заголовок карточки и кегль текста."""
+    EXPANDER_BODIES[path] = element_bodies(text, 'Expander')
+    rel = os.path.relpath(path, ROOT)
+    for match in COLOR_RE.finditer(text):
+        warnings.append(f'{rel}: литеральный цвет {match.group(1)}="{match.group(2)}" — '
+                        f'кисти живут только в Themes/ (v1.26.0 переведёт остатки на ключи)')
+
+    for start, end, tag in iter_tags(text, 'Border'):
+        if style_of(tag) != 'Card':
+            continue
+        padding = get_attr(tag, 'Padding')
+        if padding is not None and padding not in CARD_PADDING_TOKENS:
+            problems.append(f'{rel}: карточка с Padding="{padding}" — используйте CardPadding, '
+                            f'CardPaddingCompact или CardPaddingList (docs/UI_CARD_AUDIT.md §7)')
+        margin = get_attr(tag, 'Margin')
+        if margin and re.fullmatch(r'0,\d+,0,0', margin):
+            problems.append(f'{rel}: карточка с литеральным отступом Margin="{margin}" — '
+                            f'используйте {{DynamicResource CardGap}}')
+        block = border_body(text, start, end)
+        if os.path.basename(path) in CARD_HEADING_EXEMPT:
+            continue
+        line = text[:start].count(chr(10)) + 1
+        # заголовок задан стилем или первой жирной строкой карточки
+        first = first_textblock(block)
+        if first and (HEADING_RE.search(first) or BOLD_RE.search(first)):
+            continue
+        # контейнер списка (журнал, результаты проверки) или карточка внутри Expander
+        # (заголовок даёт шапка Expander) — заголовок не нужен
+        if any(f'<{container}' in block for container in CARD_CONTAINER_TAGS):
+            continue
+        if any(exp_start <= start < exp_end for exp_start, exp_end in EXPANDER_BODIES.get(path, ())):
+            continue
+        warnings.append(f"{rel}: карточка без заголовка ({', '.join(CARD_HEADING_TOKENS)}) — строка {line}")
+
+    for start, end, tag in iter_tags(text, 'TextBlock'):
+        size = get_attr(tag, 'FontSize')
+        if not size or style_of(tag) or 'FontFamily=' in tag:
+            continue
+        if GLYPH_RE.search(get_attr(tag, 'Text') or ''):
+            continue
+        warnings.append(f'{rel}: TextBlock с FontSize="{size}" без стиля — '
+                        f'строка {text[:start].count(chr(10)) + 1}')
+
+    for start, end, tag in iter_tags(text, 'Button'):
+        content = get_attr(tag, 'Content') or ''
+        if not content or len(content) > 3:
+            continue
+        if 'AutomationProperties.Name' in tag or 'ToolTip' in tag:
+            continue
+        warnings.append(f'{rel}: иконочная кнопка без AutomationProperties.Name/ToolTip — '
+                        f'строка {text[:start].count(chr(10)) + 1}')
 
 
 def read(path):
@@ -214,7 +370,15 @@ def main():
                 if f"void {match.group(1)}(" not in code_text:
                     problems.append(f"{os.path.relpath(code_behind, ROOT)}: нет обработчика '{match.group(1)}'")
 
+    warnings = []
+    for path in xaml_files:
+        check_card_style(path, read(path), problems, warnings)
+
     print(f"Проверено XAML-файлов: {len(xaml_files)}; ключей ресурсов: {len(keys)}")
+    if warnings:
+        print(f"\nПРЕДУПРЕЖДЕНИЯ СТИЛЯ ({len(warnings)}) — не валят проверку, но их стоит закрыть:")
+        for warning in warnings:
+            print("  - " + warning)
     if problems:
         print("\nНАЙДЕНЫ ПРОБЛЕМЫ:")
         for problem in problems:
@@ -222,6 +386,8 @@ def main():
         return 1
 
     print("Проблем не найдено: все привязки, ключи ресурсов и обработчики на месте.")
+    if warnings:
+        print("(предупреждения стиля выше не блокируют проверку)")
     return 0
 
 

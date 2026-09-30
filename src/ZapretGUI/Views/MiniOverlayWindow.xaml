@@ -18,7 +18,7 @@
             Padding="14,10"
             Margin="6">
         <Border.Effect>
-            <DropShadowEffect BlurRadius="16" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.55" />
+            <DropShadowEffect BlurRadius="16" ShadowDepth="4" Direction="270" Color="{DynamicResource HardShadowColor}" Opacity="0.55" />
         </Border.Effect>
 
         <Grid>
@@ -67,8 +67,7 @@
                     <Border Style="{StaticResource Dot}"
                             Background="{Binding BypassStateKey, Converter={StaticResource SeverityBrush}}"
                             Margin="0,0,6,0" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}" FontWeight="SemiBold"
-                               FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                    <TextBlock Text="{Binding StatusText}" Style="{StaticResource BodyText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="190" />
                 </WrapPanel>
 
                 <!-- Строка 2: Стратегия со стрелками быстрой смены -->
@@ -76,7 +75,7 @@
                     <Button Style="{StaticResource SmallIconButton}" Content="&#xE76B;" Width="18" Height="18" FontSize="9"
                             Command="{Binding PrevStrategyCommand}"
                             ToolTip="Предыдущая стратегия обхода" Margin="0,0,4,0" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding StrategyName}" Style="{StaticResource DimText}" FontSize="11" FontWeight="SemiBold"
+                    <TextBlock Text="{Binding StrategyName}" Style="{StaticResource DimText}" FontWeight="SemiBold"
                                TextTrimming="CharacterEllipsis" MaxWidth="155" VerticalAlignment="Center" />
                     <Button Style="{StaticResource SmallIconButton}" Content="&#xE76C;" Width="18" Height="18" FontSize="9"
                             Command="{Binding NextStrategyCommand}"
@@ -87,8 +86,8 @@
                 <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <!-- RTT пинг -->
                     <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="0,0,6,0" Padding="6,2">
-                        <TextBlock Text="{Binding PingText}" FontSize="10" FontWeight="SemiBold"
-                                   Foreground="{Binding PingSeverityKey, Converter={StaticResource SeverityBrush}}" />
+                        <TextBlock Text="{Binding PingText}" FontWeight="SemiBold"
+                                   Foreground="{Binding PingSeverityKey, Converter={StaticResource SeverityBrush}}" Style="{StaticResource DimText}" />
                     </Border>
                     <!-- Бейдж игры -->
                     <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}" Padding="6,2"
@@ -96,8 +95,8 @@
                         <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="10"
                                        Foreground="{DynamicResource AccentBrush}" Margin="0,0,4,0" VerticalAlignment="Center" />
-                            <TextBlock Text="{Binding ActiveGameName}" FontSize="10" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis" MaxWidth="90" VerticalAlignment="Center" />
+                            <TextBlock Text="{Binding ActiveGameName}" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis" MaxWidth="90" VerticalAlignment="Center" Style="{StaticResource DimText}" />
                         </WrapPanel>
                     </Border>
                 </WrapPanel>

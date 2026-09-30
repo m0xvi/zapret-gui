@@ -24,7 +24,7 @@
             </Grid>
 
             <!-- ================= 1. YouTube ================= -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -35,7 +35,7 @@
                             <TextBlock Text="&#xE714;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource DangerBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                            <TextBlock Style="{StaticResource TitleText}" Text="Не открывается YouTube" FontSize="16" />
+                            <TextBlock Style="{StaticResource TitleText}" Text="Не открывается YouTube" />
                             <TextBlock Style="{StaticResource DimText}" Text="Идём от простого к точной настройке — три шага." TextWrapping="Wrap" Margin="0,2,0,0" />
                         </StackPanel>
                     </Grid>
@@ -57,7 +57,7 @@
             </Border>
 
             <!-- ================= 2. Discord ================= -->
-            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -68,7 +68,7 @@
                             <TextBlock Text="&#xE720;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                            <TextBlock Style="{StaticResource TitleText}" Text="Пропал голос в Discord" FontSize="16" />
+                            <TextBlock Style="{StaticResource TitleText}" Text="Пропал голос в Discord" />
                             <TextBlock Style="{StaticResource DimText}" Text="Чаще всего дело в голосовых (RTC) узлах или в кэше Discord." TextWrapping="Wrap" Margin="0,2,0,0" />
                         </StackPanel>
                     </Grid>
@@ -88,7 +88,7 @@
             </Border>
 
             <!-- ================= 3. Интернет после установки ================= -->
-            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -99,7 +99,7 @@
                             <TextBlock Text="&#xE774;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                            <TextBlock Style="{StaticResource TitleText}" Text="Пропал интернет после установки" FontSize="16" />
+                            <TextBlock Style="{StaticResource TitleText}" Text="Пропал интернет после установки" />
                             <TextBlock Style="{StaticResource DimText}" Text="Сначала выключите обход — интернет должен вернуться сразу. Дальше по шагам." TextWrapping="Wrap" Margin="0,2,0,0" />
                         </StackPanel>
                     </Grid>
@@ -123,7 +123,7 @@
             </Border>
 
             <!-- ================= 4. Игры ================= -->
-            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -134,7 +134,7 @@
                             <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                            <TextBlock Style="{StaticResource TitleText}" Text="Лагают игры" FontSize="16" />
+                            <TextBlock Style="{StaticResource TitleText}" Text="Лагают игры" />
                             <TextBlock Style="{StaticResource DimText}" Text="Игровой режим пропускает UDP мимо обхода — это снижает пинг и убирает разрывы." TextWrapping="Wrap" Margin="0,2,0,0" />
                         </StackPanel>
                     </Grid>
@@ -156,7 +156,7 @@
             </Border>
 
             <!-- ================= 5. Вернуть как было ================= -->
-            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -167,7 +167,7 @@
                             <TextBlock Text="&#xE81C;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                            <TextBlock Style="{StaticResource TitleText}" Text="Хочу вернуть как было" FontSize="16" />
+                            <TextBlock Style="{StaticResource TitleText}" Text="Хочу вернуть как было" />
                             <TextBlock Style="{StaticResource DimText}" Text="Профили и резервные копии — в «Настройках». Откат занимает один клик." TextWrapping="Wrap" Margin="0,2,0,0" />
                         </StackPanel>
                     </Grid>
@@ -187,7 +187,7 @@
             </Border>
 
             <!-- ================= Как это работает ================= -->
-            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -198,7 +198,7 @@
                             <TextBlock Text="&#xE897;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                            <TextBlock Style="{StaticResource TitleText}" Text="Как это работает" FontSize="16" />
+                            <TextBlock Style="{StaticResource TitleText}" Text="Как это работает" />
                             <TextBlock Style="{StaticResource DimText}" Text="Пять коротких объяснений — без технических терминов." TextWrapping="Wrap" Margin="0,2,0,0" />
                         </StackPanel>
                     </Grid>
@@ -218,7 +218,7 @@
             </Border>
 
             <!-- ================= Отчёт ================= -->
-            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -229,11 +229,11 @@
                             <TextBlock Text="&#xE8A5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                            <TextBlock Style="{StaticResource TitleText}" Text="Не помогло? Отправьте отчёт" FontSize="16" />
+                            <TextBlock Style="{StaticResource TitleText}" Text="Не помогло? Отправьте отчёт" />
                             <TextBlock Style="{StaticResource DimText}" Text="Архив собирает журнал, результаты проверок и версии в один файл — его можно переслать или приложить к обращению." TextWrapping="Wrap" Margin="0,2,0,0" />
                         </StackPanel>
                     </Grid>
-                    <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" TextWrapping="Wrap" FontSize="11"
+                    <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" TextWrapping="Wrap"
                                Text="Приложение ничего не отправляет само: файл сохраняется туда, куда вы укажете. Телеметрия провайдера — только по вашему согласию в «Настройках» → «Экспорт телеметрии»." />
                     <WrapPanel Margin="0,12,0,0">
                         <Button Style="{StaticResource PrimaryButton}" Content="Собрать архив отчёта (ZIP)" Padding="14,7" MinHeight="32"
@@ -246,7 +246,7 @@
                 </StackPanel>
             </Border>
 
-            <TextBlock Style="{StaticResource DimText}" Margin="2,14,0,0" TextWrapping="Wrap" FontSize="11" Opacity="0.85"
+            <TextBlock Style="{StaticResource DimText}" Margin="2,14,0,0" TextWrapping="Wrap" Opacity="0.85"
                        Text="Помощь объясняет, Проверки делают: в этом разделе нет ни настроек, ни проверок — только подсказки и переходы в нужное место." />
 
         </StackPanel>

@@ -23,7 +23,7 @@
                            FontSize="15" Width="24" VerticalAlignment="Center" />
                 <StackPanel Grid.Column="1" Margin="2,0,0,0" VerticalAlignment="Center">
                     <TextBlock Text="{Binding Title}" VerticalAlignment="Center" />
-                    <TextBlock Text="{Binding Hint}" Style="{StaticResource DimText}" FontSize="10.5"
+                    <TextBlock Text="{Binding Hint}" Style="{StaticResource DimText}"
                                TextTrimming="CharacterEllipsis" Opacity="0.85"
                                Visibility="{Binding Hint, Converter={StaticResource StringToVis}}" />
                 </StackPanel>
@@ -62,17 +62,17 @@
                     <TextBlock Text="&#xE72E;" FontFamily="{DynamicResource IconFont}" FontSize="12"
                                Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                 </Border>
-                <TextBlock Text="Zapret GUI" Margin="10,0,0,0" FontSize="13" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                <TextBlock Text="Zapret GUI" Margin="10,0,0,0" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Style="{StaticResource BodyText}" />
                 <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="12,0,0,0"
                         Command="{Binding NavigateHomeCommand}"
                         ToolTip="Состояние обхода — нажмите, чтобы перейти к тумблеру включения на странице Обзор">
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource Dot}"
                                 Background="{Binding Home.BypassStateKey, Converter={StaticResource SeverityBrush}}" />
-                        <TextBlock Text="{Binding Home.StatusText}" Margin="7,0,0,0" FontSize="11.5"
+                        <TextBlock Text="{Binding Home.StatusText}" Margin="7,0,0,0"
                                    Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis"
-                                   ToolTip="{Binding Home.StatusText}" VerticalAlignment="Center" />
+                                   ToolTip="{Binding Home.StatusText}" VerticalAlignment="Center" Style="{StaticResource DimText}" />
                     </WrapPanel>
                 </Button>
                 <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="8,0,0,0"
@@ -82,8 +82,8 @@
                         <Border Style="{StaticResource Dot}"
                                 Background="{Binding ActiveStrategyKey, Converter={StaticResource SeverityBrush}}" />
                         <TextBlock Text="⚡ " FontSize="10" Margin="4,0,0,0" Foreground="{DynamicResource AccentBrush}" />
-                        <TextBlock Text="{Binding ActiveStrategySummaryText}" FontSize="11.5" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                        <TextBlock Text="{Binding ActiveStrategySummaryText}" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" Style="{StaticResource DimText}" />
                     </WrapPanel>
                 </Button>
                 <!-- Метрики хостов — кликабельно: ведёт к настройке списка хостов (Быстрая проверка) -->
@@ -93,8 +93,8 @@
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource Dot}"
                                 Background="{Binding MonitoringSummaryKey, Converter={StaticResource SeverityBrush}}" />
-                        <TextBlock Text="{Binding MonitoringSummaryText}" Margin="6,0,0,0" FontSize="11"
-                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                        <TextBlock Text="{Binding MonitoringSummaryText}" Margin="6,0,0,0"
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" Style="{StaticResource DimText}" />
                     </WrapPanel>
                 </Button>
                 <!-- Живой RTT пинг — кликабельно: настройка интервала RTT -->
@@ -105,8 +105,8 @@
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource Dot}"
                                 Background="{Binding RealTimePingStatusKey, Converter={StaticResource SeverityBrush}}" />
-                        <TextBlock Text="{Binding RealTimePingSummaryText}" Margin="6,0,0,0" FontSize="11"
-                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
+                        <TextBlock Text="{Binding RealTimePingSummaryText}" Margin="6,0,0,0"
+                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" Style="{StaticResource DimText}" />
                     </WrapPanel>
                 </Button>
 
@@ -117,8 +117,8 @@
                         ToolTip="Обнаружен игровой процесс. Нажмите, чтобы переключить игровой режим (пропуск UDP).">
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource Dot}" Background="{DynamicResource AccentBrush}" />
-                        <TextBlock Text="{Binding GameStatusBadgeText}" Margin="6,0,0,0" FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" />
+                        <TextBlock Text="{Binding GameStatusBadgeText}" Margin="6,0,0,0" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" Style="{StaticResource DimText}" />
                     </WrapPanel>
                 </Button>
                 <Button Style="{StaticResource SecondaryButton}" Padding="8,3" Margin="6,0,0,0"
@@ -127,8 +127,8 @@
                         ToolTip="В фоне выполняется проверка сети. Нажмите, чтобы перейти к выполняемой проверке.">
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource BusySpinner}" Width="12" Height="12" BorderThickness="1.5" Margin="0,0,6,0" VerticalAlignment="Center" />
-                        <TextBlock Text="{Binding ActiveCheckStatusText}" FontSize="11" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ActiveCheckStatusText}" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Style="{StaticResource DimText}" />
                     </WrapPanel>
                 </Button>
                 <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
@@ -138,16 +138,16 @@
                     <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <Border Style="{StaticResource Dot}"
                                 Background="{Binding ReadinessKey, Converter={StaticResource SeverityBrush}}" />
-                        <TextBlock Text="{Binding ReadinessText}" Margin="7,0,0,0" FontSize="11"
-                                   Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
+                        <TextBlock Text="{Binding ReadinessText}" Margin="7,0,0,0"
+                                   Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" Style="{StaticResource DimText}" />
                     </WrapPanel>
                 </Button>
                 <Button Style="{StaticResource GhostButton}" Padding="8,3" Margin="6,0,0,0"
                         Command="{Binding ToggleExpertModeCommand}"
                         ToolTip="{Binding ExpertModeToggleHint}"
                         AutomationProperties.Name="Переключить режим интерфейса: простой или эксперт">
-                    <TextBlock Text="{Binding ExpertModeToggleText}" FontSize="11" FontWeight="SemiBold"
-                               VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ExpertModeToggleText}" FontWeight="SemiBold"
+                               VerticalAlignment="Center" Style="{StaticResource DimText}" />
                 </Button>
             </WrapPanel>
 
@@ -213,8 +213,8 @@
                             <Border Style="{StaticResource InnerCard}" Margin="0,0,0,10">
                                 <StackPanel>
                                     <TextBlock Style="{StaticResource DimText}" Text="ВЕРСИЯ ДВИЖКА" />
-                                    <TextBlock Text="{Binding EngineVersionText}" FontSize="14" FontWeight="SemiBold"
-                                               Foreground="{DynamicResource TextBrush}" Margin="0,3,0,3" />
+                                    <TextBlock Text="{Binding EngineVersionText}" FontWeight="SemiBold"
+                                               Foreground="{DynamicResource TextBrush}" Margin="0,3,0,3" Style="{StaticResource BodyText}" />
                                     <TextBlock Style="{StaticResource DimText}" Text="{Binding Home.EnginePathText}"
                                                TextTrimming="CharacterEllipsis" ToolTip="{Binding Home.EnginePathText}" />
                                 </StackPanel>
@@ -223,8 +223,8 @@
                                     HorizontalAlignment="Center" Margin="0,0,0,6"
                                     Visibility="{Binding ExpertModeBadgeVisible, Converter={StaticResource BoolToVis}}"
                                     ToolTip="Включён режим «Эксперт»: видны технические блоки (Ctrl+Shift+E)">
-                                <TextBlock Text="{Binding ExpertModeBadgeText}" FontSize="10" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource AccentBrush}" />
+                                <TextBlock Text="{Binding ExpertModeBadgeText}" FontWeight="SemiBold"
+                                           Foreground="{DynamicResource AccentBrush}" Style="{StaticResource DimText}" />
                             </Border>
                             <TextBlock Style="{StaticResource DimText}"
                                        Text="{Binding AppVersion, StringFormat=Zapret GUI {0} · лицензия MIT}"
@@ -270,10 +270,10 @@
                     <TextBlock Text="&#xE7BA;" FontFamily="{DynamicResource IconFont}"
                                Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Top" />
                     <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
-                        <TextBlock FontSize="12.5" Foreground="{DynamicResource TextBrush}"
-                                   Text="{Binding AdminWarningText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                        <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}"
-                                   Text="{Binding AdminWarningDetails}" TextWrapping="Wrap" />
+                        <TextBlock Foreground="{DynamicResource TextBrush}"
+                                   Text="{Binding AdminWarningText}" FontWeight="SemiBold" TextWrapping="Wrap" Style="{StaticResource BodyText}" />
+                        <TextBlock Foreground="{DynamicResource TextMutedBrush}"
+                                   Text="{Binding AdminWarningDetails}" TextWrapping="Wrap" Style="{StaticResource DimText}" />
                     </StackPanel>
                 </WrapPanel>
                 <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Перезапустить от администратора"
@@ -283,13 +283,13 @@
 
         <!-- ======================= ОВЕРЛЕЙ ОБНОВЛЕНИЯ GUI ======================= -->
         <!-- Затемняет всё окно при скачивании/установке нового ZapretGUI.exe и показывает прогресс в процентах -->
-        <Border Grid.RowSpan="3" Panel.ZIndex="200" Background="#AA000000"
+        <Border Grid.RowSpan="3" Panel.ZIndex="200" Background="{DynamicResource OverlayScrimBrush}"
                 Visibility="{Binding Updates.GuiUpdateOverlayVisible, Converter={StaticResource BoolToVis}}">
             <Border Background="{DynamicResource CardBrush}" CornerRadius="14" Padding="26,22"
                     Width="480" HorizontalAlignment="Center" VerticalAlignment="Center"
                     BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <Border.Effect>
-                    <DropShadowEffect Color="#22000000" BlurRadius="10" ShadowDepth="2" Opacity="0.22" />
+                    <DropShadowEffect Color="{DynamicResource SoftShadowColor}" BlurRadius="10" ShadowDepth="2" Opacity="0.22" />
                 </Border.Effect>
                 <StackPanel>
                     <WrapPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -318,9 +318,9 @@
                                 </TextBlock.Style>
                             </TextBlock>
                         </Border>
-                        <TextBlock FontSize="16" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center">
+                        <TextBlock Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center">
                             <TextBlock.Style>
-                                <Style TargetType="TextBlock">
+                                <Style TargetType="TextBlock" BasedOn="{StaticResource TitleText}">
                                     <Setter Property="Text" Value="Обновление Zapret GUI" />
                                     <Style.Triggers>
                                         <DataTrigger Binding="{Binding Updates.GuiUpdateHasError}" Value="True">
@@ -334,11 +334,11 @@
                     <!-- Секция прогресса — скрывается при ошибке -->
                     <StackPanel Visibility="{Binding Updates.GuiUpdateProgressVisible, Converter={StaticResource BoolToVis}}">
                         <TextBlock Text="{Binding Updates.Status}" Margin="0,14,0,0" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource TextBrush}" FontSize="13" FontWeight="SemiBold"
-                                   HorizontalAlignment="Center" TextAlignment="Center" />
+                                   Foreground="{DynamicResource TextBrush}" FontWeight="SemiBold"
+                                   HorizontalAlignment="Center" TextAlignment="Center" Style="{StaticResource BodyText}" />
                         <TextBlock Text="{Binding Updates.GuiUpdateStatus}" Margin="0,4,0,0" TextWrapping="Wrap"
-                                   Foreground="{DynamicResource TextMutedBrush}" FontSize="11.5"
-                                   HorizontalAlignment="Center" TextAlignment="Center" />
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   HorizontalAlignment="Center" TextAlignment="Center" Style="{StaticResource DimText}" />
                         <Grid Margin="0,18,0,0">
                             <ProgressBar Height="10" Minimum="0" Maximum="100"
                                          Value="{Binding Updates.Progress, Mode=OneWay}"
@@ -351,11 +351,11 @@
                         </TextBlock>
                         <TextBlock Text="Подготовка — проверка SHA-256…"
                                    Margin="0,10,0,0" HorizontalAlignment="Center"
-                                   Foreground="{DynamicResource TextMutedBrush}" FontSize="11"
-                                   Visibility="{Binding Updates.Indeterminate, Converter={StaticResource BoolToVis}}" />
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   Visibility="{Binding Updates.Indeterminate, Converter={StaticResource BoolToVis}}" Style="{StaticResource DimText}" />
                         <TextBlock Text="Не закрывайте приложение — после загрузки оно автоматически перезапустится"
                                    Margin="0,12,0,0" TextWrapping="Wrap" TextAlignment="Center"
-                                   Foreground="{DynamicResource TextMutedBrush}" FontSize="11" />
+                                   Foreground="{DynamicResource TextMutedBrush}" Style="{StaticResource DimText}" />
                         <Button Style="{StaticResource GhostButton}" Content="Отмена" Margin="0,14,0,0"
                                 HorizontalAlignment="Center" Command="{Binding Updates.CancelCommand}"
                                 ToolTip="Прервать загрузку обновления GUI" />
@@ -363,10 +363,10 @@
                     <!-- Секция ошибки — видима только при ошибке -->
                     <StackPanel Margin="0,14,0,0" Visibility="{Binding Updates.GuiUpdateErrorVisible, Converter={StaticResource BoolToVis}}">
                         <TextBlock Text="{Binding Updates.GuiUpdateErrorText}" TextWrapping="Wrap" TextAlignment="Center"
-                                   Foreground="{DynamicResource TextBrush}" FontSize="12" />
+                                   Foreground="{DynamicResource TextBrush}" Style="{StaticResource BodyText}" />
                         <TextBlock Text="{Binding Updates.GuiUpdateStatus}" Margin="0,6,0,0" TextWrapping="Wrap" TextAlignment="Center"
-                                   Foreground="{DynamicResource TextMutedBrush}" FontSize="11"
-                                   Visibility="{Binding Updates.GuiUpdateErrorText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
+                                   Foreground="{DynamicResource TextMutedBrush}"
+                                   Visibility="{Binding Updates.GuiUpdateErrorText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" Style="{StaticResource DimText}" />
                         <WrapPanel HorizontalAlignment="Center" Margin="0,16,0,0">
                             <Button Style="{StaticResource PrimaryButton}" Content="Повторить" Padding="14,6" Margin="0,0,8,0"
                                     Command="{Binding Updates.RetryGuiUpdateCommand}" ToolTip="Повторить загрузку обновления" />
@@ -376,7 +376,7 @@
                                     Command="{Binding Updates.DismissGuiUpdateErrorCommand}" ToolTip="Скрыть это сообщение" />
                         </WrapPanel>
                         <TextBlock Text="Резервная копия предыдущего exe хранится в %APPDATA%\\ZapretGUI\\gui-backup" Margin="0,10,0,0" TextWrapping="Wrap" TextAlignment="Center"
-                                   Foreground="{DynamicResource TextMutedBrush}" FontSize="10" />
+                                   Foreground="{DynamicResource TextMutedBrush}" Style="{StaticResource DimText}" />
                     </StackPanel>
                 </StackPanel>
             </Border>
@@ -385,7 +385,7 @@
         <!-- Глобальный прогресс-оверлей для длительных операций (затемнение, блокировка UI) — полный экран на весь процесс, кнопка В фон уходит в правый нижний угол -->
         <Grid Grid.RowSpan="3" Panel.ZIndex="300">
             <!-- Полноэкранный оверлей -->
-            <Border Background="#AA000000"
+            <Border Background="{DynamicResource OverlayScrimBrush}"
                     Visibility="{Binding GlobalOverlay.OverlayVisible, Converter={StaticResource BoolToVis}}">
                 <Grid>
                     <Border Width="480"
@@ -398,12 +398,12 @@
                             <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.18" Color="Black" />
                         </Border.Effect>
                         <StackPanel>
-                            <TextBlock Text="{Binding GlobalOverlay.Title}" FontSize="17" FontWeight="SemiBold"
-                                       Foreground="{DynamicResource TextBrush}" TextAlignment="Center" />
-                            <TextBlock Text="{Binding GlobalOverlay.Status}" Margin="0,10,0,0" FontSize="13"
-                                       Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" TextAlignment="Center" FontWeight="SemiBold" />
+                            <TextBlock Text="{Binding GlobalOverlay.Title}" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextBrush}" TextAlignment="Center" Style="{StaticResource TitleText}" />
+                            <TextBlock Text="{Binding GlobalOverlay.Status}" Margin="0,10,0,0"
+                                       Foreground="{DynamicResource TextBrush}" TextWrapping="Wrap" TextAlignment="Center" FontWeight="SemiBold" Style="{StaticResource BodyText}" />
                             <!-- Анимированный процесс: серый текст, растворение вниз / появление сверху вместо статичного 'не закрывайте окно' -->
-                            <TextBlock x:Name="OverlayDetailsText" Text="{Binding GlobalOverlay.Details, NotifyOnTargetUpdated=True}" Margin="0,6,0,0" FontSize="11.5"
+                            <TextBlock x:Name="OverlayDetailsText" Text="{Binding GlobalOverlay.Details, NotifyOnTargetUpdated=True}" Margin="0,6,0,0" Style="{StaticResource DimText}"
                                        Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" TextAlignment="Center" Opacity="0.85">
                                 <TextBlock.RenderTransform>
                                     <TranslateTransform Y="0" />
@@ -433,13 +433,12 @@
                                 <ProgressBar Value="{Binding GlobalOverlay.Progress, Mode=OneWay}" Maximum="100"
                                              IsIndeterminate="{Binding GlobalOverlay.IsIndeterminate, Mode=OneWay}"
                                              Height="7" />
-                                <TextBlock Text="{Binding GlobalOverlay.ProgressPercentText}" Margin="0,6,0,0"
-                                           FontSize="11" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"
-                                           Visibility="{Binding GlobalOverlay.IsIndeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                                <TextBlock Text="{Binding GlobalOverlay.ProgressPercentText}" Margin="0,6,0,0" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center"
+                                           Visibility="{Binding GlobalOverlay.IsIndeterminate, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" Style="{StaticResource DimText}" />
                             </StackPanel>
                             <StackPanel Margin="0,14,0,0" Visibility="{Binding GlobalOverlay.ErrorVisible, Converter={StaticResource BoolToVis}}">
                                 <TextBlock Text="{Binding GlobalOverlay.ErrorText}" TextWrapping="Wrap" TextAlignment="Center"
-                                           Foreground="#E53935" FontSize="13" />
+                                           Foreground="{DynamicResource DangerBrush}" Style="{StaticResource BodyText}" />
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,12,0,0">
                                     <Button Style="{StaticResource PrimaryButton}" Content="Повторить" Command="{Binding GlobalOverlay.RetryCommand}" MinWidth="120" Padding="14,6" Margin="0,0,8,0" />
                                     <Button Style="{StaticResource SecondaryButton}" Content="Закрыть" Command="{Binding GlobalOverlay.DismissCommand}" MinWidth="120" Padding="14,6" />
@@ -468,8 +467,8 @@
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <Border Width="8" Height="8" CornerRadius="4" Background="{DynamicResource AccentBrush}" VerticalAlignment="Center" Margin="0,0,8,0" />
                     <StackPanel Margin="0,0,10,0" VerticalAlignment="Center" MaxWidth="200">
-                        <TextBlock Text="{Binding GlobalOverlay.Title}" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="12" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding GlobalOverlay.Details}" Style="{StaticResource DimText}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding GlobalOverlay.Title}" Style="{StaticResource BodyText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding GlobalOverlay.Details}" Style="{StaticResource DimText}" TextTrimming="CharacterEllipsis" />
                         <ProgressBar Value="{Binding GlobalOverlay.Progress, Mode=OneWay}" Maximum="100" Height="4" Margin="0,4,0,0"
                                      IsIndeterminate="{Binding GlobalOverlay.IsIndeterminate, Mode=OneWay}"
                                      Visibility="{Binding GlobalOverlay.ProgressVisible, Converter={StaticResource BoolToVis}}" />

@@ -35,7 +35,7 @@
             <!-- Сегментированный переключатель вкладок — sticky, единый стиль с Каталогом стратегий -->
             <StackPanel Grid.Row="1" Margin="0,14,0,0">
                 <controls:SegmentedControl ItemsSource="{Binding DiagnosticsTabs}" SelectedIndex="{Binding VisibleSubTab, Mode=TwoWay}" MinWidth="880" HorizontalAlignment="Left" />
-                <TextBlock Style="{StaticResource DimText}" Text="{Binding DiagnosticsTabHintText}" Margin="0,6,0,12" FontSize="11" TextWrapping="Wrap" Opacity="0.85" />
+                <TextBlock Style="{StaticResource DimText}" Text="{Binding DiagnosticsTabHintText}" Margin="0,6,0,12" TextWrapping="Wrap" Opacity="0.85" />
             </StackPanel>
 
             <!-- Содержимое активной вкладки — скроллится, табы остаются на месте -->
@@ -96,7 +96,7 @@
                     </Border>
 
                     <!-- Список сайтов и сервисов быстрой проверки -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingList}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -114,7 +114,7 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource InfoBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
-                                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Проверка — когда сайт не открывается: «Быстрая проверка» — 10 сек без остановки обхода, «Сложные сайты и звонки» — анализ фильтра и голоса, результаты теперь справа от ресурса (иконка корзины остаётся)." />
+                                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" TextWrapping="Wrap" Text="Проверка — когда сайт не открывается: «Быстрая проверка» — 10 сек без остановки обхода, «Сложные сайты и звонки» — анализ фильтра и голоса, результаты теперь справа от ресурса (иконка корзины остаётся)." />
                                 </Grid>
                             </Border>
                             <ListBox Grid.Row="2" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Monitoring.Targets}"
@@ -136,9 +136,9 @@
                                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding LastStatusText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                <TextBlock Text="{Binding LastStatusText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
                                                            Foreground="{Binding LastStatusKey, Converter={StaticResource SeverityBrush}}"
-                                                           Visibility="{Binding LastStatusText, Converter={StaticResource StringToVis}}" ToolTip="{Binding LastDetails}" />
+                                                           Visibility="{Binding LastStatusText, Converter={StaticResource StringToVis}}" ToolTip="{Binding LastDetails}" Style="{StaticResource DimText}" />
                                                 <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
                                                         Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
@@ -207,7 +207,7 @@
                     </Border>
 
                     <!-- Параметры хоста -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ПОЛЬЗОВАТЕЛЬСКИЙ ХОСТ (НЕОБЯЗАТЕЛЬНО)" />
                             <TextBox Style="{StaticResource InputBox}" Margin="0,6,0,0"
@@ -217,7 +217,7 @@
                     </Border>
 
                     <!-- Признаки сети и прямое сравнение -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ПРИЗНАКИ СЕТИ И СРАВНЕНИЕ С ОБХОДОМ" />
                             <TextBlock Style="{StaticResource BodyText}" Text="{Binding DpiObservationText}" TextWrapping="Wrap" />
@@ -248,7 +248,7 @@
                     </Border>
 
                     <!-- Результаты по endpoint-ам -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПО ТЕСТОВЫМ УЗЛАМ (DPI-SUITE)" />
                             <ItemsControl ItemsSource="{Binding DpiResults}" Margin="0,8,0,0">
@@ -309,7 +309,7 @@
                     </Border>
 
                     <!-- Панель: Очистка кэша Discord и сетевого стека в 1 клик -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                         <StackPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -403,7 +403,7 @@
                     </Border>
 
                     <!-- Список проверенных голосовых шлюзов -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПРОВЕРКИ ГОЛОСОВЫХ ШЛЮЗОВ (UDP / STUN)" />
                             
@@ -423,8 +423,8 @@
                                                 </StackPanel>
                                                 <Border Grid.Column="1" CornerRadius="6" Padding="8,4" VerticalAlignment="Center"
                                                         Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}">
-                                                    <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="11"
-                                                               Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
+                                                    <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold"
+                                                               Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" Style="{StaticResource DimText}" />
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -485,7 +485,7 @@
                     </Border>
 
                     <!-- Рекомендации и найденная стратегия -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
                             Visibility="{Binding DeepCheck.HasRecommendations, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="РЕКОМЕНДОВАННАЯ СТРАТЕГИЯ" />
@@ -505,7 +505,7 @@
                     </Border>
 
                     <!-- Метрики измерений -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
                             Visibility="{Binding DeepCheck.HasMetrics, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="МЕТРИКИ ИЗМЕРЕНИЙ" />
@@ -532,7 +532,7 @@
                     </Border>
 
                     <!-- Результаты условий и ограничений -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0"
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
                             Visibility="{Binding DeepCheck.HasFindings, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПРОВЕРКИ СЕТИ" />
@@ -583,7 +583,7 @@
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                                 <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА СИСТЕМЫ" />
-                                <TextBlock Style="{StaticResource DimText}" FontSize="11"
+                                <TextBlock Style="{StaticResource DimText}"
                                            Text="Права, файлы движка, службы, драйвер WinDivert и сеть — одним кликом." TextWrapping="Wrap" />
                             </StackPanel>
                             <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Запустить проверку системы" Padding="14,7" MinHeight="34"
@@ -625,7 +625,7 @@
                     </Border>
 
                     <!-- Список проверок системы -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingList}">
                         <ListBox Style="{StaticResource PlainListBox}" ItemsSource="{Binding Items}"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto" Background="Transparent">
                             <ListBox.ItemTemplate>
@@ -637,9 +637,9 @@
                                         </Grid.ColumnDefinitions>
                                         <Border Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"
                                                 Background="{Binding SeverityKey, Converter={StaticResource SoftSeverityBrush}}">
-                                            <TextBlock Text="{Binding Icon}" FontSize="12" FontWeight="Bold"
+                                            <TextBlock Text="{Binding Icon}" FontWeight="Bold"
                                                        Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}"
-                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource BodyText}" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
                                             <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontWeight="SemiBold" />
@@ -661,7 +661,7 @@
                     </Border>
 
                     <!-- Исправления в один клик -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ИСПРАВЛЕНИЯ В ОДИН КЛИК" />
                             <Button Style="{StaticResource SecondaryButton}" Content="Восстановить обход"
@@ -683,7 +683,7 @@
                     </Border>
 
                     <!-- Быстрый доступ к системным инструментам -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМНЫЕ ФАЙЛЫ И ПАРАМЕТРЫ" />
                             <Button Style="{StaticResource GhostButton}" Content="Открыть hosts в блокноте"
@@ -768,7 +768,7 @@
                     </Grid>
 
                     <!-- Экспорт пакетов -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПОРТ ДИАГНОСТИЧЕСКИХ ДАННЫХ" />
                             <TextBlock Style="{StaticResource MutedText}"

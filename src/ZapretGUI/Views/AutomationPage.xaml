@@ -25,13 +25,13 @@
             <!-- Подвкладки -->
             <StackPanel Margin="0,16,0,0">
                 <controls:SegmentedControl ItemsSource="{Binding AutomationTabs}" SelectedIndex="{Binding VisibleAutomationTab, Mode=TwoWay}" MinWidth="640" HorizontalAlignment="Left" />
-                <TextBlock Style="{StaticResource DimText}" Text="{Binding AutomationTabHintText, Mode=OneWay}" Margin="2,8,0,0" TextWrapping="Wrap" FontSize="11" />
+                <TextBlock Style="{StaticResource DimText}" Text="{Binding AutomationTabHintText, Mode=OneWay}" Margin="2,8,0,0" TextWrapping="Wrap" />
             </StackPanel>
 
             <!-- ============ 1. ЗАПУСК ============ -->
             <StackPanel Visibility="{Binding IsAutomationLaunchTabSelected, Converter={StaticResource BoolToVis}}">
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -59,7 +59,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -86,7 +86,7 @@
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,12,0" VerticalAlignment="Center">
                                 <TextBlock Style="{StaticResource DimText}" Text="Отложенный старт при включении (секунды)" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Полезно для Wi-Fi/DHCP — даёт сети время подняться" FontSize="11" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Полезно для Wi-Fi/DHCP — даёт сети время подняться" />
                             </StackPanel>
                             <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                 <Slider Minimum="0" Maximum="30" Width="120" TickFrequency="5" IsSnapToTickEnabled="True"
@@ -109,7 +109,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -143,7 +143,7 @@
                                     </StackPanel>
                                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -165,7 +165,7 @@
                                     </StackPanel>
                                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -185,7 +185,7 @@
             <!-- ============ 2. ВОССТАНОВЛЕНИЕ ============ -->
             <StackPanel Visibility="{Binding IsAutomationRecoveryTabSelected, Converter={StaticResource BoolToVis}}">
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Background="{DynamicResource AccentSoftBrush}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -194,7 +194,7 @@
                         <StackPanel Margin="0,0,12,0">
                             <TextBlock Style="{StaticResource SectionText}" Text="ЧТО ДЕЛАЛ АВТОПИЛОТ" />
                             <TextBlock Style="{StaticResource BodyText}" Text="{Binding SeamlessStatus, Mode=OneWay}" TextWrapping="Wrap" Margin="0,6,0,0" FontWeight="SemiBold" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding SeamlessLastSwitch, Mode=OneWay}" TextWrapping="Wrap" Margin="0,4,0,0" FontSize="11" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding SeamlessLastSwitch, Mode=OneWay}" TextWrapping="Wrap" Margin="0,4,0,0" />
                         </StackPanel>
                         <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                             <Button Style="{StaticResource GhostButton}" Content="Проверить сейчас" Command="{Binding TestSeamlessNowCommand}" ToolTip="Разово проверить цели и при необходимости переключиться" />
@@ -203,7 +203,7 @@
                     </Grid>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -241,7 +241,7 @@
                                     </StackPanel>
                                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -288,20 +288,20 @@
                                                 </Grid>
                                                 <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Background="{DynamicResource CardBrush}">
                                                     <StackPanel>
-                                                        <TextBlock Style="{StaticResource DimText}" Text="СТАТУС" FontSize="10" FontWeight="Bold" />
+                                                        <TextBlock Style="{StaticResource DimText}" Text="СТАТУС" FontWeight="Bold" />
                                                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding SeamlessStatus}" TextWrapping="Wrap" Margin="0,4,0,0" Foreground="{Binding SeamlessStatusKey, Converter={StaticResource SeverityBrush}}" />
                                                         <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="{Binding SeamlessLastSwitch, StringFormat='Последнее переключение: {0}'}" />
                                                     </StackPanel>
                                                 </Border>
                                                 <Button Style="{StaticResource GhostButton}" Content="Проверить сейчас" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding TestSeamlessNowCommand}" ToolTip="Внепланово проверить ресурсы и при необходимости переключить" />
-                                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap" Text="Логика: 2 подтверждённых сбоя подряд → сравнение «прямо vs обход» → если стратегия мешает — тест 8 кандидатов на упавшем ресурсе → бесшовный SwitchToStrategyAsync/InstallService. Уведомление только в трей, без MessageBox." />
+                                                <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap" Text="Логика: 2 подтверждённых сбоя подряд → сравнение «прямо vs обход» → если стратегия мешает — тест 8 кандидатов на упавшем ресурсе → бесшовный SwitchToStrategyAsync/InstallService. Уведомление только в трей, без MessageBox." />
                                             </StackPanel>
                                         </Border>
-                                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap" Text="Работает в фоне даже когда окно в трее. Учитывает SafeMode и не трогает обход если он выключен." Visibility="{Binding SeamlessFailoverEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap" Text="Работает в фоне даже когда окно в трее. Учитывает SafeMode и не трогает обход если он выключен." Visibility="{Binding SeamlessFailoverEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
                                     </StackPanel>
                                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -323,7 +323,7 @@
                                     </StackPanel>
                                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -371,7 +371,7 @@
                                                 <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="{Binding ScheduleSummary, StringFormat='Текущее: {0}'}" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
                                             </StackPanel>
                                         </Border>
-                                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Text="Подсказка: оставляйте запас 1–2 минуты — проверка идёт каждые 30с, срабатывание в пределах минуты от заданного времени." TextWrapping="Wrap" Opacity="0.8" />
+                                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="Подсказка: оставляйте запас 1–2 минуты — проверка идёт каждые 30с, срабатывание в пределах минуты от заданного времени." TextWrapping="Wrap" Opacity="0.8" />
                                     </StackPanel>
                                 </Border>
             </StackPanel>
@@ -379,7 +379,7 @@
             <!-- ============ 3. РАСПИСАНИЕ ============ -->
             <StackPanel Visibility="{Binding IsAutomationScheduleTabSelected, Converter={StaticResource BoolToVis}}">
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                                     <StackPanel>
                                         <Grid>
                                             <Grid.ColumnDefinitions>
@@ -398,10 +398,10 @@
                                                     <TextBlock Style="{StaticResource DimText}" Text="Интервал, мин:" VerticalAlignment="Center" />
                                                     <Slider Minimum="5" Maximum="120" Width="120" Margin="10,0,0,0" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding BestStrategyCheckMinutes, Mode=TwoWay}" VerticalAlignment="Center" />
                                                     <Border Style="{StaticResource Badge}" Margin="8,0,0,0" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                                                        <TextBlock Text="{Binding BestStrategyCheckMinutes}" FontSize="11" Foreground="{DynamicResource TextMutedBrush}" />
+                                                        <TextBlock Text="{Binding BestStrategyCheckMinutes}" Foreground="{DynamicResource TextMutedBrush}" Style="{StaticResource DimText}" />
                                                     </Border>
                                                 </StackPanel>
-                                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" FontSize="11" Text="Работает совместно с Watchdog и мониторингом ресурсов: переключает только если новая стратегия 14/14 и быстрее текущей на ≥15 мс." TextWrapping="Wrap" Opacity="0.85" Visibility="{Binding AutoSwitchToBestStrategy, Converter={StaticResource BoolToVis}}" />
+                                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="Работает совместно с Watchdog и мониторингом ресурсов: переключает только если новая стратегия 14/14 и быстрее текущей на ≥15 мс." TextWrapping="Wrap" Opacity="0.85" Visibility="{Binding AutoSwitchToBestStrategy, Converter={StaticResource BoolToVis}}" />
                                                 <TextBlock Style="{StaticResource DimText}" Text="Проверяет избранные сайты даже когда окно в трее. Не добавляет домены без вашего подтверждения." TextWrapping="Wrap" />
                                             </StackPanel>
                                         </Grid>
@@ -430,7 +430,7 @@
             <!-- ============ 4. ПРОФИЛИ ПО СЕТЯМ ============ -->
             <StackPanel Visibility="{Binding IsAutomationNetsTabSelected, Converter={StaticResource BoolToVis}}">
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -443,7 +443,7 @@
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
                                 <TextBlock Style="{StaticResource SectionText}" Text="ТЕКУЩАЯ СЕТЬ" Margin="0,0,0,2" />
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding AutoSwitchNetworkStatus, Mode=OneWay}" Margin="0,4,0,0" FontWeight="SemiBold" />
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding AutoSwitchLastReason, Mode=OneWay}" TextWrapping="Wrap" Margin="0,4,0,0" FontSize="11" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding AutoSwitchLastReason, Mode=OneWay}" TextWrapping="Wrap" Margin="0,4,0,0" />
                             </StackPanel>
                         </Grid>
                         <Border Style="{StaticResource Divider}" Margin="0,14,0,14" />

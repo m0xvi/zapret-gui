@@ -43,7 +43,7 @@
                       ToolTip="Автоматически листать журнал вниз при появлении новых записей" />
         </StackPanel>
 
-        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="6">
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingList}">
             <ListBox x:Name="LogList" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Entries}"
                      ItemContainerStyle="{StaticResource LogItemStyle}" Background="Transparent"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
@@ -58,10 +58,10 @@
                                 <ColumnDefinition Width="*" />
                             </Grid.ColumnDefinitions>
                             <TextBlock Style="{StaticResource MonoText}" Text="{Binding TimeText}" />
-                            <TextBlock Grid.Column="1" Text="{Binding LevelText}" FontSize="11.5" FontWeight="SemiBold"
-                                       Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}" />
-                            <TextBlock Grid.Column="2" Text="{Binding SourceText}" FontSize="11.5"
-                                       Foreground="{DynamicResource TextDimBrush}" />
+                            <TextBlock Grid.Column="1" Text="{Binding LevelText}" FontWeight="SemiBold"
+                                       Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}" Style="{StaticResource DimText}" />
+                            <TextBlock Grid.Column="2" Text="{Binding SourceText}"
+                                       Foreground="{DynamicResource TextDimBrush}" Style="{StaticResource DimText}" />
                             <TextBlock Grid.Column="3" Style="{StaticResource MonoText}" Text="{Binding Message}"
                                        Foreground="{DynamicResource TextBrush}" />
                         </Grid>

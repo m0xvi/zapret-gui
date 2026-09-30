@@ -60,7 +60,7 @@
             </Border>
 
             <!-- Параметры и описание -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ПАРАМЕТРЫ И ПОРЯДОК ПРОВЕРКИ" />
                     <TextBlock Style="{StaticResource BodyText}" Text="Проверяются доступность и характер ответа, а не провайдер пользователя." TextWrapping="Wrap" />
@@ -78,7 +78,7 @@
             </Border>
 
             <!-- Признаки сети и сравнение -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ПРИЗНАКИ СЕТИ И СРАВНЕНИЕ" />
                     <TextBlock Style="{StaticResource BodyText}" Text="{Binding DpiObservationText}" TextWrapping="Wrap" />
@@ -124,7 +124,7 @@
             </Border>
 
             <!-- Результаты по endpoint-ам -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПО ТЕСТОВЫМ УЗЛАМ (DPI-SUITE)" />
                     <ItemsControl ItemsSource="{Binding DpiResults}" Margin="0,8,0,0">

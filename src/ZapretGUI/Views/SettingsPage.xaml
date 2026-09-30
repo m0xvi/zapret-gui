@@ -69,7 +69,7 @@
                                 <TextBlock Text="{Binding ExpertModeToggleText}" FontWeight="SemiBold" />
                             </Button>
                         </Grid>
-                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.85" Margin="0,8,0,0"
+                        <TextBlock Style="{StaticResource DimText}" Opacity="0.85" Margin="0,8,0,0"
                                    Text="{Binding ExpertModeToggleHint}" TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
@@ -136,7 +136,7 @@
                 </Border>
 
                 <!-- Запуск и автозапуск переехали в раздел «Автоматизация» (v1.19.0) -->
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -153,7 +153,7 @@
                 </Border>
 
                 <!-- Мастер -->
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -175,7 +175,7 @@
                 </Border>
 
                 <!-- Профили и копии: с v1.21.0 отдельного пункта меню нет — вход из «Настроек» -->
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -199,12 +199,12 @@
                                 <TextBlock Text="&#xE8B7;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Где хранятся файлы" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="12.5" />
-                                <TextBlock Text="Пути к настройкам, логам и бэкапам — можно не открывать" Style="{StaticResource DimText}" FontSize="11" />
+                                <TextBlock Text="Где хранятся файлы" Style="{StaticResource BodyText}" FontWeight="SemiBold" />
+                                <TextBlock Text="Пути к настройкам, логам и бэкапам — можно не открывать" Style="{StaticResource DimText}" />
                             </StackPanel>
                         </StackPanel>
                     </Expander.Header>
-                    <Border Style="{StaticResource Card}" Margin="0,8,0,0">
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ГДЕ ХРАНЯТСЯ ФАЙЛЫ" />
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding SettingsFilePath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SettingsFilePath}" />
@@ -227,7 +227,7 @@
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsBypassTabSelected, Converter={StaticResource BoolToVis}}">
 
                 <!-- Автоматизация переехала в отдельный раздел (v1.19.0) -->
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -267,7 +267,7 @@
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать консоль winws.exe" Margin="0,10,0,0"
                                   IsChecked="{Binding ShowWinwsConsole, Mode=TwoWay}" ToolTip="Чёрное окно консоли winws.exe" />
                         <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="По умолчанию консоль скрыта — обход работает в фоне, вывод пишется в «Журнал»." TextWrapping="Wrap" />
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" FontSize="11" Opacity="0.75" TextWrapping="Wrap"
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" Opacity="0.75" TextWrapping="Wrap"
                                    Text="Автозапуск обхода, задержка старта, безопасный режим и остановка при выходе переехали в раздел «Автоматизация» → «Запуск»." />
                     </StackPanel>
                 </Border>
@@ -277,7 +277,7 @@
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsNetworkTabSelected, Converter={StaticResource BoolToVis}}">
 
                 <!-- Фоновые проверки переехали в «Автоматизацию» (v1.19.0) -->
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <Grid>
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
@@ -354,7 +354,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -410,7 +410,7 @@
                         </WrapPanel>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -435,10 +435,10 @@
                         </Grid>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Приоритет IPv4 (отключает IPv6 для обхода, помогает при fec0:: DNS)" Margin="0,10,0,0" IsChecked="{Binding PreferIPv4ForBypass, Mode=TwoWay}" />
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="DoH для заблокированных (1.1.1.1)" Margin="0,10,0,0" IsChecked="{Binding UseDohForBlockedHosts, Mode=TwoWay}" ToolTip="Использует DNS-over-HTTPS для youtube.com" />
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" FontSize="11" Opacity="0.8" Text="Подсказка: эти же настройки теперь в разделе «Обход» — там же исчерпывающая проверка стратегия×DNS за один клик. После смены SNI/QUIC запустите «Проверка пула SNI» и «Автоподбор»." TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Opacity="0.8" Text="Подсказка: эти же настройки теперь в разделе «Обход» — там же исчерпывающая проверка стратегия×DNS за один клик. После смены SNI/QUIC запустите «Проверка пула SNI» и «Автоподбор»." TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -489,7 +489,7 @@
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
                             </Border>
-                            <TextBlock Style="{StaticResource DimText}" Text="Окно без заголовка — только хосты и мс. Перетащите за любую область, тяните за правый нижний угол для размера, двойной клик — сброс к трею, ✕ скрывает." Margin="0,8,0,0" FontSize="10.5" Opacity="0.7" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Окно без заголовка — только хосты и мс. Перетащите за любую область, тяните за правый нижний угол для размера, двойной клик — сброс к трею, ✕ скрывает." Margin="0,8,0,0" Opacity="0.7" TextWrapping="Wrap" />
                         </StackPanel>
                     </StackPanel>
                 </Border>
@@ -546,7 +546,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -572,7 +572,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Style="{StaticResource BodyText}" Text="Вкл/выкл обхода" />
-                                        <TextBlock Style="{StaticResource DimText}" Text="Быстро без мыши" FontSize="11" />
+                                        <TextBlock Style="{StaticResource DimText}" Text="Быстро без мыши" />
                                     </StackPanel>
                                     <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleBypass, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например: Ctrl+Shift+Z" />
                                 </Grid>
@@ -583,7 +583,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Style="{StaticResource BodyText}" Text="Игровой режим" />
-                                        <TextBlock Style="{StaticResource DimText}" Text="Переключение пропуска UDP" FontSize="11" />
+                                        <TextBlock Style="{StaticResource DimText}" Text="Переключение пропуска UDP" />
                                     </StackPanel>
                                     <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleGameMode, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например: Ctrl+Shift+G" />
                                 </Grid>
@@ -594,7 +594,7 @@
                                     </Grid.ColumnDefinitions>
                                     <StackPanel VerticalAlignment="Center">
                                         <TextBlock Style="{StaticResource BodyText}" Text="HUD виджет" />
-                                        <TextBlock Style="{StaticResource DimText}" Text="Показать/скрыть оверлей" FontSize="11" />
+                                        <TextBlock Style="{StaticResource DimText}" Text="Показать/скрыть оверлей" />
                                     </StackPanel>
                                     <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Text="{Binding HotkeyToggleMiniOverlay, UpdateSourceTrigger=PropertyChanged}" ToolTip="Например: Ctrl+Shift+O" />
                                 </Grid>
@@ -603,7 +603,7 @@
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -660,7 +660,7 @@
                                 Command="{Binding OpenAutomationLaunchCommand}" />
                     </Grid>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -680,11 +680,11 @@
                             <Button Style="{StaticResource SecondaryButton}" Content="Применить оптимизацию для игр" Command="{Binding ApplyGamingTweaksCommand}" />
                             <Button Style="{StaticResource GhostButton}" Content="Сбросить" Margin="8,0,0,0" Command="{Binding RevertGamingTweaksCommand}" />
                         </WrapPanel>
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="Требуются права администратора. Изменяет реестр для активного адаптера." FontSize="11" />
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="Требуются права администратора. Изменяет реестр для активного адаптера." />
                     </StackPanel>
                 </Border>
 
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
                     <StackPanel>
                         <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="💡 Подсказка для игр" />
                         <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="Если в игре скачет пинг — попробуйте на «Обзоре» включить игровой фильтр TCP+UDP, а на странице «Стратегии» подобрать SNI с низким RTT (вкладка «Пул TLS SNI»)." TextWrapping="Wrap" />
@@ -708,12 +708,12 @@
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                                 <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" Margin="0,0,0,1" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Версия и путь к сборке — перенесено из Обзора" FontSize="11" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Версия и путь к сборке — перенесено из Обзора" />
                             </StackPanel>
                             <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="7,3">
-                                <TextBlock FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.9">
+                                <TextBlock FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.9">
                                     <TextBlock.Style>
-                                        <Style TargetType="TextBlock">
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource DimText}">
                                             <Setter Property="Text" Value="АКТУАЛЬНО" />
                                             <Style.Triggers>
                                                 <DataTrigger Binding="{Binding Home.UpdateAvailable}" Value="True">
@@ -734,14 +734,14 @@
                             </Grid.ColumnDefinitions>
                             <Border CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource DimText}" Text="УСТАНОВЛЕНА" FontSize="10" FontWeight="Bold" />
-                                    <TextBlock Style="{StaticResource StatValueText}" Text="{Binding Home.EngineVersionText}" FontSize="16" Margin="0,4,0,0" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="УСТАНОВЛЕНА" FontWeight="Bold" />
+                                    <TextBlock Style="{StaticResource StatValueText}" Text="{Binding Home.EngineVersionText}" Margin="0,4,0,0" />
                                 </StackPanel>
                             </Border>
                             <Border Grid.Column="2" CornerRadius="9" Padding="12,10" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource DimText}" Text="НА GITHUB" FontSize="10" FontWeight="Bold" />
-                                    <TextBlock Style="{StaticResource StatValueText}" Text="{Binding Home.LatestVersionText}" FontSize="16" Margin="0,4,0,0" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="НА GITHUB" FontWeight="Bold" />
+                                    <TextBlock Style="{StaticResource StatValueText}" Text="{Binding Home.LatestVersionText}" Margin="0,4,0,0" />
                                 </StackPanel>
                             </Border>
                         </Grid>
@@ -749,7 +749,7 @@
                                 Visibility="{Binding Home.UpdateAvailable, Converter={StaticResource BoolToVis}}">
                             <WrapPanel Orientation="Horizontal">
                                 <TextBlock Text="&#xE73E;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" Margin="0,0,6,0" />
-                                <TextBlock Style="{StaticResource BodyText}" Text="Доступно обновление — списки и флаги сохранятся" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Доступно обновление — списки и флаги сохранятся" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" TextWrapping="Wrap" />
                             </WrapPanel>
                         </Border>
                         <WrapPanel Margin="16,12,16,0">
@@ -766,16 +766,16 @@
                                 <TextBlock Text="&#xE8B7;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Home.StrategyCountText}" FontSize="11" />
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Home.EnginePathText}" FontSize="10.5" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Home.EnginePathText}" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Home.StrategyCountText}" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Home.EnginePathText}" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Home.EnginePathText}" />
                             </StackPanel>
                         </Grid>
                     </StackPanel>
                 </Border>
-                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <TextBlock Style="{StaticResource SectionText}" Text="ДРУГИЕ РАЗДЕЛЫ" />
-                        <TextBlock Style="{StaticResource DimText}" Text="Журнал живёт в разделе «Проверки» (вкладка «Журнал»); «О программе» — отдельный экран." FontSize="11" TextWrapping="Wrap" />
+                        <TextBlock Style="{StaticResource DimText}" Text="Журнал живёт в разделе «Проверки» (вкладка «Журнал»); «О программе» — отдельный экран." TextWrapping="Wrap" />
                         <WrapPanel Margin="0,10,0,0">
                             <Button Style="{StaticResource SecondaryButton}" Content="Журнал" Padding="12,7" Command="{Binding OpenLogsCommand}" />
                             <Button Style="{StaticResource GhostButton}" Content="О программе" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenAboutCommand}" />
@@ -786,7 +786,7 @@
             </StackPanel>
 
             <!-- Система и информация — перенесённые разделы Журнал / Обновления / О программе -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -798,7 +798,7 @@
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМА И ИНФОРМАЦИЯ" />
-                            <TextBlock Style="{StaticResource DimText}" Text="Полезные переходы: журнал, обновления движка и приложения, о программе." FontSize="11" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Полезные переходы: журнал, обновления движка и приложения, о программе." TextWrapping="Wrap" />
                         </StackPanel>
                     </Grid>
                     <WrapPanel Margin="0,14,0,0">

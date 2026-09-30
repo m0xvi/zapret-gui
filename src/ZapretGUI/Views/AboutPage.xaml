@@ -24,7 +24,7 @@
             </Grid>
 
             <!-- Карточки информации -->
-            <Border Style="{StaticResource Card}" Margin="0,18,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ЧТО ДЕЛАЕТ ПРИЛОЖЕНИЕ" />
                     <TextBlock Style="{StaticResource MutedText}"
@@ -40,7 +40,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="АВТОРЫ И ИСТОЧНИКИ" />
                     <TextBlock Style="{StaticResource BodyText}" Text="Стратегии и движок: Flowseal/zapret-discord-youtube" FontWeight="SemiBold" />
@@ -58,7 +58,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ВЕРСИИ" />
                     <Grid>
@@ -76,7 +76,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ЛИЦЕНЗИЯ" />
                     <TextBlock Style="{StaticResource MutedText}"
@@ -86,7 +86,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ВАЖНО" />
                     <TextBlock Style="{StaticResource MutedText}"

@@ -9,6 +9,16 @@
          поэтому тема меняется на лету (Dark.xaml / Light.xaml).
          ================================================================== -->
 
+    <!-- ============================ ТОКЕНЫ РАЗМЕРОВ (v1.25.0) ============================
+         Карточки используют только эти значения: своя плотность у отдельной карточки —
+         исключение, которое нужно объяснить комментарием. Проверяется tools/check_bindings.py. -->
+    <Thickness x:Key="CardPadding">18</Thickness>
+    <Thickness x:Key="CardPaddingCompact">14,12</Thickness>
+    <Thickness x:Key="CardPaddingList">8</Thickness>
+    <Thickness x:Key="InnerCardPadding">14</Thickness>
+    <Thickness x:Key="CardGap">0,14,0,0</Thickness>
+    <Thickness x:Key="BlockGap">0,12,0,0</Thickness>
+
     <!-- Видимый фокус клавиатуры: не полагаемся на системную тему Windows,
          чтобы Tab-навигация была заметна и в тёмной, и в светлой теме. -->
     <Style x:Key="KeyboardFocusVisual" TargetType="Control">
@@ -48,6 +58,14 @@
         <Setter Property="Margin" Value="0,0,0,8" />
     </Style>
 
+    <Style x:Key="SubtitleText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource UiFontDisplay}" />
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
     <Style x:Key="BodyText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
         <Setter Property="FontSize" Value="13" />
@@ -57,28 +75,28 @@
 
     <Style x:Key="MutedText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
     <Style x:Key="DimText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
-        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="FontSize" Value="11" />
         <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
     <Style x:Key="MonoText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Courier New" />
-        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="FontSize" Value="11" />
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
     <Style x:Key="StatValueText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource UiFontDisplay}" />
-        <Setter Property="FontSize" Value="19" />
+        <Setter Property="FontSize" Value="20" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
@@ -97,7 +115,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{DynamicResource CardRadius}" />
-        <Setter Property="Padding" Value="18" />
+        <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
         <Setter Property="Effect">
             <Setter.Value>
@@ -111,7 +129,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{DynamicResource ControlRadius}" />
-        <Setter Property="Padding" Value="14" />
+        <Setter Property="Padding" Value="{DynamicResource InnerCardPadding}" />
     </Style>
 
     <Style x:Key="Badge" TargetType="Border">

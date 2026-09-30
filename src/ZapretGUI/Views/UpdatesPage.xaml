@@ -67,7 +67,7 @@
 
             <!-- Основные карточки обновления -->
             <!-- 1. Обновление Zapret GUI — теперь первым -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ОБНОВЛЕНИЕ ZAPRET GUI" />
                     <Grid Margin="0,2,0,0">
@@ -108,7 +108,7 @@
             </Border>
 
             <!-- 2. Движок zapret -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET (ОБХОД)" />
 
@@ -192,7 +192,7 @@
             </Border>
 
             <!-- 2. Списки и файл hosts -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="СПИСКИ И ФАЙЛ HOSTS" />
 
@@ -242,7 +242,7 @@
             </Border>
 
             <!-- 3. Настройки обновлений движка -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="НАСТРОЙКИ ОБНОВЛЕНИЙ ДВИЖКА" />
                     <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять при запуске"
@@ -255,7 +255,7 @@
             </Border>
 
             <!-- 6. Резервные копии -->
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="РЕЗЕРВНЫЕ КОПИИ" />
                     <TextBlock Style="{StaticResource MutedText}"

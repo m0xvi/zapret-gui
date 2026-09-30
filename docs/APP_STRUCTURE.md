@@ -1,6 +1,6 @@
 # Структура приложения Zapret GUI — разделы, подразделы и их функции
 
-> Версия документа: `v1.24.0` (ветка `arena/01a0f306-zapret-gui`, этапы 1–8 информационной архитектуры — внедрение завершено)
+> Версия документа: `v1.25.0` (ветка `arena/01a0f306-zapret-gui`; этапы 1–8 информационной архитектуры внедрены, `v1.25.0` — единый стиль карточек)
 > Стек: `C# .NET 8 + WPF (MVVM)`, движок `Flowseal/zapret-discord-youtube` (`bin/winws.exe`, `WinDivert`), служба `zapret`
 > Язык интерфейса: русский. Сборка: `windows-latest` GitHub Actions.
 
@@ -163,7 +163,8 @@
 
 ## 7. Сборка и версия
 
-*   **csproj:** `<Version>1.24.0</Version>` / `AssemblyVersion`/`FileVersion`/`InformationalVersion` `1.24.0.0`, `LangVersion latest`, `System.Text.Encoding.CodePages`.
+*   **csproj:** `<Version>1.25.0</Version>` / `AssemblyVersion`/`FileVersion`/`InformationalVersion` `1.25.0.0`, `LangVersion latest`, `System.Text.Encoding.CodePages`.
 *   **Workflow:** `.github/workflows/build.yml` (`windows-latest`, `dotnet 8.0.x`, `restore → build → WindowsIntegrationHarness → CoreLogicHarness → publish portable / framework-dependent → release` на `v*`).
-*   **Проверка привязок:** `python3 tools/check_bindings.py` — 22 `XAML` / 96 ключей (включая оверлей поиска: карта `SearchOverlay → SearchViewModel`/`SearchResultItem`), `Run Text Mode=OneWay` для `read-only`.
+*   **Проверка привязок и стиля:** `python3 tools/check_bindings.py` — 22 `XAML` / 109 ключей (включая оверлей поиска: карта `SearchOverlay → SearchViewModel`/`SearchResultItem`), `Run Text Mode=OneWay` для `read-only`. С `v1.25.0` — плюс 5 правил стиля: карточка с `Padding` вне токенов = ошибка; литеральный цвет вне `Themes/`, `TextBlock` с `FontSize` без стиля, карточка без заголовка и иконочная кнопка без подписи = предупреждения.
+*   **Токены стиля (`v1.25.0`):** `CardPadding` 18 · `CardPaddingCompact` 14,12 · `CardPaddingList` 8 · `InnerCardPadding` 14 · `CardGap` 0,14 · `BlockGap` 0,12 (`Themes/Controls.xaml`), шкала кеглей **11 · 13 · 17 · 20 · 25**, стиль `SubtitleText`; кисти-исключения оверлеев и метрик панели задач — в `Themes/Dark.xaml` + `Themes/Light.xaml` (44/44).
 
