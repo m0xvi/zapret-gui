@@ -23,6 +23,7 @@
   .nav-item:hover{background:var(--card-hover);color:var(--text)}
   .nav-item.active{background:var(--accent-soft);color:var(--accent);font-weight:600}
   .nav-item .ic{width:20px;text-align:center;font-size:15px}
+  .nav-sep{height:1px;background:var(--border);margin:10px 12px 8px}
   .side-foot{padding:12px 16px;border-top:1px solid var(--border);color:var(--dim);font-size:11px}
   /* ---------- шапка ---------- */
   .main{flex:1;min-width:0;display:flex;flex-direction:column}
@@ -94,10 +95,11 @@
 <body>
 <div class="app">
   <aside class="side">
-    <div class="brand"><b>Zapret GUI</b><span>прототип ИА · 5 разделов</span></div>
+    <div class="brand"><b>Zapret GUI</b><span>прототип ИА · 5 разделов + помощь</span></div>
     <nav class="nav" id="nav"></nav>
     <div class="side-foot">
-      Клик по разделу, табу и ссылке считается.<br />Цель: любая функция ≤ 3 клика.
+      Клик по разделу, табу и ссылке считается.<br />Цель: любая функция ≤ 3 клика.<br /><br />
+      «Помощь» — в подвале: отдельный вход для новичка, без своих настроек.
     </div>
   </aside>
 
@@ -157,18 +159,18 @@ const IA = [
   ]},
 
   {key:"bypass", icon:"⇄", title:"Обход", hint:"Чем, что и как обходим", tabs:[
-    {key:"strategy", title:"Стратегия", blocks:[
-      {title:"Текущая стратегия", lvl:"", desc:"Название + человеческое описание.", items:[
+    {key:"strategy", title:"Стратегия", titleSimple:"Способ обхода", blocks:[
+      {title:"Текущая стратегия", titleSimple:"Текущий способ обхода", lvl:"", desc:"Название + человеческое описание.", items:[
         {t:"status", label:"ALT11 — «обход через подмену пакетов»", sub:"Работает 2 дня · 26/28 сайтов OK", chip:"ok"},
-        {t:"button", label:"Проверить эту стратегию", count:true},
+        {t:"button", label:"Проверить эту стратегию", labelSimple:"Проверить этот способ", count:true},
         {t:"goto", label:"Подобрать другую → Подбор", goto:{s:"bypass", t:"pick"}}
       ]},
-      {title:"Список стратегий", lvl:"", desc:"Поиск, фильтр, «Применить» — без остановки обхода.", items:[
+      {title:"Список стратегий", titleSimple:"Список способов обхода", lvl:"", desc:"Поиск, фильтр, «Применить» — без остановки обхода.", items:[
         {t:"text", text:"Поиск по названию и категории · фильтр «рекомендуемые» · метка «проверена»"},
         {t:"button", label:"Применить выбранную", primary:true, count:true},
         {t:"text", text:"Все стратегии парсятся из general*.bat — новые появляются автоматически."}
       ]},
-      {title:"Аргументы и SNI", lvl:"expert", desc:"Скрыто в «Простом» режиме.", items:[
+      {title:"Аргументы и SNI", lvl:"expert", desc:"Скрыто в «Простом» режиме.", alias:"sni сни пул подмена", items:[
         {t:"text", text:"Аргументы winws, категории ALT/GENERAL/EXP, пул SNI, кандидаты, история оценок."}
       ]}
     ]},
@@ -178,12 +180,12 @@ const IA = [
         {t:"button", label:"Подобрать", primary:true, count:true},
         {t:"button", label:"Применить рекомендованную", count:true}
       ]},
-      {title:"Перебор с разными DNS", lvl:"expert", desc:"Бывшая «матрица 23×4 = 92 теста». До получаса, с отменой и восстановлением.", items:[
+      {title:"Перебор с разными DNS", lvl:"expert", alias:"матрица стратегия dns 92 теста", desc:"Бывшая «матрица 23×4 = 92 теста». До получаса, с отменой и восстановлением.", items:[
         {t:"button", label:"Запустить перебор", count:true},
         {t:"text", text:"При прерывании возвращает исходные DNS и состояние обхода."}
       ]}
     ]},
-    {key:"dns", title:"DNS", blocks:[
+    {key:"dns", title:"DNS", alias:"doh подмена dns сервер", blocks:[
       {title:"DNS", lvl:"", desc:"Единственное место, где настраивается DNS (было 3).", items:[
         {t:"status", label:"Сейчас: Cloudflare 1.1.1.1", sub:"DoH для заблокированных подключён", chip:"ok"},
         {t:"text", text:"Профили: Cloudflare · Quad9 · Google · DHCP"},
@@ -191,7 +193,7 @@ const IA = [
         {t:"button", label:"Проверить подмену DNS", count:true}
       ]}
     ]},
-    {key:"lists", title:"Списки", blocks:[
+    {key:"lists", title:"Списки", alias:"hosts ipset списки домены фильтр", blocks:[
       {title:"Мои сайты", lvl:"", desc:"Пользовательские добавления — самое частое действие.", items:[
         {t:"text", text:"Добавить домен · список своих сайтов · удалить · перенести"},
         {t:"button", label:"Добавить домен", primary:true, count:true}
@@ -226,7 +228,7 @@ const IA = [
         {t:"text", text:"QUIC-fake · подмена SNI · предпочтение IPv4 · DoH для заблокированных · стратегии для отдельных хостов"}
       ]}
     ]},
-    {key:"adv", title:"Дополнительно", expertOnly:true, blocks:[
+    {key:"adv", title:"Дополнительно", expertOnly:true, alias:"служба windows sc процесс консоль winws", blocks:[
       {title:"Режим работы обхода", lvl:"expert", desc:"Служба Windows или отдельный процесс.", items:[
         {t:"text", text:"Служба: обход работает до входа в систему · Процесс: проще отладить"},
         {t:"button", label:"Установить / переустановить службу", count:true},
@@ -237,7 +239,7 @@ const IA = [
   ]},
 
   {key:"checks", icon:"◎", title:"Проверки", hint:"Что-то не работает — найти причину и починить", tabs:[
-    {key:"fast", title:"Быстрая проверка", blocks:[
+    {key:"fast", title:"Быстрая проверка", alias:"мониторинг ресурсов экспресс проверка сайтов", blocks:[
       {title:"Проверить всё", lvl:"", desc:"~10 секунд, без остановки обхода.", items:[
         {t:"button", label:"Проверить сейчас", primary:true, count:true},
         {t:"chip", label:"YouTube", value:"OK · 38 мс", chip:"ok"},
@@ -254,7 +256,7 @@ const IA = [
         {t:"text", text:"Контекстное действие у проблемного ресурса: «Добавить в обход» → списки в разделе «Обход»."}
       ]}
     ]},
-    {key:"hard", title:"Сложные сайты и звонки", blocks:[
+    {key:"hard", title:"Сложные сайты и звонки", alias:"dpi voice rtc звонки discord youtube 34 узла", blocks:[
       {title:"Фильтрация провайдера (DPI)", lvl:"", desc:"34 узла: DNS, TCP, HTTP, TLS 1.2/1.3.", items:[
         {t:"button", label:"Запустить проверку", primary:true, count:true},
         {t:"text", text:"Результат простыми словами + кнопка «Применить исправление»."}
@@ -263,7 +265,7 @@ const IA = [
         {t:"button", label:"Проверить голос", count:true}
       ]}
     ]},
-    {key:"system", title:"Система", blocks:[
+    {key:"system", title:"Система", alias:"аудит bfe windivert драйвер tcp timestamps служба", blocks:[
       {title:"Проверка системы", lvl:"extra", desc:"14 пунктов: права, BFE, WinDivert, TCP timestamps, служба, hosts, ipset, DNS.", items:[
         {t:"button", label:"Запустить проверку", primary:true, count:true},
         {t:"button", label:"Исправить всё безопасное", count:true},
@@ -275,14 +277,14 @@ const IA = [
         {t:"button", label:"Удалить всё, что установил Zapret GUI"}
       ]}
     ]},
-    {key:"deep", title:"Глубокая проверка", expertOnly:true, blocks:[
+    {key:"deep", title:"Глубокая проверка", expertOnly:true, alias:"deep check targets провайдер", blocks:[
       {title:"Глубокая проверка", lvl:"expert", desc:"Свои хосты, контекст провайдера, многоточечный замер.", items:[
         {t:"text", text:"Цели: targets.txt · провайдер и регион: МТС, Московская обл."},
         {t:"button", label:"Запустить глубокую проверку", count:true},
         {t:"button", label:"Сохранить / применить найденный вариант", count:true}
       ]}
     ]},
-    {key:"history", title:"История и отчёты", blocks:[
+    {key:"history", title:"История и отчёты", alias:"отчёты экспорт телеметрия результаты", blocks:[
       {title:"История", lvl:"extra", desc:"Проверки, переключения стратегий, восстановления.", items:[
         {t:"text", text:"Результаты за 30 дней · что делал автопилот · когда менялась стратегия"},
         {t:"button", label:"Экспортировать отчёт (JSON / ZIP)", count:true}
@@ -291,7 +293,7 @@ const IA = [
         {t:"button", label:"Собрать и отправить отчёт"}
       ]}
     ]},
-    {key:"log", title:"Журнал", blocks:[
+    {key:"log", title:"Журнал", alias:"логи log ошибки отладка debug", blocks:[
       {title:"Журнал", lvl:"", desc:"По умолчанию — только важное (аналог «было 4 места, стало 1»).", items:[
         {t:"text", text:"Фильтр по уровню · поиск по тексту · копировать · автопрокрутка"},
         {t:"button", label:"Показать отладку", count:true},
@@ -301,7 +303,7 @@ const IA = [
   ]},
 
   {key:"auto", icon:"⟲", title:"Автоматизация", hint:"Работает и чинится само", tabs:[
-    {key:"start", title:"Запуск", blocks:[
+    {key:"start", title:"Запуск", alias:"автозапуск автозагрузка startup", blocks:[
       {title:"Запуск", lvl:"", desc:"Раньше это было раскидано по «Настройкам» и «Первым запуском».", items:[
         {t:"toggle", label:"Запускать приложение при входе в Windows"},
         {t:"toggle", label:"Запускать свёрнутым в трей", on:true},
@@ -310,12 +312,12 @@ const IA = [
         {t:"toggle", label:"Безопасный режим (не поднимать обход самому)"}
       ]}
     ]},
-    {key:"recover", title:"Восстановление", blocks:[
-      {title:"Присмотр за обходом", lvl:"", desc:"Бывший Watchdog: в UI — человеческое название.", items:[
+    {key:"recover", title:"Восстановление", alias:"автовосстановление автоподбор", blocks:[
+      {title:"Присмотр за обходом", lvl:"", desc:"Бывший Watchdog: в UI — человеческое название.", alias:"watchdog сторожевой таймер перезапуск", items:[
         {t:"toggle", label:"Перезапускать обход при сбое", on:true, sub:"проверка каждые 15 с · уведомлять в трее"},
         {t:"text", text:"При трёх падениях подряд — переход на запасную стратегию."}
       ]},
-      {title:"Переключение при ухудшении", lvl:"", desc:"Бывшее «бесшовное переключение».", items:[
+      {title:"Переключение при ухудшении", lvl:"", desc:"Бывшее «бесшовное переключение».", alias:"seamless бесшовное переключение failover", items:[
         {t:"toggle", label:"Переключаться на рабочий вариант самому", on:true, sub:"проверка раз в 5 мин · не чаще раза в 10 мин"},
         {t:"status", label:"Последнее переключение", sub:"ALT11 → ALT9, вчера 21:40 · «YouTube деградировал»", chip:"warn"},
         {t:"button", label:"Проверить сейчас", count:true}
@@ -332,7 +334,7 @@ const IA = [
         {t:"button", label:"Изменить расписание", count:true}
       ]}
     ]},
-    {key:"nets", title:"Профили по сетям", blocks:[
+    {key:"nets", title:"Профили по сетям", alias:"ssid сети автопереключение профиль", blocks:[
       {title:"Профили по сетям", lvl:"extra", desc:"Правило автопереключения; сами профили — в «Настройках».", items:[
         {t:"status", label:"Сейчас: Домашний Wi-Fi", sub:"профиль «Дом» применён 2 ч назад", chip:"ok"},
         {t:"toggle", label:"Переключать профиль при смене сети", on:true},
@@ -364,7 +366,7 @@ const IA = [
         {t:"text", text:"Провайдер: МТС · регион: Московская область · известные ограничения"}
       ]}
     ]},
-    {key:"engine", title:"Движок и обновления", blocks:[
+    {key:"engine", title:"Движок и обновления", alias:"обновления update версия winws скачать движок", blocks:[
       {title:"Движок", lvl:"", desc:"Единственное место для установки и обновления движка (раньше — 4 входа).", items:[
         {t:"status", label:"Движок готов", sub:"v1.10.2 · 22 стратегии · папка C:\\zapret", chip:"ok"},
         {t:"button", label:"Обновить движок", primary:true, count:true},
@@ -381,7 +383,7 @@ const IA = [
         {t:"toggle", label:"Автообновление .bat-списков"}
       ]}
     ]},
-    {key:"profiles", title:"Профили и копии", blocks:[
+    {key:"profiles", title:"Профили и копии", alias:"бэкап backup копия restore", blocks:[
       {title:"Профили", lvl:"extra", desc:"Пресеты настроек: создать, применить, переименовать.", items:[
         {t:"text", text:"«Дом» · «Работа» · «Мобильный интернет»"},
         {t:"button", label:"Создать профиль", count:true}
@@ -402,6 +404,43 @@ const IA = [
         {t:"goto", label:"Журнал → Проверки → Журнал", goto:{s:"checks", t:"log"}}
       ]}
     ]}
+  ]},
+
+  {key:"help", icon:"?", title:"Помощь", utility:true, hint:"Не знаю, что делать — шесть сценариев", tabs:[
+    {key:"scenarios", title:"Что не работает", alias:"faq помощь не работает не грузит", blocks:[
+      {title:"Не открывается YouTube", lvl:"", desc:"Три шага по-русски вместо настроек.", items:[
+        {t:"text", text:"1) Проверьте, включён ли обход (Главная). 2) Проверьте YouTube в «Проверках». 3) Примените исправление для YouTube."},
+        {t:"goto", label:"Проверить YouTube → Проверки → Быстрая проверка", goto:{s:"checks", t:"fast"}},
+        {t:"button", label:"Применить исправление для YouTube", primary:true, count:true},
+        {t:"text", text:"Не помогло? Соберите отчёт ниже — он и есть то, что присылают в поддержку."}
+      ]},
+      {title:"Пропал голос в Discord", lvl:"", desc:"", items:[
+        {t:"goto", label:"Проверить голос → Проверки → Сложные сайты и звонки", goto:{s:"checks", t:"hard"}}
+      ]},
+      {title:"Пропал интернет после установки", lvl:"", desc:"Кнопка вызывает ту же команду, что на Главной: настроек здесь нет, только объяснение.", items:[
+        {t:"button", label:"Выключить обход", count:true},
+        {t:"goto", label:"Полный сброс сети → Проверки → Система", goto:{s:"checks", t:"system"}}
+      ]},
+      {title:"Лагают игры", lvl:"", desc:"", items:[
+        {t:"goto", label:"Игровой режим → Главная", goto:{s:"home", t:"home"}},
+        {t:"goto", label:"Фильтр трафика игр → Обход → Сложные сайты", goto:{s:"bypass", t:"hard"}}
+      ]},
+      {title:"Хочу вернуть как было", lvl:"", desc:"", items:[
+        {t:"goto", label:"Восстановить копию → Настройки → Профили и копии", goto:{s:"settings", t:"profiles"}}
+      ]}
+    ]},
+    {key:"how", title:"Как это работает", blocks:[
+      {title:"Пять фраз без терминов", lvl:"", desc:"Раздел не хранит состояние и не имеет своих контролов — только текст и переходы.", items:[
+        {t:"text", text:"Обход — трюк, который помогает вашим пакетам проходить мимо фильтра провайдера."},
+        {t:"text", text:"Способ обхода (в «Эксперте» — «стратегия») — конкретный трюк; их много, выбирается тот, что работает у вас."},
+        {t:"text", text:"Если обход включён как «служба», он работает ещё до входа в Windows."},
+        {t:"text", text:"DNS — «телефонная книга» интернета; иногда её надо сменить, чтобы сайт открылся."},
+        {t:"text", text:"Иногда обход не помогает: провайдер блокирует иначе. Тогда — «Глубокая проверка» в «Проверках»."}
+      ]},
+      {title:"Отправить отчёт", lvl:"extra", desc:"Тот же экспорт, что в «Проверки → История и отчёты».", items:[
+        {t:"button", label:"Собрать отчёт и показать файл", count:true}
+      ]}
+    ]}
   ]}
 ];
 
@@ -410,13 +449,18 @@ const state = {s:"home", t:"home", clicks:0, expert:false, path:[]};
 const $ = (id) => document.getElementById(id);
 
 function section(k){ return IA.find(x => x.key === k); }
+/* гибридное название: «Способ обхода» в «Простом», «Стратегия» в «Эксперте» */
+function disp(o){ return (state.expert || !o.titleSimple) ? o.title : o.titleSimple; }
+function dispItem(it){ return (state.expert || !it.labelSimple) ? it.label : it.labelSimple; }
 function tabOf(s,k){ const s0 = section(s); return s0.tabs.find(t => t.key === k) || s0.tabs[0]; }
 
 function renderNav(){
-  $("nav").innerHTML = IA.map(s =>
-    `<div class="nav-item ${s.key===state.s?"active":""}" data-s="${s.key}">
+  const main = IA.filter(x => !x.utility), util = IA.filter(x => x.utility);
+  const item = (s) => `<div class="nav-item ${s.key===state.s?"active":""}" data-s="${s.key}">
        <span class="ic">${s.icon}</span><span>${s.title}</span>
-     </div>`).join("");
+     </div>`;
+  $("nav").innerHTML = main.map(item).join("")
+    + `<div class="nav-sep"></div>` + util.map(item).join("");
   document.querySelectorAll("#nav .nav-item").forEach(el =>
     el.onclick = () => { state.clicks++; go(el.dataset.s, section(el.dataset.s).tabs[0].key); });
 }
@@ -426,17 +470,19 @@ function render(){
   const visible = s.tabs.filter(x => !x.expertOnly || state.expert);
   if(!visible.includes(t)){ state.t = visible[0].key; return render(); }
 
-  $("crumb").innerHTML = `<b>${s.title}</b> → ${t.title} <span style="color:var(--dim)">· ${s.hint}</span>`;
+  $("crumb").innerHTML = `<b>${s.title}</b> → ${disp(t)} <span style="color:var(--dim)">· ${s.hint}</span>`;
   $("clicks").textContent = "кликов: " + state.clicks;
   $("clicks").className = "badge-clicks" + (state.clicks === 0 ? "" : state.clicks <= 3 ? " hit" : " over");
 
   const tabs = visible.map(x =>
-    `<div class="tab ${x.key===state.t?"active":""} ${x.expertOnly?"expert":""}" data-t="${x.key}">${x.title}${x.expertOnly?" ⚡":""}</div>`).join("");
+    `<div class="tab ${x.key===state.t?"active":""} ${x.expertOnly?"expert":""}" data-t="${x.key}">${
+      state.expert ? x.title : `<span title="в режиме «Эксперт»: ${x.title}">${disp(x)}</span>`
+    }${x.expertOnly?" ⚡":""}</div>`).join("");
 
   const cards = t.blocks.filter(b => b.lvl !== "expert" || state.expert).map(b => {
     const items = b.items.map(it => renderItem(it)).join("");
     return `<div class="card ${b.lvl==="expert"?"expert":""}">
-      <h3>${b.title} ${b.lvl==="expert"?'<span class="lvl expert">Эксперт</span>':b.lvl==="extra"?'<span class="lvl extra">Дополнительно</span>':""}</h3>
+      <h3>${disp(b)} ${b.lvl==="expert"?'<span class="lvl expert">Эксперт</span>':b.lvl==="extra"?'<span class="lvl extra">Дополнительно</span>':""}</h3>
       ${b.desc?`<p class="desc">${b.desc}</p>`:""}
       ${items}
     </div>`;
@@ -454,13 +500,13 @@ function render(){
 
 function renderItem(it){
   if(it.t === "text")   return `<div class="row"><span class="label"><small>${it.text}</small></span></div>`;
-  if(it.t === "button") return `<div class="row"><span class="label">${it.label}</span>
+  if(it.t === "button") return `<div class="row"><span class="label">${dispItem(it)}</span>
       <button class="btn ${it.primary?"primary":""}" data-act="1" ${it.count?'data-count="1"':""}>Выполнить</button></div>`;
-  if(it.t === "chip")   return `<div class="row"><span class="label">${it.label}</span><span class="chip ${it.chip||""}">${it.value}</span></div>`;
-  if(it.t === "status") return `<div class="row"><span class="label">${it.label}<small>${it.sub||""}</small></span><span class="chip ${it.chip||""}">●</span></div>`;
-  if(it.t === "toggle") return `<div class="row"><span class="label">${it.label}${it.sub?`<small>${it.sub}</small>`:""}</span>
+  if(it.t === "chip")   return `<div class="row"><span class="label">${dispItem(it)}</span><span class="chip ${it.chip||""}">${it.value}</span></div>`;
+  if(it.t === "status") return `<div class="row"><span class="label">${dispItem(it)}<small>${it.sub||""}</small></span><span class="chip ${it.chip||""}">●</span></div>`;
+  if(it.t === "toggle") return `<div class="row"><span class="label">${dispItem(it)}${it.sub?`<small>${it.sub}</small>`:""}</span>
       <span class="mini-sw ${it.on?"on":""}" data-sw="1"></span></div>`;
-  if(it.t === "goto")   return `<div class="row"><span class="label">${it.label}</span>
+  if(it.t === "goto")   return `<div class="row"><span class="label">${dispItem(it)}</span>
       <span class="goto" data-goto-s="${it.goto.s}" data-goto-t="${it.goto.t}">перейти →</span></div>`;
   return "";
 }
@@ -491,8 +537,14 @@ function go(s, t, card){
 function index(){
   const out = [];
   IA.forEach(s => s.tabs.forEach(t => t.blocks.forEach(b => {
-    out.push({s:s.key, t:t.key, label:b.title, path:`${s.title} → ${t.title}`});
-    b.items.forEach(it => { if(it.label) out.push({s:s.key, t:t.key, label:it.label, path:`${s.title} → ${t.title} → ${b.title}`}); });
+    /* в поиск попадают оба названия (гибрид) и старые термины-алиасы:
+       «watchdog», «бесшовное», «матрица», «sni», «бэкап» остаются рабочими командами */
+    const tAlias = (t.alias||""), bAlias = tAlias + " " + (b.alias||"");
+    out.push({s:s.key, t:t.key, label:b.title + (b.titleSimple ? ` / ${b.titleSimple}` : ""),
+      alias:bAlias + " " + (s.hint||""), path:`${s.title} → ${t.title}${t.titleSimple?" / "+t.titleSimple:""}`});
+    b.items.forEach(it => { if(!it.label) return;
+      out.push({s:s.key, t:t.key, label:it.label + (it.labelSimple ? ` / ${it.labelSimple}` : ""),
+        alias:bAlias, path:`${s.title} → ${t.title}${t.titleSimple?" / "+t.titleSimple:""} → ${b.title}`}); });
   })));
   return out;
 }
@@ -501,8 +553,7 @@ function openSearch(){ $("overlay").classList.add("on"); $("q").value=""; drawRe
 function closeSearch(){ $("overlay").classList.remove("on"); }
 function drawResults(q){
   const query = q.trim().toLowerCase();
-  const hits = !query ? [{title:"Недавние", items:index().slice(0,5)}] : [];
-  const found = INDEX.filter(x => x.label.toLowerCase().includes(query) || x.path.toLowerCase().includes(query)).slice(0,12);
+  const found = INDEX.filter(x => (x.label+" "+(x.alias||"")+" "+x.path).toLowerCase().includes(query)).slice(0,12);
   let html = "";
   if(!query){
     html = `<div class="res"><span>Подсказка</span><span class="path">введите «журнал», «dns», «автозапуск»…</span></div>`
@@ -521,10 +572,14 @@ function drawResults(q){
 
 /* ---------- дерево ---------- */
 function showTree(){
-  $("content").innerHTML = `<h1>Дерево разделов</h1><p class="lead">5 разделов · ${IA.reduce((n,s)=>n+s.tabs.length,0)} подразделов · глубина 2</p>
-    <div class="card"><div class="tree">${IA.map(s => `<h4>${s.icon} ${s.title}</h4>` +
-      s.tabs.map(t => `<div>${t.title}${t.expertOnly?" <span class='lvl expert'>эксперт</span>":""} · ${t.blocks.length} блока(ов)</div>`).join("")).join("")}</div></div>
-    <div class="note">Рост функционала: новая функция добавляется блоком внутрь существующего подраздела — верхний уровень не меняется.</div>`;
+  const main = IA.filter(x => !x.utility), util = IA.filter(x => x.utility);
+  const branch = (s) => `<h4>${s.icon} ${s.title}</h4>` + s.tabs.map(t =>
+      `<div>${t.title}${t.titleSimple?` <i style="color:var(--dim)">/ ${t.titleSimple}</i>`:""}${t.expertOnly?" <span class='lvl expert'>эксперт</span>":""} · ${t.blocks.length} блока(ов)</div>`).join("");
+  $("content").innerHTML = `<h1>Дерево разделов</h1><p class="lead">5 разделов + утилитарная «Помощь» · ${IA.reduce((n,s)=>n+s.tabs.length,0)} подразделов · глубина 2</p>
+    <div class="card"><div class="tree">${main.map(branch).join("")}</div></div>
+    <div class="card" style="margin-top:14px"><div class="tree">${util.map(branch).join("")}</div></div>
+    <div class="note">Рост функционала: новая функция добавляется блоком внутрь существующего подраздела — верхний уровень не меняется.
+    «Помощь» отделена: она не хранит состояние и не имеет своих контролов, только тексты и переходы.</div>`;
 }
 
 /* ---------- события ---------- */
