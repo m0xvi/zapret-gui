@@ -1514,7 +1514,6 @@ namespace ZapretGui.ViewModels
             if (!VisibleAutomationMap.Contains(_automationTabIndex)) AutomationTabIndex = 0;
         }
     }
-    }
     public sealed class MetricHostOption : ObservableObject
     {
         private readonly SettingsViewModel _parent;
