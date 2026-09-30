@@ -1530,5 +1530,5 @@ namespace ZapretGui.ViewModels
         public bool IsEnabled { get; set; } = true;
         public bool IsSelected { get => _isSelected; set { if (Set(ref _isSelected, value) && IsEnabled) _parent.UpdateToolbarMetricsHostsFromSelection(); } }
         public string DisplayText => string.IsNullOrWhiteSpace(Host) ? Name : $"{Name} ({Host})";
-
+    }
 }
