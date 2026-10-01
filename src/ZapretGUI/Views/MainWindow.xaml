@@ -276,8 +276,8 @@
                                    Text="{Binding AdminWarningDetails}" TextWrapping="Wrap" Style="{StaticResource DimText}" />
                     </StackPanel>
                 </WrapPanel>
-                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Перезапустить от администратора"
-                        HorizontalAlignment="Right" Command="{Binding RestartAsAdminCommand}" Padding="14,7" />
+                <Button Grid.Column="1" Style="{StaticResource CompactButton}" Content="Перезапустить от администратора"
+                        HorizontalAlignment="Right" Command="{Binding RestartAsAdminCommand}" />
             </Grid>
         </Border>
 

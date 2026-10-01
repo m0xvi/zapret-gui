@@ -312,6 +312,21 @@
         </Setter>
     </Style>
 
+    <!-- Компактные варианты (v1.28.0): та же семья, плотнее отступы — для кнопок внутри карточек,
+         рядов операций и нижних панелей. Значения совпадают с прежними литеральными Padding,
+         поэтому вид не меняется: 22 места переведены на стили. -->
+    <Style x:Key="CompactPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Setter Property="Padding" Value="14,7" />
+    </Style>
+
+    <Style x:Key="CompactButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="Padding" Value="14,7" />
+    </Style>
+
+    <Style x:Key="CompactGhostButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Padding" Value="12,7" />
+    </Style>
+
     <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
         <Setter Property="Foreground" Value="{DynamicResource DangerBrush}" />
         <Setter Property="Background" Value="{DynamicResource DangerSoftBrush}" />

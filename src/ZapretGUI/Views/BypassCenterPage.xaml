@@ -99,7 +99,7 @@
                             <Button Style="{StaticResource GhostButton}" Content="Проверить сейчас" Margin="8,0,0,0" Command="{Binding TestSeamlessNowCommand}" VerticalAlignment="Center"/>
                         </WrapPanel>
                         <WrapPanel Margin="0,10,0,0">
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть каталог стратегий →" Padding="12,7"
+                            <Button Style="{StaticResource CompactGhostButton}" Content="Открыть каталог стратегий →"
                                     Command="{Binding Home.OpenStrategiesCommand}"
                                     ToolTip="Каталог стратегий: поиск, категории ALT/GENERAL/EXP, тест каждой стратегии и пул SNI" />
                         </WrapPanel>
@@ -111,6 +111,17 @@
 
             <!-- ============ 2. ПОДБОР ============ -->
             <StackPanel Visibility="{Binding IsPickTabSelected, Converter={StaticResource BoolToVis}}">
+                <!-- «Простой» режим: матрица скрыта — объясняем это и даём кнопку, иначе вкладка выглядит пустой (v1.28.0) -->
+                <Border Style="{StaticResource NoticeInfo}" Margin="{DynamicResource CardGap}"
+                        Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="ПОЛНЫЙ ПЕРЕБОР — В РЕЖИМЕ «ЭКСПЕРТ»" />
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                   Text="Матрица «каждая стратегия × каждый DNS» — технический инструмент, поэтому в «Простом» режиме она скрыта. Быстрый подбор живёт на «Главной»: «Проверить всё» проходит 4 шага (система → сайты → стратегии → рекомендация) за 1–2 минуты." />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Включить режим «Эксперт»" Margin="0,10,0,0" HorizontalAlignment="Left"
+                                Command="{Binding EnableExpertModeCommand}" ToolTip="Показать технические блоки: матрица стратегия × DNS, пул SNI, режимы ipset" />
+                    </StackPanel>
+                </Border>
                 <Border Style="{StaticResource CardAccent}" Margin="{DynamicResource CardGap}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <Grid>

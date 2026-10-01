@@ -95,10 +95,10 @@
 
                     <!-- Быстрая настройка: Проверить всё — главный сценарий первого запуска (1 клик) -->
                     <!-- ПЕРЕДЕЛАНО v1.6.5: убран блюр/полупрозрачная заглушка, результат — чёткая карточка с галочкой; кнопка в углу снимает заглушку -->
+
                     <Border Style="{StaticResource CardAccent}" Margin="{DynamicResource CardGap}" ClipToBounds="True">
                         <Grid>
                             <StackPanel>
-                                <!-- Заголовок — всегда чёткий, без блюра -->
                                 <Grid>
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
@@ -117,10 +117,10 @@
                                         <TextBlock Style="{StaticResource DimText}" Text="ГОТОВО" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
                                     </Border>
                                 </Grid>
+
                                 <TextBlock Style="{StaticResource MutedText}" Margin="0,10,0,0" TextWrapping="Wrap"
                                            Text="4 шага за 1–2 минуты: система → сайты → 22 стратегии → подсказка." />
 
-                                <!-- Гейт готовности: показываем, если приложение не готово -->
                                 <Border Margin="0,10,0,0"
                                         Visibility="{Binding ReadinessActionVisible, Converter={StaticResource BoolToVis}}" Style="{StaticResource NoticeWarning}">
                                     <Grid>
@@ -143,7 +143,6 @@
                                     </Grid>
                                 </Border>
 
-                                <!-- Исходные действия — видны только когда нет ни прогресса, ни результата -->
                                 <WrapPanel Margin="0,12,0,0" Visibility="{Binding IsQuickSetupIdle, Converter={StaticResource BoolToVis}}">
                                     <Button Style="{StaticResource PrimaryButton}" Content="Проверить всё и подобрать стратегию" Padding="18,9" MinHeight="40"
                                             Command="{Binding RunFullCheckCommand}"
@@ -153,13 +152,11 @@
                                             ToolTip="Открыть мастер первого запуска — там можно добавить свои сайты и пропустить шаги" />
                                 </WrapPanel>
 
-                                <!-- Кнопка отмены — только во время прогона -->
                                 <Button Style="{StaticResource DangerButton}" Content="Отменить проверку" Margin="0,12,0,0" Padding="14,7" HorizontalAlignment="Left"
                                         Command="{Binding CancelFullCheckCommand}"
                                         Visibility="{Binding IsFullCheckRunning, Converter={StaticResource BoolToVis}}"
                                         ToolTip="Прервать текущий полный тест" />
 
-                                <!-- Прогресс полного теста — без блюра, чёткий -->
                                 <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0"
                                         Visibility="{Binding IsFullCheckRunning, Converter={StaticResource BoolToVis}}"
                                         Background="{DynamicResource CardBrush}">
@@ -177,98 +174,7 @@
                                                      IsIndeterminate="{Binding FullCheckProgressIndeterminate, Mode=OneWay}" />
                                     </StackPanel>
                                 </Border>
-
-                                <!-- Результат — НОВАЯ чёткая карточка с галочкой рядом с заголовком, а не оверлеем -->
-                                <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Padding="14,12"
-                                        Background="{Binding FullCheckSummaryKey, Converter={StaticResource SoftSeverityBrush}}"
-                                        BorderBrush="{Binding FullCheckSummaryKey, Converter={StaticResource SeverityBrush}}" BorderThickness="1"
-                                        Visibility="{Binding FullCheckResultVisible, Converter={StaticResource BoolToVis}}">
-                                    <StackPanel>
-                                        <!-- Заголовок результата с маленькой зелёной галочкой -->
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Width="26" Height="26" CornerRadius="13" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Top">
-                                                <TextBlock Text="&#xE73E;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                            </Border>
-                                            <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                                <TextBlock Text="Проверка завершена" Style="{StaticResource BodyText}" FontWeight="Bold" />
-                                                <TextBlock Style="{StaticResource DimText}" Margin="0,2,0,0"
-                                                           Text="Ниже — рекомендованная стратегия, проблемы и подсказки" TextWrapping="Wrap" />
-                                            </StackPanel>
-                                            <!-- Статус бейдж по ключу -->
-                                            <Border Grid.Column="2" Style="{StaticResource Badge}" VerticalAlignment="Top"
-                                                    Background="{Binding FullCheckSummaryKey, Converter={StaticResource SoftSeverityBrush}}">
-                                                <TextBlock FontWeight="Bold" Foreground="{Binding FullCheckSummaryKey, Converter={StaticResource SeverityBrush}}">
-                                                    <TextBlock.Style>
-                                                        <Style TargetType="TextBlock" BasedOn="{StaticResource DimText}">
-                                                            <Setter Property="Text" Value="ГОТОВО" />
-                                                            <Style.Triggers>
-                                                                <DataTrigger Binding="{Binding FullCheckSummaryKey}" Value="Warning">
-                                                                    <Setter Property="Text" Value="ВНИМАНИЕ" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding FullCheckSummaryKey}" Value="Danger">
-                                                                    <Setter Property="Text" Value="ОШИБКА" />
-                                                                </DataTrigger>
-                                                                <DataTrigger Binding="{Binding FullCheckSummaryKey}" Value="Info">
-                                                                    <Setter Property="Text" Value="ИТОГ" />
-                                                                </DataTrigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </TextBlock.Style>
-                                                </TextBlock>
-                                            </Border>
-                                        </Grid>
-
-                                        <!-- Основной текст результата — крупно и чётко -->
-                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding FullCheckSummaryText}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,0" />
-
-                                        <!-- Проблемы и подсказки — отдельный блок с иконкой -->
-                                        <Border Margin="0,8,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
-                                                Visibility="{Binding FullCheckAdviceText, Converter={StaticResource StringToVis}}">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="Auto" />
-                                                    <ColumnDefinition Width="*" />
-                                                </Grid.ColumnDefinitions>
-                                                <TextBlock Text="&#xE7BA;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
-                                                <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" Text="{Binding FullCheckAdviceText}" TextWrapping="Wrap" />
-                                            </Grid>
-                                        </Border>
-
-                                        <!-- Рекомендованная стратегия -->
-                                        <WrapPanel Margin="0,12,0,0" Visibility="{Binding HasRecommendedStrategy, Converter={StaticResource BoolToVis}}">
-                                            <Border Style="{StaticResource Badge}" Background="{DynamicResource SuccessSoftBrush}" Margin="0,0,8,0" Padding="8,4" VerticalAlignment="Center">
-                                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                                    <TextBlock Text="&#xE945;" FontFamily="{DynamicResource IconFont}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
-                                                    <TextBlock Text="{Binding RecommendedStrategyName}" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="260" />
-                                                </WrapPanel>
-                                            </Border>
-                                            <Button Style="{StaticResource PrimaryButton}" Content="Применить эту стратегию" Padding="14,7" MinHeight="32"
-                                                    Command="{Binding ApplyRecommendedStrategyCommand}"
-                                                    ToolTip="Сделать рекомендованную стратегию основной и запустить её" />
-                                        </WrapPanel>
-
-                                        <!-- Действия результата — повторить и скрыть -->
-                                        <WrapPanel Margin="0,12,0,0">
-                                            <Button Style="{StaticResource SecondaryButton}" Content="↻  Повторить проверку" Padding="12,6" MinHeight="32" Margin="0,0,8,0"
-                                                    Command="{Binding RunFullCheckCommand}"
-                                                    ToolTip="Запустить быструю проверку заново" />
-                                            <Button Style="{StaticResource GhostButton}" Content="Скрыть результат" Padding="12,6" MinHeight="32"
-                                                    Command="{Binding ClearFullCheckResultCommand}"
-                                                    ToolTip="Убрать заглушку завершённой проверки и вернуть блок в исходное состояние" />
-                                        </WrapPanel>
-                                    </StackPanel>
-                                </Border>
-
-                                <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" TextWrapping="Wrap" Opacity="0.9"
-                                           Text="Можно донастроить вручную: стратегия и списки — в разделе «Обход», оформление и служба — в «Настройках»." />
                             </StackPanel>
-
-                            <!-- Кнопка в правом нижнем углу — теперь СНИМАЕТ заглушку, а не сразу гонит проверку -->
                             <Button HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,12,12" Width="36" Height="36" Padding="0"
                                     Visibility="{Binding FullCheckResultVisible, Converter={StaticResource BoolToVis}}"
                                     Command="{Binding ClearFullCheckResultCommand}" Style="{StaticResource SecondaryButton}" ToolTip="Убрать заглушку — вернуть блок в исходное состояние (кнопка «Проверить всё» снова станет доступна)">
@@ -276,8 +182,98 @@
                             </Button>
                         </Grid>
                     </Border>
+                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                        <StackPanel>
+                            <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Padding="14,12"
+                                    Background="{Binding FullCheckSummaryKey, Converter={StaticResource SoftSeverityBrush}}"
+                                    BorderBrush="{Binding FullCheckSummaryKey, Converter={StaticResource SeverityBrush}}" BorderThickness="1"
+                                    Visibility="{Binding FullCheckResultVisible, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <!-- Заголовок результата с маленькой зелёной галочкой -->
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Border Width="26" Height="26" CornerRadius="13" Background="{DynamicResource SuccessBrush}" VerticalAlignment="Top">
+                                            <TextBlock Text="&#xE73E;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="White" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                        </Border>
+                                        <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                            <TextBlock Text="Проверка завершена" Style="{StaticResource BodyText}" FontWeight="Bold" />
+                                            <TextBlock Style="{StaticResource DimText}" Margin="0,2,0,0"
+                                                       Text="Ниже — рекомендованная стратегия, проблемы и подсказки" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <!-- Статус бейдж по ключу -->
+                                        <Border Grid.Column="2" Style="{StaticResource Badge}" VerticalAlignment="Top"
+                                                Background="{Binding FullCheckSummaryKey, Converter={StaticResource SoftSeverityBrush}}">
+                                            <TextBlock FontWeight="Bold" Foreground="{Binding FullCheckSummaryKey, Converter={StaticResource SeverityBrush}}">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource DimText}">
+                                                        <Setter Property="Text" Value="ГОТОВО" />
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding FullCheckSummaryKey}" Value="Warning">
+                                                                <Setter Property="Text" Value="ВНИМАНИЕ" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding FullCheckSummaryKey}" Value="Danger">
+                                                                <Setter Property="Text" Value="ОШИБКА" />
+                                                            </DataTrigger>
+                                                            <DataTrigger Binding="{Binding FullCheckSummaryKey}" Value="Info">
+                                                                <Setter Property="Text" Value="ИТОГ" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </Border>
+                                    </Grid>
 
-                    <!-- Конфликт со старым запретом -->
+                                    <!-- Основной текст результата — крупно и чётко -->
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding FullCheckSummaryText}" FontWeight="SemiBold" TextWrapping="Wrap" Margin="0,10,0,0" />
+
+                                    <!-- Проблемы и подсказки — отдельный блок с иконкой -->
+                                    <Border Margin="0,8,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1"
+                                            Visibility="{Binding FullCheckAdviceText, Converter={StaticResource StringToVis}}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <TextBlock Text="&#xE7BA;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource WarningBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
+                                            <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" Text="{Binding FullCheckAdviceText}" TextWrapping="Wrap" />
+                                        </Grid>
+                                    </Border>
+
+                                    <!-- Рекомендованная стратегия -->
+                                    <WrapPanel Margin="0,12,0,0" Visibility="{Binding HasRecommendedStrategy, Converter={StaticResource BoolToVis}}">
+                                        <Border Style="{StaticResource Badge}" Background="{DynamicResource SuccessSoftBrush}" Margin="0,0,8,0" Padding="8,4" VerticalAlignment="Center">
+                                            <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                <TextBlock Text="&#xE945;" FontFamily="{DynamicResource IconFont}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
+                                                <TextBlock Text="{Binding RecommendedStrategyName}" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="260" />
+                                            </WrapPanel>
+                                        </Border>
+                                        <Button Style="{StaticResource PrimaryButton}" Content="Применить эту стратегию" Padding="14,7" MinHeight="32"
+                                                Command="{Binding ApplyRecommendedStrategyCommand}"
+                                                ToolTip="Сделать рекомендованную стратегию основной и запустить её" />
+                                    </WrapPanel>
+
+                                    <!-- Действия результата — повторить и скрыть -->
+                                    <WrapPanel Margin="0,12,0,0">
+                                        <Button Style="{StaticResource SecondaryButton}" Content="↻  Повторить проверку" Padding="12,6" MinHeight="32" Margin="0,0,8,0"
+                                                Command="{Binding RunFullCheckCommand}"
+                                                ToolTip="Запустить быструю проверку заново" />
+                                        <Button Style="{StaticResource GhostButton}" Content="Скрыть результат" Padding="12,6" MinHeight="32"
+                                                Command="{Binding ClearFullCheckResultCommand}"
+                                                ToolTip="Убрать заглушку завершённой проверки и вернуть блок в исходное состояние" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" TextWrapping="Wrap" Opacity="0.9"
+                                       Text="Можно донастроить вручную: стратегия и списки — в разделе «Обход», оформление и служба — в «Настройках»." />
+                        </StackPanel>
+                    </Border>
+                                        <!-- Конфликт со старым запретом -->
                     <Border Margin="0,16,0,0" CornerRadius="10" Padding="14,11"
                             Background="{DynamicResource WarningSoftBrush}"
                             Visibility="{Binding LegacyWarningVisible, Converter={StaticResource BoolToVis}}">

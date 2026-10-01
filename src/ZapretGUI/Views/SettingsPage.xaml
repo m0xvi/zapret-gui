@@ -75,7 +75,7 @@
                 </Border>
 
                 <!-- Движок -->
-                <Border Style="{StaticResource Card}">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -246,7 +246,7 @@
                     </Grid>
                 </Border>
 
-                <Border Style="{StaticResource Card}">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -293,7 +293,7 @@
                     </Grid>
                 </Border>
 
-                <Border Style="{StaticResource Card}">
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -769,8 +769,8 @@
                         <TextBlock Style="{StaticResource DimText}" Text="Журнал живёт в разделе «Проверки» (вкладка «Журнал»); «О программе» — отдельный экран." TextWrapping="Wrap" />
                         <WrapPanel Margin="0,10,0,0">
                             <Button Style="{StaticResource SecondaryButton}" Content="Журнал" Padding="12,7" Command="{Binding OpenLogsCommand}" />
-                            <Button Style="{StaticResource GhostButton}" Content="О программе" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenAboutCommand}" />
-                            <Button Style="{StaticResource GhostButton}" Content="Репозиторий" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenRepoCommand}" />
+                            <Button Style="{StaticResource CompactGhostButton}" Content="О программе" Margin="8,0,0,0" Command="{Binding OpenAboutCommand}" />
+                            <Button Style="{StaticResource CompactGhostButton}" Content="Репозиторий" Margin="8,0,0,0" Command="{Binding OpenRepoCommand}" />
                         </WrapPanel>
                     </StackPanel>
                 </Border>
@@ -793,8 +793,8 @@
                         </StackPanel>
                     </Grid>
                     <WrapPanel Margin="0,14,0,0">
-                        <Button Style="{StaticResource SecondaryButton}" Content="Открыть журнал" Padding="14,7" MinWidth="140" Command="{Binding OpenLogsCommand}" ToolTip="Перейти к журналу" />
-                        <Button Style="{StaticResource SecondaryButton}" Content="Проверить обновления" Margin="8,0,0,0" Padding="14,7" MinWidth="160" Command="{Binding OpenUpdatesCommand}" ToolTip="Перейти к обновлениям" />
+                        <Button Style="{StaticResource CompactButton}" Content="Открыть журнал" MinWidth="140" Command="{Binding OpenLogsCommand}" ToolTip="Перейти к журналу" />
+                        <Button Style="{StaticResource CompactButton}" Content="Проверить обновления" Margin="8,0,0,0" MinWidth="160" Command="{Binding OpenUpdatesCommand}" ToolTip="Перейти к обновлениям" />
                         <Button Style="{StaticResource GhostButton}" Content="О программе" Margin="8,0,0,0" Padding="14,7" MinWidth="130" Command="{Binding OpenAboutCommand}" ToolTip="Версия, лицензия и ссылки" />
                     </WrapPanel>
                 </StackPanel>

@@ -88,19 +88,12 @@
             </Border>
 
             <!-- Содержимое списка и визуальный редактор -->
-            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}">
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
 
-                    <!-- Строка быстрого добавления домена и утилиты -->
-                    <Grid Grid.Row="0" Margin="0,0,0,10" IsEnabled="{Binding CanEditCurrentList}">
+            <Grid Grid.Row="1">
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="0">
+                <StackPanel>
+                    <Grid Margin="0,0,0,10" IsEnabled="{Binding CanEditCurrentList}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -129,9 +122,11 @@
                                     Command="{Binding ImportListCommand}" ToolTip="Загрузить домены из внешнего файла" />
                         </WrapPanel>
                     </Grid>
-
-                    <!-- Пачка: массовая вставка доменов — улучшена: детальный счётчик + превью чипов -->
-                    <Border Grid.Row="1" Margin="0,0,0,10" Padding="12,10" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Visibility="{Binding CanEditCurrentList, Converter={StaticResource BoolToVis}}">
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="1">
+                <StackPanel>
+                    <Border Margin="0,0,0,10" Padding="12,10" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Visibility="{Binding CanEditCurrentList, Converter={StaticResource BoolToVis}}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -165,8 +160,7 @@
                         </Grid>
                     </Border>
 
-                    <!-- Баннеры состояния -->
-                    <StackPanel Grid.Row="2" Margin="0,0,0,8">
+                    <StackPanel Margin="0,0,0,8">
                         <Border
                                 Visibility="{Binding IsBuiltInList, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6" Style="{StaticResource NoticeWarning}">
                             <TextBlock Style="{StaticResource BodyText}" Text="Встроенный список Flowseal — только чтение. Редактируйте пользовательскую копию (list-*-user.txt)." TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold"/>
@@ -199,10 +193,11 @@
                             <TextBlock Style="{StaticResource DimText}" Text="— исправьте записи" Margin="6,0,0,0" VerticalAlignment="Center"/>
                         </WrapPanel>
                     </StackPanel>
-
-
-                    <!-- Поиск по списку и статусная строка -->
-                    <Grid Grid.Row="3" Margin="0,0,0,8">
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="2">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="220" />
                             <ColumnDefinition Width="*" />
@@ -235,14 +230,15 @@
                                    VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold" />
                     </Grid>
 
-                    <!-- Подсказка: максимально минималистично, не растянута -->
-                    <TextBlock Grid.Row="4" Margin="0,4,0,6" Style="{StaticResource DimText}" TextWrapping="Wrap" Opacity="0.7" MaxWidth="720" HorizontalAlignment="Left">
+                    <TextBlock Margin="0,4,0,6" Style="{StaticResource DimText}" TextWrapping="Wrap" Opacity="0.7" MaxWidth="720" HorizontalAlignment="Left">
                         <Run FontFamily="{DynamicResource IconFont}" Text="&#xE946; " Foreground="{DynamicResource TextMutedBrush}" FontSize="11" />
                         <Run Text="Списки — точечный обход: добавь домен → сохрани в «Профили и копии». Двойной клик/Enter — править, «Проверки» — диагностика." />
                     </TextBlock>
-
-                    <!-- Таблица / Список записей -->
-                    <Grid Grid.Row="5">
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="3">
+                <StackPanel>
+                    <Grid>
                         <ListBox Style="{StaticResource PlainListBox}" Background="Transparent"
                                  ItemsSource="{Binding EntriesView}"
                                  SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
@@ -292,9 +288,10 @@
                             </StackPanel>
                         </Border>
                     </Grid>
-                </Grid>
+                </StackPanel>
             </Border>
-        </Grid>
+            </Grid>
+                    </Grid>
 
         <!-- ============================== ВКЛАДКА 2: БЕЗОПАСНЫЙ DNS (DOH) ============================== -->
         <Grid Grid.Row="2" Visibility="{Binding IsDnsTabVisible, Converter={StaticResource BoolToVis}}">
@@ -408,7 +405,7 @@
                 </Grid>
 
                 <!-- Проверка подмены DNS — DoH эталон -->
-                <Border Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}">
+                <Border Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>

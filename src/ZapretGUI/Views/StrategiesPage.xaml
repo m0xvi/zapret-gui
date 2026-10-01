@@ -591,7 +591,7 @@
             </Border>
 
             <!-- Список протестированных гипотез с баллами -->
-            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}">
+            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}" Margin="{DynamicResource CardGap}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -721,7 +721,7 @@
             </Border>
 
             <!-- Список результатов тестирования SNI -->
-            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}">
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}" Margin="{DynamicResource CardGap}">
                 <Grid>
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
@@ -773,46 +773,43 @@
 
         <!-- ============================== ВКЛАДКА 5: КОНТРОЛЬНЫЕ АДРЕСА ============================== -->
         <Grid Grid.Row="3" Visibility="{Binding IsTargetsTabVisible, Converter={StaticResource BoolToVis}}">
-            <Border Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}">
+
+            <Grid>
+                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+            <Border Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="0">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="КОНТРОЛЬНЫЕ СЕРВИСЫ И ЭНДПОИНТЫ ДЛЯ ПРОВЕРКИ" />
+                    <TextBlock Style="{StaticResource MutedText}"
+                               Text="Эти ресурсы проверяются при тестировании любой стратегии. Добавьте свои любимые сервисы, игры или сайты для точной оценки." Margin="0,2,0,10" />
+                    <Border Style="{StaticResource InnerCard}" Margin="0,0,0,10" Padding="12,10">
+                        <StackPanel>
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Расширять проверку целями из utils/targets.txt (Flowseal)" IsChecked="{Binding UseTargetsTxtForStrategyTest, Mode=TwoWay}" ToolTip="Если включено — к базовым 8 добавляются HTTP-цели из utils/targets.txt движка (Discord, YouTube, Google, Cloudflare из remotes, как в zapret.ps1)" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="{Binding TargetsTxtStatusText}" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="{Binding EffectiveTargetCountText}" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="Путь: utils/targets.txt в папке движка; PING-only строки пропускаются, берутся только https://." Opacity="0.7" TextWrapping="Wrap" />
+                        </StackPanel>
+                    </Border>
+
+                    <Grid Margin="0,4,0,14">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="3*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <TextBox Style="{StaticResource SearchBox}" Text="{Binding NewTargetName, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="Название (например, Twitch, Spotify, Notion, Discord Voice)" Margin="0,0,6,0" AutomationProperties.Name="Название (например, Twitch, Spotify, Notion, Discord Voice)" />
+                        <TextBox Grid.Column="1" Style="{StaticResource SearchBox}" Text="{Binding NewTargetUrl, UpdateSourceTrigger=PropertyChanged}"
+                                 ToolTip="URL или хост (например, https://twitch.tv или https://open.spotify.com)" Margin="6,0,6,0" AutomationProperties.Name="URL или хост (например, https://twitch.tv или https://open.spotify.com)" />
+                        <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="Добавить адрес" Margin="6,0,0,0"
+                                Command="{Binding AddTargetCommand}" ToolTip="Добавить сайт в список контрольных проверок" />
+                    </Grid>
+                </StackPanel>
+            </Border>
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="1">
                 <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="Auto" />
-                        <RowDefinition Height="*" />
-                    </Grid.RowDefinitions>
-
-                    <!-- Заголовок и форма добавления нового контрольного адреса -->
-                    <StackPanel Grid.Row="0">
-                        <TextBlock Style="{StaticResource SectionText}" Text="КОНТРОЛЬНЫЕ СЕРВИСЫ И ЭНДПОИНТЫ ДЛЯ ПРОВЕРКИ" />
-                        <TextBlock Style="{StaticResource MutedText}"
-                                   Text="Эти ресурсы проверяются при тестировании любой стратегии. Добавьте свои любимые сервисы, игры или сайты для точной оценки." Margin="0,2,0,10" />
-                        <Border Style="{StaticResource InnerCard}" Margin="0,0,0,10" Padding="12,10">
-                            <StackPanel>
-                                <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Расширять проверку целями из utils/targets.txt (Flowseal)" IsChecked="{Binding UseTargetsTxtForStrategyTest, Mode=TwoWay}" ToolTip="Если включено — к базовым 8 добавляются HTTP-цели из utils/targets.txt движка (Discord, YouTube, Google, Cloudflare из remotes, как в zapret.ps1)" />
-                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="{Binding TargetsTxtStatusText}" TextWrapping="Wrap" />
-                                <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="{Binding EffectiveTargetCountText}" TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
-                                <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="Путь: utils/targets.txt в папке движка; PING-only строки пропускаются, берутся только https://." Opacity="0.7" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-
-                        <Grid Margin="0,4,0,14">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="2*" />
-                                <ColumnDefinition Width="3*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <TextBox Style="{StaticResource SearchBox}" Text="{Binding NewTargetName, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Название (например, Twitch, Spotify, Notion, Discord Voice)" Margin="0,0,6,0" AutomationProperties.Name="Название (например, Twitch, Spotify, Notion, Discord Voice)" />
-                            <TextBox Grid.Column="1" Style="{StaticResource SearchBox}" Text="{Binding NewTargetUrl, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="URL или хост (например, https://twitch.tv или https://open.spotify.com)" Margin="6,0,6,0" AutomationProperties.Name="URL или хост (например, https://twitch.tv или https://open.spotify.com)" />
-                            <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="Добавить адрес" Margin="6,0,0,0"
-                                    Command="{Binding AddTargetCommand}" ToolTip="Добавить сайт в список контрольных проверок" />
-                        </Grid>
-                    </StackPanel>
-
-                    <!-- Список всех контрольных адресов -->
-                    <TextBlock Grid.Row="1" Style="{StaticResource SectionText}" Text="СПИСОК АКТИВНЫХ АДРЕСОВ" Margin="0,6,0,6" />
-                    <ListBox Grid.Row="2" Style="{StaticResource PlainListBox}" Background="Transparent"
+                    <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+                    <TextBlock Style="{StaticResource SectionText}" Text="СПИСОК АКТИВНЫХ АДРЕСОВ" Margin="0,6,0,6" />
+                    <ListBox Grid.Row="1" Style="{StaticResource PlainListBox}" Background="Transparent"
                              ItemsSource="{Binding TargetEndpoints}"
                              ItemContainerStyle="{StaticResource CompactRowItemStyle}"
                              ScrollViewer.VerticalScrollBarVisibility="Auto">
@@ -857,6 +854,7 @@
                     </ListBox>
                 </Grid>
             </Border>
-        </Grid>
+            </Grid>
+                    </Grid>
     </Grid>
 </UserControl>

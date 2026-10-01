@@ -43,7 +43,7 @@
                       ToolTip="Автоматически листать журнал вниз при появлении новых записей" />
         </StackPanel>
 
-        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingList}">
+        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingList}" Margin="{DynamicResource CardGap}">
             <ListBox x:Name="LogList" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Entries}"
                      ItemContainerStyle="{StaticResource LogItemStyle}" Background="Transparent"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"

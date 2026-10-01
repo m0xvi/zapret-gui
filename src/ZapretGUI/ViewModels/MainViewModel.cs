@@ -332,6 +332,9 @@ namespace ZapretGui.ViewModels
                 Set(ref _selectedNav, null, nameof(SelectedNav));
                 Raise(nameof(SelectedNavKey));
             }
+            // Подсвечиваем пункт подвала: без этого вход в «Помощь» из поиска, с «Главной»
+            // или по старой ссылке оставлял пункт невыделенным (исправлено в v1.28.0).
+            SetSelectedUtility(NavUtilities.FirstOrDefault(i => i.Key == "help"));
             IsHelpActive = true;
             NavChanged?.Invoke("help");
         }

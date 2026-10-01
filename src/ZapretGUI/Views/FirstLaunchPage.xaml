@@ -71,284 +71,304 @@
         </Grid>
 
         <!-- Содержимое текущего шага -->
-        <Border Grid.Row="2" Style="{StaticResource Card}">
-            <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
-                <StackPanel>
+
+        <Grid Grid.Row="2">
+            <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
+        <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Grid.Row="0">
+            <StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="{Binding StepTitleText}" />
+                        <TextBlock Style="{StaticResource TitleText}" Text="{Binding CurrentStepTitle}" Margin="0,4,0,0" />
+                        <TextBlock Style="{StaticResource MutedText}" Text="{Binding CurrentStepDescription}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                    </StackPanel>
+                    <Border Grid.Column="1" Style="{StaticResource Badge}" VerticalAlignment="Top"
+                            Background="{Binding ReadinessKey, Converter={StaticResource SoftSeverityBrush}}">
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding StepCounterText}" />
+                    </Border>
+                </Grid>
+
+                <Border Margin="0,14,0,0" Padding="12,10" CornerRadius="8"
+                        Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}"
+                        Visibility="{Binding Status, Converter={StaticResource StringToVis}}">
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Status}" TextWrapping="Wrap" />
+                </Border>
+
+                <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0"
+                        Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
                     <Grid>
                         <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="{Binding StepTitleText}" />
-                            <TextBlock Style="{StaticResource TitleText}" Text="{Binding CurrentStepTitle}" Margin="0,4,0,0" />
-                            <TextBlock Style="{StaticResource MutedText}" Text="{Binding CurrentStepDescription}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                        <Border Style="{StaticResource BusySpinner}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding BusyText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                            <ProgressBar Style="{StaticResource ThinProgress}" IsIndeterminate="True" Margin="0,6,0,0" />
                         </StackPanel>
-                        <Border Grid.Column="1" Style="{StaticResource Badge}" VerticalAlignment="Top"
-                                Background="{Binding ReadinessKey, Converter={StaticResource SoftSeverityBrush}}">
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding StepCounterText}" />
-                        </Border>
                     </Grid>
-
-                    <!-- Статусный баннер сообщения -->
-                    <Border Margin="0,14,0,0" Padding="12,10" CornerRadius="8"
-                            Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}"
-                            Visibility="{Binding Status, Converter={StaticResource StringToVis}}">
-                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Status}" TextWrapping="Wrap" />
-                    </Border>
-
-                    <!-- Индикатор занятости -->
-                    <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0"
-                            Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Style="{StaticResource BusySpinner}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                            <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding BusyText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                <ProgressBar Style="{StaticResource ThinProgress}" IsIndeterminate="True" Margin="0,6,0,0" />
-                            </StackPanel>
-                        </Grid>
-                    </Border>
-
-                    <!-- ШАГ 1: Права администратора -->
-                    <StackPanel Margin="0,16,0,0" Visibility="{Binding IsAdminStep, Converter={StaticResource BoolToVis}}">
-                        <Border Style="{StaticResource InnerCard}" Padding="14,12"
-                                Background="{Binding AdminStatusKey, Converter={StaticResource SoftSeverityBrush}}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center"
-                                        Background="{Binding AdminStatusKey, Converter={StaticResource SoftSeverityBrush}}">
-                                    <TextBlock Text="{Binding AdminIcon}"
-                                               FontFamily="{DynamicResource IconFont}" FontSize="14"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Foreground="{Binding AdminStatusKey, Converter={StaticResource SeverityBrush}}" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding AdminStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <WrapPanel Margin="0,14,0,0" Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
-                            <Button Style="{StaticResource PrimaryButton}" Content="Перезапустить от имени администратора"
-                                    Command="{Binding RestartElevatedCommand}" />
-                            <Button Style="{StaticResource GhostButton}" Content="Продолжить без администратора"
-                                    Margin="10,0,0,0" Command="{Binding ContinueReadOnlyCommand}"
-                                    ToolTip="Продолжить в режиме только чтения (установка службы и обхода будет недоступна)" />
-                        </WrapPanel>
-                    </StackPanel>
-
-                    <!-- ШАГ 2: Движок zapret -->
-                    <StackPanel Margin="0,16,0,0" Visibility="{Binding IsEngineStep, Converter={StaticResource BoolToVis}}">
-                        <Border Style="{StaticResource InnerCard}" Padding="14,12"
-                                Background="{Binding EngineStatusKey, Converter={StaticResource SoftSeverityBrush}}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center"
-                                        Background="{Binding EngineStatusKey, Converter={StaticResource SoftSeverityBrush}}">
-                                    <TextBlock Text="{Binding EngineIcon}"
-                                               FontFamily="{DynamicResource IconFont}" FontSize="14"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Foreground="{Binding EngineStatusKey, Converter={StaticResource SeverityBrush}}" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding EngineStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding Settings.EnginePath, StringFormat='Папка: {0}'}"
-                                               Margin="0,3,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Settings.EnginePath}" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <WrapPanel Margin="0,14,0,0" Visibility="{Binding IsEngineReady, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
-                            <Button Style="{StaticResource PrimaryButton}" Content="Скачать и установить движок"
-                                    Command="{Binding InstallEngineCommand}"
-                                    ToolTip="Автоматически загрузить свежий официальный релиз Flowseal/zapret-discord-youtube" />
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть страницу обновлений"
-                                    Margin="10,0,0,0" Command="{Binding OpenUpdatesCommand}" />
-                        </WrapPanel>
-                    </StackPanel>
-
-                    <!-- ШАГ 3: Диагностика системы -->
-                    <StackPanel Margin="0,16,0,0" Visibility="{Binding IsDiagnosticsStep, Converter={StaticResource BoolToVis}}">
-                        <Border Style="{StaticResource InnerCard}" Padding="14,12" Margin="0,0,0,12"
-                                Background="{Binding DiagnosticOverallKey, Converter={StaticResource SoftSeverityBrush}}">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="Auto" />
-                                    <ColumnDefinition Width="*" />
-                                </Grid.ColumnDefinitions>
-                                <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center"
-                                        Background="{Binding DiagnosticOverallKey, Converter={StaticResource SoftSeverityBrush}}">
-                                    <TextBlock Text="{Binding DiagnosticOverallIcon}" FontFamily="{DynamicResource IconFont}" FontSize="14"
-                                               HorizontalAlignment="Center" VerticalAlignment="Center"
-                                               Foreground="{Binding DiagnosticOverallKey, Converter={StaticResource SeverityBrush}}" />
-                                </Border>
-                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding DiagnosticOverallSummary}" FontWeight="SemiBold" TextWrapping="Wrap" />
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
-                        <!-- Карточки компонентов -->
-                        <Grid Margin="0,4,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Style="{StaticResource InnerCard}" Grid.Column="0" Margin="0,0,4,0" Padding="10,8">
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource DimText}" Text="СЛУЖБА BFE" />
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding BfeHealthText}" FontWeight="SemiBold" Margin="0,2,0,0"
-                                               Foreground="{Binding BfeHealthKey, Converter={StaticResource SeverityBrush}}" />
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource InnerCard}" Grid.Column="1" Margin="4,0" Padding="10,8">
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource DimText}" Text="ДРАЙВЕР WINDIVERT" />
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding WinDivertHealthText}" FontWeight="SemiBold" Margin="0,2,0,0"
-                                               Foreground="{Binding WinDivertHealthKey, Converter={StaticResource SeverityBrush}}" />
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource InnerCard}" Grid.Column="2" Margin="4,0,0,0" Padding="10,8">
-                                <StackPanel>
-                                    <TextBlock Style="{StaticResource DimText}" Text="WINDIVERT 1.4" />
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding WinDivert14HealthText}" FontWeight="SemiBold" Margin="0,2,0,0"
-                                               Foreground="{Binding WinDivert14HealthKey, Converter={StaticResource SeverityBrush}}" />
-                                </StackPanel>
-                            </Border>
-                        </Grid>
-
-                        <WrapPanel Margin="0,14,0,0">
-                            <Button Style="{StaticResource SecondaryButton}" Content="Запустить полную диагностику"
-                                    Command="{Binding RunDiagnosticsCommand}" />
-                            <Button Style="{StaticResource GhostButton}" Content="Восстановить BFE"
-                                    Margin="8,0,0,0" Command="{Binding RepairBfeCommand}"
-                                    IsEnabled="{Binding IsAdmin}"
-                                    ToolTip="Запустить службу Base Filtering Engine" />
-                            <Button Style="{StaticResource GhostButton}" Content="Очистить остатки WinDivert"
-                                    Margin="8,0,0,0" Command="{Binding RepairWinDivertCommand}"
-                                    IsEnabled="{Binding IsAdmin}"
-                                    ToolTip="Удалить остаточные службы WinDivert" />
-                        </WrapPanel>
-                    </StackPanel>
-
-                    <!-- ШАГ 4: Выбор стратегии -->
-                    <StackPanel Margin="0,16,0,0" Visibility="{Binding IsStrategyStep, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding StrategyStatusText}" FontWeight="SemiBold" />
-
-                        <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0"
-                                Visibility="{Binding StrategyProgressVisible, Converter={StaticResource BoolToVis}}">
-                            <StackPanel>
+                </Border>
+            </StackPanel>
+        </Border>
+            <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
+                <StackPanel>
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding IsAdminStep, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsAdminStep, Converter={StaticResource BoolToVis}}">
+                            <Border Style="{StaticResource InnerCard}" Padding="14,12"
+                                    Background="{Binding AdminStatusKey, Converter={StaticResource SoftSeverityBrush}}">
                                 <Grid>
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding StrategyProgressText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding StrategyProgressPercentText}" HorizontalAlignment="Right"
-                                               Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
-                                </Grid>
-                                <ProgressBar Style="{StaticResource ThinProgress}"
-                                             Value="{Binding StrategyProgressValue, Mode=OneWay}"
-                                             Maximum="{Binding StrategyProgressMaximum, Mode=OneWay}"
-                                             IsIndeterminate="{Binding StrategyProgressIndeterminate, Mode=OneWay}" Margin="0,8,0,0" />
-                            </StackPanel>
-                        </Border>
-
-                        <WrapPanel Margin="0,12,0,0" VerticalAlignment="Center">
-                            <Button Style="{StaticResource PrimaryButton}" Content="Проверить все стратегии"
-                                    Command="{Binding RunStrategyChecksCommand}"
-                                    ToolTip="Автоматически протестировать доступные стратегии и выбрать наиболее стабильную" />
-                            <ComboBox Style="{StaticResource AppComboBox}" MinWidth="220" MaxWidth="340" Margin="10,0,0,0"
-                                      ItemsSource="{Binding StrategyNames}"
-                                      SelectedItem="{Binding SelectedStrategyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                      ToolTip="Выберите стратегию обхода из списка" AutomationProperties.Name="Выберите стратегию обхода из списка" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="Сохранить выбор"
-                                    Margin="8,0,0,0" Command="{Binding SaveSelectedStrategyCommand}" />
-                        </WrapPanel>
-
-                        <!-- Быстрая настройка 1-клик и свои сайты — упрощает жизнь новичку -->
-                        <Border Style="{StaticResource InnerCard}" Margin="0,14,0,0" Padding="14,12" Background="{DynamicResource AccentSoftBrush}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРАЯ НАСТРОЙКА И СВОИ САЙТЫ" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Необязательно: укажите свои сайты, которые нужно обязательно разблокировать (например, для игр или работы). Мастер добавит их в проверку и подберёт стратегию именно под них." TextWrapping="Wrap" Margin="0,4,0,0" />
-                                <Grid Margin="0,8,0,0">
                                     <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*" />
                                         <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
-                                    <TextBox Style="{StaticResource InputBox}" MinHeight="70" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
-                                             Text="{Binding CustomHostInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding CustomHostsHint}" AutomationProperties.Name="Свой хост для проверки" />
-                                    <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top">
-                                        <Button Style="{StaticResource SecondaryButton}" Content="Добавить" Padding="14,6"
-                                                Command="{Binding AddCustomHostCommand}" ToolTip="Добавить адреса в список проверки" />
-                                        <Button Style="{StaticResource GhostButton}" Content="Пропустить" Margin="0,6,0,0"
-                                                Command="{Binding SkipCustomHostsCommand}" ToolTip="Пропустить — добавить сайты можно позже на странице Обзор" />
+                                    <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center"
+                                            Background="{Binding AdminStatusKey, Converter={StaticResource SoftSeverityBrush}}">
+                                        <TextBlock Text="{Binding AdminIcon}"
+                                                   FontFamily="{DynamicResource IconFont}" FontSize="14"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Foreground="{Binding AdminStatusKey, Converter={StaticResource SeverityBrush}}" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding AdminStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Grid>
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding CustomHostsStatus}" Margin="0,6,0,0" />
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding CustomHostsHint}" Margin="0,2,0,0" FontStyle="Italic" TextWrapping="Wrap" />
-                                <WrapPanel Margin="0,10,0,0">
-                                    <Button Style="{StaticResource PrimaryButton}" Content="Проверить всё (система → сайты → стратегии)" Padding="14,7"
-                                            Command="{Binding RunWizardFullCheckCommand}" ToolTip="То же, что кнопка «Проверить всё» на странице Обзор: выполнит все проверки по очереди и подскажет лучшую стратегию" />
-                                </WrapPanel>
-                            </StackPanel>
-                        </Border>
+                            </Border>
+
+                            <WrapPanel Margin="0,14,0,0" Visibility="{Binding IsAdmin, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Перезапустить от имени администратора"
+                                        Command="{Binding RestartElevatedCommand}" />
+                                <Button Style="{StaticResource GhostButton}" Content="Продолжить без администратора"
+                                        Margin="10,0,0,0" Command="{Binding ContinueReadOnlyCommand}"
+                                        ToolTip="Продолжить в режиме только чтения (установка службы и обхода будет недоступна)" />
+                            </WrapPanel>
+                        </StackPanel>
                     </StackPanel>
+                </Border>
 
-                    <!-- ШАГ 5: Пробный запуск -->
-                    <StackPanel Margin="0,16,0,0" Visibility="{Binding IsTrialStep, Converter={StaticResource BoolToVis}}">
-                        <Border Style="{StaticResource InnerCard}" Padding="14,12">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding SelectedStrategyText}" FontWeight="SemiBold" />
-                                <TextBlock Style="{StaticResource DimText}" Text="При нажатии кнопки выбранная стратегия будет запущена временно для проверки доступности YouTube, Discord и GitHub." Margin="0,4,0,0" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding IsEngineStep, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsEngineStep, Converter={StaticResource BoolToVis}}">
+                            <Border Style="{StaticResource InnerCard}" Padding="14,12"
+                                    Background="{Binding EngineStatusKey, Converter={StaticResource SoftSeverityBrush}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center"
+                                            Background="{Binding EngineStatusKey, Converter={StaticResource SoftSeverityBrush}}">
+                                        <TextBlock Text="{Binding EngineIcon}"
+                                                   FontFamily="{DynamicResource IconFont}" FontSize="14"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Foreground="{Binding EngineStatusKey, Converter={StaticResource SeverityBrush}}" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding EngineStatusText}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding Settings.EnginePath, StringFormat='Папка: {0}'}"
+                                                   Margin="0,3,0,0" TextTrimming="CharacterEllipsis" ToolTip="{Binding Settings.EnginePath}" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding TrialStatusText}" Margin="0,12,0,0" />
-
-                        <WrapPanel Margin="0,12,0,0">
-                            <Button Style="{StaticResource PrimaryButton}" Content="Запустить пробную проверку"
-                                    Command="{Binding RunTrialCommand}"
-                                    ToolTip="Временно проверить работу стратегии на сетевых сервисах" />
-                        </WrapPanel>
+                            <WrapPanel Margin="0,14,0,0" Visibility="{Binding IsEngineReady, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Скачать и установить движок"
+                                        Command="{Binding InstallEngineCommand}"
+                                        ToolTip="Автоматически загрузить свежий официальный релиз Flowseal/zapret-discord-youtube" />
+                                <Button Style="{StaticResource GhostButton}" Content="Открыть страницу обновлений"
+                                        Margin="10,0,0,0" Command="{Binding OpenUpdatesCommand}" />
+                            </WrapPanel>
+                        </StackPanel>
                     </StackPanel>
+                </Border>
 
-                    <!-- ШАГ 6: Завершение настройки -->
-                    <StackPanel Margin="0,16,0,0" Visibility="{Binding IsFinishStep, Converter={StaticResource BoolToVis}}">
-                        <Border Style="{StaticResource InnerCard}" Padding="14,12" Background="{DynamicResource AccentSoftBrush}">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding FinishStatusText}" FontWeight="SemiBold" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Все необходимые параметры настроены. Вы можете запустить обход в любой момент с главной страницы." Margin="0,4,0,0" TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding IsDiagnosticsStep, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsDiagnosticsStep, Converter={StaticResource BoolToVis}}">
+                            <Border Style="{StaticResource InnerCard}" Padding="14,12" Margin="0,0,0,12"
+                                    Background="{Binding DiagnosticOverallKey, Converter={StaticResource SoftSeverityBrush}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="28" Height="28" CornerRadius="14" VerticalAlignment="Center"
+                                            Background="{Binding DiagnosticOverallKey, Converter={StaticResource SoftSeverityBrush}}">
+                                        <TextBlock Text="{Binding DiagnosticOverallIcon}" FontFamily="{DynamicResource IconFont}" FontSize="14"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                   Foreground="{Binding DiagnosticOverallKey, Converter={StaticResource SeverityBrush}}" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding DiagnosticOverallSummary}" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Grid>
+                            </Border>
 
-                        <CheckBox Style="{StaticResource CheckBoxApp}" Content="Включить безопасный режим (Safe Mode)"
-                                  IsChecked="{Binding IsSafeModeChoice, Mode=TwoWay}"
-                                  Foreground="{DynamicResource TextBrush}"
-                                  Margin="0,16,0,0" FontWeight="SemiBold"
-                                  ToolTip="В безопасном режиме обход и системные изменения не выполняются автоматически" />
-                        <TextBlock Style="{StaticResource DimText}" Text="{Binding SafeModeChoiceText}" Margin="27,4,0,0" TextWrapping="Wrap" />
+                            <!-- Карточки компонентов -->
+                            <Grid Margin="0,4,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Border Style="{StaticResource InnerCard}" Grid.Column="0" Margin="0,0,4,0" Padding="10,8">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource DimText}" Text="СЛУЖБА BFE" />
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding BfeHealthText}" FontWeight="SemiBold" Margin="0,2,0,0"
+                                                   Foreground="{Binding BfeHealthKey, Converter={StaticResource SeverityBrush}}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource InnerCard}" Grid.Column="1" Margin="4,0" Padding="10,8">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource DimText}" Text="ДРАЙВЕР WINDIVERT" />
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding WinDivertHealthText}" FontWeight="SemiBold" Margin="0,2,0,0"
+                                                   Foreground="{Binding WinDivertHealthKey, Converter={StaticResource SeverityBrush}}" />
+                                    </StackPanel>
+                                </Border>
+                                <Border Style="{StaticResource InnerCard}" Grid.Column="2" Margin="4,0,0,0" Padding="10,8">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource DimText}" Text="WINDIVERT 1.4" />
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding WinDivert14HealthText}" FontWeight="SemiBold" Margin="0,2,0,0"
+                                                   Foreground="{Binding WinDivert14HealthKey, Converter={StaticResource SeverityBrush}}" />
+                                    </StackPanel>
+                                </Border>
+                            </Grid>
 
-                        <WrapPanel Margin="0,18,0,0">
-                            <Button Style="{StaticResource PrimaryButton}" Content="Завершить настройку"
-                                    Command="{Binding FinishManualCommand}"
-                                    ToolTip="Сохранить настройки и перейти на главную страницу" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="Установить в службу Windows"
-                                    Margin="10,0,0,0" Command="{Binding InstallServiceCommand}"
-                                    ToolTip="Установить выбранную стратегию как автозапускаемую службу zapret" />
-                        </WrapPanel>
+                            <WrapPanel Margin="0,14,0,0">
+                                <Button Style="{StaticResource SecondaryButton}" Content="Запустить полную диагностику"
+                                        Command="{Binding RunDiagnosticsCommand}" />
+                                <Button Style="{StaticResource GhostButton}" Content="Восстановить BFE"
+                                        Margin="8,0,0,0" Command="{Binding RepairBfeCommand}"
+                                        IsEnabled="{Binding IsAdmin}"
+                                        ToolTip="Запустить службу Base Filtering Engine" />
+                                <Button Style="{StaticResource GhostButton}" Content="Очистить остатки WinDivert"
+                                        Margin="8,0,0,0" Command="{Binding RepairWinDivertCommand}"
+                                        IsEnabled="{Binding IsAdmin}"
+                                        ToolTip="Удалить остаточные службы WinDivert" />
+                            </WrapPanel>
+                        </StackPanel>
                     </StackPanel>
+                </Border>
 
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding IsStrategyStep, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsStrategyStep, Converter={StaticResource BoolToVis}}">
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding StrategyStatusText}" FontWeight="SemiBold" />
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0"
+                                    Visibility="{Binding StrategyProgressVisible, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <Grid>
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding StrategyProgressText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding StrategyProgressPercentText}" HorizontalAlignment="Right"
+                                                   Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
+                                    </Grid>
+                                    <ProgressBar Style="{StaticResource ThinProgress}"
+                                                 Value="{Binding StrategyProgressValue, Mode=OneWay}"
+                                                 Maximum="{Binding StrategyProgressMaximum, Mode=OneWay}"
+                                                 IsIndeterminate="{Binding StrategyProgressIndeterminate, Mode=OneWay}" Margin="0,8,0,0" />
+                                </StackPanel>
+                            </Border>
+
+                            <WrapPanel Margin="0,12,0,0" VerticalAlignment="Center">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Проверить все стратегии"
+                                        Command="{Binding RunStrategyChecksCommand}"
+                                        ToolTip="Автоматически протестировать доступные стратегии и выбрать наиболее стабильную" />
+                                <ComboBox Style="{StaticResource AppComboBox}" MinWidth="220" MaxWidth="340" Margin="10,0,0,0"
+                                          ItemsSource="{Binding StrategyNames}"
+                                          SelectedItem="{Binding SelectedStrategyName, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          ToolTip="Выберите стратегию обхода из списка" AutomationProperties.Name="Выберите стратегию обхода из списка" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Сохранить выбор"
+                                        Margin="8,0,0,0" Command="{Binding SaveSelectedStrategyCommand}" />
+                            </WrapPanel>
+
+                            <!-- Быстрая настройка 1-клик и свои сайты — упрощает жизнь новичку -->
+                            <Border Style="{StaticResource InnerCard}" Margin="0,14,0,0" Padding="14,12" Background="{DynamicResource AccentSoftBrush}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРАЯ НАСТРОЙКА И СВОИ САЙТЫ" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="Необязательно: укажите свои сайты, которые нужно обязательно разблокировать (например, для игр или работы). Мастер добавит их в проверку и подберёт стратегию именно под них." TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    <Grid Margin="0,8,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox Style="{StaticResource InputBox}" MinHeight="70" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto"
+                                                 Text="{Binding CustomHostInput, UpdateSourceTrigger=PropertyChanged}" ToolTip="{Binding CustomHostsHint}" AutomationProperties.Name="Свой хост для проверки" />
+                                        <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Top">
+                                            <Button Style="{StaticResource SecondaryButton}" Content="Добавить" Padding="14,6"
+                                                    Command="{Binding AddCustomHostCommand}" ToolTip="Добавить адреса в список проверки" />
+                                            <Button Style="{StaticResource GhostButton}" Content="Пропустить" Margin="0,6,0,0"
+                                                    Command="{Binding SkipCustomHostsCommand}" ToolTip="Пропустить — добавить сайты можно позже на странице Обзор" />
+                                        </StackPanel>
+                                    </Grid>
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding CustomHostsStatus}" Margin="0,6,0,0" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding CustomHostsHint}" Margin="0,2,0,0" FontStyle="Italic" TextWrapping="Wrap" />
+                                    <WrapPanel Margin="0,10,0,0">
+                                        <Button Style="{StaticResource CompactPrimaryButton}" Content="Проверить всё (система → сайты → стратегии)"
+                                                Command="{Binding RunWizardFullCheckCommand}" ToolTip="То же, что кнопка «Проверить всё» на странице Обзор: выполнит все проверки по очереди и подскажет лучшую стратегию" />
+                                    </WrapPanel>
+                                </StackPanel>
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding IsTrialStep, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsTrialStep, Converter={StaticResource BoolToVis}}">
+                            <Border Style="{StaticResource InnerCard}" Padding="14,12">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding SelectedStrategyText}" FontWeight="SemiBold" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="При нажатии кнопки выбранная стратегия будет запущена временно для проверки доступности YouTube, Discord и GitHub." Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding TrialStatusText}" Margin="0,12,0,0" />
+
+                            <WrapPanel Margin="0,12,0,0">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Запустить пробную проверку"
+                                        Command="{Binding RunTrialCommand}"
+                                        ToolTip="Временно проверить работу стратегии на сетевых сервисах" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding IsFinishStep, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
+                        <StackPanel Margin="0,16,0,0" Visibility="{Binding IsFinishStep, Converter={StaticResource BoolToVis}}">
+                            <Border Style="{StaticResource InnerCard}" Padding="14,12" Background="{DynamicResource AccentSoftBrush}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding FinishStatusText}" FontWeight="SemiBold" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="Все необходимые параметры настроены. Вы можете запустить обход в любой момент с главной страницы." Margin="0,4,0,0" TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <CheckBox Style="{StaticResource CheckBoxApp}" Content="Включить безопасный режим (Safe Mode)"
+                                      IsChecked="{Binding IsSafeModeChoice, Mode=TwoWay}"
+                                      Foreground="{DynamicResource TextBrush}"
+                                      Margin="0,16,0,0" FontWeight="SemiBold"
+                                      ToolTip="В безопасном режиме обход и системные изменения не выполняются автоматически" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding SafeModeChoiceText}" Margin="27,4,0,0" TextWrapping="Wrap" />
+
+                            <WrapPanel Margin="0,18,0,0">
+                                <Button Style="{StaticResource PrimaryButton}" Content="Завершить настройку"
+                                        Command="{Binding FinishManualCommand}"
+                                        ToolTip="Сохранить настройки и перейти на главную страницу" />
+                                <Button Style="{StaticResource SecondaryButton}" Content="Установить в службу Windows"
+                                        Margin="10,0,0,0" Command="{Binding InstallServiceCommand}"
+                                        ToolTip="Установить выбранную стратегию как автозапускаемую службу zapret" />
+                            </WrapPanel>
+                        </StackPanel>
+                    </StackPanel>
+                </Border>
                 </StackPanel>
             </ScrollViewer>
-        </Border>
+        </Grid>
 
         <!-- Нижняя навигационная панель -->
         <Grid Grid.Row="3" Margin="0,14,0,4">

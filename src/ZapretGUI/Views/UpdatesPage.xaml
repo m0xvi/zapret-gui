@@ -210,8 +210,8 @@
                             </WrapPanel>
                             <TextBlock Style="{StaticResource DimText}" Text="Актуальный список IP-адресов для фильтра ipset. Обновляется отдельно от движка." Margin="0,4,0,0" />
                         </StackPanel>
-                        <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Обновить список"
-                                HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding UpdateIpsetCommand}" Padding="14,7"
+                        <Button Grid.Column="1" Style="{StaticResource CompactButton}" Content="Обновить список"
+                                HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding UpdateIpsetCommand}"
                                 ToolTip="Скачать свежий ipset-all.txt из репозитория (при режимах none/any пишется в резервную копию)" />
                     </Grid>
 
@@ -233,7 +233,7 @@
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding HostsStatus}" Margin="0,4,0,0"
                                        Foreground="{Binding HostsStatusKey, Converter={StaticResource SeverityBrush}}" />
                         </StackPanel>
-                        <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Обновить hosts" Padding="14,7"
+                        <Button Grid.Column="1" Style="{StaticResource CompactPrimaryButton}" Content="Обновить hosts"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
                                 Command="{Binding UpdateHostsCommand}"
                                 ToolTip="Проверить файл hosts и автоматически применить актуальные записи GitHub при необходимости" />

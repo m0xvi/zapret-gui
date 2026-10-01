@@ -22,7 +22,9 @@ check_bindings.py — статическая проверка XAML проект�
   6. Семантика (v1.26.0): карточкам запрещено задавать Background/BorderBrush/BorderThickness
      вручную — для этого есть CardAccent/CardWarning/CardSuccess/CardInfo; надзаголовок
      SectionText пишется ЗАГЛАВНЫМИ (TitleText и SubtitleText — обычный регистр).
-  7. Иконки и доступность (v1.27.0): иконочные кнопки (Content без букв) и поля ввода обязаны иметь
+  7. Зазоры (v1.28.0): между карточками в вертикальном контейнере должен быть отступ ≥ 12 px
+     (Margin=\"0,H,0,0\" либо токен CardGap/BlockGap) — иначе блоки слипаются.
+  8. Иконки и доступность (v1.27.0): иконочные кнопки (Content без букв) и поля ввода обязаны иметь
      AutomationProperties.Name; эмодзи в кнопках и заголовках не используются — словарь иконок MDL2;
      плашки-уведомления задаются стилями NoticeSuccess/NoticeWarning/NoticeInfo/NoticeDanger.
 
@@ -92,6 +94,110 @@ NOTICE_BY_FAMILY = {"Accent": "NoticeAccent", "Success": "NoticeSuccess", "Warni
                     "Info": "NoticeInfo", "Danger": "NoticeDanger"}
 FIELD_TAGS = ("TextBox", "ComboBox", "Slider")
 EMOJI_RE = re.compile('[\U0001F300-\U0001FAFF\u2600-\u26FF\u2700-\u27BF\u2B00-\u2BFF]')
+TOKEN_MARGINS = {'{DynamicResource CardGap}': 14, '{DynamicResource BlockGap}': 12}
+STRUCTURAL_TAGS = ('ColumnDefinitions', 'RowDefinitions')
+ELEMENT_RE = re.compile(
+    r'<!--.*?-->|<\?.*?\?>|<!\[CDATA\[.*?\]\]>|</?([A-Za-z_][\w:.-]*)((?:"[^"]*"|\'[^\']*\'|[^>"\'])*?)(/?)>',
+    re.DOTALL)
+
+
+def token_margin_top(tag):
+    """Верхний отступ элемента: литерал или наш токен."""
+    margin = get_attr(tag, 'Margin')
+    if not margin:
+        return 0.0
+    if margin in TOKEN_MARGINS:
+        return float(TOKEN_MARGINS[margin])
+    if margin.startswith('{'):
+        return 0.0
+    parts = [p.strip() for p in margin.split(',')]
+    try:
+        values = [float(p) for p in parts]
+    except ValueError:
+        return 0.0
+    if len(values) == 1:
+        return values[0]
+    if len(values) == 2:
+        return values[0]
+    if len(values) == 4:
+        return values[0]
+    return 0.0
+
+
+def token_margin_bottom(tag):
+    margin = get_attr(tag, 'Margin')
+    if not margin:
+        return 0.0
+    if margin in TOKEN_MARGINS:
+        return 0.0
+    if margin.startswith('{'):
+        return 0.0
+    parts = [p.strip() for p in margin.split(',')]
+    try:
+        values = [float(p) for p in parts]
+    except ValueError:
+        return 0.0
+    if len(values) == 1:
+        return values[0]
+    if len(values) == 2:
+        return values[1]
+    if len(values) == 4:
+        return values[2]
+    return 0.0
+
+
+def parse_tree(text):
+    """Плоский список элементов с родителем и детьми — чтобы видеть соседей карточки."""
+    stack = []
+    nodes = []
+    for match in ELEMENT_RE.finditer(text):
+        raw = match.group(0)
+        if raw[:4] in ('<!--', '<?xm', '<![C'):
+            continue
+        name = match.group(1)
+        selfclose = match.group(3) == '/'
+        if raw.startswith('</'):
+            if stack and stack[-1]['name'] == name:
+                stack.pop()['end'] = match.end()
+            continue
+        node = {'name': name, 'start': match.start(), 'tag_end': match.end(), 'children': [],
+                'parent': stack[-1] if stack else None, 'end': match.end() if selfclose else None}
+        if stack:
+            stack[-1]['children'].append(node)
+        nodes.append(node)
+        if not selfclose:
+            stack.append(node)
+    return nodes
+
+
+def check_card_gaps(path, text, problems, warnings):
+    """Карточка не должна слипаться с предыдущим блоком (v1.28.0)."""
+    rel = os.path.relpath(path, ROOT)
+    for node in parse_tree(text):
+        if node['name'] != 'Border' or node['parent'] is None:
+            continue
+        tag = text[node['start']:node['tag_end']]
+        if style_of(tag) not in CARD_FAMILY:
+            continue
+        prev = None
+        for sibling in node['parent']['children']:
+            if sibling is node:
+                break
+            prev = sibling
+        if prev is None or prev['name'].split('.')[-1] in STRUCTURAL_TAGS or prev['name'].startswith('!'):
+            continue
+        if node['parent']['name'] == 'Grid':
+            row, col = get_attr(tag, 'Grid.Row'), get_attr(tag, 'Grid.Column')
+            prev_tag = text[prev['start']:prev['tag_end']]
+            prev_row, prev_col = get_attr(prev_tag, 'Grid.Row'), get_attr(prev_tag, 'Grid.Column')
+            if row == prev_row and col == prev_col:
+                continue          # переключаемые панели в одной ячейке
+            if col is not None and col != prev_col:
+                continue          # сосед по колонке, а не по вертикали
+        gap = token_margin_top(tag) + token_margin_bottom(text[prev['start']:prev['tag_end']])
+        if gap < 12:
+            warnings.append(f'{rel}: карточка слипается с блоком выше (зазор {gap:g} px) — '
+                            f'строка {text[:node["start"]].count(chr(10)) + 1}, нужен CardGap')
 CARD_FAMILY = ("Card",) + SEMANTIC_CARD_STYLES
 ENTITY_RE = re.compile(r'&[a-zA-Z]+;|&#x?[0-9A-Fa-f]+;')
 CARD_CONTAINER_TAGS = ("ListBox", "ItemsControl", "ScrollViewer", "TextBox", "TreeView")
@@ -426,7 +532,9 @@ def main():
 
     warnings = []
     for path in xaml_files:
-        check_card_style(path, read(path), problems, warnings)
+        text = read(path)
+        check_card_style(path, text, problems, warnings)
+        check_card_gaps(path, text, problems, warnings)
 
     print(f"Проверено XAML-файлов: {len(xaml_files)}; ключей ресурсов: {len(keys)}")
     if warnings:

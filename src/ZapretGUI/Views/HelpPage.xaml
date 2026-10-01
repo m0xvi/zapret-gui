@@ -48,9 +48,9 @@
                                    Text="3. Не помогло — «Обход → Сложные сайты»: включите или выключите «Отключить QUIC fake» и примените. Затем попробуйте другой способ обхода на вкладке «Стратегия»." />
                     </StackPanel>
                     <WrapPanel Margin="0,12,0,0">
-                        <Button Style="{StaticResource PrimaryButton}" Content="Проверить YouTube" Padding="14,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactPrimaryButton}" Content="Проверить YouTube" MinHeight="32"
                                 Command="{Binding CheckYoutubeCommand}" ToolTip="Откроет «Проверки → Быстрая проверка»" />
-                        <Button Style="{StaticResource GhostButton}" Content="Открыть «Сложные сайты»" Margin="8,0,0,0" Padding="12,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactGhostButton}" Content="Открыть «Сложные сайты»" Margin="8,0,0,0" MinHeight="32"
                                 Command="{Binding OpenHardSitesCommand}" ToolTip="Откроет «Обход → Сложные сайты» (тонкая настройка под YouTube)" />
                     </WrapPanel>
                 </StackPanel>
@@ -81,7 +81,7 @@
                                    Text="3. Если в Discord висит «Подключение к RTC» — там же нажмите «Очистить кэш и сбросить сеть (1 клик)» и перезапустите Discord." />
                     </StackPanel>
                     <WrapPanel Margin="0,12,0,0">
-                        <Button Style="{StaticResource PrimaryButton}" Content="Проверить голос" Padding="14,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactPrimaryButton}" Content="Проверить голос" MinHeight="32"
                                 Command="{Binding CheckVoiceCommand}" ToolTip="Откроет «Проверки → Сайты и звонки»" />
                     </WrapPanel>
                 </StackPanel>
@@ -112,10 +112,10 @@
                                    Text="3. Появилось предупреждение про старую сборку — на «Главной» нажмите «Решить конфликт» в жёлтом баннере." />
                     </StackPanel>
                     <WrapPanel Margin="0,12,0,0">
-                        <Button Style="{StaticResource SecondaryButton}" Content="Выключить обход" Padding="14,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactButton}" Content="Выключить обход" MinHeight="32"
                                 Command="{Binding ToggleBypassCommand}"
                                 ToolTip="Переключает обход так же, как кнопка питания на «Главной». Повторное нажатие включит обход обратно." />
-                        <Button Style="{StaticResource GhostButton}" Content="Полный сброс сети" Margin="8,0,0,0" Padding="12,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactGhostButton}" Content="Полный сброс сети" Margin="8,0,0,0" MinHeight="32"
                                 Command="{Binding ResetNetworkCommand}" ToolTip="Откроет «Проверки → Система» (в простом режиме — «Быстрая проверка»)"
                                 Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}" />
                     </WrapPanel>
@@ -147,9 +147,9 @@
                                    Text="3. Нужен фильтр трафика игр (порты выше 1023) — «Обход → Сложные сайты → Тяжёлые игры → Настроить фильтр игр»." />
                     </StackPanel>
                     <WrapPanel Margin="0,12,0,0">
-                        <Button Style="{StaticResource SecondaryButton}" Content="Игровой режим" Padding="14,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactButton}" Content="Игровой режим" MinHeight="32"
                                 Command="{Binding ToggleGameModeCommand}" ToolTip="Включить или выключить игровой режим (Ctrl+Shift+G)" />
-                        <Button Style="{StaticResource GhostButton}" Content="Фильтр трафика игр" Margin="8,0,0,0" Padding="12,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactGhostButton}" Content="Фильтр трафика игр" Margin="8,0,0,0" MinHeight="32"
                                 Command="{Binding OpenGameFilterCommand}" ToolTip="Откроет «Обход → Сложные сайты»: карточка «Тяжёлые игры»" />
                     </WrapPanel>
                 </StackPanel>
@@ -180,7 +180,7 @@
                                    Text="3. Нужно убрать всё — там же «Полная очистка следов в Windows»: приложение и служебные записи удаляются, движок и ваши списки остаются на диске." />
                     </StackPanel>
                     <WrapPanel Margin="0,12,0,0">
-                        <Button Style="{StaticResource PrimaryButton}" Content="Открыть «Профили и копии»" Padding="14,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactPrimaryButton}" Content="Открыть «Профили и копии»" MinHeight="32"
                                 Command="{Binding OpenProfilesCommand}" ToolTip="Откроет «Настройки → Общие → Профили и копии»" />
                     </WrapPanel>
                 </StackPanel>
@@ -236,11 +236,11 @@
                     <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" TextWrapping="Wrap"
                                Text="Приложение ничего не отправляет само: файл сохраняется туда, куда вы укажете. Телеметрия провайдера — только по вашему согласию в «Настройках» → «Экспорт телеметрии»." />
                     <WrapPanel Margin="0,12,0,0">
-                        <Button Style="{StaticResource PrimaryButton}" Content="Собрать архив отчёта (ZIP)" Padding="14,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactPrimaryButton}" Content="Собрать архив отчёта (ZIP)" MinHeight="32"
                                 Command="{Binding SendReportCommand}" ToolTip="Журнал, результаты проверок и версии — в один ZIP-файл" />
-                        <Button Style="{StaticResource GhostButton}" Content="Отчёт одним JSON" Margin="8,0,0,0" Padding="12,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactGhostButton}" Content="Отчёт одним JSON" Margin="8,0,0,0" MinHeight="32"
                                 Command="{Binding SaveReportJsonCommand}" ToolTip="Тот же отчёт одним JSON-файлом" />
-                        <Button Style="{StaticResource GhostButton}" Content="Открыть журнал" Margin="8,0,0,0" Padding="12,7" MinHeight="32"
+                        <Button Style="{StaticResource CompactGhostButton}" Content="Открыть журнал" Margin="8,0,0,0" MinHeight="32"
                                 Command="{Binding OpenLogsCommand}" ToolTip="Откроет «Проверки → Журнал»" />
                     </WrapPanel>
                 </StackPanel>

@@ -586,7 +586,7 @@
                                 <TextBlock Style="{StaticResource DimText}"
                                            Text="Права, файлы движка, службы, драйвер WinDivert и сеть — одним кликом." TextWrapping="Wrap" />
                             </StackPanel>
-                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Запустить проверку системы" Padding="14,7" MinHeight="34"
+                            <Button Grid.Column="2" Style="{StaticResource CompactButton}" Content="Запустить проверку системы" MinHeight="34"
                                     Command="{Binding RunCommand}" VerticalAlignment="Center"
                                     ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
                         </Grid>
@@ -717,7 +717,7 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Быстрая проверка: статус -->
-                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="0,0,6,0">
+                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="{DynamicResource CardGap}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРАЯ ПРОВЕРКА" />
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.LastCheckText}" FontWeight="SemiBold" />
@@ -745,7 +745,7 @@
                         </Grid.ColumnDefinitions>
 
                         <!-- Глубокая проверка: статус -->
-                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="0,0,6,0">
+                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="{DynamicResource CardGap}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionText}" Text="ГЛУБОКАЯ ПРОВЕРКА" />
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding DeepCheck.LastCheckText}" FontWeight="SemiBold" />
