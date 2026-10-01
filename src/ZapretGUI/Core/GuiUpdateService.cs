@@ -72,7 +72,11 @@ namespace ZapretGui.Core
         private const string PortableSuffix = "-win-x64-portable.exe";
         private const int ParentWaitTimeoutMs = 30000;
 
-        private static readonly HttpClient Http = CreateClient();
+        private static readonly HttpClient Http = CreateClient(useProxy: true);
+
+        /// <summary>Прямой клиент без системного прокси: битая настройка прокси (частая после VPN)
+        /// рвёт TLS-рукопожатие, поэтому при ошибке пробуем ещё раз без прокси (v1.28.2).</summary>
+        private static readonly HttpClient HttpDirect = CreateClient(useProxy: false);
         private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
         public static string PlanFile => AppPaths.GuiUpdatePlanFile;
@@ -96,12 +100,53 @@ namespace ZapretGui.Core
             }
         }
 
-        private static HttpClient CreateClient()
+        private static HttpClient CreateClient(bool useProxy)
         {
-            var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            var handler = new SocketsHttpHandler
+            {
+                UseProxy = useProxy,
+                AllowAutoRedirect = true,
+                AutomaticDecompression = System.Net.DecompressionMethods.All,
+                ConnectTimeout = TimeSpan.FromSeconds(20),
+                // Явно разрешаем TLS 1.2 и 1.3: на части сборок Windows по умолчанию остаётся
+                // только TLS 1.2, и с некоторыми узлами рукопожатие не проходит (v1.28.2).
+                SslOptions = { EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12
+                    | System.Security.Authentication.SslProtocols.Tls13 }
+            };
+            var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(10) };
             client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("ZapretGUI", "1.0"));
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             return client;
+        }
+
+        /// <summary>GET с запасным каналом: если обычное соединение (с системным прокси) не установилось,
+        /// повторяем напрямую без прокси (v1.28.2).</summary>
+        private static async Task<HttpResponseMessage> GetWithFallbackAsync(string url, CancellationToken ct)
+        {
+            try
+            {
+                return await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                AppLog.Warn("[GuiUpdate] Соединение не удалось (" + Describe(ex) + "), повторяю без системного прокси");
+                return await HttpDirect.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>Человекочитаемая причина: у HttpRequestException текст вида «see inner exception»,
+        /// поэтому достаём самое глубокое сообщение (SSL, сброс соединения, тайм-аут) — v1.28.2.</summary>
+        public static string Describe(Exception ex)
+        {
+            var text = "";
+            for (var e = ex; e != null; e = e.InnerException) text = e.Message;
+            if (string.IsNullOrWhiteSpace(text)) text = ex.Message;
+            if (text.Contains("SSL", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("TLS", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("Authentication", StringComparison.OrdinalIgnoreCase))
+                return "SSL-соединение не установлено (" + text.Trim() + "). Обычно доступ к GitHub режет провайдер: " +
+                       "включите обход и нажмите «Повторить» либо скачайте файл вручную со страницы релиза.";
+            return text.Trim();
         }
 
         public static bool TryParseRepository(string? value, out string repository)
@@ -140,7 +185,7 @@ namespace ZapretGui.Core
             var releasesUrl = "https://api.github.com/repos/" + repository + "/releases?per_page=20";
             try
             {
-                using var response = await Http.GetAsync(releasesUrl, ct).ConfigureAwait(false);
+                using var response = await GetWithFallbackAsync(releasesUrl, ct).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                 {
                     AppLog.Warn($"GitHub API обновлений GUI вернул {(int)response.StatusCode}");
@@ -185,7 +230,7 @@ namespace ZapretGui.Core
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
-                AppLog.Warn("Не удалось получить релиз обновления GUI: " + ex.Message);
+                AppLog.Warn("Не удалось получить релиз обновления GUI: " + Describe(ex));
             }
 
             return null;
@@ -334,10 +379,11 @@ namespace ZapretGui.Core
                 CleanupUpdateFiles(updateDirectory, PlanFile);
                 AppLog.Error("Не удалось подготовить обновление GUI: " + ex.ToString());
                 // Даём подсказку для ручной установки
-                var hint = ex is InvalidDataException || ex is FileNotFoundException || ex is System.Net.Http.HttpRequestException
-                    ? " Попробуйте скачать обновление вручную со страницы релиза."
-                    : "";
-                return Failure("Не удалось подготовить обновление GUI: " + ex.Message + hint);
+                var text = Describe(ex);
+                var hint = text.Contains("вручную", StringComparison.OrdinalIgnoreCase)
+                    ? ""
+                    : " Попробуйте скачать обновление вручную со страницы релиза.";
+                return Failure("Не удалось подготовить обновление GUI: " + text + hint);
             }
         }
 
@@ -590,10 +636,48 @@ namespace ZapretGui.Core
             return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
         }
 
+        /// <summary>Загрузка с повторами (v1.28.2): попытка 1 — обычное соединение; попытка 2 — через 2 с
+        /// (сбои и вмешательство провайдера часто разовые); попытка 3 — без системного прокси. Файл перед
+        /// каждой попыткой пересоздаётся, SHA-256 проверяется после загрузки.</summary>
         private static async Task DownloadFileAsync(string url, string path, long expectedSize,
             IProgress<ProgressInfo>? progress, CancellationToken ct)
         {
-            using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            var attempts = new (HttpClient Client, string Name, int DelayMs)[]
+            {
+                (Http, "обычное соединение", 0),
+                (Http, "повтор", 2000),
+                (HttpDirect, "без системного прокси", 4000)
+            };
+            Exception? last = null;
+            for (var i = 0; i < attempts.Length; i++)
+            {
+                var (client, name, delayMs) = attempts[i];
+                if (delayMs > 0)
+                {
+                    progress?.Report(new ProgressInfo { Percent = -1, Status = "Соединение не удалось, повторяю (" + name + ")…" });
+                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                }
+                try
+                {
+                    if (i > 0) AppLog.Info($"[GuiUpdate] Повтор загрузки ({i + 1} из {attempts.Length}, {name}): {url}");
+                    await DownloadOnceAsync(client, url, path, expectedSize, progress, ct).ConfigureAwait(false);
+                    return;
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    last = ex;
+                    AppLog.Warn($"[GuiUpdate] Загрузка не удалась ({name}): {Describe(ex)}");
+                    TryDelete(path);
+                }
+            }
+            throw new IOException("Не удалось скачать обновление. " + Describe(last ?? new IOException("неизвестная ошибка")), last);
+        }
+
+        private static async Task DownloadOnceAsync(HttpClient client, string url, string path, long expectedSize,
+            IProgress<ProgressInfo>? progress, CancellationToken ct)
+        {
+            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             var total = response.Content.Headers.ContentLength ?? expectedSize;
             await using var source = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);

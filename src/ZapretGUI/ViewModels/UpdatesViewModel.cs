@@ -465,6 +465,63 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        /// <summary>Одна попытка скачивания: обновляет статусы и оверлей, возвращает результат.</summary>
+        private async Task<GuiUpdateResult> TryDownloadGuiAsync()
+        {
+            var result = await GuiUpdateService.DownloadAndScheduleAsync(
+                _guiRelease!, new Progress<ProgressInfo>(ApplyProgress), _cts!.Token);
+            GuiUpdateStatus = result.Message;
+            SetMessage(result.Message, result.Ok ? "Success" : "Danger");
+            AppLog.Info("[GuiUpdate] DownloadAndSchedule результат: " + result.Message + " Ok=" + result.Ok);
+            return result;
+        }
+
+        /// <summary>Признак того, что соединение режет провайдер, а не GitHub отдаёт ошибку (v1.28.2).</summary>
+        private static bool LooksLikeBlockedConnection(string message)
+            => message.Contains("SSL", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("TLS", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("Не удалось скачать", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("тайм-аут", StringComparison.OrdinalIgnoreCase)
+               || message.Contains("сброш", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>Включает обход текущей стратегией, чтобы загрузка обновления прошла через winws.</summary>
+        private async Task<bool> TryStartBypassForUpdateAsync()
+        {
+            try
+            {
+                if (!Shell.IsAdmin())
+                {
+                    GuiUpdateStatus = "Для включения обхода нужны права администратора — запустите Zapret GUI от админа.";
+                    return false;
+                }
+                var strategy = _main.Strategies.Find(_main.Settings.SelectedStrategy) ?? _main.Strategies.Recommended;
+                if (strategy == null)
+                {
+                    GuiUpdateStatus = "Стратегия не выбрана — включите обход вручную и нажмите «Повторить».";
+                    return false;
+                }
+                Status = "Включаю обход для загрузки обновления…";
+                var mode = EngineService.GetGameFilterMode(_main.Settings.EnginePath);
+                var res = await _main.Bypass.StartAsync(strategy, mode, _main.Settings.ShowWinwsConsole);
+                AppLog.Info($"[GuiUpdate] Включение обхода для загрузки: {res.Message} Ok={res.Ok}");
+                if (!res.Ok)
+                {
+                    GuiUpdateStatus = "Не удалось включить обход: " + res.Message;
+                    return false;
+                }
+                _main.Home.RefreshStatus();
+                // Даём winws подняться и начать обрабатывать трафик
+                await Task.Delay(2500);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("[GuiUpdate] Ошибка включения обхода перед загрузкой: " + ex.Message);
+                GuiUpdateStatus = "Не удалось включить обход: " + ex.Message;
+                return false;
+            }
+        }
+
         private async Task UpdateGuiAsync()
         {
             AppLog.Info("[GuiUpdate] Пользователь инициировал обновление GUI");
@@ -515,12 +572,22 @@ namespace ZapretGui.ViewModels
             _cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
             try
             {
-                var result = await GuiUpdateService.DownloadAndScheduleAsync(
-                    _guiRelease, new Progress<ProgressInfo>(ApplyProgress), _cts.Token);
-                GuiUpdateStatus = result.Message;
-                // Сообщение в ленте Обновлений
-                SetMessage(result.Message, result.Ok ? "Success" : "Danger");
-                AppLog.Info("[GuiUpdate] DownloadAndSchedule результат: " + result.Message + " Ok=" + result.Ok);
+                var result = await TryDownloadGuiAsync();
+                // Загрузка упёрлась в провайдера (SSL/сеть), а обход выключен — предлагаем его включить:
+                // именно winws делает GitHub доступным, вручную файл качается тем же браузером через обход (v1.28.2).
+                if (!result.Ok && LooksLikeBlockedConnection(result.Message) && !_main.Bypass.GetStatus().IsRunning)
+                {
+                    var answer = System.Windows.MessageBox.Show(
+                        "Похоже, соединение с GitHub блокирует провайдер.\n\n" +
+                        "Включить обход и повторить загрузку обновления?",
+                        "Обновление GUI — включить обход?", System.Windows.MessageBoxButton.YesNo,
+                        System.Windows.MessageBoxImage.Question);
+                    if (answer == System.Windows.MessageBoxResult.Yes && await TryStartBypassForUpdateAsync())
+                    {
+                        Status = "Обход включён, повторяю загрузку…";
+                        result = await TryDownloadGuiAsync();
+                    }
+                }
                 if (result.Ok)
                 {
                     Status = "Обновление подготовлено. Перезапускаю приложение…";

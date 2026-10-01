@@ -134,7 +134,7 @@
 
 ### 5.2 Обновления (UpdatesPage / UpdatesViewModel) — открывается из «Настроек» с `v1.21.0`
 *   **Движок:** текущая `EngineVersion` (`ReadVersion`), последняя `LatestVersionText` (`GetLatestVersionTextAsync`), `UpdateAvailable` (`CompareVersions`), кнопка `UpdateEngine` (`PrepareForEngineUpdateAsync` → остановка `zapret`+`WinDivert` → `WaitForDriverUnloadAsync` → `CopyEngine` → восстановление), `AutoCheckEngineUpdates`.
-*   **GUI:** `GuiUpdateService` (`CheckGuiUpdates`, `DefaultRepository` `m0xvi/zapret-gui`), `AutoCheckGuiUpdates`, `InstallGuiUpdate` (замена `exe` через копию).
+*   **GUI:** `GuiUpdateService` (`CheckGuiUpdates`, `DefaultRepository` `m0xvi/zapret-gui`), `AutoCheckGuiUpdates`, `InstallGuiUpdate` (замена `exe` через копию). С `v1.28.2` загрузка устойчива к блокировкам: три попытки (обычная → повтор → без системного прокси), явные TLS 1.2/1.3, понятная причина через `GuiUpdateService.Describe`, а при SSL-сбое и выключенном обходе `UpdatesViewModel` предлагает включить обход и повторить.
 
 ### 5.3 Журнал (LogsPage / LogsViewModel)
 *   **Лог:** `AppLog` (категории `SvcInfo/SvcWarn/Error/Debug`), фильтр по уровню, очистка, автоскролл.
