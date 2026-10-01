@@ -274,18 +274,53 @@ namespace ZapretGui.Core
                 if (_allStrategiesResolver == null) return false;
                 var all = _allStrategiesResolver();
                 if (all == null || all.Count == 0) return false;
+                // Сначала убеждаемся, что узел действительно недоступен (v1.28.1): переключение стратегии
+                // разрешено только тогда, когда связь не работает совсем, а не «на всякий случай».
+                MonitorTargetStore.EnsureDefaults(_settings);
+                var targets = _settings.MonitorTargets.Where(t => t.Enabled).ToList();
+                if (targets.Count == 0)
+                {
+                    targets = new List<MonitorTarget>
+                    {
+                        MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"),
+                        MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway")
+                    };
+                }
+
+                var outage = true;
+                foreach (var t in targets)
+                {
+                    var probe = await ResourceProbe.CheckConfirmedAsync(t).ConfigureAwait(false);
+                    if (probe.Ok || !ResourceProbe.IsCompleteOutage(probe))
+                    {
+                        outage = false;
+                        AppLog.Info($"[Watchdog] «{t.Name}» отвечает ({probe.Details}) — стратегию не меняю, только перезапуск");
+                        break;
+                    }
+                }
+                if (!outage) return false;
+
                 var candidates = all
                     .Where(s => !s.Name.Equals(failedName, StringComparison.OrdinalIgnoreCase))
                     .OrderByDescending(s => s.IsRecommended)
                     .ThenByDescending(s => s.TestResult?.PassedCount ?? -1)
                     .ThenBy(s => s.Name)
-                    .Take(5)
+                    .Take(3)   // v1.28.1: каждый кандидат проверяется по узлам, 3 попытки — предел по времени
                     .ToList();
                 if (candidates.Count == 0) return false;
-                AppLog.Info($"[Watchdog] Пробую {candidates.Count} альтернативных стратегий после падения «{failedName}»");
+                AppLog.Info($"[Watchdog] Узлы недоступны совсем — пробую {candidates.Count} альтернативных стратегий после падения «{failedName}»");
                 foreach (var cand in candidates)
                 {
-                    AppLog.Info($"[Watchdog] Пробую альтернативу «{cand.Name}» бесшовно");
+                    // Кандидат обязан реально открыть узлы, а не просто «запуститься» (v1.28.1):
+                    // раньше сторож выбирал первую стартовавшую стратегию, и связь могла не восстановиться.
+                    var probes = await _bypass.TestStrategyOnTargetsAsync(cand, targets).ConfigureAwait(false);
+                    if (probes.Any(p => !p.Ok))
+                    {
+                        var broken = probes.First(p => !p.Ok);
+                        AppLog.Warn($"[Watchdog] Кандидат «{cand.Name}» отклонён: «{broken.Target.Name}» не открылся ({broken.Details})");
+                        continue;
+                    }
+                    AppLog.Info($"[Watchdog] Пробую альтернативу «{cand.Name}» бесшовно (узлы открылись)");
                     var mode = EngineService.GetGameFilterMode(_settings.EnginePath);
                     OperationResult res;
                     if (isService)

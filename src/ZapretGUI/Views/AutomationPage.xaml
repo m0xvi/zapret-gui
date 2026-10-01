@@ -391,9 +391,9 @@
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
                                                 <TextBlock Style="{StaticResource SectionText}" Text="ФОНОВЫЙ МОНИТОРИНГ" Margin="0,0,0,2" />
-                                                <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Автоматически переключать на самую быструю стратегию (фоновая проверка)" Margin="0,8,0,0"
+                                                <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Подбирать замену, если стратегия перестала открывать узел (фоновая проверка)" Margin="0,8,0,0"
                                                           IsChecked="{Binding AutoSwitchToBestStrategy, Mode=TwoWay}"
-                                                          ToolTip="Каждые N минут тихо тестирует топ-стратегии и переключает на самую быструю 14/14. Сейчас выключено — включается только по вашему желанию." />
+                                                          ToolTip="Каждые N минут проверяет ключевой узел. Переключает только тогда, когда текущая стратегия не открывает его совсем, и только на замену, которая держит остальные узлы. Ради скорости не переключает; по умолчанию выключено." />
                                                 <StackPanel Orientation="Horizontal" Margin="24,6,0,0" Visibility="{Binding AutoSwitchToBestStrategy, Converter={StaticResource BoolToVis}}">
                                                     <TextBlock Style="{StaticResource DimText}" Text="Интервал, мин:" VerticalAlignment="Center" />
                                                     <Slider Minimum="5" Maximum="120" Width="120" Margin="10,0,0,0" TickFrequency="5" IsSnapToTickEnabled="True" Value="{Binding BestStrategyCheckMinutes, Mode=TwoWay}" VerticalAlignment="Center" AutomationProperties.Name="Интервал, мин" />
@@ -401,7 +401,7 @@
                                                         <TextBlock Text="{Binding BestStrategyCheckMinutes}" Foreground="{DynamicResource TextMutedBrush}" Style="{StaticResource DimText}" />
                                                     </Border>
                                                 </StackPanel>
-                                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="Работает совместно с Watchdog и мониторингом ресурсов: переключает только если новая стратегия 14/14 и быстрее текущей на ≥15 мс." TextWrapping="Wrap" Opacity="0.85" Visibility="{Binding AutoSwitchToBestStrategy, Converter={StaticResource BoolToVis}}" />
+                                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="Работает совместно с Watchdog и мониторингом ресурсов: смена возможна, лишь когда узел недоступен совсем, а кандидат открывает его и не ломает остальные проверяемые узлы." TextWrapping="Wrap" Opacity="0.85" Visibility="{Binding AutoSwitchToBestStrategy, Converter={StaticResource BoolToVis}}" />
                                                 <TextBlock Style="{StaticResource DimText}" Text="Проверяет избранные сайты даже когда окно в трее. Не добавляет домены без вашего подтверждения." TextWrapping="Wrap" />
                                             </StackPanel>
                                         </Grid>

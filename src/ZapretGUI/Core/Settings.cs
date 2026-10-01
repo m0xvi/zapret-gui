@@ -138,10 +138,13 @@ namespace ZapretGui.Core
         /// <summary>Задержка автозапуска обхода при старте Windows в секундах (0-60).</summary>
         public int StartupDelaySeconds { get; set; } = 5;
 
-        /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.</summary>
+        /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода
+        /// (узел недоступен совсем, сбой подтверждён 3 проверками подряд — правило v1.28.1).</summary>
         public bool AutoRecoverStrategy { get; set; } = true;
 
-        /// <summary>Бесшовное автопереключение без окон и подтверждений (новый движок failover).</summary>
+        /// <summary>Бесшовное автопереключение без окон и подтверждений. С v1.28.1 меняет стратегию
+        /// только при полной недоступности узла (DNS/TCP/TLS), 3 подтверждённых проверки подряд,
+        /// и лишь на замену, которая держит остальные узлы набора.</summary>
         public bool SeamlessFailoverEnabled { get; set; } = true;
 
         /// <summary>Интервал бесшовной проверки в минутах (2-60).</summary>
@@ -261,7 +264,8 @@ namespace ZapretGui.Core
         /// <summary>Автоматически переключать профиль при диагностированном сбое стратегии (требует AutoRecoverStrategy).</summary>
         public bool AutoSwitchProfileOnFailure { get; set; }
 
-        /// <summary>Фоновый мониторинг: автоматически переключать на самую быструю рабочую стратегию.</summary>
+        /// <summary>Фоновый подбор замены, если стратегия перестала открывать узел (полная недоступность).
+        /// С v1.28.1 переключения ради скорости отключены: сравнение включается только при сбое.</summary>
         public bool AutoSwitchToBestStrategy { get; set; } = false;
 
         /// <summary>Интервал фонового сравнения стратегий (минуты), если AutoSwitchToBestStrategy включён.</summary>

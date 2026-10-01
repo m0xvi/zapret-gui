@@ -36,7 +36,9 @@ namespace ZapretGui.ViewModels
         private DateTime _lastBestCheck = DateTime.MinValue;
         private int _consecutiveStrategyFailures;
         private string _failureTargetId = "";
-        private const int RecoveryFailureThreshold = 2;
+        /// <summary>Сколько проверок подряд узел должен быть недоступен целиком, прежде чем менять
+        /// стратегию (v1.28.1: было 2 — слишком дёргано для реальных сетей).</summary>
+        private const int RecoveryFailureThreshold = 3;
 
         public MonitoringViewModel(MainViewModel main)
         {
@@ -248,7 +250,8 @@ namespace ZapretGui.ViewModels
                 {
                     var target = enabled[i];
                     ProgressText = $"Проверяю {i + 1} из {enabled.Count}: {target.Name}…";
-                    var probe = await ResourceProbe.CheckAsync(target);
+                    // Подтверждающая перепроверка: разовый тайм-аут не должен выглядеть как сбой узла (v1.28.1)
+                    var probe = await ResourceProbe.CheckConfirmedAsync(target);
                     Results.Add(probe);
                     target.LastStatusText = probe.StatusText;
                     target.LastStatusKey = probe.StatusKey;
@@ -265,6 +268,15 @@ namespace ZapretGui.ViewModels
                     _failureTargetId = "";
                     Message = "Все выбранные ресурсы доступны";
                     MessageKey = "Success";
+                    return;
+                }
+
+                // Меняем стратегию только если узел недоступен совсем: сервер ответил (HTTP 5xx) или
+                // узел медленный — это не повод (правило v1.28.1).
+                if (!ResourceProbe.IsCompleteOutage(failed))
+                {
+                    Message = $"«{failed.Target.Name}»: частичная деградация ({failed.Details}) — переключение не нужно";
+                    MessageKey = "Warning";
                     return;
                 }
 
@@ -505,29 +517,65 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        /// <summary>Фоновое сравнение стратегий. С v1.28.1 переключаем не «на самую быструю», а только
+        /// когда текущая стратегия вообще перестала открывать узел: смена ради пары миллисекунд выглядела
+        /// для пользователя случайными переключениями и ломала другие ресурсы.</summary>
         private async Task TrySwitchToBestStrategyAsync()
         {
             var before = _main.Bypass.GetStatus();
-            var candidates = _main.Strategies.Items.Where(s => !s.Name.Equals(before.StrategyName, StringComparison.OrdinalIgnoreCase)).Take(6).ToList();
-            if (candidates.Count == 0) return;
-            // Тестируем лёгкий ресурс (Google) для сравнения скорости
-            var target = Targets.FirstOrDefault(t => t.Enabled) ?? Targets.FirstOrDefault();
+            var enabled = Targets.Where(t => t.Enabled).ToList();
+            var target = enabled.FirstOrDefault() ?? Targets.FirstOrDefault();
             if (target == null) return;
-            var current = await _main.Bypass.TestStrategyOnResourceAsync(_main.Strategies.Items.FirstOrDefault(s => s.Name == before.StrategyName) ?? candidates[0], target);
-            long currentMs = current.Ok ? current.Milliseconds : long.MaxValue;
-            (StrategyInfo Strategy, ResourceProbeResult Probe) best = (null!, null!);
-            foreach (var c in candidates)
+
+            var currentStrategy = _main.Strategies.Items.FirstOrDefault(
+                s => s.Name.Equals(before.StrategyName, StringComparison.OrdinalIgnoreCase));
+            if (currentStrategy == null) return;
+
+            // Текущая стратегия открывает узел (пусть и медленнее) — не трогаем.
+            var currentProbe = await _main.Bypass.TestStrategyOnResourceAsync(currentStrategy, target);
+            if (currentProbe.Ok || !ResourceProbe.IsCompleteOutage(currentProbe))
             {
-                var probe = await _main.Bypass.TestStrategyOnResourceAsync(c, target);
-                if (!probe.Ok) continue;
-                if (best.Strategy == null || probe.Milliseconds + 15 < currentMs && probe.Milliseconds < (best.Probe?.Milliseconds ?? long.MaxValue))
-                    best = (c, probe);
+                AppLog.Info("[Фон] Авто-переключение пропущено: текущая стратегия узел открывает" +
+                            (currentProbe.Ok ? $" ({currentProbe.Milliseconds} мс)" : " (частичная деградация)"));
+                return;
             }
-            if (best.Strategy == null || best.Probe == null || currentMs != long.MaxValue && best.Probe!.Milliseconds + 15 >= currentMs) return;
-            _main.StrategiesPage.SelectAsDefault(best.Strategy);
-            var res = await StartSelectedStrategyAsync(best.Strategy, before);
+
+            // Узел недоступен совсем — ищем замену, которая держит и остальные узлы набора.
+            var candidates = _main.Strategies.Items
+                .Where(s => !s.Name.Equals(before.StrategyName, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(s => s.IsRecommended)
+                .ThenByDescending(s => s.TestResult?.PassedCount ?? -1)
+                .Take(4)
+                .ToList();
+            if (candidates.Count == 0) return;
+
+            var fullSet = new List<MonitorTarget> { target };
+            fullSet.AddRange(enabled.Where(t => t.Id != target.Id));
+            StrategyInfo? best = null;
+            ResourceProbeResult? bestProbe = null;
+            foreach (var candidate in candidates)
+            {
+                var probes = await _main.Bypass.TestStrategyOnTargetsAsync(candidate, fullSet);
+                var onTarget = probes.FirstOrDefault(p => p.Target.Id == target.Id);
+                var broken = probes.Where(p => p.Target.Id != target.Id && !p.Ok).ToList();
+                if (onTarget is not { Ok: true } || broken.Count > 0) continue;
+                if (best == null || onTarget.Milliseconds < (bestProbe?.Milliseconds ?? long.MaxValue))
+                {
+                    best = candidate;
+                    bestProbe = onTarget;
+                }
+            }
+
+            if (best == null || bestProbe == null)
+            {
+                AppLog.Warn("[Фон] Замена не найдена: ни одна стратегия не чинит узел без поломки остальных");
+                return;
+            }
+
+            _main.StrategiesPage.SelectAsDefault(best);
+            var res = await StartSelectedStrategyAsync(best, before);
             if (res.Ok)
-                AppLog.Info($"[Фон] Авто-переключение на лучшую стратегию «{best.Strategy!.Name}» ({best.Probe!.Milliseconds} мс vs {currentMs} мс)");
+                AppLog.Info($"[Фон] Авто-переключение на «{best.Name}»: «{target.Name}» был недоступен совсем, замена держит все узлы ({bestProbe.Milliseconds} мс)");
         }
 
         private int GetInterval() => Math.Clamp(Settings.ResourceMonitoringIntervalMinutes, 5, 120);

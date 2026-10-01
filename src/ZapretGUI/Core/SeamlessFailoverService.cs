@@ -25,7 +25,9 @@ namespace ZapretGui.Core
         private int _consecutiveFailures;
         private string _lastFailedId = "";
         private DateTime _lastSwitchUtc = DateTime.MinValue;
-        private const int Threshold = 2;
+        /// <summary>Сколько проверок подряд узел должен быть полностью недоступен, прежде чем
+        /// приложение вообще задумается о смене стратегии (v1.28.1: было 2 — слишком дёргано).</summary>
+        private const int Threshold = 3;
         private const int DefaultCooldownMinutes = 10;
 
         public event Action<string>? StatusChanged;
@@ -124,7 +126,8 @@ namespace ZapretGui.Core
                 {
                     try
                     {
-                        var p = await ResourceProbe.CheckAsync(t).ConfigureAwait(false);
+                        // Подтверждающая перепроверка: одиночный тайм-аут — не повод считать узел упавшим
+                        var p = await ResourceProbe.CheckConfirmedAsync(t).ConfigureAwait(false);
                         probes.Add(p);
                         // Обновляем UI-статус мягко (без Dispatcher — свойства INotifyPropertyChanged потокобезопасны для чтения, но запись лучше через Dispatcher)
                         try
@@ -153,6 +156,20 @@ namespace ZapretGui.Core
                     StatusChanged?.Invoke(LastReason);
                     _settings.SeamlessLastReason = LastReason;
                     SettingsStore.Save(_settings);
+                    return;
+                }
+
+                // Полная недоступность: DNS/TCP/TLS не отвечают вовсе. Если сервер ответил (HTTP 5xx)
+                // или узел просто медленный — это не повод менять стратегию (правило v1.28.1).
+                if (!ResourceProbe.IsCompleteOutage(failed))
+                {
+                    _consecutiveFailures = 0;
+                    _lastFailedId = "";
+                    LastReason = $"«{failed.Target.Name}»: частичная деградация ({failed.Details}) — переключение не нужно";
+                    StatusChanged?.Invoke(LastReason);
+                    _settings.SeamlessLastReason = LastReason;
+                    SettingsStore.Save(_settings);
+                    AppLog.Info($"[SeamlessFailover] {LastReason}");
                     return;
                 }
 
@@ -226,7 +243,7 @@ namespace ZapretGui.Core
                     .OrderByDescending(s => s.IsRecommended)
                     .ThenByDescending(s => s.TestResult?.PassedCount ?? -1)
                     .ThenBy(s => s.Name)
-                    .Take(8)
+                    .Take(4)   // v1.28.1: кандидат проверяется по всем узлам набора, 4 попытки — предел по времени
                     .ToList();
 
                 if (candidates.Count == 0)
@@ -247,22 +264,31 @@ namespace ZapretGui.Core
                     }
                 }
 
-                // Обычный путь: первый кандидат который чинит failing target
+                // Обычный путь: берём кандидата, который чинит сбойный узел И удерживает остальные узлы
+                // набора (v1.28.1). Раньше проверялся только сбойный узел — вылечив один сайт, стратегия
+                // могла сломать другой, и приложение переключалось по кругу.
+                var fullSet = new System.Collections.Generic.List<MonitorTarget> { failed.Target };
+                fullSet.AddRange(targets.Where(t => t.Id != failed.Target.Id));
                 StrategyInfo? best = null;
                 ResourceProbeResult? bestProbe = null;
                 foreach (var cand in candidates)
                 {
                     try
                     {
-                        var probe = await bypass.TestStrategyOnResourceAsync(cand, failed.Target).ConfigureAwait(false);
-                        if (probe.Ok)
+                        var probesOnAll = await bypass.TestStrategyOnTargetsAsync(cand, fullSet).ConfigureAwait(false);
+                        var onFailed = probesOnAll.FirstOrDefault(p => p.Target.Id == failed.Target.Id);
+                        var broken = probesOnAll.Where(p => p.Target.Id != failed.Target.Id && !p.Ok).ToList();
+                        if (onFailed is { Ok: true } && broken.Count == 0)
                         {
                             best = cand;
-                            bestProbe = probe;
-                            AppLog.Info($"[SeamlessFailover] Кандидат «{cand.Name}» починил «{failed.Target.Name}» за {probe.Milliseconds} мс");
-                            break; // первый OK — сразу переключаем для бесшовности (минимальный downtime)
+                            bestProbe = onFailed;
+                            AppLog.Info($"[SeamlessFailover] Кандидат «{cand.Name}» чинит «{failed.Target.Name}» и держит остальные узлы ({onFailed.Milliseconds} мс)");
+                            break; // первый подходящий — сразу переключаем для бесшовности (минимальный downtime)
                         }
-                        else AppLog.Debug($"[SeamlessFailover] Кандидат «{cand.Name}» не помог: {probe.Details}");
+                        AppLog.Info($"[SeamlessFailover] Кандидат «{cand.Name}» отклонён: " +
+                            (onFailed is { Ok: true }
+                                ? $"ломает «{broken[0].Target.Name}»"
+                                : $"не чинит «{failed.Target.Name}» ({onFailed?.Details})"));
                     }
                     catch (Exception ex) { AppLog.Debug($"[SeamlessFailover] Ошибка теста «{cand.Name}»: {ex.Message}"); }
                 }
@@ -289,7 +315,9 @@ namespace ZapretGui.Core
                     // если best из полного теста без bestProbe — создаём заглушку
                     if (best != null)
                     {
-                        await DoSeamlessSwitchAsync(bypass, status, best, failed.Target, null).ConfigureAwait(false);
+                        var (switched, prevName) = await DoSeamlessSwitchAsync(bypass, status, best, failed.Target, null).ConfigureAwait(false);
+                        if (switched)
+                            await VerifyAfterSwitchAsync(bypass, targets, probes, prevName, failed.Target).ConfigureAwait(false);
                         return;
                     }
                     LastReason = $"Не нашёл рабочую замену для «{failed.Target.Name}» — внешняя проблема или все стратегии биты";
@@ -300,7 +328,9 @@ namespace ZapretGui.Core
                     return;
                 }
 
-                await DoSeamlessSwitchAsync(bypass, status, best, failed.Target, bestProbe).ConfigureAwait(false);
+                var (switchOk, previousName) = await DoSeamlessSwitchAsync(bypass, status, best, failed.Target, bestProbe).ConfigureAwait(false);
+                if (switchOk)
+                    await VerifyAfterSwitchAsync(bypass, targets, probes, previousName, failed.Target).ConfigureAwait(false);
             }
             catch (Exception ex)
             {
@@ -352,7 +382,63 @@ namespace ZapretGui.Core
             return new StrategyTestBatchResult { Results = results };
         }
 
-        private async Task DoSeamlessSwitchAsync(BypassController bypass, BypassStatus before, StrategyInfo next, MonitorTarget failedTarget, ResourceProbeResult? gameBestProbe)
+        /// <summary>Постпроверка после автозамены (v1.28.1): сбойный узел обязан открыться, а остальные
+        /// узлы набора — не стать хуже. Если стало хуже, возвращаем прежнюю стратегию: «починка» одного
+        /// сайта ценой поломки другого запрещена, иначе приложение переключалось бы по кругу.</summary>
+        private async Task VerifyAfterSwitchAsync(BypassController bypass, System.Collections.Generic.List<MonitorTarget> targets,
+            System.Collections.Generic.List<ResourceProbeResult> before, string previousName, MonitorTarget failedTarget)
+        {
+            var okBefore = before.Count(r => r.Ok);
+            var after = new System.Collections.Generic.List<ResourceProbeResult>();
+            foreach (var t in targets)
+            {
+                try { after.Add(await ResourceProbe.CheckConfirmedAsync(t).ConfigureAwait(false)); }
+                catch (Exception ex) { after.Add(new ResourceProbeResult { Target = t, Kind = ResourceResultKind.Unknown, Details = ex.Message }); }
+            }
+
+            var okAfter = after.Count(r => r.Ok);
+            var failedNowOk = after.FirstOrDefault(r => r.Target.Id == failedTarget.Id)?.Ok == true;
+            if (failedNowOk && okAfter >= okBefore)
+            {
+                _settings.SeamlessLastReason = $"Авто {DateTime.Now:HH:mm} — «{failedTarget.Name}» открыт, узлов доступно {okAfter}/{targets.Count}";
+                SettingsStore.Save(_settings);
+                LastReason = $"Новая стратегия держит все узлы: {okAfter}/{targets.Count} доступны, «{failedTarget.Name}» открыт";
+                StatusChanged?.Invoke(LastReason);
+                AppLog.Info($"[SeamlessFailover] Постпроверка: {LastReason}");
+                return;
+            }
+
+            // Откат: новая стратегия не лучше прежней
+            AppLog.Warn($"[SeamlessFailover] Постпроверка: доступно {okAfter}/{targets.Count} (было {okBefore}/{targets.Count}), «{failedTarget.Name}» {(failedNowOk ? "открыт" : "всё ещё недоступен")} — откатываю на «{previousName}»");
+            var prev = string.IsNullOrWhiteSpace(previousName) ? null : _storeFactory().Find(previousName);
+            if (prev == null)
+            {
+                LastReason = "Новая стратегия не лучше прежней, но вернуть прежнюю не удалось — оставляю как есть";
+                StatusChanged?.Invoke(LastReason);
+                return;
+            }
+
+            var mode = EngineService.GetGameFilterMode(_settings.EnginePath);
+            var status = bypass.GetStatus();
+            var res = status.ServiceState is ServiceState.Running or ServiceState.StartPending or ServiceState.StopPending
+                ? await bypass.InstallServiceAsync(prev, mode).ConfigureAwait(false)
+                : await bypass.SwitchToStrategyAsync(prev, mode, _settings.ShowWinwsConsole).ConfigureAwait(false);
+            // Cooldown обновляем в любом случае: без паузы был бы цикл «переключил → откатил → снова переключил».
+            _lastSwitchUtc = DateTime.UtcNow;
+            _settings.SeamlessLastSwitchTime = _lastSwitchUtc;
+            _consecutiveFailures = 0;
+            _lastFailedId = "";
+            LastReason = res.Ok
+                ? $"Вернул прежнюю стратегию «{prev.Name}»: замена ломала другие узлы ({okAfter}/{targets.Count} против {okBefore}/{targets.Count})"
+                : $"Откат на «{prev.Name}» не удался: {res.Message}";
+            _settings.SeamlessLastReason = LastReason;
+            SettingsStore.Save(_settings);
+            StatusChanged?.Invoke(LastReason);
+            if (res.Ok) FailoverFailed?.Invoke(LastReason);
+            AppLog.Warn($"[SeamlessFailover] {LastReason}");
+        }
+
+        private async Task<(bool Ok, string PreviousName)> DoSeamlessSwitchAsync(BypassController bypass, BypassStatus before, StrategyInfo next, MonitorTarget failedTarget, ResourceProbeResult? gameBestProbe)
         {
             var mode = EngineService.GetGameFilterMode(_settings.EnginePath);
             OperationResult res;
@@ -384,6 +470,7 @@ namespace ZapretGui.Core
                 StatusChanged?.Invoke(LastReason);
                 FailoverSucceeded?.Invoke(LastReason);
                 AppLog.Info($"[SeamlessFailover] Успех: {LastReason}");
+                return (true, prev);
             }
             else
             {
@@ -394,6 +481,7 @@ namespace ZapretGui.Core
                 FailoverFailed?.Invoke(LastReason);
                 AppLog.Warn($"[SeamlessFailover] {LastReason}");
             }
+            return (false, prev);
         }
 
         public void Dispose() => _timer.Dispose();
