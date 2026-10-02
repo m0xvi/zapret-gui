@@ -143,6 +143,24 @@
 ### 5.4 О программе (AboutPage)
 *   **Инфо:** `AppVersion` (`InformationalVersion`), `EngineVersionText`, `EnginePathText`, кнопки `OpenEngineFolder`/`OpenLogs`/`CheckUpdates`, лицензия.
 
+### 5.4d Пресеты конфигурации и «предыдущая рабочая» (`v1.31.0`)
+
+*   **`ConfigurationPreset`** (`Core/ConfigurationSnapshot.cs`): Id, Name, Description, `Config` (полный
+    `ConfigurationSnapshot`), CreatedAt. Хранилище — `ConfigurationPresetStore` (`AppPaths.PresetsFile` =
+    `config-presets.json`, до 50): `Load`/`Save`/`Upsert` (одноимённый заменяется)/`Remove`/`ExportToFile`/
+    `ImportFromFile` (совпадающие имена получают пометку времени).
+*   **Отличие от профилей:** профиль (`ProfileManager`, `profiles.json`) — стратегия + DNS + игровой фильтр и
+    привязка к сети (срабатывает сам при смене сети); пресет — вся конфигурация обхода (ipset, порты, SNI, флаги)
+    и применяется вручную с рабочего стола. Взаимных ссылок-дублей нет: из карточки пресетов есть переход
+    «Профили по сетям →».
+*   **Команды рабочего стола:** `SaveAsPresetCommand` (имя через `Views.InputDialog`), `ApplyPresetCommand`
+    (значения пресета → поля → обычный `ApplyAsync`), `DeletePresetCommand`, `ExportPresetCommand`,
+    `ExportAllPresetsCommand`, `ImportPresetsCommand` (`OpenFileDialog`), `RevertToWorkingCommand`,
+    `OpenProfilesCommand`.
+*   **«Вернуть предыдущую рабочую»:** `ConfigurationSnapshot.BypassWasRunning` заполняется в `Capture(...)` по
+    `Bypass.GetStatus().IsRunning`; команда ищет самый свежий снимок с этой пометкой и откатывает к нему. В списке
+    истории такие снимки помечены бейджем «рабочая» (`WorkingText`).
+
 ### 5.4c «Под мою сеть» (`v1.30.0`)
 
 *   **Страница:** `Views/NetworkPage.xaml` + `ViewModels/NetworkProfileViewModel.cs`, ключ навигации `network`

@@ -212,7 +212,65 @@
                     </StackPanel>
                 </Border>
 
-                <!-- ============ 3. ИСТОРИЯ И ОТКАТ ============ -->
+                <!-- ============ 3. ПРЕСЕТЫ ============ -->
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ПРЕСЕТЫ КОНФИГУРАЦИИ" />
+                            <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                    ToolTip="Пресет хранит всю конфигурацию обхода целиком (способ, порты, SNI, ipset, DNS и флаги) — в отличие от профилей, где только стратегия, DNS и игровой фильтр. Пресеты применяются вручную на этом экране; профили привязываются к сети и срабатывают сами."
+                                    AutomationProperties.Name="Подсказка: ПРЕСЕТЫ КОНФИГУРАЦИИ" />
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" TextWrapping="Wrap">
+                            <Run Text="Сеть сейчас:" />
+                            <Run Text="{Binding CurrentNetworkName, Mode=OneWay}" FontWeight="SemiBold" />
+                            <Run Text=" · профили по сетям живут в «Профили и копии»" />
+                        </TextBlock>
+
+                        <ListBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset, Mode=TwoWay}"
+                                 Style="{StaticResource PlainListBox}" Margin="0,10,0,0" MaxHeight="200"
+                                 ItemContainerStyle="{StaticResource CompactRowItemStyle}"
+                                 AutomationProperties.Name="Пресеты конфигурации">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding TimeText}" Style="{StaticResource DimText}" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                            <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Style="{StaticResource DimText}" Margin="0,2,0,0" TextWrapping="Wrap">
+                                                <Run Text="{Binding DescriptionText, Mode=OneWay}" />
+                                                <Run Text=" · " />
+                                                <Run Text="{Binding SummaryText, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Text="Пресетов пока нет: настройте параметры выше и нажмите «Сохранить как пресет»."
+                                   Visibility="{Binding HasPresets, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+
+                        <WrapPanel Margin="0,12,0,0">
+                            <Button Style="{StaticResource SecondaryButton}" Content="Применить пресет" Command="{Binding ApplyPresetCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Сохранить как пресет…" Margin="8,0,0,0" Command="{Binding SaveAsPresetCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Удалить" Margin="8,0,0,0" Command="{Binding DeletePresetCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Экспорт выбранного" Margin="8,0,0,0" Command="{Binding ExportPresetCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Экспорт всех" Margin="8,0,0,0" Command="{Binding ExportAllPresetsCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Импорт…" Margin="8,0,0,0" Command="{Binding ImportPresetsCommand}"
+                                    ToolTip="Прочитать пресеты из файла JSON (например, с другого компьютера). Совпадающие имена получают пометку времени." />
+                            <Button Style="{StaticResource CompactGhostButton}" Content="Профили по сетям →" Margin="8,0,0,0" Command="{Binding OpenProfilesCommand}"
+                                    ToolTip="Автоматическое переключение по сетям — в «Профили и копии»" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ============ 4. ИСТОРИЯ И ОТКАТ ============ -->
                 <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
                         <StackPanel Orientation="Horizontal">
@@ -235,7 +293,13 @@
                                         </Grid.ColumnDefinitions>
                                         <TextBlock Grid.Column="0" Text="{Binding TimeText}" Style="{StaticResource DimText}" VerticalAlignment="Center" />
                                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                            <TextBlock Text="{Binding StrategyText}" Style="{StaticResource BodyText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding StrategyText}" Style="{StaticResource BodyText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" MaxWidth="420" />
+                                                <Border Style="{StaticResource Badge}" Background="{DynamicResource SuccessSoftBrush}" Margin="8,0,0,0" Padding="7,2"
+                                                        Visibility="{Binding BypassWasRunning, Converter={StaticResource BoolToVis}}">
+                                                    <TextBlock Text="{Binding WorkingText}" Style="{StaticResource DimText}" FontWeight="Bold" Foreground="{DynamicResource SuccessBrush}" />
+                                                </Border>
+                                            </StackPanel>
                                             <TextBlock Style="{StaticResource DimText}" Margin="0,2,0,0" TextWrapping="Wrap">
                                                 <Run Text="{Binding NoteText, Mode=OneWay}" />
                                                 <Run Text=" · " />
@@ -252,7 +316,10 @@
                                    Visibility="{Binding HasHistory, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
 
                         <WrapPanel Margin="0,12,0,0">
-                            <Button Style="{StaticResource SecondaryButton}" Content="Вернуть выбранное состояние"
+                            <Button Style="{StaticResource PrimaryButton}" Content="Вернуть предыдущую рабочую"
+                                    Command="{Binding RevertToWorkingCommand}"
+                                    ToolTip="Вернуться к последней конфигурации, при которой обход действительно работал (помечена «рабочая»)" />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Вернуть выбранное состояние" Margin="8,0,0,0"
                                     Command="{Binding RestoreSnapshotCommand}" />
                             <Button Style="{StaticResource GhostButton}" Content="Откатить последнее" Margin="8,0,0,0" Command="{Binding RevertCommand}" />
                         </WrapPanel>

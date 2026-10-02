@@ -57,6 +57,14 @@ namespace ZapretGui.ViewModels
             RestoreSnapshotCommand = new AsyncRelayCommand(RestoreSnapshotAsync, () => !IsBusy && SelectedSnapshot != null);
             RefreshCommand = new RelayCommand(ReloadAll);
             OpenSectionCommand = new RelayCommand(parameter => OpenSection(parameter as string ?? ""));
+            SaveAsPresetCommand = new RelayCommand(SaveAsPreset, () => !IsBusy);
+            ApplyPresetCommand = new AsyncRelayCommand(ApplySelectedPresetAsync, () => !IsBusy && SelectedPreset != null);
+            DeletePresetCommand = new RelayCommand(DeleteSelectedPreset, () => !IsBusy && SelectedPreset != null);
+            ExportPresetCommand = new RelayCommand(ExportSelectedPreset, () => !IsBusy && SelectedPreset != null);
+            ExportAllPresetsCommand = new RelayCommand(ExportAllPresets, () => !IsBusy && Presets.Count > 0);
+            ImportPresetsCommand = new RelayCommand(ImportPresets, () => !IsBusy);
+            RevertToWorkingCommand = new AsyncRelayCommand(RevertToWorkingAsync, () => !IsBusy && History.Any(h => h.BypassWasRunning));
+            OpenProfilesCommand = new RelayCommand(() => _main.Navigate("profiles"));
             EnableExpertModeCommand = new RelayCommand(() => { if (_main.SimpleMode) _main.ToggleExpertMode(); });
             OpenStrategiesCommand = new RelayCommand(() => _main.Navigate("strategies"));
             OpenNetworkCommand = new RelayCommand(() => _main.Navigate("network"));
@@ -199,6 +207,36 @@ namespace ZapretGui.ViewModels
 
         // ------------------------------------------------------------------ Команды
 
+        /// <summary>Пресеты конфигурации: полный набор параметров, в отличие от профилей (стратегия + DNS + сеть).</summary>
+        public ObservableCollection<ConfigurationPreset> Presets { get; } = new();
+
+        private ConfigurationPreset? _selectedPreset;
+        public ConfigurationPreset? SelectedPreset
+        {
+            get => _selectedPreset;
+            set
+            {
+                if (!Set(ref _selectedPreset, value)) return;
+                (ApplyPresetCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                (DeletePresetCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (ExportPresetCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        public bool HasPresets => Presets.Count > 0;
+
+        /// <summary>Имя текущей сети — чтобы было видно, для какой сети делается пресет.</summary>
+        public string CurrentNetworkName { get; private set; } = "";
+
+        public ICommand SaveAsPresetCommand { get; }
+        public ICommand ApplyPresetCommand { get; }
+        public ICommand DeletePresetCommand { get; }
+        public ICommand ExportPresetCommand { get; }
+        public ICommand ExportAllPresetsCommand { get; }
+        public ICommand ImportPresetsCommand { get; }
+        public ICommand RevertToWorkingCommand { get; }
+        public ICommand OpenProfilesCommand { get; }
+
         public ICommand ApplyCommand { get; }
         public ICommand RevertCommand { get; }
         public ICommand ExportCommand { get; }
@@ -218,7 +256,29 @@ namespace ZapretGui.ViewModels
         {
             ReloadFromSettings();
             ReloadHistory();
+            ReloadPresets();
+            ReloadNetworkName();
             BuildSummary();
+        }
+
+        private void ReloadPresets()
+        {
+            Presets.Clear();
+            foreach (var preset in ConfigurationPresetStore.Load()) Presets.Add(preset);
+            SelectedPreset = Presets.FirstOrDefault();
+            Raise(nameof(HasPresets));
+            (ExportAllPresetsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void ReloadNetworkName()
+        {
+            try
+            {
+                var identity = NetworkDetector.GetCurrentIdentity();
+                CurrentNetworkName = identity.IsValid ? identity.DisplayName : "сеть не определена";
+            }
+            catch { CurrentNetworkName = "сеть не определена"; }
+            Raise(nameof(CurrentNetworkName));
         }
 
         private void ReloadFromSettings()
@@ -289,6 +349,7 @@ namespace ZapretGui.ViewModels
             Raise(nameof(HasHistory));
             (RevertCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (RestoreSnapshotCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (RevertToWorkingCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private void BuildSummary()
@@ -416,7 +477,8 @@ namespace ZapretGui.ViewModels
             _main.Settings,
             EngineService.GetIpsetMode(_main.Settings.EnginePath).ToString().ToLowerInvariant(),
             SelectedDns?.Id ?? "",
-            note);
+            note,
+            _main.Bypass.GetStatus().IsRunning);
 
         private async Task ApplyAsync()
         {
@@ -580,6 +642,136 @@ namespace ZapretGui.ViewModels
             var saved = ConfigurationSnapshotStore.ExportToFile(snapshot, dialog.FileName);
             StatusText = saved.Length > 0 ? "Конфигурация сохранена: " + saved : "Не удалось сохранить файл конфигурации.";
             StatusKey = saved.Length > 0 ? "Success" : "Danger";
+        }
+
+        // ------------------------------------------------------------------ Пресеты и откат
+
+        /// <summary>Сохранить текущую конфигурацию как именованный пресет (спрашиваем только имя).</summary>
+        private void SaveAsPreset()
+        {
+            var dialog = new Views.InputDialog("Сохранить пресет", "Название пресета",
+                secondaryPrompt: "Описание (необязательно)", initialValue: "Моя сеть")
+            {
+                Owner = System.Windows.Application.Current?.MainWindow
+            };
+            if (dialog.ShowDialog() != true) return;
+
+            var preset = new ConfigurationPreset
+            {
+                Name = dialog.Value,
+                Description = dialog.SecondaryValue,
+                Config = SnapshotNow("пресет")
+            };
+            ConfigurationPresetStore.Upsert(preset);
+            ReloadPresets();
+            SelectedPreset = Presets.FirstOrDefault(p => p.Name.Equals(preset.Name, StringComparison.OrdinalIgnoreCase)) ?? Presets.FirstOrDefault();
+            StatusText = $"Пресет «{preset.Name}» сохранён: {preset.Config.SummaryText}.";
+            StatusKey = "Success";
+        }
+
+        /// <summary>Применить пресет: значения попадают в поля, затем идёт обычный путь «Применить».</summary>
+        private async Task ApplySelectedPresetAsync()
+        {
+            var preset = SelectedPreset;
+            if (preset == null) return;
+
+            var config = preset.Config;
+            _main.Strategies.Refresh();
+            SelectedStrategy = _main.Strategies.Find(config.Strategy) ?? _main.Strategies.Items.FirstOrDefault();
+            SelectedGameFilter = GameFilterProfiles.FirstOrDefault(p => p.Id == config.GameFilterProfileId) ?? SelectedGameFilter;
+            TcpPorts = config.GameFilterTcpPorts;
+            UdpPorts = config.GameFilterUdpPorts;
+            ExcludedPorts = config.ExcludedPorts;
+            SelectedSni = string.IsNullOrWhiteSpace(config.FakeSni) ? SelectedSni : config.FakeSni;
+            AutoSniRotation = config.AutoSniRotation;
+            YoutubeSniOverride = config.YoutubeSniOverride;
+            SelectedIpset = IpsetModes.FirstOrDefault(i => string.Equals(i.Mode.ToString(), config.IpsetMode, StringComparison.OrdinalIgnoreCase)) ?? SelectedIpset;
+            DisableQuicFake = config.DisableQuicFake;
+            PreferIPv4 = config.PreferIPv4;
+            UseDoh = config.UseDoh;
+
+            await ApplyAsync();
+            if (StatusKey == "Success")
+                StatusText = $"Пресет «{preset.Name}» применён. " + StatusText;
+        }
+
+        private void DeleteSelectedPreset()
+        {
+            var preset = SelectedPreset;
+            if (preset == null) return;
+            ConfigurationPresetStore.Remove(preset);
+            ReloadPresets();
+            StatusText = $"Пресет «{preset.Name}» удалён.";
+            StatusKey = "Info";
+        }
+
+        private void ExportSelectedPreset()
+        {
+            var preset = SelectedPreset;
+            if (preset == null) return;
+            var dialog = new SaveFileDialog
+            {
+                Title = "Экспорт пресета",
+                FileName = $"zapret-preset-{SafeName(preset.Name)}.json",
+                Filter = "JSON-файл пресета (*.json)|*.json|Все файлы (*.*)|*.*",
+                DefaultExt = ".json"
+            };
+            if (dialog.ShowDialog() != true) return;
+            var saved = ConfigurationPresetStore.ExportToFile(new[] { preset }, dialog.FileName);
+            StatusText = saved.Length > 0 ? "Пресет сохранён: " + saved : "Не удалось сохранить пресет.";
+            StatusKey = saved.Length > 0 ? "Success" : "Danger";
+        }
+
+        private void ExportAllPresets()
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = "Экспорт всех пресетов",
+                FileName = $"zapret-presets-{DateTime.Now:yyyyMMdd}.json",
+                Filter = "JSON-файл пресетов (*.json)|*.json|Все файлы (*.*)|*.*",
+                DefaultExt = ".json"
+            };
+            if (dialog.ShowDialog() != true) return;
+            var saved = ConfigurationPresetStore.ExportToFile(Presets, dialog.FileName);
+            StatusText = saved.Length > 0 ? $"Выгружено пресетов: {Presets.Count} → {saved}" : "Не удалось сохранить файл.";
+            StatusKey = saved.Length > 0 ? "Success" : "Danger";
+        }
+
+        private void ImportPresets()
+        {
+            var dialog = new OpenFileDialog
+            {
+                Title = "Импорт пресетов",
+                Filter = "JSON-файл пресетов (*.json)|*.json|Все файлы (*.*)|*.*",
+                CheckFileExists = true
+            };
+            if (dialog.ShowDialog() != true) return;
+            var (ok, message) = ConfigurationPresetStore.ImportFromFile(dialog.FileName);
+            ReloadPresets();
+            StatusText = message;
+            StatusKey = ok ? "Success" : "Danger";
+        }
+
+        /// <summary>Одна кнопка «вернуть предыдущую рабочую»: последний снимок, при котором обход работал.</summary>
+        private async Task RevertToWorkingAsync()
+        {
+            var target = History.FirstOrDefault(h => h.BypassWasRunning);
+            if (target == null)
+            {
+                StatusText = "Пока нет снимка, при котором обход точно работал.";
+                StatusKey = "Warning";
+                return;
+            }
+            await RevertAsync(target);
+            if (StatusKey == "Success")
+                StatusText = $"Вернулись к рабочей конфигурации от {target.TimeText}. " + StatusText;
+        }
+
+        private static string SafeName(string name)
+        {
+            var invalid = System.IO.Path.GetInvalidFileNameChars();
+            var clean = new string((name ?? "").Select(c => invalid.Contains(c) ? '-' : c).ToArray()).Trim();
+            return clean.Length == 0 ? "preset" : clean;
         }
 
         private void OpenSection(string section)
