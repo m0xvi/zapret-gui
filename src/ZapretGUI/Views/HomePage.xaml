@@ -119,7 +119,7 @@
                                 </Grid>
 
                                 <TextBlock Style="{StaticResource MutedText}" Margin="0,10,0,0" TextWrapping="Wrap"
-                                           Text="4 шага за 1–2 минуты: система → сайты → 22 стратегии → подсказка." />
+                                           Text="{Binding QuickSetupHintText, Mode=OneWay}" />
 
                                 <Border Margin="0,10,0,0"
                                         Visibility="{Binding ReadinessActionVisible, Converter={StaticResource BoolToVis}}" Style="{StaticResource NoticeWarning}">
@@ -144,12 +144,22 @@
                                 </Border>
 
                                 <WrapPanel Margin="0,12,0,0" Visibility="{Binding IsQuickSetupIdle, Converter={StaticResource BoolToVis}}">
-                                    <Button Style="{StaticResource PrimaryButton}" Content="Проверить всё и подобрать стратегию" Padding="18,9" MinHeight="40"
-                                            Command="{Binding RunFullCheckCommand}"
-                                            ToolTip="Запустить все проверки по очереди: система → соединение → подбор стратегии. Займёт 1–2 минуты." />
-                                    <Button Style="{StaticResource GhostButton}" Content="Открыть мастер" Margin="8,0,0,0" Padding="14,7"
-                                            Command="{Binding OpenFirstLaunchCommand}" VerticalAlignment="Center"
-                                            ToolTip="Открыть мастер первого запуска — там можно добавить свои сайты и пропустить шаги" />
+                                    <!-- «Простой»: одна кнопка — и всё (v1.29.1) -->
+                                    <Button Style="{StaticResource PrimaryButton}" Content="Сделать, чтобы работало" Padding="18,9" MinHeight="40"
+                                            Command="{Binding RunOneClickFixCommand}"
+                                            Visibility="{Binding SimpleMode, Converter={StaticResource BoolToVis}}"
+                                            AutomationProperties.Name="Сделать, чтобы работало"
+                                            ToolTip="Один клик: проверю систему и сеть, подберу рабочий способ и включу обход" />
+                                    <!-- «Эксперт»: проверка и мастер отдельно -->
+                                    <StackPanel Orientation="Horizontal"
+                                                Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
+                                        <Button Style="{StaticResource PrimaryButton}" Content="Проверить всё и подобрать стратегию" Padding="18,9" MinHeight="40"
+                                                Command="{Binding RunFullCheckCommand}"
+                                                ToolTip="Запустить все проверки по очереди: система → соединение → подбор стратегии. Займёт 1–2 минуты." />
+                                        <Button Style="{StaticResource GhostButton}" Content="Открыть мастер" Margin="8,0,0,0" Padding="14,7"
+                                                Command="{Binding OpenFirstLaunchCommand}" VerticalAlignment="Center"
+                                                ToolTip="Открыть мастер первого запуска — там можно добавить свои сайты и пропустить шаги" />
+                                    </StackPanel>
                                 </WrapPanel>
 
                                 <Button Style="{StaticResource DangerButton}" Content="Отменить проверку" Margin="0,12,0,0" Padding="14,7" HorizontalAlignment="Left"
@@ -245,7 +255,7 @@
                                     </Border>
 
                                     <!-- Рекомендованная стратегия -->
-                                    <WrapPanel Margin="0,12,0,0" Visibility="{Binding HasRecommendedStrategy, Converter={StaticResource BoolToVis}}">
+                                    <WrapPanel Margin="0,12,0,0" Visibility="{Binding ShowRecommendedStrategyRow, Converter={StaticResource BoolToVis}}">
                                         <Border Style="{StaticResource Badge}" Background="{DynamicResource SuccessSoftBrush}" Margin="0,0,8,0" Padding="8,4" VerticalAlignment="Center">
                                             <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
                                                 <TextBlock Text="&#xE945;" FontFamily="{DynamicResource IconFont}" FontSize="11" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center" />
@@ -259,8 +269,13 @@
 
                                     <!-- Действия результата — повторить и скрыть -->
                                     <WrapPanel Margin="0,12,0,0">
+                                        <Button Style="{StaticResource SecondaryButton}" Content="Проверить снова" Padding="12,6" MinHeight="32" Margin="0,0,8,0"
+                                                Command="{Binding RunOneClickFixCommand}"
+                                                Visibility="{Binding SimpleMode, Converter={StaticResource BoolToVis}}"
+                                                ToolTip="Проверить ещё раз и при необходимости заменить способ обхода" />
                                         <Button Style="{StaticResource SecondaryButton}" Content="↻  Повторить проверку" Padding="12,6" MinHeight="32" Margin="0,0,8,0"
                                                 Command="{Binding RunFullCheckCommand}"
+                                                Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"
                                                 ToolTip="Запустить быструю проверку заново" />
                                         <Button Style="{StaticResource GhostButton}" Content="Скрыть результат" Padding="12,6" MinHeight="32"
                                                 Command="{Binding ClearFullCheckResultCommand}"

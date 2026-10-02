@@ -35,6 +35,7 @@
 *   **Здоровье соединения:** `ConnectionHealthVisible/Key/Text` — кольцо `ok/total OK · avg мс` по результатам `ConnectionTester`.
 *   **Служба Windows:** тумблер `ServiceInstalled` → `ToggleServiceCommand` (без вопроса с `v1.17.24`), индикатор `IsServicePending`/`ServicePendingText` (`START_PENDING`/`STOP_PENDING`), кнопка `Обновить службу` (`ReinstallServiceCommand`).
 *   **Баннер конфликта:** `LegacyWarningVisible/Text` — обнаружен старый `zapret` из другой папки, кнопка `ResolveLegacyCommand` с диалогом `LegacyZapretDialog` (варианты `TakeOver`/`ImportAndTakeOver`/`StopOnly`).
+*   **Один клик в «Простом» (с `v1.29.1`):** на карточке быстрой настройки одна кнопка **«Сделать, чтобы работало»** — `RunOneClickFixCommand` → `RunOneClickFixAsync` (полная проверка `RunFullCheckAsync`, затем сразу `ApplyRecommendedStrategyAsync`; итог — сообщение «Готово: обход включён и работает» либо подсказка про права администратора). Кнопка «Проверить снова» повторяет тот же конвейер. Строка рекомендации (`ShowRecommendedStrategyRow`) видна только в «Эксперте».
 *   **Быстрая настройка — 1 клик (RunFullCheckCommand):** 4 шага 1–2 мин: `1) аудит системы (BFE/WinDivert)` → `2) проверка сайтов` → `3) тест 22 стратегий` → `4) рекомендация лучшей`. Прогресс `FullCheckProgress`, результат `FullCheckSummaryText/Key`, кнопка `Применить` рекомендованную `ApplyRecommendedStrategyCommand`.
 *   **Игровой режим:** `GameModeActive`, `GameStatusBadgeText`, кнопка `ToggleGameMode`, блок оптимизации сети `GamingNetworkOptimizer` (`ApplyGamingTweaks/Revert`).
 
