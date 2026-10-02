@@ -143,7 +143,8 @@
 *   **Инфо:** `AppVersion` (`InformationalVersion`), `EngineVersionText`, `EnginePathText`, кнопки `OpenEngineFolder`/`OpenLogs`/`CheckUpdates`, лицензия.
 
 ### 5.5 Первый запуск (FirstLaunchPage / FirstLaunchViewModel)
-*   **Мастер:** `FirstLaunchWizardCompleted`/`StrategyTestsCompleted`/`FirstLaunchDiagnosticsCompleted`, выбор `EnginePath`, установка `BFE` (`MessageBox`), очистка `WinDivert` (`MessageBox`), `AutoTestStrategiesOnFirstLaunch` + `AutoDiagnoseOnFirstLaunch`, `SafeMode` переключатель.
+*   **Один экран (с `v1.29.0`):** по умолчанию мастер показывает одну карточку с кнопкой **«Сделать, чтобы работало»** — `RunOneClickSetupCommand` → `RunOneClickSetupAsync` (движок → диагностика системы → подбор способа обхода через `Home.RunFullCheckAsync` → установка обхода `Bypass.InstallServiceAsync` → проверка результата; прогресс `OneClickProgressText`, итог `OneClickResultText`/`OneClickResultKey`, права — `OneClickNeedsAdmin` с кнопкой перезапуска). Кнопка **«Настроить по шагам»** (`SwitchToAdvancedStepsCommand`) включает прежний пошаговый мастер: `AdvancedSteps` управляет парой `OneClickVisible`/`StepsVisible`, нижняя панель «Назад/Продолжить» видна только там (`NavigationVisible`).
+*   **Мастер (пошаговый режим):** `FirstLaunchWizardCompleted`/`StrategyTestsCompleted`/`FirstLaunchDiagnosticsCompleted`, выбор `EnginePath`, установка `BFE` (`MessageBox`), очистка `WinDivert` (`MessageBox`), `AutoTestStrategiesOnFirstLaunch` + `AutoDiagnoseOnFirstLaunch`, `SafeMode` переключатель.
 
 ---
 

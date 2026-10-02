@@ -26,6 +26,13 @@ namespace ZapretGui.ViewModels
         private ServiceHealthSnapshot? _serviceHealth;
         private string _status = "";
         private string _statusKey = "Info";
+        // Один экран и одна кнопка (v1.29.0): пошаговый мастер остаётся, но включается осознанно
+        private bool _advancedSteps;
+        private bool _oneClickDone;
+        private bool _oneClickNeedsAdmin;
+        private string _oneClickResultText = "";
+        private string _oneClickResultKey = "Info";
+        private string _oneClickProgress = "";
 
         public FirstLaunchViewModel(MainViewModel main)
         {
@@ -53,14 +60,18 @@ namespace ZapretGui.ViewModels
             RunTrialCommand = new AsyncRelayCommand(RunTrialAsync,
                 () => !IsBusy && IsAdmin && SelectedStrategy != null);
             FinishManualCommand = new RelayCommand(() => FinishWizard(IsSafeModeChoice));
-            InstallServiceCommand = new AsyncRelayCommand(InstallServiceAsync,
+            InstallServiceCommand = new AsyncRelayCommand(() => InstallServiceAsync(),
                 () => !IsBusy && IsAdmin && SelectedStrategy != null);
             SkipWizardCommand = new RelayCommand(() => FinishWizard(true));
             OpenUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
             AddCustomHostCommand = new RelayCommand(AddCustomHost, () => !string.IsNullOrWhiteSpace(CustomHostInput) && !IsBusy);
             SkipCustomHostsCommand = new RelayCommand(() => SetStatus("Добавление своих сайтов пропущено — вы всегда можете добавить их позже в «Главная → Проверка соединения» или «Проверки → Экспресс»", "Info"));
             RunWizardFullCheckCommand = new AsyncRelayCommand(RunWizardFullCheckAsync, () => !IsBusy && !IsEngineReady == false);
-
+            RunOneClickSetupCommand = new AsyncRelayCommand(RunOneClickSetupAsync, () => !IsBusy);
+            SwitchToAdvancedStepsCommand = new RelayCommand(() => AdvancedSteps = true);
+            GoHomeCommand = new RelayCommand(() => _main.Navigate("home"));
+            OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
+            OpenHelpCommand = new RelayCommand(() => _main.Navigate("help"));
         }
 
         public AppSettings Settings => _main.Settings;
@@ -111,10 +122,12 @@ namespace ZapretGui.ViewModels
 
         public int StepCount => 6;
         public int CurrentStepNumber => CurrentStep + 1;
-        public string StepCounterText => $"Шаг {CurrentStepNumber} из {StepCount}";
-        public string StepTitleText => $"ШАГ {CurrentStepNumber}";
+        public string StepCounterText => AdvancedSteps ? $"Шаг {CurrentStepNumber} из {StepCount}" : "1 клик";
+        public string StepTitleText => AdvancedSteps ? $"ШАГ {CurrentStepNumber}" : "ПЕРВЫЙ ЗАПУСК";
 
-        public string CurrentStepTitle => CurrentStep switch
+        public string CurrentStepTitle => !AdvancedSteps
+            ? "Сделаем, чтобы обход работал"
+            : CurrentStep switch
         {
             0 => "Права администратора",
             1 => "Движок zapret",
@@ -124,7 +137,9 @@ namespace ZapretGui.ViewModels
             _ => "Завершение настройки"
         };
 
-        public string CurrentStepDescription => CurrentStep switch
+        public string CurrentStepDescription => !AdvancedSteps
+            ? "Нажмите одну кнопку: проверю систему, подберу рабочий способ обхода, включу обход и покажу результат. Хотите управлять сами — «Настроить по шагам»."
+            : CurrentStep switch
         {
             0 => "Для управления службой Windows, драйвером WinDivert и системным обходом требуются права администратора.",
             1 => "Движок выполняет непосредственную модификацию пакетов для обхода сетевых ограничений.",
@@ -133,6 +148,63 @@ namespace ZapretGui.ViewModels
             4 => "Временная проверка работы выбранной стратегии на контрольных ресурсах без изменения постоянных настроек.",
             _ => "Сохранение параметров и выбор режима запуска."
         };
+
+        /// <summary>Пошаговый режим (v1.29.0). По умолчанию первый запуск — один экран с одной кнопкой.</summary>
+        public bool AdvancedSteps
+        {
+            get => _advancedSteps;
+            private set
+            {
+                if (!Set(ref _advancedSteps, value)) return;
+                Raise(nameof(OneClickVisible));
+                Raise(nameof(StepsVisible));
+                Raise(nameof(NavigationVisible));
+                Raise(nameof(StepTitleText));
+                Raise(nameof(CurrentStepTitle));
+                Raise(nameof(CurrentStepDescription));
+                Raise(nameof(StepCounterText));
+            }
+        }
+
+        public bool OneClickVisible => !AdvancedSteps;
+        public bool StepsVisible => AdvancedSteps;
+        public bool NavigationVisible => AdvancedSteps;
+
+        public bool OneClickDone
+        {
+            get => _oneClickDone;
+            private set => Set(ref _oneClickDone, value);
+        }
+
+        public bool OneClickNeedsAdmin
+        {
+            get => _oneClickNeedsAdmin;
+            private set => Set(ref _oneClickNeedsAdmin, value);
+        }
+
+        public string OneClickProgressText
+        {
+            get => _oneClickProgress;
+            private set
+            {
+                if (!Set(ref _oneClickProgress, value)) return;
+                Raise(nameof(OneClickHasProgress));
+            }
+        }
+
+        public bool OneClickHasProgress => !string.IsNullOrWhiteSpace(OneClickProgressText);
+
+        public string OneClickResultText
+        {
+            get => _oneClickResultText;
+            private set => Set(ref _oneClickResultText, value);
+        }
+
+        public string OneClickResultKey
+        {
+            get => _oneClickResultKey;
+            private set => Set(ref _oneClickResultKey, value);
+        }
 
         public bool IsAdminStep => CurrentStep == 0;
         public bool IsEngineStep => CurrentStep == 1;
@@ -321,6 +393,16 @@ namespace ZapretGui.ViewModels
         public ICommand AddCustomHostCommand { get; }
         public ICommand SkipCustomHostsCommand { get; }
         public ICommand RunWizardFullCheckCommand { get; }
+
+        /// <summary>Главная кнопка первого запуска: «Сделать, чтобы работало» (v1.29.0).</summary>
+        public ICommand RunOneClickSetupCommand { get; }
+
+        /// <summary>Переход к пошаговому мастеру — для тех, кто хочет настроить всё сам.</summary>
+        public ICommand SwitchToAdvancedStepsCommand { get; }
+
+        public ICommand GoHomeCommand { get; }
+        public ICommand OpenLogsCommand { get; }
+        public ICommand OpenHelpCommand { get; }
 
         private void StrategiesPageOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -647,15 +729,18 @@ namespace ZapretGui.ViewModels
             }
         }
 
-        private async Task InstallServiceAsync()
+        private async Task InstallServiceAsync(bool confirm = true)
         {
             var strategy = SelectedStrategy;
             if (strategy == null) return;
 
-            var answer = MessageBox.Show(
-                $"Установить службу Windows zapret со стратегией «{strategy.Name}»?",
-                "Установка службы", MessageBoxButton.YesNo, MessageBoxImage.Question);
-            if (answer != MessageBoxResult.Yes) return;
+            if (confirm)
+            {
+                var answer = MessageBox.Show(
+                    $"Установить службу Windows zapret со стратегией «{strategy.Name}»?",
+                    "Установка службы", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (answer != MessageBoxResult.Yes) return;
+            }
 
             SetBusy(true, $"Устанавливаю службу zapret со стратегией «{strategy.Name}»…");
             try
@@ -708,6 +793,111 @@ namespace ZapretGui.ViewModels
             if (added > 0) SetStatus($"Добавлено сайтов: {added}. " + (errors.Count > 0 ? "Ошибки: " + string.Join("; ", errors) : ""), errors.Count > 0 ? "Warning" : "Success");
             else SetStatus("Ничего не добавлено: " + string.Join("; ", errors), "Warning");
             RaiseCommands();
+        }
+
+        /// <summary>Конвейер «Сделать, чтобы работало» (v1.29.0): движок → система → подбор способа
+        /// обхода → включение обхода → проверка результата. Действует без диалогов: это осознанное
+        /// действие пользователя, нажавшего одну кнопку. Ничего технического не спрашивает.</summary>
+        private async Task RunOneClickSetupAsync()
+        {
+            if (IsBusy) return;
+            OneClickDone = false;
+            OneClickNeedsAdmin = false;
+            OneClickResultText = "";
+            var notes = new List<string>();
+
+            try
+            {
+                // 1. Движок
+                if (!IsEngineReady)
+                {
+                    if (!IsAdmin)
+                    {
+                        OneClickNeedsAdmin = true;
+                        FinishOneClick("Для первого шага нужны права администратора: «Перезапустить от администратора», затем нажмите кнопку снова.",
+                            "Warning", notes);
+                        return;
+                    }
+                    OneClickProgressText = "Шаг 1 из 4: скачиваю движок zapret…";
+                    await InstallEngineAsync();
+                    if (!IsEngineReady)
+                    {
+                        FinishOneClick("Не удалось установить движок — откройте «Настройки → Обновления» и установите его вручную, затем повторите.",
+                            "Danger", notes);
+                        return;
+                    }
+                    notes.Add("движок установлен");
+                }
+
+                // 2. Система и службы Windows
+                OneClickProgressText = "Шаг 2 из 4: проверяю систему, службы и драйвер…";
+                await RunDiagnosticsAsync();
+
+                // 3. Способ обхода под ваши условия
+                OneClickProgressText = "Шаг 3 из 4: подбираю способ обхода, который открывает ваши узлы…";
+                await _main.Home.RunFullCheckAsync();
+                var rec = _main.Home.RecommendedStrategy;
+                if (rec == null)
+                {
+                    FinishOneClick("Подходящий способ обхода не найден. Проверьте интернет и нажмите ещё раз; если не поможет — «Настроить по шагам».",
+                        "Warning", notes);
+                    return;
+                }
+                SelectedStrategyName = rec.Name;
+                Settings.SelectedStrategy = rec.Name;
+                SettingsStore.Save(Settings);
+                notes.Add($"способ обхода «{rec.Name}»");
+
+                // 4. Включение обхода
+                if (!IsAdmin)
+                {
+                    OneClickNeedsAdmin = true;
+                    FinishOneClick("Способ обхода подобран, но включить обход без прав администратора нельзя: «Перезапустить от администратора» и нажмите кнопку снова.",
+                        "Warning", notes);
+                    return;
+                }
+
+                OneClickProgressText = "Шаг 4 из 4: включаю обход и проверяю ключевые узлы…";
+                var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+                var install = await _main.Bypass.InstallServiceAsync(rec, mode);
+                if (!install.Ok)
+                {
+                    FinishOneClick("Способ обхода подобран, но включить обход не удалось: " + install.Message, "Danger", notes);
+                    return;
+                }
+
+                await Task.Delay(1200);
+                Settings.FirstLaunchWizardCompleted = true;
+                SettingsStore.Save(Settings);
+                _main.RefreshReadiness();
+                _main.Home.ReloadFromEngine();
+                _main.Home.RefreshStatus();
+
+                var running = _main.Bypass.GetStatus().IsRunning;
+                FinishOneClick(running
+                        ? "Готово: обход включён и работает."
+                        : "Обход установлен, но запуск не подтвердился. Откройте «Проверки» и нажмите «Проверить всё» ещё раз.",
+                    running ? "Success" : "Warning", notes);
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("[Мастер] Ошибка одного клика: " + ex.Message);
+                FinishOneClick("Не получилось завершить настройку: " + ex.Message, "Danger", notes);
+            }
+            finally
+            {
+                OneClickProgressText = "";
+                SetBusy(false);
+            }
+        }
+
+        private void FinishOneClick(string text, string key, List<string> notes)
+        {
+            OneClickResultText = notes.Count > 0 ? $"{text} Итог: {string.Join(", ", notes)}." : text;
+            OneClickResultKey = key;
+            OneClickDone = true;
+            OneClickProgressText = "";
+            SetStatus(OneClickResultText, key);
         }
 
         private async Task RunWizardFullCheckAsync()

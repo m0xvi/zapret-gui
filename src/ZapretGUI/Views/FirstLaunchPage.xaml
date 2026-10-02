@@ -116,6 +116,60 @@
         </Border>
             <ScrollViewer Grid.Row="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
                 <StackPanel>
+                    <!-- Один экран (v1.29.0): «Простой» путь — одна кнопка. Пошаговый мастер ниже,
+                         он включается кнопкой «Настроить по шагам» -->
+                    <StackPanel Visibility="{Binding OneClickVisible, Converter={StaticResource BoolToVis}}">
+                        <Border Style="{StaticResource CardAccent}" Margin="{DynamicResource CardGap}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="ЧТО СДЕЛАЕТ ПРИЛОЖЕНИЕ" />
+                                <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Text="Проверит систему, службы Windows и драйвер. Подберёт способ обхода, который открывает ваши сайты. Включит обход и проверит ключевые узлы. Технических вопросов не будет — всё сделаю сам." />
+                                <WrapPanel Margin="0,16,0,0">
+                                    <Button Style="{StaticResource PrimaryButton}" Content="Сделать, чтобы работало"
+                                            Command="{Binding RunOneClickSetupCommand}"
+                                            ToolTip="Один клик: проверка системы, подбор способа обхода, включение обхода и проверка узлов" />
+                                    <Button Style="{StaticResource SecondaryButton}" Content="Настроить по шагам" Margin="10,0,0,0"
+                                            Command="{Binding SwitchToAdvancedStepsCommand}"
+                                            ToolTip="Пошаговый мастер: права, движок, диагностика, выбор способа обхода, пробный запуск" />
+                                </WrapPanel>
+                                <WrapPanel Margin="0,12,0,0" Visibility="{Binding OneClickNeedsAdmin, Converter={StaticResource BoolToVis}}">
+                                    <Button Style="{StaticResource DangerButton}" Content="Перезапустить от администратора"
+                                            Command="{Binding RestartElevatedCommand}" />
+                                    <Button Style="{StaticResource GhostButton}" Content="Продолжить без администратора" Margin="10,0,0,0"
+                                            Command="{Binding ContinueReadOnlyCommand}" />
+                                </WrapPanel>
+                                <StackPanel Margin="0,12,0,0" Visibility="{Binding OneClickHasProgress, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding OneClickProgressText, Mode=OneWay}" TextWrapping="Wrap" />
+                                    <ProgressBar Style="{StaticResource ThinProgress}" IsIndeterminate="True" Margin="0,6,0,0" />
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
+                                Visibility="{Binding OneClickDone, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТ" />
+                                <TextBlock Style="{StaticResource BodyText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Foreground="{Binding OneClickResultKey, Converter={StaticResource SeverityBrush}}"
+                                           Text="{Binding OneClickResultText, Mode=OneWay}" />
+                                <WrapPanel Margin="0,14,0,0">
+                                    <Button Style="{StaticResource CompactButton}" Content="Проверить снова"
+                                            Command="{Binding RunOneClickSetupCommand}" />
+                                    <Button Style="{StaticResource CompactGhostButton}" Content="На главную" Margin="8,0,0,0"
+                                            Command="{Binding GoHomeCommand}" />
+                                    <Button Style="{StaticResource CompactGhostButton}" Content="Журнал" Margin="8,0,0,0"
+                                            Command="{Binding OpenLogsCommand}" />
+                                    <Button Style="{StaticResource CompactGhostButton}" Content="Помощь" Margin="8,0,0,0"
+                                            Command="{Binding OpenHelpCommand}" />
+                                    <Button Style="{StaticResource CompactGhostButton}" Content="Настроить по шагам" Margin="8,0,0,0"
+                                            Command="{Binding SwitchToAdvancedStepsCommand}" />
+                                </WrapPanel>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- Пошаговый режим: тот же мастер, но только по явному выбору -->
+                    <StackPanel Visibility="{Binding StepsVisible, Converter={StaticResource BoolToVis}}">
                 <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Visibility="{Binding IsAdminStep, Converter={StaticResource BoolToVis}}">
                     <StackPanel>
                         <StackPanel Margin="0,16,0,0" Visibility="{Binding IsAdminStep, Converter={StaticResource BoolToVis}}">
@@ -366,12 +420,13 @@
                         </StackPanel>
                     </StackPanel>
                 </Border>
+                    </StackPanel>
                 </StackPanel>
             </ScrollViewer>
         </Grid>
 
-        <!-- Нижняя навигационная панель -->
-        <Grid Grid.Row="3" Margin="0,14,0,4">
+        <!-- Нижняя навигационная панель — только в пошаговом режиме -->
+        <Grid Grid.Row="3" Margin="0,14,0,4" Visibility="{Binding NavigationVisible, Converter={StaticResource BoolToVis}}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
