@@ -340,6 +340,10 @@ namespace ZapretGui.ViewModels
             Add("bypass.strategy", "Способ обхода (стратегия)", pathBypass, SearchKind.Subsection, iconBypass,
                 () => OpenBypassTab(0),
                 "стратегия|способ обхода|winws|alt11|general|аргументы|sni пул|кандидаты|история оценок");
+            Add("bypass.network", "Под мою сеть", pathBypass, SearchKind.Subsection, iconBypass,
+                () => _main.Navigate("network"),
+                "провайдер|asn|моя сеть|ростелеком|таймстемпы|timestamps|ipv6|ipv4|doh|перехват|сценарий сети",
+                expertOnly: true);
             Add("bypass.workbench", "Рабочий стол настройщика", pathBypass, SearchKind.Subsection, iconBypass,
                 () => _main.Navigate("configuration"),
                 "конфигурация|всё сразу|что применено|аргументы|sni|ipset|порты|dns|откат|история снимков|рабочий стол|настройщик",

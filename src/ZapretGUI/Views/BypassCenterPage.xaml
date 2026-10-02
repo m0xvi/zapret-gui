@@ -17,6 +17,10 @@
                     <TextBlock Style="{StaticResource MutedText}" Text="Чем и что обходим: стратегии, подбор, DNS, списки и сложные сайты. Всё по подвкладкам — статус всегда сверху." TextWrapping="Wrap"/>
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource GhostButton}" Content="Под мою сеть" Command="{Binding OpenNetworkCommand}" Margin="0,0,8,0"
+                            Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"
+                            AutomationProperties.Name="Под мою сеть"
+                            ToolTip="Сценарий под вашего провайдера: шесть проверок по шагам и точечные правки" />
                     <Button Style="{StaticResource SecondaryButton}" Content="Рабочий стол настройщика →" Command="{Binding OpenWorkbenchCommand}" Margin="0,0,8,0"
                             Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"
                             AutomationProperties.Name="Рабочий стол настройщика"

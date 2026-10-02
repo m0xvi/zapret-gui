@@ -143,6 +143,23 @@
 ### 5.4 О программе (AboutPage)
 *   **Инфо:** `AppVersion` (`InformationalVersion`), `EngineVersionText`, `EnginePathText`, кнопки `OpenEngineFolder`/`OpenLogs`/`CheckUpdates`, лицензия.
 
+### 5.4c «Под мою сеть» (`v1.30.0`)
+
+*   **Страница:** `Views/NetworkPage.xaml` + `ViewModels/NetworkProfileViewModel.cs`, ключ навигации `network`
+    (родитель в меню — «Обход», страница в `MainWindow._pages`; при переходе вызывается `Reload()`). В «Простом» —
+    пояснение и кнопка включения режима.
+*   **Шесть шагов** (`NetworkStep`: Number, Title, WhatText, ValueText, Key, Section): 1) провайдер и ASN;
+    2) перехват (ipset: режим + число сетей); 3) порты и игровой фильтр; 4) TCP-таймстемпы; 5) DNS и DoH;
+    6) IPv4/IPv6. `CheckAllCommand` — прогон всех проверок без изменений в системе.
+*   **Правки только там, где их нет на рабочем столе:** провайдер/ASN (`ProviderDetectionService`, кнопки
+    «Определить»/«Сохранить») и TCP-таймстемпы (`WinServices.EnsureTcpTimestamps`). Остальные шаги ведут кнопкой
+    «Поправить» на рабочий стол настройщика или в раздел (`OpenStepCommand`, `Section`); для шага 1 это «Настройки»,
+    для шага 4 кнопки нет — правится на месте.
+*   **`Core/ProviderDetectionService.cs`:** `ProviderInfo` (Name, Asn, Ip, Source) и `DetectAsync()` — три источника
+    по очереди (`ipwho.is` → `ipinfo.io` → `api.ipify.org`), таймаут 12 с, без записи в настройки.
+*   **Источник провайдера** сохраняется в `Settings.ProviderContext` (`ProviderContextSource.UserInput`, `CheckedAt`,
+    `Confidence = 100`).
+
 ### 5.4b Рабочий стол настройщика (`v1.29.3`)
 
 *   **Страница:** `Views/ConfigurationPage.xaml` + `ViewModels/ConfigurationViewModel.cs`, ключ навигации

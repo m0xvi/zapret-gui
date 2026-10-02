@@ -83,6 +83,8 @@
 
                         <WrapPanel Margin="0,6,0,0">
                             <Button Style="{StaticResource CompactGhostButton}" Content="Обновить" Command="{Binding RefreshCommand}" />
+                            <Button Style="{StaticResource CompactGhostButton}" Content="Под мою сеть →" Margin="8,0,0,0" Command="{Binding OpenNetworkCommand}"
+                                    ToolTip="Сценарий под вашего провайдера: шесть проверок и точечные правки" />
                             <TextBlock Style="{StaticResource DimText}" Margin="10,6,0,0" Text="{Binding StrategyStatusText, Mode=OneWay}" VerticalAlignment="Center" />
                         </WrapPanel>
                     </StackPanel>

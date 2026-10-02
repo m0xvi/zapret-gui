@@ -59,6 +59,7 @@ namespace ZapretGui.ViewModels
             OpenSectionCommand = new RelayCommand(parameter => OpenSection(parameter as string ?? ""));
             EnableExpertModeCommand = new RelayCommand(() => { if (_main.SimpleMode) _main.ToggleExpertMode(); });
             OpenStrategiesCommand = new RelayCommand(() => _main.Navigate("strategies"));
+            OpenNetworkCommand = new RelayCommand(() => _main.Navigate("network"));
             OpenSniPoolCommand = new RelayCommand(() => _main.Navigate("strategies"));
 
             foreach (var profile in GameFilterPortConfig.PredefinedProfiles) GameFilterProfiles.Add(profile);
@@ -206,6 +207,9 @@ namespace ZapretGui.ViewModels
         public ICommand OpenSectionCommand { get; }
         public ICommand EnableExpertModeCommand { get; }
         public ICommand OpenStrategiesCommand { get; }
+
+        /// <summary>Переход к сценарию «под мою сеть» (v1.30.0).</summary>
+        public ICommand OpenNetworkCommand { get; }
         public ICommand OpenSniPoolCommand { get; }
 
         // ------------------------------------------------------------------ Загрузка
@@ -335,7 +339,7 @@ namespace ZapretGui.ViewModels
                 Title = "Перехват: ipset, порты, игры",
                 Value = $"ipset {ipset.ToString().ToLowerInvariant()} · {GameFilterProfiles.FirstOrDefault(p => p.Id == settings.GameFilterProfileId)?.Name ?? "игровой фильтр не задан"}",
                 Key = ipset == IpsetMode.Any ? "Warning" : "Info",
-                Section = "user-lists"
+                Section = "network"
             });
             SummaryRows.Add(new ConfigSummaryRow
             {
@@ -343,7 +347,7 @@ namespace ZapretGui.ViewModels
                 Title = "DNS и hosts",
                 Value = DnsManagementService.GetCurrentDnsSummary(),
                 Key = "Info",
-                Section = "bypass"
+                Section = "network"
             });
             SummaryRows.Add(new ConfigSummaryRow
             {
@@ -600,6 +604,9 @@ namespace ZapretGui.ViewModels
                     break;
                 case "automation":
                     _main.Navigate("automation");
+                    break;
+                case "network":
+                    _main.Navigate("network");
                     break;
                 default:
                     _main.Navigate("diagnostics");

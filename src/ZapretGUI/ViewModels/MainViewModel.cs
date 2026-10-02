@@ -70,6 +70,7 @@ namespace ZapretGui.ViewModels
             Logs = new LogsViewModel(this);
             SettingsPage = new SettingsViewModel(this);
             Configuration = new ConfigurationViewModel(this);
+            NetworkProfile = new NetworkProfileViewModel(this);
             Help = new HelpViewModel(this);
             Search = new SearchViewModel(this);
 
@@ -269,6 +270,9 @@ namespace ZapretGui.ViewModels
 
         /// <summary>Рабочий стол настройщика (v1.29.3): сводка, применение, история и откат конфигурации обхода.</summary>
         public ConfigurationViewModel Configuration { get; }
+
+        /// <summary>«Под мою сеть» (v1.30.0): проверка сети по шагам под конкретного провайдера.</summary>
+        public NetworkProfileViewModel NetworkProfile { get; }
         public DiagnosticsViewModel Diagnostics { get; }
         public DeepCheckViewModel DeepCheck { get; }
         public UserListsViewModel UserLists { get; }
@@ -796,7 +800,7 @@ namespace ZapretGui.ViewModels
             // «Профили и копии»/«Обновления»/«О программе» → «Настройки»).
             var parentKey = key switch
             {
-                "strategies" or "user-lists" or "configuration" => "bypass-center",
+                "strategies" or "user-lists" or "configuration" or "network" => "bypass-center",
                 "profiles" or "updates" or "about" => "settings",
                 _ => null
             };
@@ -809,6 +813,9 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(SelectedNavKey));
                 }
             }
+
+            // Сценарий «под мою сеть» перечитывает состояние при открытии (v1.30.0).
+            if (key == "network") NetworkProfile.Reload();
 
             NavChanged?.Invoke(key);
         }

@@ -71,6 +71,7 @@ namespace ZapretGui.ViewModels
             DismissMessageCommand = new RelayCommand(() => { Message = ""; MessageKey = "Info"; });
             OpenListsCommand = new RelayCommand(() => _main.Navigate("user-lists"));
             OpenWorkbenchCommand = new RelayCommand(() => _main.Navigate("configuration"));
+            OpenNetworkCommand = new RelayCommand(() => _main.Navigate("network"));
             // «Подбор» в «Простом» режиме пустовал: матрица стратегия × DNS — экспертный блок (v1.28.0).
             // Вместо пустого экрана показываем пояснение и кнопку включения режима.
             EnableExpertModeCommand = new RelayCommand(() => { if (_main.SimpleMode) _main.ToggleExpertMode(); });
@@ -226,6 +227,9 @@ namespace ZapretGui.ViewModels
 
         /// <summary>Рабочий стол настройщика (v1.29.3): конфигурация целиком, история и откат.</summary>
         public ICommand OpenWorkbenchCommand { get; }
+
+        /// <summary>Сценарий «под мою сеть» (v1.30.0): провайдер, перехват, порты, таймстемпы, DNS, IPv4/IPv6.</summary>
+        public ICommand OpenNetworkCommand { get; }
         public ICommand ApplyDnsCommand { get; }
         public ICommand CheckHijackCommand { get; }
         public ICommand UpdateHostsCommand { get; }
