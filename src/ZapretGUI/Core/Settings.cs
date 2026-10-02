@@ -138,8 +138,34 @@ namespace ZapretGui.Core
         /// <summary>Задержка автозапуска обхода при старте Windows в секундах (0-60).</summary>
         public int StartupDelaySeconds { get; set; } = 5;
 
-        /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.</summary>
+        /// <summary>ГЛАВНЫЙ выключатель автоматической смены стратегии (v1.28.3, по умолчанию ВЫКЛ).
+        /// Пока он снят, приложение не меняет стратегию само ни по одному сценарию: ни бесшовное
+        /// переключение, ни сторож, ни мониторинг, ни фоновый подбор, ни автопрофиль при сбое.
+        /// Перезапуск той же стратегии и все кнопки ручного выбора работают как обычно.
+        /// Пользователь просил: «переключать нужно, если узел недоступен совсем» — и решать это он
+        /// хочет сам, поэтому смена стала опт-ином, а не поведением по умолчанию.</summary>
+        public bool AutoSwitchStrategyEnabled { get; set; } = false;
+
+        /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода
+        /// (действует только при включённом AutoSwitchStrategyEnabled).</summary>
         public bool AutoRecoverStrategy { get; set; } = true;
+
+        /// <summary>Бесшовное автопереключение без окон и подтверждений. С v1.28.1 меняет стратегию
+        /// только при полной недоступности узла (DNS/TCP/TLS), 3 подтверждённых проверки подряд,
+        /// и лишь на замену, которая держит остальные узлы набора.</summary>
+        public bool SeamlessFailoverEnabled { get; set; } = true;
+
+        /// <summary>Интервал бесшовной проверки в минутах (2-60).</summary>
+        public int SeamlessCheckMinutes { get; set; } = 5;
+
+        /// <summary>Cooldown между бесшовными переключениями в минутах (5-120).</summary>
+        public int SeamlessCooldownMinutes { get; set; } = 10;
+
+        /// <summary>Последняя причина/статус бесшовного переключения.</summary>
+        public string SeamlessLastReason { get; set; } = "";
+
+        /// <summary>Время последнего бесшовного переключения.</summary>
+        public DateTime? SeamlessLastSwitchTime { get; set; }
 
         /// <summary>Показывать уведомления мониторинга через значок в трее.</summary>
         public bool MonitorNotificationsEnabled { get; set; } = true;
@@ -149,6 +175,33 @@ namespace ZapretGui.Core
 
         /// <summary>Ресурсы пользователя для фонового контроля.</summary>
         public List<MonitorTarget> MonitorTargets { get; set; } = new();
+
+        /// <summary>Показывать метрики ресурсов в тулбаре рядом с иконкой (как в MSI Afterburner), обновление каждую минуту.</summary>
+        public bool ToolbarMetricsEnabled { get; set; } = true;
+
+        /// <summary>Интервал обновления метрик тулбара в секундах (15-300, по умолчанию 60).</summary>
+        public int ToolbarMetricsIntervalSeconds { get; set; } = 60;
+
+        /// <summary>Какие ресурсы показывать в тулбаре (пусто = все). Хранит Name ресурсов.</summary>
+        public List<string> ToolbarMetricsVisibleTargets { get; set; } = new();
+
+        /// <summary>Позиция окна метрик на панели задач (для перетаскивания). -1 = авто над треем.</summary>
+        public double TaskbarMetricsLeft { get; set; } = -1;
+        public double TaskbarMetricsTop { get; set; } = -1;
+        public double TaskbarMetricsWidth { get; set; } = 170;
+        public double TaskbarMetricsHeight { get; set; } = -1;
+
+        // === Улучшения для строгих регионов (YouTube FAIL) ===
+        /// <summary>Отключить fake QUIC для YouTube (помогает в регионах где QUIC режется отдельно, 24.09 отчёт: YouTube 0/13)</summary>
+        public bool DisableQuicFake { get; set; } = false;
+        /// <summary>Предпочитать IPv4 (отключает IPv6 для обхода, помогает при fec0:: DNS)</summary>
+        public bool PreferIPv4ForBypass { get; set; } = false;
+        /// <summary>Использовать DoH для заблокированных хостов (1.1.1.1)</summary>
+        public bool UseDohForBlockedHosts { get; set; } = false;
+        /// <summary>SNI для YouTube-трафика (googlevideo.com / google.com / youtube.com)</summary>
+        public string YoutubeSniOverride { get; set; } = "";
+        /// <summary>Пер-хост стратегии: имя хоста → имя стратегии</summary>
+        public Dictionary<string, string> HostSpecificStrategies { get; set; } = new();
 
         /// <summary>Включить автоматический мониторинг запущенных игр.</summary>
         public bool GameDetectionEnabled { get; set; } = true;
@@ -171,6 +224,21 @@ namespace ZapretGui.Core
         /// <summary>Горячая клавиша открытия мини-виджета (по умолчанию Ctrl+Shift+O).</summary>
         public string HotkeyToggleMiniOverlay { get; set; } = "Ctrl+Shift+O";
 
+        /// <summary>Горячая клавиша переключения режима интерфейса «Простой/Эксперт» (по умолчанию Ctrl+Shift+E).</summary>
+        public string HotkeyToggleExpertMode { get; set; } = "Ctrl+Shift+E";
+
+        /// <summary>Поиск (этап 7): последние места, куда переходили из поиска, — до 5 идентификаторов.</summary>
+        public List<string> SearchRecentIds { get; set; } = new();
+
+        /// <summary>Поиск (этап 7): избранное — идентификаторы пунктов, отмеченных звёздочкой.</summary>
+        public List<string> SearchFavoriteIds { get; set; } = new();
+
+        /// <summary>Экспертный режим интерфейса: показывает технические блоки (по умолчанию «Простой»).</summary>
+        public bool ExpertModeEnabled { get; set; }
+
+        /// <summary>Баллун «включить режим „Эксперт“?» уже показывался (миграция v1.22.0).</summary>
+        public bool ExpertModeHintShown { get; set; }
+
         /// <summary>Координата X мини-виджета на экране (-1 = по умолчанию).</summary>
         public double MiniOverlayLeft { get; set; } = -1;
 
@@ -186,8 +254,57 @@ namespace ZapretGui.Core
         /// <summary>Флаг отображения мини-виджета вместо или рядом с главным окном.</summary>
         public bool MiniOverlayEnabled { get; set; }
 
+        /// <summary>Пользовательские DNS-профили (дополнительно к встроенным).</summary>
+        public List<DnsProfile> CustomDnsProfiles { get; set; } = new();
+
+        /// <summary>Результат последней проверки подмены DNS.</summary>
+        public string LastDnsHijackSummary { get; set; } = "";
+
+        /// <summary>Время последней проверки подмены DNS.</summary>
+        public DateTime? LastDnsHijackCheckedAt { get; set; }
+
         /// <summary>Необязательный контекст провайдера для будущего подбора стратегий.</summary>
         public ProviderContext ProviderContext { get; set; } = new();
+
+        /// <summary>Автоматически переключать профиль при смене сети (SSID/шлюз).</summary>
+        public bool AutoSwitchProfileOnNetworkChange { get; set; }
+
+        /// <summary>Автоматически переключать профиль при диагностированном сбое стратегии (требует AutoRecoverStrategy).</summary>
+        public bool AutoSwitchProfileOnFailure { get; set; }
+
+        /// <summary>Фоновый подбор замены, если стратегия перестала открывать узел (полная недоступность).
+        /// С v1.28.1 переключения ради скорости отключены: сравнение включается только при сбое.</summary>
+        public bool AutoSwitchToBestStrategy { get; set; } = false;
+
+        /// <summary>Интервал фонового сравнения стратегий (минуты), если AutoSwitchToBestStrategy включён.</summary>
+        public int BestStrategyCheckMinutes { get; set; } = 30;
+
+        /// <summary>Последний отпечаток сети, для которого уже применялся профиль (защита от зацикливания).</summary>
+        public string LastNetworkFingerprint { get; set; } = "";
+
+        /// <summary>Id профиля, применённого последним автопереключением.</summary>
+        public string LastAutoSwitchedProfileId { get; set; } = "";
+
+        /// <summary>Время последнего автопереключения профиля.</summary>
+        public DateTime? LastAutoSwitchTime { get; set; }
+
+        /// <summary>Использовать targets.txt из utils как доп цели при проверке стратегий.</summary>
+        public bool UseTargetsTxtForStrategyTest { get; set; } = true;
+
+        /// <summary>Расписание обхода: включить авто-старт/стоп.</summary>
+        public bool ScheduleEnabled { get; set; }
+
+        /// <summary>Время авто-старта обхода (HH:mm).</summary>
+        public string ScheduleStartTime { get; set; } = "09:00";
+
+        /// <summary>Время авто-стопа обхода (HH:mm).</summary>
+        public string ScheduleStopTime { get; set; } = "23:00";
+
+        /// <summary>Дни недели для расписания, битовая маска 1=Пн ... 64=Вс (127 = ежедневно).</summary>
+        public int ScheduleDaysMask { get; set; } = 127;
+
+        /// <summary>При расписании: оставлять службу (true) или процесс.</summary>
+        public bool ScheduleUseService { get; set; } = true;
     }
 
     /// <summary>Загрузка/сохранение settings.json.</summary>
@@ -214,6 +331,7 @@ namespace ZapretGui.Core
                         if (string.IsNullOrWhiteSpace(loaded.GuiRepo)) loaded.GuiRepo = GuiUpdateService.DefaultRepository;
                         loaded.MonitorTargets ??= new List<MonitorTarget>();
                         loaded.ProviderContext ??= new ProviderContext();
+                        loaded.CustomDnsProfiles ??= new List<DnsProfile>();
                         return loaded;
                     }
                 }

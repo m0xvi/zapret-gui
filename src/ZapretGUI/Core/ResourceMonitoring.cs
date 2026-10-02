@@ -54,6 +54,15 @@ namespace ZapretGui.Core
         public bool IsBuiltIn { get; set; }
         public bool IsGame { get; set; }
 
+        private string _lastStatusText = "";
+        public string LastStatusText { get => _lastStatusText; set { if (_lastStatusText != value) { _lastStatusText = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastStatusText))); } } }
+
+        private string _lastStatusKey = "Info";
+        public string LastStatusKey { get => _lastStatusKey; set { if (_lastStatusKey != value) { _lastStatusKey = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastStatusKey))); } } }
+
+        private string _lastDetails = "";
+        public string LastDetails { get => _lastDetails; set { if (_lastDetails != value) { _lastDetails = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastDetails))); } } }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public static bool TryCreate(string input, string? name, out MonitorTarget? target, out string error)
@@ -210,6 +219,25 @@ namespace ZapretGui.Core
             {
                 return new DnsProbeResult { Milliseconds = Elapsed(started), Details = "DNS: " + Short(ex.Message) };
             }
+        }
+
+        /// <summary>Узел недоступен совсем: соединение не устанавливается вовсе — DNS не отвечает,
+        /// TCP/TLS не поднимается, тайм-аут. HTTP-ошибка сюда не входит: сервер ответил, значит узел жив
+        /// (v1.28.1, правило автопереключения «переключаем только когда узел недоступен целиком»).</summary>
+        public static bool IsCompleteOutage(ResourceProbeResult result) =>
+            result.Kind is ResourceResultKind.DnsError or ResourceResultKind.TcpError
+                or ResourceResultKind.Timeout or ResourceResultKind.TlsError;
+
+        /// <summary>Подтверждающая перепроверка: один тайм-аут — ещё не сбой узла. Если первая попытка
+        /// упала по-настоящему (полная недоступность), повторяем ещё раз; результат второго прогона решает.
+        /// Недоступность, подтверждённую дважды подряд, уже можно считать сбоем (v1.28.1).</summary>
+        public static async Task<ResourceProbeResult> CheckConfirmedAsync(MonitorTarget target,
+            CancellationToken ct = default)
+        {
+            var first = await CheckAsync(target, ct).ConfigureAwait(false);
+            if (first.Ok || !IsCompleteOutage(first)) return first;
+            try { await Task.Delay(600, ct).ConfigureAwait(false); } catch (OperationCanceledException) { return first; }
+            return await CheckAsync(target, ct).ConfigureAwait(false);
         }
 
         public static async Task<ResourceProbeResult> CheckAsync(MonitorTarget target,

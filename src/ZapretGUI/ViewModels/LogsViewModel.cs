@@ -18,8 +18,19 @@ namespace ZapretGui.ViewModels
         private bool _showApp = true;
         private bool _showBypass = true;
 
-        public LogsViewModel()
+        private readonly MainViewModel? _main;
+
+        public LogsViewModel(MainViewModel? main = null)
         {
+            _main = main;
+            if (_main != null)
+                _main.PropertyChanged += (_, e) =>
+                {
+                    if (e.PropertyName != nameof(MainViewModel.ExpertMode)) return;
+                    // В «Простом» режиме чекбокс «Отладка» скрыт — выключаем его, чтобы журнал оставался читаемым.
+                    if (!ExpertMode) ShowDebug = false;
+                    Raise(nameof(ExpertMode));
+                };
             foreach (var entry in AppLog.Entries) Entries.Add(entry);
             AppLog.EntryAdded += OnEntryAdded;
 
@@ -28,6 +39,7 @@ namespace ZapretGui.ViewModels
             SaveCommand = new RelayCommand(SaveToFile, () => Entries.Count > 0);
             OpenFolderCommand = new RelayCommand(() => Shell.OpenFolder(AppPaths.LogDir));
             RefreshCommand = new RelayCommand(Reload);
+            BackToSettingsCommand = new RelayCommand(() => _main?.Navigate("settings"), () => _main != null);
         }
 
         public ObservableCollection<LogEntry> Entries { get; } = new();
@@ -58,18 +70,31 @@ namespace ZapretGui.ViewModels
         public ICommand SaveCommand { get; }
         public ICommand OpenFolderCommand { get; }
         public ICommand RefreshCommand { get; }
+        public ICommand BackToSettingsCommand { get; }
 
         private void OnEntryAdded(LogEntry entry)
         {
             if (!Accepts(entry)) return;
-            RelayCommand.Dispatch(() =>
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher != null && !dispatcher.CheckAccess())
             {
-                Entries.Add(entry);
-                Raise(nameof(CountText));
-                (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                if (AutoScroll) ScrollToEndRequested?.Invoke();
-            });
+                dispatcher.BeginInvoke(new Action(() =>
+                {
+                    Entries.Add(entry);
+                    if (Entries.Count > 4000) Entries.RemoveAt(0);
+                    Raise(nameof(CountText));
+                    (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    if (AutoScroll) ScrollToEndRequested?.Invoke();
+                }));
+                return;
+            }
+            Entries.Add(entry);
+            if (Entries.Count > 4000) Entries.RemoveAt(0);
+            Raise(nameof(CountText));
+            (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            if (AutoScroll) ScrollToEndRequested?.Invoke();
         }
 
         private bool Accepts(LogEntry entry)
@@ -97,9 +122,23 @@ namespace ZapretGui.ViewModels
 
         private void Reload()
         {
-            Entries.Clear();
-            foreach (var entry in AppLog.Entries.Where(Accepts)) Entries.Add(entry);
-            Raise(nameof(CountText));
+            // Фильтрация в фоне, затем батчевое обновление на UI-потоке — не блокирует переход в Журнал
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            System.Threading.Tasks.Task.Run(() => AppLog.Entries.Where(Accepts).ToList())
+                .ContinueWith(t =>
+                {
+                    var filtered = t.Result;
+                    void Apply()
+                    {
+                        Entries.Clear();
+                        foreach (var entry in filtered) Entries.Add(entry);
+                        Raise(nameof(CountText));
+                        (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                        (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    }
+                    if (dispatcher != null && !dispatcher.CheckAccess()) dispatcher.BeginInvoke(new Action(Apply));
+                    else Apply();
+                }, System.Threading.Tasks.TaskScheduler.Default);
         }
 
         private void Clear()
@@ -132,5 +171,8 @@ namespace ZapretGui.ViewModels
                 AppLog.Error("Не удалось сохранить журнал: " + ex.Message);
             }
         }
+
+        /// <summary>Экспертный режим интерфейса (этап 5): детальные уровни журнала показываются только в нём.</summary>
+        public bool ExpertMode => _main?.ExpertMode ?? false;
     }
 }

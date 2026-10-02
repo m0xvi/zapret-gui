@@ -23,10 +23,144 @@ namespace ZapretGui.ViewModels
         private int _providerConfidenceIndex;
         private string _status = "Изменения сохраняются автоматически";
         private bool _isProviderLookupBusy;
+        private int _selectedTabIndex;
+
+        // v1.20.0: вкладки «Журнал» и «О программе» убраны — журнал живёт в «Проверках»,
+        // о программе — отдельным пунктом меню (docs/IA_REDESIGN.md §4.1).
+        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления" };
+
+        public int SelectedTabIndex
+        {
+            get => _selectedTabIndex;
+            set
+            {
+                if (Set(ref _selectedTabIndex, Math.Clamp(value, 0, SettingsTabs.Length - 1)))
+                {
+                    Raise(nameof(IsGeneralTabSelected));
+                    Raise(nameof(IsBypassTabSelected));
+                    Raise(nameof(IsNetworkTabSelected));
+                    Raise(nameof(IsAppearanceTabSelected));
+                    Raise(nameof(IsGamingTabSelected));
+                    Raise(nameof(IsUpdatesTabSelected));
+                    Raise(nameof(SelectedTabHint));
+                }
+            }
+        }
+
+        public bool IsGeneralTabSelected
+        {
+            get => _selectedTabIndex == 0;
+            set { if (value) SelectedTabIndex = 0; }
+        }
+
+        public bool IsBypassTabSelected
+        {
+            get => _selectedTabIndex == 1;
+            set { if (value) SelectedTabIndex = 1; }
+        }
+
+        public bool IsNetworkTabSelected
+        {
+            get => _selectedTabIndex == 2;
+            set { if (value) SelectedTabIndex = 2; }
+        }
+
+        public bool IsAppearanceTabSelected
+        {
+            get => _selectedTabIndex == 3;
+            set { if (value) SelectedTabIndex = 3; }
+        }
+
+        public bool IsGamingTabSelected
+        {
+            get => _selectedTabIndex == 4;
+            set { if (value) SelectedTabIndex = 4; }
+        }
+
+        public bool IsUpdatesTabSelected
+        {
+            get => _selectedTabIndex == 5;
+            set { if (value) SelectedTabIndex = 5; }
+        }
+
+        public bool SeamlessFailoverEnabled
+        {
+            get => Settings.SeamlessFailoverEnabled;
+            set { if (Settings.SeamlessFailoverEnabled != value) { Settings.SeamlessFailoverEnabled = value; SettingsStore.Save(Settings); _main.NotifySeamlessChanged(); Raise(nameof(SeamlessFailoverEnabled)); Raise(nameof(SeamlessStatus)); Raise(nameof(SeamlessStatusKey)); } }
+        }
+        public int SeamlessCheckMinutes
+        {
+            get => Settings.SeamlessCheckMinutes;
+            set { var v = Math.Clamp(value, 2, 60); if (Settings.SeamlessCheckMinutes != v) { Settings.SeamlessCheckMinutes = v; SettingsStore.Save(Settings); _main.NotifySeamlessChanged(); Raise(nameof(SeamlessCheckMinutes)); } }
+        }
+        public int SeamlessCooldownMinutes
+        {
+            get => Settings.SeamlessCooldownMinutes;
+            set { var v = Math.Clamp(value, 5, 120); if (Settings.SeamlessCooldownMinutes != v) { Settings.SeamlessCooldownMinutes = v; SettingsStore.Save(Settings); Raise(nameof(SeamlessCooldownMinutes)); } }
+        }
+        public string SeamlessStatus => _main.SeamlessStatusText;
+        public string SeamlessStatusKey => _main.SeamlessStatusKey;
+        public string SeamlessLastSwitch => _main.SeamlessLastSwitchText;
+        public ICommand TestSeamlessNowCommand => new AsyncRelayCommand(async () => { Status = "Запускаю внеплановую проверку…"; await _main.SeamlessFailover.CheckNowAsync(); Raise(nameof(SeamlessStatus)); Status = _main.SeamlessStatusText; }, () => !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning);
+
+        /// <summary>Главный выключатель автосмены стратегии (v1.28.3, по умолчанию выкл).</summary>
+        public bool AutoSwitchStrategyEnabled
+        {
+            get => Settings.AutoSwitchStrategyEnabled;
+            set
+            {
+                if (Settings.AutoSwitchStrategyEnabled == value) return;
+                Settings.AutoSwitchStrategyEnabled = value;
+                SettingsStore.Save(Settings);
+                _main.NotifySeamlessChanged();
+                Raise(nameof(AutoSwitchStrategyEnabled));
+                Raise(nameof(AutoSwitchStrategyHint));
+            }
+        }
+
+        /// <summary>Живая подпись под переключателем: что именно он разрешает и что сейчас работает.</summary>
+        public string AutoSwitchStrategyHint => Settings.AutoSwitchStrategyEnabled
+            ? "Разрешено: приложение может сменить стратегию само — только если узел недоступен совсем, сбой подтверждён трижды, а замена проверена на всех узлах."
+            : "Запрещено: стратегию меняете вы (кнопка «Применить», мини-оверлей, «Подобрать замену сейчас»). Сторож по-прежнему перезапускает ту же стратегию, но не подменяет её.";
+
+        /// <summary>Ручной подбор замены — осознанное действие, главному выключателю не подчиняется.</summary>
+        public ICommand FindReplacementNowCommand => new AsyncRelayCommand(async () =>
+        {
+            Status = "Проверяю узлы и подбираю замену…";
+            await _main.SeamlessFailover.CheckNowAsync(forceSwitch: true);
+            Raise(nameof(SeamlessStatus));
+            Status = _main.SeamlessStatusText;
+        }, () => !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning);
+
+        public bool AutoSwitchToBestStrategy
+        {
+            get => Settings.AutoSwitchToBestStrategy;
+            set { if (Settings.AutoSwitchToBestStrategy != value) { Settings.AutoSwitchToBestStrategy = value; SettingsStore.Save(Settings); Raise(nameof(AutoSwitchToBestStrategy)); } }
+        }
+
+        public int BestStrategyCheckMinutes
+        {
+            get => Settings.BestStrategyCheckMinutes;
+            set { var v = Math.Clamp(value, 5, 120); if (Settings.BestStrategyCheckMinutes != v) { Settings.BestStrategyCheckMinutes = v; SettingsStore.Save(Settings); Raise(nameof(BestStrategyCheckMinutes)); } }
+        }
+
+        public string SelectedTabHint => SelectedTabIndex switch
+        {
+            0 => "Движок, папки и системный автозапуск — всё, что нужно для первого старта.",
+            1 => "Как ведёт себя обход: автозапуск, безопасный режим, сторож и автоподбор.",
+            2 => "Провайдер, телеметрия и фоновый мониторинг — диагностика вашей сети.",
+            3 => "Тема, масштаб, трей, горячие клавиши и мини-виджет HUD.",
+            4 => "Детектор игр, игровой режим и твики сети для минимальных задержек.",
+            _ => ""
+        };
 
         public SettingsViewModel(MainViewModel main)
         {
             _main = main;
+            _main.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
+            };
             _enginePath = main.Settings.EnginePath;
             _themeIndex = (int)main.Settings.Theme;
             SyncProviderDraft();
@@ -49,12 +183,37 @@ namespace ZapretGui.ViewModels
             ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
             OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
+            OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
+            // Переходы в «Автоматизацию» из «Настроек» и с «Главной» (v1.19.0)
+            OpenAutomationLaunchCommand = new RelayCommand(() => OpenAutomation(0));
+            OpenAutomationRecoveryCommand = new RelayCommand(() => OpenAutomation(1));
+            OpenAutomationScheduleCommand = new RelayCommand(() => OpenAutomation(2));
+            OpenProfilesCommand = new RelayCommand(() => _main.Navigate("profiles"));
+            OpenUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
+            OpenAboutCommand = new RelayCommand(() => _main.Navigate("about"));
+            // «YouTube (Тяжелый случай)» живёт в «Обходе» (v1.27.0): здесь — только переход,
+            // чтобы одна настройка не существовала в двух местах (правило §7.2).
+            OpenBypassHardSitesCommand = new RelayCommand(() =>
+            {
+                _main.BypassCenter.SelectedSubTab = 4; // «Сложные сайты»
+                _main.Navigate("dpi");
+            });
             RunFullDiagnosticsAndExportCommand = new AsyncRelayCommand(RunFullDiagnosticsAndExportAsync, () => !IsRunningFullCheckCycle);
             CancelFullDiagnosticsCommand = new RelayCommand(CancelFullDiagnostics, () => IsRunningFullCheckCycle);
             CopyTelemetryMarkdownCommand = new RelayCommand(CopyTelemetryMarkdown);
             ExportTelemetryJsonCommand = new RelayCommand(ExportTelemetryJson);
             ExportTelemetryZipCommand = new AsyncRelayCommand(ExportTelemetryZipAsync);
             RefreshGamingOptimization();
+            try { RefreshToolbarMetricsHosts(); } catch {}
+            try
+            {
+                if (_main.Monitoring != null)
+                {
+                    _main.Monitoring.PropertyChanged += (_, e) => { if (e.PropertyName == nameof(MonitoringViewModel.Targets)) try { RefreshToolbarMetricsHosts(); } catch {} };
+                    _main.Monitoring.Targets.CollectionChanged += (_, _) => { try { RefreshToolbarMetricsHosts(); } catch {} };
+                }
+            }
+            catch {}
         }
 
         public ICommand RunFullDiagnosticsAndExportCommand { get; }
@@ -306,6 +465,7 @@ namespace ZapretGui.ViewModels
         }
 
         public AppSettings Settings => _main.Settings;
+        public HomeViewModel Home => _main.Home;
 
         private ProviderContext Provider => Settings.ProviderContext ??= new ProviderContext();
 
@@ -440,6 +600,8 @@ namespace ZapretGui.ViewModels
                 if (value) Settings.AutoStartBypass = false;
                 OnSettingChanged();
                 _main.RefreshReadiness();
+                _main.NotifySeamlessChanged();
+                if (value) _main.Watchdog.Stop(); else if (Settings.WatchdogEnabled) _main.Watchdog.Start();
             }
         }
 
@@ -473,6 +635,19 @@ namespace ZapretGui.ViewModels
             set { Settings.PreserveUserDataOnUpdate = value; OnSettingChanged(); }
         }
 
+        /// <summary>Флаг utils\check_updates.enabled — переехал с «Главной» (v1.18.0).
+        /// Логика одна и та же: EngineService.Get/SetBatAutoUpdateFlag, ключ в файле движка, не в AppSettings.</summary>
+        public bool BatAutoUpdate
+        {
+            get => EngineService.GetBatAutoUpdateFlag(Settings.EnginePath);
+            set
+            {
+                EngineService.SetBatAutoUpdateFlag(Settings.EnginePath, value);
+                OnSettingChanged();
+                Raise(nameof(BatAutoUpdate));
+            }
+        }
+
         public bool ConfirmOnStop
         {
             get => Settings.ConfirmOnStop;
@@ -496,6 +671,46 @@ namespace ZapretGui.ViewModels
             get => Settings.AutoDiagnoseOnFirstLaunch;
             set { Settings.AutoDiagnoseOnFirstLaunch = value; OnSettingChanged(); }
         }
+
+        public bool ScheduleEnabled
+        {
+            get => Settings.ScheduleEnabled;
+            set { Settings.ScheduleEnabled = value; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleEnabled)); Raise(nameof(ScheduleSummary)); Status = value ? "Расписание включено" : "Расписание выключено"; }
+        }
+
+        public string ScheduleStartTime
+        {
+            get => Settings.ScheduleStartTime;
+            set { if (System.TimeSpan.TryParse(value, out _)) { Settings.ScheduleStartTime = value; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleStartTime)); Raise(nameof(ScheduleSummary)); } }
+        }
+
+        public string ScheduleStopTime
+        {
+            get => Settings.ScheduleStopTime;
+            set { if (System.TimeSpan.TryParse(value, out _)) { Settings.ScheduleStopTime = value; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleStopTime)); Raise(nameof(ScheduleSummary)); } }
+        }
+
+        public int ScheduleDaysMask
+        {
+            get => Settings.ScheduleDaysMask;
+            set { Settings.ScheduleDaysMask = value & 127; SettingsStore.Save(Settings); _main.NotifyScheduleChanged(); Raise(nameof(ScheduleDaysMask)); Raise(nameof(ScheduleSummary)); Raise(nameof(ScheduleDayMonday)); Raise(nameof(ScheduleDayTuesday)); Raise(nameof(ScheduleDayWednesday)); Raise(nameof(ScheduleDayThursday)); Raise(nameof(ScheduleDayFriday)); Raise(nameof(ScheduleDaySaturday)); Raise(nameof(ScheduleDaySunday)); }
+        }
+
+        public bool ScheduleDayMonday { get => (ScheduleDaysMask & 1) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 1) : (ScheduleDaysMask & ~1); } }
+        public bool ScheduleDayTuesday { get => (ScheduleDaysMask & 2) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 2) : (ScheduleDaysMask & ~2); } }
+        public bool ScheduleDayWednesday { get => (ScheduleDaysMask & 4) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 4) : (ScheduleDaysMask & ~4); } }
+        public bool ScheduleDayThursday { get => (ScheduleDaysMask & 8) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 8) : (ScheduleDaysMask & ~8); } }
+        public bool ScheduleDayFriday { get => (ScheduleDaysMask & 16) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 16) : (ScheduleDaysMask & ~16); } }
+        public bool ScheduleDaySaturday { get => (ScheduleDaysMask & 32) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 32) : (ScheduleDaysMask & ~32); } }
+        public bool ScheduleDaySunday { get => (ScheduleDaysMask & 64) != 0; set { ScheduleDaysMask = value ? (ScheduleDaysMask | 64) : (ScheduleDaysMask & ~64); } }
+
+        public bool ScheduleUseService
+        {
+            get => Settings.ScheduleUseService;
+            set { Settings.ScheduleUseService = value; SettingsStore.Save(Settings); Raise(nameof(ScheduleUseService)); Status = value ? "Расписание: служба" : "Расписание: процесс"; }
+        }
+
+        public string ScheduleSummary => _main.ScheduleService?.Describe() ?? (ScheduleEnabled ? $"{ScheduleStartTime} → {ScheduleStopTime}" : "выключено");
 
         public bool ResourceMonitoringEnabled
         {
@@ -551,6 +766,29 @@ namespace ZapretGui.ViewModels
             set { Settings.WatchdogNotifyUser = value; OnSettingChanged(); }
         }
 
+        public bool DisableQuicFake
+        {
+            get => Settings.DisableQuicFake;
+            set { Settings.DisableQuicFake = value; SettingsStore.Save(Settings); Raise(nameof(DisableQuicFake)); Status = value ? "QUIC fake отключён для теста YouTube" : "QUIC fake включён"; }
+        }
+        public bool PreferIPv4ForBypass
+        {
+            get => Settings.PreferIPv4ForBypass;
+            set { Settings.PreferIPv4ForBypass = value; SettingsStore.Save(Settings); Raise(nameof(PreferIPv4ForBypass)); Status = value ? "Приоритет IPv4 включён" : "IPv6 разрешён"; }
+        }
+        public bool UseDohForBlockedHosts
+        {
+            get => Settings.UseDohForBlockedHosts;
+            set { Settings.UseDohForBlockedHosts = value; SettingsStore.Save(Settings); Raise(nameof(UseDohForBlockedHosts)); Status = value ? "DoH включён для заблокированных" : "DoH выключен"; }
+        }
+        public string YoutubeSniOverride
+        {
+            get => Settings.YoutubeSniOverride;
+            set { Settings.YoutubeSniOverride = (value ?? "").Trim(); SettingsStore.Save(Settings); Raise(nameof(YoutubeSniOverride)); Raise(nameof(YoutubeSniDisplay)); Status = string.IsNullOrWhiteSpace(value) ? "YouTube SNI: авто" : $"YouTube SNI: {value}"; }
+        }
+        public string YoutubeSniDisplay => string.IsNullOrWhiteSpace(Settings.YoutubeSniOverride) ? "Авто (как в стратегии)" : Settings.YoutubeSniOverride;
+        public System.Collections.Generic.List<string> YoutubeSniOptions { get; } = new() { "", "google.com", "www.google.com", "googlevideo.com", "youtube.com", "yt3.ggpht.com", "cloudflare.com" };
+
         public bool RealTimePingEnabled
         {
             get => Settings.RealTimePingEnabled;
@@ -567,6 +805,110 @@ namespace ZapretGui.ViewModels
             get => Settings.RealTimePingIntervalSeconds;
             set { Settings.RealTimePingIntervalSeconds = Math.Clamp(value, 3, 120); OnSettingChanged(); }
         }
+
+        public bool ToolbarMetricsEnabled
+        {
+            get => Settings.ToolbarMetricsEnabled;
+            set
+            {
+                Settings.ToolbarMetricsEnabled = value;
+                OnSettingChanged();
+                _main.RefreshToolbarMetrics();
+            }
+        }
+
+        public int ToolbarMetricsIntervalSeconds
+        {
+            get => Settings.ToolbarMetricsIntervalSeconds;
+            set
+            {
+                Settings.ToolbarMetricsIntervalSeconds = Math.Clamp(value, 15, 300);
+                OnSettingChanged();
+                _main.RefreshToolbarMetrics();
+                Raise(nameof(ToolbarMetricsIntervalIndex));
+                Raise(nameof(ToolbarMetricsHint));
+            }
+        }
+
+        public System.Collections.Generic.List<int> ToolbarMetricsIntervalOptions { get; } = new() { 15, 30, 60, 120, 180, 300 };
+        public int ToolbarMetricsIntervalIndex
+        {
+            get
+            {
+                var v = Settings.ToolbarMetricsIntervalSeconds;
+                var idx = ToolbarMetricsIntervalOptions.IndexOf(v);
+                if (idx >= 0) return idx;
+                // ближайший
+                var best = 0; var bestDiff = int.MaxValue;
+                for (int i = 0; i < ToolbarMetricsIntervalOptions.Count; i++) { var d = Math.Abs(ToolbarMetricsIntervalOptions[i] - v); if (d < bestDiff) { bestDiff = d; best = i; } }
+                return best;
+            }
+            set
+            {
+                if (value < 0 || value >= ToolbarMetricsIntervalOptions.Count) return;
+                ToolbarMetricsIntervalSeconds = ToolbarMetricsIntervalOptions[value];
+            }
+        }
+        public string ToolbarMetricsIntervalDisplay => $"{ToolbarMetricsIntervalSeconds} сек";
+
+        // Выбор хостов через селект-меню (чекбоксы), а не ручной ввод
+        public System.Collections.ObjectModel.ObservableCollection<MetricHostOption> ToolbarMetricsHostOptions { get; } = new();
+        public void RefreshToolbarMetricsHosts()
+        {
+            try
+            {
+                if (_main.Monitoring == null || _main.Monitoring.Targets == null) return;
+                var targets = _main.Monitoring.Targets.ToList();
+                var selected = Settings.ToolbarMetricsVisibleTargets;
+                var allSelected = selected.Count == 0;
+                ToolbarMetricsHostOptions.Clear();
+                foreach (var tgt in targets)
+                {
+                    var isSel = allSelected || selected.Any(s => s.Equals(tgt.Name, StringComparison.OrdinalIgnoreCase));
+                    ToolbarMetricsHostOptions.Add(new MetricHostOption(this, tgt.Name, tgt.Host, isSel));
+                }
+                // Если нет целей — добавить заглушку
+                if (ToolbarMetricsHostOptions.Count == 0)
+                    ToolbarMetricsHostOptions.Add(new MetricHostOption(this, "Нет ресурсов", "", false) { IsEnabled = false });
+                Raise(nameof(ToolbarMetricsHostOptions));
+                Raise(nameof(ToolbarMetricsHint));
+                Raise(nameof(ToolbarMetricsVisibleTargetsText));
+            }
+            catch {}
+        }
+        public void UpdateToolbarMetricsHostsFromSelection()
+        {
+            try
+            {
+                var all = ToolbarMetricsHostOptions.Where(h => h.IsEnabled).ToList();
+                var sel = all.Where(h => h.IsSelected).Select(h => h.Name).ToList();
+                // Если выбраны все — храним пусто (значение Все)
+                if (sel.Count == all.Count) sel.Clear();
+                Settings.ToolbarMetricsVisibleTargets = sel;
+                SettingsStore.Save(Settings);
+                Raise(nameof(ToolbarMetricsVisibleTargetsText));
+                Raise(nameof(ToolbarMetricsHint));
+                _main.RefreshToolbarMetrics();
+                Status = sel.Count == 0 ? "Метрики: показаны все ресурсы" : $"Метрики: {string.Join(", ", sel)}";
+            }
+            catch {}
+        }
+        public string ToolbarMetricsVisibleTargetsText
+        {
+            get => Settings.ToolbarMetricsVisibleTargets.Count == 0 ? "Все" : string.Join(", ", Settings.ToolbarMetricsVisibleTargets);
+            set
+            {
+                var list = (value ?? "").Split(new[] { ',', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()).Where(s => s.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+                Settings.ToolbarMetricsVisibleTargets = list;
+                OnSettingChanged();
+                _main.RefreshToolbarMetrics();
+                RefreshToolbarMetricsHosts();
+            }
+        }
+
+        public string ToolbarMetricsHint => ToolbarMetricsEnabled
+            ? $"Панель задач: {ToolbarMetricsVisibleTargetsText} • каждые {ToolbarMetricsIntervalSeconds} сек как в MSI Afterburner"
+            : "Метрики на панели задач отключены — окно над треем скрыто";
 
         public int StartupDelaySeconds
         {
@@ -674,6 +1016,80 @@ namespace ZapretGui.ViewModels
         public ICommand ApplyGamingTweaksCommand { get; }
         public ICommand RevertGamingTweaksCommand { get; }
         public ICommand OpenOverlayCommand { get; }
+        // ===== Раздел «Автоматизация» (v1.19.0) =====
+        // Настройки переехали из вкладок «Настроек» на отдельную страницу. DataContext тот же
+        // (SettingsViewModel), поэтому сохранение и логика остались ровно те же — менялось место в UI.
+
+        private static readonly string[] AllAutomationTabs = { "🚀 Запуск", "🔄 Восстановление", "🗓 Расписание", "🌐 Профили по сетям" };
+        private static readonly string[] SimpleAutomationTabs = { "🚀 Запуск", "🔄 Восстановление", "🗓 Расписание" };
+        private static readonly int[] AutomationExpertMap = { 0, 1, 2, 3 };
+        private static readonly int[] AutomationSimpleMap = { 0, 1, 2 };
+
+        /// <summary>Подвкладки «Автоматизации»: таблица сетей — экспертная (§7).</summary>
+        public string[] AutomationTabs => ExpertMode ? AllAutomationTabs : SimpleAutomationTabs;
+
+        /// <summary>Индекс выбранной подвкладки «Автоматизации» в видимом списке.</summary>
+        public int VisibleAutomationTab
+        {
+            get
+            {
+                var index = Array.IndexOf(VisibleAutomationMap, _automationTabIndex);
+                return index < 0 ? 0 : index;
+            }
+            set
+            {
+                if (value >= 0 && value < VisibleAutomationMap.Length) AutomationTabIndex = VisibleAutomationMap[value];
+            }
+        }
+
+        private int[] VisibleAutomationMap => ExpertMode ? AutomationExpertMap : AutomationSimpleMap;
+
+        public string AutomationTabHintText => AutomationTabIndex switch
+        {
+            0 => "Автозапуск приложения и обхода, задержка старта, безопасный режим, автодетект игр и мастер первого запуска",
+            1 => "Присмотр за обходом (Watchdog), переключение при ухудшении, фоновый мониторинг и живой RTT",
+            2 => "Обход включён по дням недели и часам — расписание применяется в фоне",
+            3 => "Какая сеть определена сейчас и где привязываются профили",
+            _ => ""
+        };
+
+        private int _automationTabIndex;
+
+        public int AutomationTabIndex
+        {
+            get => _automationTabIndex;
+            set
+            {
+                if (Set(ref _automationTabIndex, Math.Clamp(value, 0, 3)))
+                {
+                    Raise(nameof(AutomationTabHintText));
+                    Raise(nameof(VisibleAutomationTab));
+                    Raise(nameof(IsAutomationLaunchTabSelected));
+                    Raise(nameof(IsAutomationRecoveryTabSelected));
+                    Raise(nameof(IsAutomationScheduleTabSelected));
+                    Raise(nameof(IsAutomationNetsTabSelected));
+                }
+            }
+        }
+
+        public bool IsAutomationLaunchTabSelected { get => AutomationTabIndex == 0; set { if (value) AutomationTabIndex = 0; } }
+        public bool IsAutomationRecoveryTabSelected { get => AutomationTabIndex == 1; set { if (value) AutomationTabIndex = 1; } }
+        public bool IsAutomationScheduleTabSelected { get => AutomationTabIndex == 2; set { if (value) AutomationTabIndex = 2; } }
+        public bool IsAutomationNetsTabSelected { get => AutomationTabIndex == 3; set { if (value) AutomationTabIndex = 3; } }
+
+        /// <summary>Текущая сеть по данным ProfileAutoSwitchService — только чтение (привязка профилей живёт на странице «Профили»).</summary>
+        public string AutoSwitchNetworkStatus => _main.AutoSwitchNetworkStatus;
+        public string AutoSwitchLastReason => _main.AutoSwitchLastReason;
+
+        public ICommand OpenAutomationLaunchCommand { get; }
+        public ICommand OpenAutomationRecoveryCommand { get; }
+        public ICommand OpenAutomationScheduleCommand { get; }
+        public ICommand OpenProfilesCommand { get; }
+
+        public ICommand OpenLogsCommand { get; }
+        public ICommand OpenUpdatesCommand { get; }
+        public ICommand OpenAboutCommand { get; }
+        public ICommand OpenBypassHardSitesCommand { get; }
 
         public void RefreshGamingOptimization()
         {
@@ -697,10 +1113,13 @@ namespace ZapretGui.ViewModels
                 Status = "Для изменения сетевых параметров Windows требуются права администратора";
                 return;
             }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Оптимизация сети", "Применение игровых твиков Windows…", "TCP/UDP параметры…", 0, true, false)); } catch {}
 
             var (ok, msg) = await GamingNetworkOptimizer.ApplyTweaksAsync();
             Status = msg;
             RefreshGamingOptimization();
+            if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Оптимизация — ошибка", msg)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private async Task RevertGamingTweaksAsync()
@@ -710,10 +1129,13 @@ namespace ZapretGui.ViewModels
                 Status = "Для изменения сетевых параметров Windows требуются права администратора";
                 return;
             }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Сброс оптимизации", "Откат игровых твиков Windows…", "Восстановление настроек…", 0, true, false)); } catch {}
 
             var (ok, msg) = await GamingNetworkOptimizer.RevertTweaksAsync();
             Status = msg;
             RefreshGamingOptimization();
+            if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Откат — ошибка", msg)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         public string LastBackupText { get; }
@@ -760,10 +1182,13 @@ namespace ZapretGui.ViewModels
             Raise(nameof(AutoCheckEngineUpdates));
             Raise(nameof(IncludePrerelease));
             Raise(nameof(PreserveUserDataOnUpdate));
+            Raise(nameof(BatAutoUpdate));
             Raise(nameof(ConfirmOnStop));
             Raise(nameof(UseGameFilterOnStart));
             Raise(nameof(AutoTestStrategiesOnFirstLaunch));
             Raise(nameof(AutoDiagnoseOnFirstLaunch));
+            Raise(nameof(AutoSwitchStrategyEnabled));
+            Raise(nameof(AutoSwitchStrategyHint));
             Raise(nameof(ResourceMonitoringEnabled));
             Raise(nameof(AutoRecoverStrategy));
             Raise(nameof(MonitorNotificationsEnabled));
@@ -773,7 +1198,18 @@ namespace ZapretGui.ViewModels
             Raise(nameof(WatchdogAutoRestart));
             Raise(nameof(WatchdogNotifyUser));
             Raise(nameof(RealTimePingEnabled));
+            Raise(nameof(DisableQuicFake));
+            Raise(nameof(PreferIPv4ForBypass));
+            Raise(nameof(UseDohForBlockedHosts));
+            Raise(nameof(YoutubeSniOverride));
+            Raise(nameof(YoutubeSniDisplay));
             Raise(nameof(RealTimePingIntervalSeconds));
+            Raise(nameof(ToolbarMetricsIntervalSeconds));
+            Raise(nameof(ToolbarMetricsIntervalIndex));
+            Raise(nameof(ToolbarMetricsIntervalDisplay));
+            Raise(nameof(ToolbarMetricsVisibleTargetsText));
+            Raise(nameof(ToolbarMetricsHint));
+            Raise(nameof(ToolbarMetricsHostOptions));
             Raise(nameof(StartupDelaySeconds));
             Raise(nameof(RunAtStartup));
             Raise(nameof(ProviderName));
@@ -783,6 +1219,11 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ProviderCheckedAtText));
             Raise(nameof(ProviderContextText));
             Raise(nameof(HasProviderContext));
+            Raise(nameof(ScheduleEnabled));
+            Raise(nameof(ScheduleStartTime));
+            Raise(nameof(ScheduleStopTime));
+            Raise(nameof(ScheduleDaysMask));
+            Raise(nameof(ScheduleSummary));
         }
 
         private void SaveProviderContext()
@@ -905,6 +1346,11 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ProviderCheckedAtText));
             Raise(nameof(ProviderContextText));
             Raise(nameof(HasProviderContext));
+            Raise(nameof(ScheduleEnabled));
+            Raise(nameof(ScheduleStartTime));
+            Raise(nameof(ScheduleStopTime));
+            Raise(nameof(ScheduleDaysMask));
+            Raise(nameof(ScheduleSummary));
         }
 
         private void BrowseEnginePath()
@@ -1026,6 +1472,13 @@ namespace ZapretGui.ViewModels
             Status = "Настройки сброшены";
         }
 
+        /// <summary>Открыть раздел «Автоматизация» на нужной подвкладке.</summary>
+        private void OpenAutomation(int tabIndex)
+        {
+            AutomationTabIndex = tabIndex;
+            _main.Navigate("automation");
+        }
+
         private void RerunFirstLaunchWizard()
         {
             var answer = System.Windows.MessageBox.Show(
@@ -1084,5 +1537,37 @@ namespace ZapretGui.ViewModels
             }
             catch { return "Резервных копий пока нет"; }
         }
+        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
+        public bool ExpertMode => _main.ExpertMode;
+        /// <summary>Переключатель режима для карточки «Настройки → Общие» (команда живёт во MainViewModel).</summary>
+        public RelayCommand ToggleExpertModeCommand => _main.ToggleExpertModeCommand;
+        public string ExpertModeToggleText => _main.ExpertModeToggleText;
+        public string ExpertModeToggleHint => _main.ExpertModeToggleHint;
+        private void OnExpertModeChanged()
+        {
+            Raise(nameof(ExpertMode));
+            Raise(nameof(ExpertModeToggleText));
+            Raise(nameof(ExpertModeToggleHint));
+            Raise(nameof(AutomationTabs));
+            Raise(nameof(VisibleAutomationTab));
+            if (!VisibleAutomationMap.Contains(_automationTabIndex)) AutomationTabIndex = 0;
+        }
+    }
+    public sealed class MetricHostOption : ObservableObject
+    {
+        private readonly SettingsViewModel _parent;
+        private bool _isSelected;
+        public MetricHostOption(SettingsViewModel parent, string name, string host, bool isSelected)
+        {
+            _parent = parent;
+            Name = name;
+            Host = host;
+            _isSelected = isSelected;
+        }
+        public string Name { get; }
+        public string Host { get; }
+        public bool IsEnabled { get; set; } = true;
+        public bool IsSelected { get => _isSelected; set { if (Set(ref _isSelected, value) && IsEnabled) _parent.UpdateToolbarMetricsHostsFromSelection(); } }
+        public string DisplayText => string.IsNullOrWhiteSpace(Host) ? Name : $"{Name} ({Host})";
     }
 }

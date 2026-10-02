@@ -43,6 +43,8 @@ namespace ZapretGui.Core
         public static string DpiSuiteCacheFile => Path.Combine(AppData, "dpi-suite-cache.json");
         public static string ServiceHealthCacheFile => Path.Combine(AppData, "service-health-cache.json");
         public static string RecoveryJournalFile => Path.Combine(AppData, "recovery-history.json");
+        public static string ConfigHistoryFile => Path.Combine(AppData, "config-history.json");
+        public static string PresetsFile => Path.Combine(AppData, "config-presets.json");
         public static string DeepCheckReportsDir => EnsureDir(Path.Combine(AppData, "deep-check-reports"));
         public static string TempDir => EnsureDir(Path.Combine(Path.GetTempPath(), AppName));
 

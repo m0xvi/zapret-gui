@@ -20,7 +20,9 @@ namespace ZapretGui.Core
             bool useGameUdp,
             bool useHostlist,
             bool useIpSet,
-            int repeats = 0)
+            int repeats = 0,
+            string? youtubeSni = null,
+            bool disableQuicFake = false)
         {
             var args = new List<string>();
             var listsDir = Path.Combine(enginePath ?? "", "lists");
@@ -112,36 +114,36 @@ namespace ZapretGui.Core
                 args.Add("--ip-id=zero");
             }
 
-            // Блок 2: UDP 443 (QUIC / YouTube)
+            // Блок 2: UDP 443 (QUIC / YouTube) — улучшено для YouTube-регионов: отдельный SNI и возможность отключить QUIC fake
             args.Add("--new");
             args.Add("--filter-udp=443");
             if (useHostlist)
             {
-                var builtInLists = new[] { "list-general.txt", "list-youtube.txt", "list-discord.txt" };
-                foreach (var listName in builtInLists)
+                // Для YouTube-трафика приоритет youtube-спискам
+                var youtubePriority = new[] { "list-youtube.txt", "list-youtube-user.txt", "list-general.txt", "list-general-user.txt" };
+                foreach (var listName in youtubePriority)
                 {
                     var fullPath = Path.Combine(listsDir, listName);
                     if (File.Exists(fullPath))
                     {
-                        args.Add($"--hostlist={fullPath}");
+                        args.Add(listName.Contains("youtube") ? $"--hostlist={fullPath}" : $"--hostlist-domains={fullPath}");
                     }
                 }
-
-                var userLists = new[] { "list-general-user.txt", "list-youtube-user.txt", "list-discord-user.txt" };
-                foreach (var listName in userLists)
-                {
-                    var fullPath = Path.Combine(listsDir, listName);
-                    if (File.Exists(fullPath))
-                    {
-                        args.Add($"--hostlist-domains={fullPath}");
-                    }
-                }
+                // Discord отдельно не нужен в QUIC блоке
             }
             args.Add("--dpi-desync=fake");
             args.Add("--dpi-desync-repeats=6");
-            if (File.Exists(quicFakeGoogle))
+            var effectiveYoutubeSni = string.IsNullOrWhiteSpace(youtubeSni) ? fakeSni : youtubeSni;
+            if (!disableQuicFake && File.Exists(quicFakeGoogle))
             {
                 args.Add($"--dpi-desync-fake-quic={quicFakeGoogle}");
+                if (!string.IsNullOrWhiteSpace(effectiveYoutubeSni) && effectiveYoutubeSni != "none")
+                    args.Add($"--dpi-desync-fake-quic-mod=sni={effectiveYoutubeSni}");
+            }
+            else if (disableQuicFake)
+            {
+                // QUIC отключён для теста в строгих регионах
+                args.Add("--dpi-desync-fooling=badseq");
             }
             if (!string.IsNullOrWhiteSpace(ttl) && ttl != "auto" && int.TryParse(ttl, out var ttlUdp))
             {

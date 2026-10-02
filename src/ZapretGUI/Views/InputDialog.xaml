@@ -9,11 +9,11 @@
     <StackPanel Margin="24,20,24,20">
         <TextBlock x:Name="PromptText" Style="{StaticResource TitleText}" TextWrapping="Wrap" />
         <TextBox x:Name="ValueBox" Style="{StaticResource InputBox}" Margin="0,12,0,0"
-                 MinWidth="410" />
+                 MinWidth="410" AutomationProperties.Name="Значение" />
         <TextBlock x:Name="SecondaryPromptText" Style="{StaticResource DimText}" Margin="0,10,0,0"
                    TextWrapping="Wrap" Visibility="Collapsed" />
         <TextBox x:Name="SecondaryValueBox" Style="{StaticResource InputBox}" Margin="0,6,0,0"
-                 Visibility="Collapsed" />
+                 Visibility="Collapsed" AutomationProperties.Name="Дополнительное значение" />
         <CheckBox x:Name="CheckBoxInput" Style="{StaticResource SwitchCheckBox}" Margin="0,10,0,0"
                   Visibility="Collapsed" />
         <WrapPanel HorizontalAlignment="Right" Margin="0,18,0,0">

@@ -5,6 +5,8 @@
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
         <StackPanel Margin="24,20,20,26" MaxWidth="980" HorizontalAlignment="Left">
 
+            <Button Style="{StaticResource GhostButton}" Content="← Назад в Настройки" Padding="10,4" FontSize="11" HorizontalAlignment="Left" Margin="0,0,0,12"
+                    Click="BackToSettings_Click" ToolTip="Вернуться в Настройки" />
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
@@ -22,7 +24,7 @@
             </Grid>
 
             <!-- Карточки информации -->
-            <Border Style="{StaticResource Card}" Margin="0,18,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ЧТО ДЕЛАЕТ ПРИЛОЖЕНИЕ" />
                     <TextBlock Style="{StaticResource MutedText}"
@@ -38,7 +40,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="АВТОРЫ И ИСТОЧНИКИ" />
                     <TextBlock Style="{StaticResource BodyText}" Text="Стратегии и движок: Flowseal/zapret-discord-youtube" FontWeight="SemiBold" />
@@ -56,7 +58,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ВЕРСИИ" />
                     <Grid>
@@ -74,7 +76,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ЛИЦЕНЗИЯ" />
                     <TextBlock Style="{StaticResource MutedText}"
@@ -84,7 +86,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ВАЖНО" />
                     <TextBlock Style="{StaticResource MutedText}"

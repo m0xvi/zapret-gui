@@ -9,6 +9,16 @@
          поэтому тема меняется на лету (Dark.xaml / Light.xaml).
          ================================================================== -->
 
+    <!-- ============================ ТОКЕНЫ РАЗМЕРОВ (v1.25.0) ============================
+         Карточки используют только эти значения: своя плотность у отдельной карточки —
+         исключение, которое нужно объяснить комментарием. Проверяется tools/check_bindings.py. -->
+    <Thickness x:Key="CardPadding">18</Thickness>
+    <Thickness x:Key="CardPaddingCompact">14,12</Thickness>
+    <Thickness x:Key="CardPaddingList">8</Thickness>
+    <Thickness x:Key="InnerCardPadding">14</Thickness>
+    <Thickness x:Key="CardGap">0,14,0,0</Thickness>
+    <Thickness x:Key="BlockGap">0,12,0,0</Thickness>
+
     <!-- Видимый фокус клавиатуры: не полагаемся на системную тему Windows,
          чтобы Tab-навигация была заметна и в тёмной, и в светлой теме. -->
     <Style x:Key="KeyboardFocusVisual" TargetType="Control">
@@ -48,6 +58,14 @@
         <Setter Property="Margin" Value="0,0,0,8" />
     </Style>
 
+    <Style x:Key="SubtitleText" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{DynamicResource UiFontDisplay}" />
+        <Setter Property="FontSize" Value="20" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+
     <Style x:Key="BodyText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
         <Setter Property="FontSize" Value="13" />
@@ -57,28 +75,28 @@
 
     <Style x:Key="MutedText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
-        <Setter Property="FontSize" Value="12" />
+        <Setter Property="FontSize" Value="13" />
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
     <Style x:Key="DimText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
-        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="FontSize" Value="11" />
         <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
     <Style x:Key="MonoText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="Cascadia Mono, Consolas, Courier New" />
-        <Setter Property="FontSize" Value="11.5" />
+        <Setter Property="FontSize" Value="11" />
         <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
     </Style>
 
     <Style x:Key="StatValueText" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{DynamicResource UiFontDisplay}" />
-        <Setter Property="FontSize" Value="19" />
+        <Setter Property="FontSize" Value="20" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="TextWrapping" Value="Wrap" />
@@ -97,8 +115,67 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{DynamicResource CardRadius}" />
-        <Setter Property="Padding" Value="18" />
+        <Setter Property="Padding" Value="{DynamicResource CardPadding}" />
         <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Effect">
+            <Setter.Value>
+                <DropShadowEffect BlurRadius="12" ShadowDepth="2" Opacity="0.14" Color="Black" />
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- ================= ПЛАШКИ-УВЕДОМЛЕНИЯ (v1.27.0) =================
+         Фон + рамка одного смысла: сообщение об успехе, предупреждение, подсказка,
+         ошибка. Не карточка: без тени, тонкая рамка, плотность 12,10.
+         Проверяется tools/check_bindings.py. -->
+    <Style x:Key="Notice" TargetType="Border">
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource ControlRadius}" />
+        <Setter Property="Padding" Value="12,10" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+    </Style>
+
+    <Style x:Key="NoticeSuccess" TargetType="Border" BasedOn="{StaticResource Notice}">
+        <Setter Property="Background" Value="{DynamicResource SuccessSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
+    </Style>
+
+    <Style x:Key="NoticeWarning" TargetType="Border" BasedOn="{StaticResource Notice}">
+        <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}" />
+    </Style>
+
+    <Style x:Key="NoticeInfo" TargetType="Border" BasedOn="{StaticResource Notice}">
+        <Setter Property="Background" Value="{DynamicResource InfoSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource InfoBrush}" />
+    </Style>
+
+    <Style x:Key="NoticeDanger" TargetType="Border" BasedOn="{StaticResource Notice}">
+        <Setter Property="Background" Value="{DynamicResource DangerSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}" />
+    </Style>
+
+    <!-- ==================== СЕМАНТИЧЕСКИЕ КАРТОЧКИ (v1.26.0) ====================
+         Смысл важнее цвета: акцент, предупреждение, успех, подсказка. Разметка не задаёт
+         кисти вручную — иначе тема и семантика разъедутся. Проверяется tools/check_bindings.py. -->
+    <Style x:Key="CardAccent" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+    </Style>
+
+    <Style x:Key="CardWarning" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Background" Value="{DynamicResource WarningSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource WarningBrush}" />
+    </Style>
+
+    <Style x:Key="CardSuccess" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Background" Value="{DynamicResource SuccessSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource SuccessBrush}" />
+    </Style>
+
+    <Style x:Key="CardInfo" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Background" Value="{DynamicResource InfoSoftBrush}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource InfoBrush}" />
     </Style>
 
     <Style x:Key="InnerCard" TargetType="Border">
@@ -106,7 +183,7 @@
         <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="CornerRadius" Value="{DynamicResource ControlRadius}" />
-        <Setter Property="Padding" Value="14" />
+        <Setter Property="Padding" Value="{DynamicResource InnerCardPadding}" />
     </Style>
 
     <Style x:Key="Badge" TargetType="Border">
@@ -233,6 +310,21 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- Компактные варианты (v1.28.0): та же семья, плотнее отступы — для кнопок внутри карточек,
+         рядов операций и нижних панелей. Значения совпадают с прежними литеральными Padding,
+         поэтому вид не меняется: 22 места переведены на стили. -->
+    <Style x:Key="CompactPrimaryButton" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Setter Property="Padding" Value="14,7" />
+    </Style>
+
+    <Style x:Key="CompactButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="Padding" Value="14,7" />
+    </Style>
+
+    <Style x:Key="CompactGhostButton" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Padding" Value="12,7" />
     </Style>
 
     <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
@@ -595,6 +687,45 @@
         </Setter>
     </Style>
 
+    <!-- Маленький «?» рядом с названием инструмента: описание живёт в подсказке, а не в теле раздела.
+         Использование: <Button Style="{StaticResource HelpHint}" ToolTip="что это и зачем"
+                                 AutomationProperties.Name="Подсказка: НАЗВАНИЕ" /> -->
+    <Style x:Key="HelpHint" TargetType="Button">
+        <Setter Property="Content" Value="&#xE897;" />
+        <Setter Property="FontFamily" Value="{DynamicResource IconFont}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Width" Value="18" />
+        <Setter Property="Height" Value="18" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="Margin" Value="6,0,0,0" />
+        <Setter Property="Cursor" Value="Hand" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="Foreground" Value="{DynamicResource TextMutedBrush}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="ToolTipService.ShowDuration" Value="60000" />
+        <Setter Property="ToolTipService.InitialShowDelay" Value="150" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root" Width="18" Height="18" CornerRadius="9"
+                            Background="{DynamicResource ElevatedBrush}"
+                            BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource AccentSoftBrush}" />
+                            <Setter TargetName="Root" Property="BorderBrush" Value="{DynamicResource AccentBrush}" />
+                            <Setter Property="Foreground" Value="{DynamicResource AccentBrush}" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <Style x:Key="ComboBoxItemApp" TargetType="ComboBoxItem">
         <Setter Property="Padding" Value="12,8" />
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
@@ -633,27 +764,35 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
-                    <Grid>
+                    <Grid SnapsToDevicePixels="True">
                         <ToggleButton x:Name="ToggleButton" Focusable="False" ClickMode="Press"
                                       Background="{TemplateBinding Background}"
                                       BorderBrush="{TemplateBinding BorderBrush}"
                                       Style="{StaticResource ComboBoxToggleTemplate}"
                                       IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" />
+                        <!-- Шаблон и строка формата выбранного элемента обязательны: без ContentTemplateSelector
+                             ComboBox показывает имя класса (ZapretGui.Core.StrategyInfo), а не название. -->
                         <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False"
                                           Content="{TemplateBinding SelectionBoxItem}"
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                          ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                                           Margin="{TemplateBinding Padding}" VerticalAlignment="Center"
                                           HorizontalAlignment="Left" />
+                        <!-- Popup: поле списка натянуто на всю область (Background=Transparent + Margin у рамки
+                             внутри), чтобы мышь, идущая от контрола к пункту, не попадала в «мёртвую» прозрачную
+                             зону и список не закрывался сам. Анимация выключена — с ней Popup мигает при открытии. -->
                         <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False"
-                               PopupAnimation="Fade" IsOpen="{TemplateBinding IsDropDownOpen}">
-                            <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderStrongBrush}"
-                                    BorderThickness="1" CornerRadius="10" Margin="0,6,0,10"
-                                    MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                                    MaxHeight="{TemplateBinding MaxDropDownHeight}">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ItemsPresenter />
+                               PopupAnimation="None" IsOpen="{TemplateBinding IsDropDownOpen}">
+                            <Grid x:Name="DropDown" Background="Transparent" SnapsToDevicePixels="True"
+                                  MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                  MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderStrongBrush}"
+                                        BorderThickness="1" CornerRadius="10" Margin="0,4,0,8" />
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="4,8,4,12" SnapsToDevicePixels="True">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
                                 </ScrollViewer>
-                            </Border>
+                            </Grid>
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>
@@ -703,28 +842,6 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
-        <Style.Triggers>
-            <DataTrigger Binding="{Binding IsSectionHeader}" Value="True">
-                <Setter Property="IsHitTestVisible" Value="False" />
-                <Setter Property="Focusable" Value="False" />
-                <Setter Property="Cursor" Value="Arrow" />
-                <Setter Property="Foreground" Value="{DynamicResource TextDimBrush}" />
-                <Setter Property="FontSize" Value="10.5" />
-                <Setter Property="FontWeight" Value="SemiBold" />
-                <Setter Property="Padding" Value="12,12,12,4" />
-                <Setter Property="Margin" Value="10,8,10,0" />
-                <Setter Property="Template">
-                    <Setter.Value>
-                        <ControlTemplate TargetType="ListBoxItem">
-                            <TextBlock Text="{Binding Title}" Foreground="{TemplateBinding Foreground}"
-                                       FontSize="{TemplateBinding FontSize}"
-                                       FontWeight="{TemplateBinding FontWeight}"
-                                       Padding="{TemplateBinding Padding}" />
-                        </ControlTemplate>
-                    </Setter.Value>
-                </Setter>
-            </DataTrigger>
-        </Style.Triggers>
     </Style>
 
     <Style x:Key="RowItemStyle" TargetType="ListBoxItem">
@@ -772,6 +889,9 @@
                         <ContentPresenter />
                     </Border>
                     <ControlTemplate.Triggers>
+                        <Trigger Property="ItemsControl.AlternationIndex" Value="1">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                        </Trigger>
                         <Trigger Property="IsMouseOver" Value="True">
                             <Setter TargetName="Root" Property="Background" Value="{DynamicResource CardHoverBrush}" />
                         </Trigger>
@@ -973,6 +1093,128 @@
         <Setter Property="Foreground" Value="{DynamicResource TextBrush}" />
         <Setter Property="FontFamily" Value="{DynamicResource UiFont}" />
         <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Expander">
+                    <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}">
+                        <StackPanel>
+                            <ToggleButton x:Name="HeaderSite" IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Background="Transparent" BorderThickness="0" Cursor="Hand" FocusVisualStyle="{x:Null}" HorizontalContentAlignment="Stretch" Padding="0">
+                                <ToggleButton.Template>
+                                    <ControlTemplate TargetType="ToggleButton">
+                                        <Grid Background="Transparent">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border x:Name="ChevronBox" Width="20" Height="20" CornerRadius="6" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                                                <TextBlock x:Name="Arrow" Text="&#xE76C;" FontFamily="{DynamicResource IconFont}" FontSize="8" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5">
+                                                    <TextBlock.RenderTransform>
+                                                        <RotateTransform Angle="0" />
+                                                    </TextBlock.RenderTransform>
+                                                </TextBlock>
+                                            </Border>
+                                            <ContentPresenter Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                                        </Grid>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsMouseOver" Value="True">
+                                                <Setter TargetName="ChevronBox" Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                                                <Setter TargetName="Arrow" Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                            </Trigger>
+                                            <Trigger Property="IsChecked" Value="True">
+                                                <Setter TargetName="ChevronBox" Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                                                <Setter TargetName="Arrow" Property="Foreground" Value="{DynamicResource TextBrush}" />
+                                                <Setter TargetName="Arrow" Property="RenderTransform">
+                                                    <Setter.Value>
+                                                        <RotateTransform Angle="90" />
+                                                    </Setter.Value>
+                                                </Setter>
+                                                <Trigger.EnterActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="Arrow" Storyboard.TargetProperty="RenderTransform.(RotateTransform.Angle)" From="0" To="90" Duration="0:0:0.18">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <CubicEase EasingMode="EaseOut" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.EnterActions>
+                                                <Trigger.ExitActions>
+                                                    <BeginStoryboard>
+                                                        <Storyboard>
+                                                            <DoubleAnimation Storyboard.TargetName="Arrow" Storyboard.TargetProperty="RenderTransform.(RotateTransform.Angle)" From="90" To="0" Duration="0:0:0.14">
+                                                                <DoubleAnimation.EasingFunction>
+                                                                    <CubicEase EasingMode="EaseIn" />
+                                                                </DoubleAnimation.EasingFunction>
+                                                            </DoubleAnimation>
+                                                        </Storyboard>
+                                                    </BeginStoryboard>
+                                                </Trigger.ExitActions>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </ToggleButton.Template>
+                                <ContentPresenter ContentSource="Header" />
+                            </ToggleButton>
+                            <Border x:Name="ExpandSite" Visibility="Collapsed" Margin="0,8,0,0" Opacity="0">
+                                <Border.RenderTransform>
+                                    <TranslateTransform Y="-6" />
+                                </Border.RenderTransform>
+                                <ContentPresenter />
+                            </Border>
+                        </StackPanel>
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsExpanded" Value="True">
+                            <Setter TargetName="ExpandSite" Property="Visibility" Value="Visible" />
+                            <Trigger.EnterActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.18" />
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" From="-6" To="0" Duration="0:0:0.18">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseOut" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.EnterActions>
+                            <Trigger.ExitActions>
+                                <BeginStoryboard>
+                                    <Storyboard>
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="Opacity" From="1" To="0" Duration="0:0:0.14" />
+                                        <DoubleAnimation Storyboard.TargetName="ExpandSite" Storyboard.TargetProperty="RenderTransform.(TranslateTransform.Y)" From="0" To="-6" Duration="0:0:0.14">
+                                            <DoubleAnimation.EasingFunction>
+                                                <CubicEase EasingMode="EaseIn" />
+                                            </DoubleAnimation.EasingFunction>
+                                        </DoubleAnimation>
+                                    </Storyboard>
+                                </BeginStoryboard>
+                            </Trigger.ExitActions>
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+
+    <!-- Запрет выделения всего кроме текста — v1.15.0: все кроме TextBox не фокусируются, без рамки фокуса -->
+    <Style TargetType="TextBlock">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    </Style>
+    <Style TargetType="Border">
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="FocusVisualStyle" Value="{x:Null}" />
+    </Style>
+    <Style TargetType="StackPanel">
+        <Setter Property="Focusable" Value="False" />
+    </Style>
+    <Style TargetType="Grid">
+        <Setter Property="Focusable" Value="False" />
     </Style>
 
 </ResourceDictionary>

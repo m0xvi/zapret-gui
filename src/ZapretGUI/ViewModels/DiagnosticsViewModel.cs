@@ -49,6 +49,10 @@ namespace ZapretGui.ViewModels
         public DiagnosticsViewModel(MainViewModel main)
         {
             _main = main;
+            _main.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
+            };
 
             RunCommand = new AsyncRelayCommand(RunAsync, () => !IsRunning && !IsDpiRunning);
             FixItemCommand = new AsyncRelayCommand(FixItemAsync, _ => !IsRunning && !IsDpiRunning);
@@ -63,12 +67,15 @@ namespace ZapretGui.ViewModels
             RunDpiCommand = new AsyncRelayCommand(RunDpiAsync, () => !IsRunning && !IsDpiRunning);
             CancelDpiCommand = new RelayCommand(CancelDpi, () => IsDpiRunning);
             OpenDpiCommand = new RelayCommand(() => _main.Navigate("dpi"));
+            // Индексы вкладок v1.20.0 (docs/IA_REDESIGN.md §3.3): 0 Быстрая проверка · 1 Сложные сайты и звонки
+            // (DPI + голос Discord) · 2 Система · 3 Глубокая проверка · 4 История и отчёты · 5 Журнал.
             SelectExpressTabCommand = new RelayCommand(() => SelectedSubTab = 0);
             SelectDpiTabCommand = new RelayCommand(() => SelectedSubTab = 1);
-            SelectDeepCheckTabCommand = new RelayCommand(() => SelectedSubTab = 2);
-            SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 3);
+            SelectVoiceRtcTabCommand = new RelayCommand(() => SelectedSubTab = 1);
+            SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 2);
+            SelectDeepCheckTabCommand = new RelayCommand(() => SelectedSubTab = 3);
             SelectResultsTabCommand = new RelayCommand(() => SelectedSubTab = 4);
-            SelectVoiceRtcTabCommand = new RelayCommand(() => SelectedSubTab = 5);
+            SelectLogsTabCommand = new RelayCommand(() => SelectedSubTab = 5);
             RunVoiceRtcAuditCommand = new AsyncRelayCommand(RunVoiceRtcAuditAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
             OptimizeDiscordVoiceCommand = new AsyncRelayCommand(OptimizeDiscordVoiceAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
             CleanDiscordAndNetworkCommand = new AsyncRelayCommand(() => CleanDiscordAndNetworkAsync(false), () => !IsCleaningDiscord && !IsRunning);
@@ -120,6 +127,44 @@ namespace ZapretGui.ViewModels
 
         private int _selectedSubTab;
 
+        private static readonly string[] AllDiagnosticsTabs = { "⚡ Быстрая проверка", "📡 Сайты и звонки", "🛠 Система", "Глубокая проверка", "📊 История и отчёты", "📄 Журнал" };
+        private static readonly string[] SimpleDiagnosticsTabs = { "⚡ Быстрая проверка", "📡 Сайты и звонки", "📄 Журнал" };
+        private static readonly int[] ExpertTabMap = { 0, 1, 2, 3, 4, 5 };
+        private static readonly int[] SimpleTabMap = { 0, 1, 5 };
+
+        /// <summary>Видимые подразделы «Проверок»: «Система», «Глубокая проверка» и «История» — только в «Эксперте» (§7).</summary>
+        public string[] DiagnosticsTabs => ExpertMode ? AllDiagnosticsTabs : SimpleDiagnosticsTabs;
+
+        /// <summary>Индекс выбранного подраздела в видимом списке (часть подразделов скрыта в «Простом»).</summary>
+        public int VisibleSubTab
+        {
+            get
+            {
+                var index = Array.IndexOf(VisibleIndexMap, _selectedSubTab);
+                return index < 0 ? 0 : index;
+            }
+            set
+            {
+                if (value >= 0 && value < VisibleIndexMap.Length) SelectedSubTab = VisibleIndexMap[value];
+            }
+        }
+
+        private int[] VisibleIndexMap => ExpertMode ? ExpertTabMap : SimpleTabMap;
+
+        /// <summary>Открыть «Проверки → Система»: в «Простом» режиме раздела нет, ведём на быструю проверку.</summary>
+        public void OpenSystemSubTab() => SelectedSubTab = ExpertMode ? 2 : 0;
+
+        public string DiagnosticsTabHintText => SelectedSubTab switch
+        {
+            0 => "Сайты и сервисы • ~10 сек • без остановки обхода",
+            1 => "34 узла DPI и голос Discord • ~2 мин • обход может кратко перезапуститься",
+            2 => "Проверка системы • ~5 сек • службы, драйвер, hosts",
+            3 => "Глубокая проверка • матрица тестов, до 30 мин",
+            4 => "История проверок, сводный отчёт и экспорт",
+            5 => "Журнал приложения и службы • фильтры по уровню и источнику",
+            _ => ""
+        };
+
         public int SelectedSubTab
         {
             get => _selectedSubTab;
@@ -127,14 +172,17 @@ namespace ZapretGui.ViewModels
             {
                 if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 5)))
                 {
+                    Raise(nameof(DiagnosticsTabHintText));
+                    Raise(nameof(VisibleSubTab));
                     Raise(nameof(IsExpressTabSelected));
-                    Raise(nameof(IsDpiTabSelected));
-                    Raise(nameof(IsDeepCheckTabSelected));
+                    Raise(nameof(IsComplexSitesTabSelected));
                     Raise(nameof(IsSystemTabSelected));
+                    Raise(nameof(IsDeepCheckTabSelected));
                     Raise(nameof(IsResultsTabSelected));
-                    Raise(nameof(IsVoiceRtcTabSelected));
+                    Raise(nameof(IsLogsTabSelected));
 
-                    if (_selectedSubTab == 3 || _selectedSubTab == 5)
+                    // Голос Discord (1) и проверка системы (2) показывают состояние кэша Discord.
+                    if (_selectedSubTab is 1 or 2)
                     {
                         RefreshDiscordCacheStatus();
                     }
@@ -148,19 +196,20 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedSubTab = 0; }
         }
 
-        public bool IsDpiTabSelected
+        /// <summary>Вкладка 1: DPI по 34 узлам и проверка голоса Discord — один подраздел.</summary>
+        public bool IsComplexSitesTabSelected
         {
             get => _selectedSubTab == 1;
             set { if (value) SelectedSubTab = 1; }
         }
 
-        public bool IsDeepCheckTabSelected
+        public bool IsSystemTabSelected
         {
             get => _selectedSubTab == 2;
             set { if (value) SelectedSubTab = 2; }
         }
 
-        public bool IsSystemTabSelected
+        public bool IsDeepCheckTabSelected
         {
             get => _selectedSubTab == 3;
             set { if (value) SelectedSubTab = 3; }
@@ -172,7 +221,8 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedSubTab = 4; }
         }
 
-        public bool IsVoiceRtcTabSelected
+        /// <summary>Вкладка 5: журнал переехал в «Проверки» (docs/IA_REDESIGN.md §3.3).</summary>
+        public bool IsLogsTabSelected
         {
             get => _selectedSubTab == 5;
             set { if (value) SelectedSubTab = 5; }
@@ -291,6 +341,9 @@ namespace ZapretGui.ViewModels
         public bool HasDiscordCleanSummary => _lastDiscordCleanSummary != null;
 
         public MonitoringViewModel Monitoring => _main.Monitoring;
+
+        /// <summary>Журнал внутри «Проверок»: тот же LogsViewModel, что и на отдельной странице.</summary>
+        public LogsViewModel Logs => _main.Logs;
         public DeepCheckViewModel DeepCheck => _main.DeepCheck;
         public HomeViewModel Home => _main.Home;
         public MainViewModel Main => _main;
@@ -510,6 +563,7 @@ namespace ZapretGui.ViewModels
         public ICommand SelectDeepCheckTabCommand { get; }
         public ICommand SelectSystemTabCommand { get; }
         public ICommand SelectResultsTabCommand { get; }
+        public ICommand SelectLogsTabCommand { get; }
         public ICommand SelectVoiceRtcTabCommand { get; }
         public ICommand RunVoiceRtcAuditCommand { get; }
         public ICommand OptimizeDiscordVoiceCommand { get; }
@@ -540,10 +594,11 @@ namespace ZapretGui.ViewModels
             Message = "";
             Summary = "Идёт проверка…";
             SummaryKey = "Warning";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Диагностика системы", "Комплексная проверка 14 пунктов — не закрывайте окно", "Подготовка…", 0, false, false)); } catch {}
 
             try
             {
-                var progress = new Progress<string>(UpdateProgress);
+                var progress = new Progress<string>(s => { UpdateProgress(s); try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(s, "Диагностика…", null, false)); } catch {} });
                 var items = await DiagnosticsService.RunAsync(Settings, progress);
 
                 foreach (var item in items) Items.Add(item);
@@ -566,11 +621,14 @@ namespace ZapretGui.ViewModels
             catch (Exception ex)
             {
                 SetMessage("Ошибка диагностики: " + ex.Message, "Danger");
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Диагностика — ошибка", ex.Message, "Попробуйте ещё раз")); } catch {}
+                return;
             }
             finally
             {
                 ProgressText = "";
                 IsRunning = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -813,6 +871,7 @@ namespace ZapretGui.ViewModels
             _dpiCts = new CancellationTokenSource(TimeSpan.FromMinutes(5));
             var ct = _dpiCts.Token;
             IsDpiRunning = true;
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка DPI", "Сетевые пробы DPI — не закрывайте окно", "Подготовка endpoint-ов…", 0, true, true, () => _dpiCts?.Cancel())); } catch {}
             DpiProgressValue = 0;
             DpiProgressMaximum = 1;
             DpiProgressIndeterminate = true;
@@ -869,6 +928,7 @@ namespace ZapretGui.ViewModels
                 _dpiCts = null;
                 DpiProgressText = "";
                 IsDpiRunning = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1018,9 +1078,10 @@ namespace ZapretGui.ViewModels
 
             IsCleaningDiscord = true;
             DiscordCleanStatusText = "Подготовка к очистке кэша Discord и сбросу сети…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show(restartDiscord ? "Перезапуск Discord" : "Очистка Discord", "Очистка кэша Discord и сброс сети — не закрывайте окно", DiscordCleanStatusText, 0, true, false)); } catch {}
             try
             {
-                var progress = new Progress<string>(s => DiscordCleanStatusText = s);
+                var progress = new Progress<string>(s => { DiscordCleanStatusText = s; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(s, "Очистка…", null, true)); } catch {} });
                 var summary = await DiscordNetworkCleaner.CleanAsync(new DiscordCleanOptions
                 {
                     CloseDiscordProcesses = true,
@@ -1041,10 +1102,13 @@ namespace ZapretGui.ViewModels
                 DiscordCleanStatusText = "Ошибка очистки: " + ex.Message;
                 SetMessage("Ошибка очистки кэша: " + ex.Message, "Danger");
                 AppLog.Error("Ошибка очистки кэша Discord", ex);
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Очистка Discord — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsCleaningDiscord = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1067,9 +1131,10 @@ namespace ZapretGui.ViewModels
 
             IsCleaningDiscord = true;
             DiscordCleanStatusText = "Выполняется глубокий сброс сетевого стека Windows…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Глубокий сброс сети", "Сброс Winsock / TCP-IP / DNS / ARP — не закрывайте окно", DiscordCleanStatusText, 0, true, false)); } catch {}
             try
             {
-                var progress = new Progress<string>(s => DiscordCleanStatusText = s);
+                var progress = new Progress<string>(s => { DiscordCleanStatusText = s; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(s, "Сброс сети…", null, true)); } catch {} });
                 var report = await DiscordNetworkCleaner.DeepNetworkStackResetAsync(progress).ConfigureAwait(true);
                 DiscordCleanStatusText = "Сброс сети завершён. Рекомендуется перезагрузить ПК.";
                 SetMessage(string.Join("\n", report), "Warning");
@@ -1079,10 +1144,13 @@ namespace ZapretGui.ViewModels
             {
                 DiscordCleanStatusText = "Ошибка сброса сети: " + ex.Message;
                 SetMessage("Ошибка сброса сети: " + ex.Message, "Danger");
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Сброс сети — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsCleaningDiscord = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1169,8 +1237,9 @@ namespace ZapretGui.ViewModels
             VoiceRtcStatusText = "Запуск проверки голосовых серверов Discord (WebRTC/STUN)…";
             VoiceRtcDiagnosisKey = "Warning";
             VoiceServers.Clear();
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка голосовых серверов", "WebRTC/STUN пробы Discord — не закрывайте окно", VoiceRtcStatusText, 0, true, false)); } catch {}
 
-            var progress = new Progress<string>(text => VoiceRtcStatusText = text);
+            var progress = new Progress<string>(text => { VoiceRtcStatusText = text; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(text, "Voice RTC…", null, true)); } catch {} });
 
             try
             {
@@ -1201,11 +1270,14 @@ namespace ZapretGui.ViewModels
             {
                 VoiceRtcStatusText = "Ошибка проверки: " + ex.Message;
                 VoiceRtcDiagnosisKey = "Danger";
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Voice RTC — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsVoiceRtcRunning = false;
                 Raise(nameof(HasVoiceRtcResults));
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1214,6 +1286,7 @@ namespace ZapretGui.ViewModels
             if (IsVoiceRtcRunning) return;
             IsVoiceRtcRunning = true;
             VoiceRtcStatusText = "Применяю оптимизированную конфигурацию для Discord Voice…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Оптимизация Discord Voice", "Настройка UDP/desync и переключатель стратегии — не закрывайте окно", VoiceRtcStatusText, 0, true, false)); } catch {}
 
             try
             {
@@ -1251,10 +1324,13 @@ namespace ZapretGui.ViewModels
             {
                 VoiceRtcStatusText = "Ошибка оптимизации: " + ex.Message;
                 VoiceRtcDiagnosisKey = "Danger";
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Оптимизация Voice — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsVoiceRtcRunning = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1283,6 +1359,17 @@ namespace ZapretGui.ViewModels
         {
             MessageKey = key;
             Message = message;
+        }
+
+        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
+        public bool ExpertMode => _main.ExpertMode;
+
+        private void OnExpertModeChanged()
+        {
+            Raise(nameof(ExpertMode));
+            Raise(nameof(DiagnosticsTabs));
+            Raise(nameof(VisibleSubTab));
+            if (!VisibleIndexMap.Contains(_selectedSubTab)) SelectedSubTab = 0;
         }
     }
 }

@@ -1,0 +1,254 @@
+<UserControl x:Class="ZapretGui.Views.HelpPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <!-- «Помощь» (этап 6, docs/IA_REDESIGN.md §3.6): только тексты и переходы.
+         Правило раздела: Помощь объясняет — Проверки делают. Ни одного своего контрола-настройки. -->
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,24" CanContentScroll="False">
+        <StackPanel Margin="24,20,20,32" MaxWidth="980">
+
+            <!-- Заголовок -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <TextBlock Style="{StaticResource DisplayText}" Text="Помощь" />
+                    <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                               Text="Пять частых ситуаций и что делать. Здесь только подсказки и переходы — сами проверки живут в разделе «Проверки»." />
+                </StackPanel>
+                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" VerticalAlignment="Top" Padding="14,8"
+                        Content="Открыть «Проверки»" Command="{Binding OpenChecksCommand}"
+                        ToolTip="Проверки: быстрая проверка сайтов, сложные сайты и звонки, журнал" />
+            </Grid>
+
+            <!-- ================= 1. YouTube ================= -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource DangerSoftBrush}" VerticalAlignment="Top">
+                            <TextBlock Text="&#xE714;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource DangerBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <TextBlock Style="{StaticResource TitleText}" Text="Не открывается YouTube" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Идём от простого к точной настройке — три шага." TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap"
+                                   Text="1. Включите обход на «Главной» (или Ctrl+Shift+Z) — статус должен стать «Обход запущен»." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="2. Проверьте доступ: «Проверки → Быстрая проверка», 2–3 минуты. Обход при этом не останавливается." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="3. Не помогло — «Обход → Сложные сайты»: включите или выключите «Отключить QUIC fake» и примените. Затем попробуйте другой способ обхода на вкладке «Стратегия»." />
+                    </StackPanel>
+                    <WrapPanel Margin="0,12,0,0">
+                        <Button Style="{StaticResource CompactPrimaryButton}" Content="Проверить YouTube" MinHeight="32"
+                                Command="{Binding CheckYoutubeCommand}" ToolTip="Откроет «Проверки → Быстрая проверка»" />
+                        <Button Style="{StaticResource CompactGhostButton}" Content="Открыть «Сложные сайты»" Margin="8,0,0,0" MinHeight="32"
+                                Command="{Binding OpenHardSitesCommand}" ToolTip="Откроет «Обход → Сложные сайты» (тонкая настройка под YouTube)" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ================= 2. Discord ================= -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" VerticalAlignment="Top">
+                            <TextBlock Text="&#xE720;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <TextBlock Style="{StaticResource TitleText}" Text="Пропал голос в Discord" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Чаще всего дело в голосовых (RTC) узлах или в кэше Discord." TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap"
+                                   Text="1. Убедитесь, что обход включён: без него голосовые каналы обычно не подключаются." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="2. «Проверки → Сайты и звонки» → «Проверить голос Discord»: проверяются RTC-узлы и задержка." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="3. Если в Discord висит «Подключение к RTC» — там же нажмите «Очистить кэш и сбросить сеть (1 клик)» и перезапустите Discord." />
+                    </StackPanel>
+                    <WrapPanel Margin="0,12,0,0">
+                        <Button Style="{StaticResource CompactPrimaryButton}" Content="Проверить голос" MinHeight="32"
+                                Command="{Binding CheckVoiceCommand}" ToolTip="Откроет «Проверки → Сайты и звонки»" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ================= 3. Интернет после установки ================= -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" VerticalAlignment="Top">
+                            <TextBlock Text="&#xE774;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <TextBlock Style="{StaticResource TitleText}" Text="Пропал интернет после установки" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Сначала выключите обход — интернет должен вернуться сразу. Дальше по шагам." TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap"
+                                   Text="1. Нажмите «Выключить обход» ниже (та же кнопка, что на «Главной»). Если интернет вернулся — проблема в настройках обхода, а не в сети." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="2. Если интернет не вернулся — «Проверки → Система»: «Сбросить сеть (winsock + ip)» и перезагрузка." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="3. Появилось предупреждение про старую сборку — на «Главной» нажмите «Решить конфликт» в жёлтом баннере." />
+                    </StackPanel>
+                    <WrapPanel Margin="0,12,0,0">
+                        <Button Style="{StaticResource CompactButton}" Content="Выключить обход" MinHeight="32"
+                                Command="{Binding ToggleBypassCommand}"
+                                ToolTip="Переключает обход так же, как кнопка питания на «Главной». Повторное нажатие включит обход обратно." />
+                        <Button Style="{StaticResource CompactGhostButton}" Content="Полный сброс сети" Margin="8,0,0,0" MinHeight="32"
+                                Command="{Binding ResetNetworkCommand}" ToolTip="Откроет «Проверки → Система» (в простом режиме — «Быстрая проверка»)"
+                                Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ================= 4. Игры ================= -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Top">
+                            <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <TextBlock Style="{StaticResource TitleText}" Text="Лагают игры" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Игровой режим пропускает UDP мимо обхода — это снижает пинг и убирает разрывы." TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap"
+                                   Text="1. Включите «Игровой режим» (кнопка ниже или Ctrl+Shift+G) — на «Главной» появится метка «Игровой режим ВКЛ»." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="2. Голосовые каналы и часть лаунчеров работают только при включённом обходе — не выключайте его ради теста." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="3. Нужен фильтр трафика игр (порты выше 1023) — «Обход → Сложные сайты → Тяжёлые игры → Настроить фильтр игр»." />
+                    </StackPanel>
+                    <WrapPanel Margin="0,12,0,0">
+                        <Button Style="{StaticResource CompactButton}" Content="Игровой режим" MinHeight="32"
+                                Command="{Binding ToggleGameModeCommand}" ToolTip="Включить или выключить игровой режим (Ctrl+Shift+G)" />
+                        <Button Style="{StaticResource CompactGhostButton}" Content="Фильтр трафика игр" Margin="8,0,0,0" MinHeight="32"
+                                Command="{Binding OpenGameFilterCommand}" ToolTip="Откроет «Обход → Сложные сайты»: карточка «Тяжёлые игры»" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ================= 5. Вернуть как было ================= -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Top">
+                            <TextBlock Text="&#xE81C;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <TextBlock Style="{StaticResource TitleText}" Text="Хочу вернуть как было" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Профили и резервные копии — в «Настройках». Откат занимает один клик." TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap"
+                                   Text="1. «Настройки → Профили и копии»: выберите архив в списке и нажмите «Восстановить из выбранного архива»." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="2. Нет архива? «Создать полный архив (ZIP)» — сохранит настройки, профили, списки и историю. Дальше можно экспериментировать безопасно." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,4,0,0"
+                                   Text="3. Нужно убрать всё — там же «Полная очистка следов в Windows»: приложение и служебные записи удаляются, движок и ваши списки остаются на диске." />
+                    </StackPanel>
+                    <WrapPanel Margin="0,12,0,0">
+                        <Button Style="{StaticResource CompactPrimaryButton}" Content="Открыть «Профили и копии»" MinHeight="32"
+                                Command="{Binding OpenProfilesCommand}" ToolTip="Откроет «Настройки → Общие → Профили и копии»" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ================= Как это работает ================= -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" VerticalAlignment="Top">
+                            <TextBlock Text="&#xE897;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <TextBlock Style="{StaticResource TitleText}" Text="Как это работает" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Пять коротких объяснений — без технических терминов." TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Margin="0,12,0,0">
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap"
+                                   Text="• Обход — это не VPN. Приложение не пересылает ваш трафик через чужой сервер, а аккуратно переписывает пакеты так, чтобы провайдер не понял, к какому сайту вы обращаетесь." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="• Способ обхода (стратегия) — набор правил для winws.exe. У провайдеров разные фильтры, поэтому одного универсального способа нет: приложение умеет перебирать варианты и находить рабочий." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="• Служба — держит обход включённым до входа в Windows и после закрытия приложения. Без службы обход работает только пока открыт Zapret GUI (кнопка питания на «Главной»)." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="• DNS — «телефонная книга» интернета. Если провайдер подменяет ответы, сайт не откроется даже с рабочим обходом; тогда помогает раздел «Обход → DNS» и проверка подмены." />
+                        <TextBlock Style="{StaticResource BodyText}" TextWrapping="Wrap" Margin="0,6,0,0"
+                                   Text="• Почему иногда не помогает: провайдер меняет правила, и рабочий вчера способ сегодня может не сработать. Что делать: подобрать способ заново, сменить DNS, включить/выключить QUIC fake — или проверить, что сайт вообще доступен." />
+                    </StackPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- ================= Отчёт ================= -->
+            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" VerticalAlignment="Top">
+                            <TextBlock Text="&#xE8A5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                            <TextBlock Style="{StaticResource TitleText}" Text="Не помогло? Отправьте отчёт" />
+                            <TextBlock Style="{StaticResource DimText}" Text="Архив собирает журнал, результаты проверок и версии в один файл — его можно переслать или приложить к обращению." TextWrapping="Wrap" Margin="0,2,0,0" />
+                        </StackPanel>
+                    </Grid>
+                    <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" TextWrapping="Wrap"
+                               Text="Приложение ничего не отправляет само: файл сохраняется туда, куда вы укажете. Телеметрия провайдера — только по вашему согласию в «Настройках» → «Экспорт телеметрии»." />
+                    <WrapPanel Margin="0,12,0,0">
+                        <Button Style="{StaticResource CompactPrimaryButton}" Content="Собрать архив отчёта (ZIP)" MinHeight="32"
+                                Command="{Binding SendReportCommand}" ToolTip="Журнал, результаты проверок и версии — в один ZIP-файл" />
+                        <Button Style="{StaticResource CompactGhostButton}" Content="Отчёт одним JSON" Margin="8,0,0,0" MinHeight="32"
+                                Command="{Binding SaveReportJsonCommand}" ToolTip="Тот же отчёт одним JSON-файлом" />
+                        <Button Style="{StaticResource CompactGhostButton}" Content="Открыть журнал" Margin="8,0,0,0" MinHeight="32"
+                                Command="{Binding OpenLogsCommand}" ToolTip="Откроет «Проверки → Журнал»" />
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <TextBlock Style="{StaticResource DimText}" Margin="2,14,0,0" TextWrapping="Wrap" Opacity="0.85"
+                       Text="Помощь объясняет, Проверки делают: в этом разделе нет ни настроек, ни проверок — только подсказки и переходы в нужное место." />
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

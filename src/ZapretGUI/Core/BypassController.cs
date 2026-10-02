@@ -151,13 +151,49 @@ namespace ZapretGui.Core
         // ---------------------------------------------------------------- запуск / остановка
 
         public List<string> BuildArgs(StrategyInfo strategy, GameFilterMode gameFilter)
-            => BypassArgumentBuilder.Build(
+        {
+            var args = BypassArgumentBuilder.Build(
                 strategy,
                 gameFilter,
                 _settings.GameFilterProfileId,
                 _settings.CustomGameFilterTcpPorts,
                 _settings.CustomGameFilterUdpPorts,
                 _settings.SelectedFakeSni);
+            // Применяем YouTube-специфичные настройки для строгих регионов
+            if (!string.IsNullOrWhiteSpace(_settings.YoutubeSniOverride))
+            {
+                // Заменяем SNI в QUIC-блоке на youtube SNI если задан
+                for (int i = 0; i < args.Count; i++)
+                {
+                    if (args[i].StartsWith("--dpi-desync-fake-quic-mod=") && args[i].Contains("sni="))
+                    {
+                        // уже есть sni, заменяем
+                        var parts = args[i].Split(new[] { "sni=" }, System.StringSplitOptions.None);
+                        var prefix = parts[0];
+                        var rest = parts[1];
+                        var commaIdx = rest.IndexOf(',');
+                        var suffix = commaIdx >= 0 ? rest.Substring(commaIdx) : "";
+                        args[i] = $"{prefix}sni={_settings.YoutubeSniOverride}{suffix}";
+                    }
+                    else if (args[i].StartsWith("--dpi-desync-fake-quic=") && i+1 < args.Count && !args[i+1].StartsWith("--dpi-desync-fake-quic-mod="))
+                    {
+                        // Добавляем mod если его нет
+                        args.Insert(i+1, $"--dpi-desync-fake-quic-mod=sni={_settings.YoutubeSniOverride}");
+                    }
+                }
+            }
+            if (_settings.DisableQuicFake)
+            {
+                // Удаляем fake QUIC для теста в регионах где QUIC режется
+                args = args.Where(a => !a.StartsWith("--dpi-desync-fake-quic")).ToList();
+                // Для QUIC-блока оставляем только fake без quic
+                if (!args.Any(a => a.Contains("--filter-udp=443") && a.Contains("fake")))
+                {
+                    // если удалили всё, добавляем заглушку
+                }
+            }
+            return args;
+        }
 
         public async Task<OperationResult> StartAsync(StrategyInfo strategy, GameFilterMode gameFilter, bool showConsole,
             CancellationToken ct = default, bool testMode = false)
@@ -232,6 +268,35 @@ namespace ZapretGui.Core
         }
 
         /// <summary>
+        /// Бесшовное переключение стратегии без ручной остановки обхода.
+        /// Сохраняет текущий режим: если обход запущен как служба — переустанавливает службу
+        /// с новой стратегией, если как отдельный процесс — перезапускает процесс.
+        /// Если обход выключен — просто запускает стратегию.
+        /// </summary>
+        public async Task<OperationResult> SwitchToStrategyAsync(StrategyInfo strategy, GameFilterMode gameFilter, bool showConsole,
+            CancellationToken ct = default)
+        {
+            var status = GetStatus();
+            // Служба имеет приоритет: если она Running/StartPending/StopPending — переустановку службы,
+            // даже если winws-процесс ещё не виден (гонка при старте). Это решает кейс «автостратегия
+            // как служба → нельзя переключить на обычную без ручной остановки».
+            if (status.ServiceState == ServiceState.Running
+                || status.ServiceState == ServiceState.StartPending
+                || status.ServiceState == ServiceState.StopPending)
+            {
+                AppLog.SvcInfo($"Бесшовное переключение: служба zapret с «{status.ServiceStrategy}» → «{strategy.Name}»");
+                return await InstallServiceAsync(strategy, gameFilter, ct).ConfigureAwait(false);
+            }
+            if (status.IsRunning)
+            {
+                AppLog.SvcInfo($"Бесшовное переключение: standalone «{status.StrategyName}» → «{strategy.Name}»");
+                await StopAsync(ct).ConfigureAwait(false);
+                return await StartAsync(strategy, gameFilter, showConsole, ct).ConfigureAwait(false);
+            }
+            return await StartAsync(strategy, gameFilter, showConsole, ct).ConfigureAwait(false);
+        }
+
+        /// <summary>
         /// Запускает стратегию во временном режиме, проверяет YouTube/Discord/GitHub
         /// и затем возвращает прежнее состояние обхода. Настройки пользователя не меняются.
         /// </summary>
@@ -254,7 +319,7 @@ namespace ZapretGui.Core
                 return new StrategyTestResult
                 {
                     Strategy = strategy,
-                    ErrorMessage = "Найден другой запущенный запрет. Сначала разрешите конфликт на странице «Обзор»."
+                    ErrorMessage = "Найден другой запущенный запрет. Сначала разрешите конфликт на странице «Главная»."
                 };
             }
 
@@ -642,6 +707,92 @@ namespace ZapretGui.Core
         /// Проверяет конкретную стратегию непосредственно на игровом ресурсе и возвращает
         /// TCP-задержку. Пользовательские настройки и исходное состояние обхода восстанавливаются.
         /// </summary>
+        /// <summary>Проверка стратегии сразу на нескольких узлах за один прогон (v1.28.1): обход
+        /// останавливается один раз, кандидат поднимается в тестовом режиме, опрашиваются все цели,
+        /// затем прежний обход восстанавливается. Нужна, чтобы замена не «чинила» один узел ценой
+        /// поломки остальных — автопереключение сравнивает не только сбойную цель, но и весь набор.</summary>
+        public async Task<List<ResourceProbeResult>> TestStrategyOnTargetsAsync(StrategyInfo strategy,
+            IReadOnlyList<MonitorTarget> targets, CancellationToken ct = default)
+        {
+            var results = new List<ResourceProbeResult>();
+            var before = GetStatus();
+            var restoreService = before.State == BypassState.RunningService;
+            var restoreStandalone = before.State == BypassState.RunningStandalone;
+            var previousName = before.ServiceStrategy.Length > 0 ? before.ServiceStrategy : _settings.SelectedStrategy;
+
+            try
+            {
+                if (before.IsRunning)
+                {
+                    var stopped = await StopAsync(ct).ConfigureAwait(false);
+                    if (!stopped.Ok)
+                    {
+                        foreach (var t in targets)
+                            results.Add(new ResourceProbeResult { Target = t, Kind = ResourceResultKind.Unknown, Details = stopped.Message });
+                        return results;
+                    }
+                }
+
+                var start = await StartAsync(strategy,
+                    EngineService.GetGameFilterMode(EngineRoot), false, ct, testMode: true).ConfigureAwait(false);
+                if (!start.Ok)
+                {
+                    foreach (var t in targets)
+                        results.Add(new ResourceProbeResult { Target = t, Kind = ResourceResultKind.Unknown, Details = start.Message });
+                    return results;
+                }
+
+                await Task.Delay(1000, ct).ConfigureAwait(false);
+                foreach (var t in targets)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    results.Add(await ResourceProbe.CheckAsync(t, ct).ConfigureAwait(false));
+                }
+                return results;
+            }
+            catch (OperationCanceledException)
+            {
+                foreach (var t in targets)
+                    if (results.Count < targets.Count)
+                        results.Add(new ResourceProbeResult { Target = t, Kind = ResourceResultKind.Unknown, Details = "Проверка отменена" });
+                return results;
+            }
+            catch (Exception ex)
+            {
+                foreach (var t in targets)
+                    if (results.Count < targets.Count)
+                        results.Add(new ResourceProbeResult { Target = t, Kind = ResourceResultKind.Unknown, Details = ex.Message });
+                return results;
+            }
+            finally
+            {
+                try { await StopAsync().ConfigureAwait(false); } catch { }
+                try
+                {
+                    if (restoreService)
+                    {
+                        WinServices.Start(WinServices.ZapretService);
+                        await Shell.WaitForAsync(
+                            () => _queryService(WinServices.ZapretService) == ServiceState.Running,
+                            15000).ConfigureAwait(false);
+                    }
+                    else if (restoreStandalone && previousName.Length > 0)
+                    {
+                        var previous = StrategyParser.LoadAll(EngineRoot)
+                            .FirstOrDefault(s => s.Name.Equals(previousName, StringComparison.OrdinalIgnoreCase))
+                            ?? StrategyCandidateStore.FindStrategy(previousName);
+                        if (previous != null)
+                            await StartAsync(previous, EngineService.GetGameFilterMode(EngineRoot),
+                                _settings.ShowWinwsConsole).ConfigureAwait(false);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLog.SvcWarn("Не удалось восстановить обход после проверки набора узлов: " + ex.Message);
+                }
+            }
+        }
+
         public async Task<ResourceProbeResult> TestStrategyOnResourceAsync(StrategyInfo strategy,
             MonitorTarget target, CancellationToken ct = default)
         {

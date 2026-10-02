@@ -72,7 +72,11 @@ namespace ZapretGui.Core
         private const string PortableSuffix = "-win-x64-portable.exe";
         private const int ParentWaitTimeoutMs = 30000;
 
-        private static readonly HttpClient Http = CreateClient();
+        private static readonly HttpClient Http = CreateClient(useProxy: true);
+
+        /// <summary>Прямой клиент без системного прокси: битая настройка прокси (частая после VPN)
+        /// рвёт TLS-рукопожатие, поэтому при ошибке пробуем ещё раз без прокси (v1.28.2).</summary>
+        private static readonly HttpClient HttpDirect = CreateClient(useProxy: false);
         private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
         public static string PlanFile => AppPaths.GuiUpdatePlanFile;
@@ -96,12 +100,53 @@ namespace ZapretGui.Core
             }
         }
 
-        private static HttpClient CreateClient()
+        private static HttpClient CreateClient(bool useProxy)
         {
-            var client = new HttpClient { Timeout = TimeSpan.FromMinutes(10) };
+            var handler = new SocketsHttpHandler
+            {
+                UseProxy = useProxy,
+                AllowAutoRedirect = true,
+                AutomaticDecompression = System.Net.DecompressionMethods.All,
+                ConnectTimeout = TimeSpan.FromSeconds(20),
+                // Явно разрешаем TLS 1.2 и 1.3: на части сборок Windows по умолчанию остаётся
+                // только TLS 1.2, и с некоторыми узлами рукопожатие не проходит (v1.28.2).
+                SslOptions = { EnabledSslProtocols = System.Security.Authentication.SslProtocols.Tls12
+                    | System.Security.Authentication.SslProtocols.Tls13 }
+            };
+            var client = new HttpClient(handler) { Timeout = TimeSpan.FromMinutes(10) };
             client.DefaultRequestHeaders.UserAgent.Add(new ProductInfoHeaderValue("ZapretGUI", "1.0"));
             client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
             return client;
+        }
+
+        /// <summary>GET с запасным каналом: если обычное соединение (с системным прокси) не установилось,
+        /// повторяем напрямую без прокси (v1.28.2).</summary>
+        private static async Task<HttpResponseMessage> GetWithFallbackAsync(string url, CancellationToken ct)
+        {
+            try
+            {
+                return await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            }
+            catch (Exception ex) when (ex is not OperationCanceledException)
+            {
+                AppLog.Warn("[GuiUpdate] Соединение не удалось (" + Describe(ex) + "), повторяю без системного прокси");
+                return await HttpDirect.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            }
+        }
+
+        /// <summary>Человекочитаемая причина: у HttpRequestException текст вида «see inner exception»,
+        /// поэтому достаём самое глубокое сообщение (SSL, сброс соединения, тайм-аут) — v1.28.2.</summary>
+        public static string Describe(Exception ex)
+        {
+            var text = "";
+            for (var e = ex; e != null; e = e.InnerException) text = e.Message;
+            if (string.IsNullOrWhiteSpace(text)) text = ex.Message;
+            if (text.Contains("SSL", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("TLS", StringComparison.OrdinalIgnoreCase) ||
+                text.Contains("Authentication", StringComparison.OrdinalIgnoreCase))
+                return "SSL-соединение не установлено (" + text.Trim() + "). Обычно доступ к GitHub режет провайдер: " +
+                       "включите обход и нажмите «Повторить» либо скачайте файл вручную со страницы релиза.";
+            return text.Trim();
         }
 
         public static bool TryParseRepository(string? value, out string repository)
@@ -140,7 +185,7 @@ namespace ZapretGui.Core
             var releasesUrl = "https://api.github.com/repos/" + repository + "/releases?per_page=20";
             try
             {
-                using var response = await Http.GetAsync(releasesUrl, ct).ConfigureAwait(false);
+                using var response = await GetWithFallbackAsync(releasesUrl, ct).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                 {
                     AppLog.Warn($"GitHub API обновлений GUI вернул {(int)response.StatusCode}");
@@ -185,7 +230,7 @@ namespace ZapretGui.Core
             catch (OperationCanceledException) { throw; }
             catch (Exception ex)
             {
-                AppLog.Warn("Не удалось получить релиз обновления GUI: " + ex.Message);
+                AppLog.Warn("Не удалось получить релиз обновления GUI: " + Describe(ex));
             }
 
             return null;
@@ -202,11 +247,47 @@ namespace ZapretGui.Core
                 !IsSafeReleaseUrl(asset.DownloadUrl, repository))
                 return Failure("Ссылка на EXE не принадлежит указанному GitHub-репозиторию.");
 
-            var target = Process.GetCurrentProcess().MainModule?.FileName;
+            // Надёжное определение текущего exe: MainModule может быть пустым в single-file / при запуске из dll
+            var target = Environment.ProcessPath;
             if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
+                target = Process.GetCurrentProcess().MainModule?.FileName;
+            if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
+            {
+                try { target = System.Reflection.Assembly.GetEntryAssembly()?.Location; } catch {}
+            }
+            if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
+            {
+                try { target = System.Reflection.Assembly.GetExecutingAssembly().Location; } catch {}
+            }
+            if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
+            {
+                // Последняя попытка — база приложения (для dotnet --roll-forward)
+                var baseDir = AppContext.BaseDirectory;
+                if (!string.IsNullOrWhiteSpace(baseDir))
+                {
+                    var candidate = Path.Combine(baseDir.TrimEnd(Path.DirectorySeparatorChar), "ZapretGUI.exe");
+                    if (File.Exists(candidate)) target = candidate;
+                    else
+                    {
+                        var dllCandidate = Path.Combine(baseDir.TrimEnd(Path.DirectorySeparatorChar), "ZapretGUI.dll");
+                        if (File.Exists(dllCandidate)) target = dllCandidate;
+                    }
+                }
+            }
+            if (string.IsNullOrWhiteSpace(target) || !File.Exists(target))
+            {
+                AppLog.Warn($"[GuiUpdate] Не удалось определить exe: ProcessPath={Environment.ProcessPath}, MainModule={Process.GetCurrentProcess().MainModule?.FileName}, EntryLocation={System.Reflection.Assembly.GetEntryAssembly()?.Location}");
                 return Failure("Не удалось определить текущий exe для обновления.");
-            if (!string.Equals(Path.GetFileNameWithoutExtension(target), "ZapretGUI", StringComparison.OrdinalIgnoreCase))
-                return Failure("Самообновление доступно только для установленного ZapretGUI.exe.");
+            }
+            // Single-file публикуется как dll+exe, но Location может указывать на dll — нормализуем к exe
+            if (target.EndsWith(".dll", StringComparison.OrdinalIgnoreCase))
+            {
+                var exeCandidate = Path.ChangeExtension(target, ".exe");
+                if (File.Exists(exeCandidate)) target = exeCandidate;
+            }
+            var targetFileName = Path.GetFileNameWithoutExtension(target);
+            if (!targetFileName.StartsWith("ZapretGUI", StringComparison.OrdinalIgnoreCase))
+                return Failure("Самообновление доступно только для ZapretGUI.exe (текущий файл: " + Path.GetFileName(target) + "). Переименуйте файл в ZapretGUI.exe или скачайте обновление вручную со страницы релиза.");
 
             var updateId = Guid.NewGuid().ToString("N");
             var updateDirectory = Path.Combine(AppPaths.TempDir, "gui-update-" + updateId);
@@ -232,7 +313,10 @@ namespace ZapretGui.Core
 
             try
             {
+                AppLog.Info($"[GuiUpdate] Подготовка обновления {release.Tag} из {asset.DownloadUrl} в {staged}");
                 Directory.CreateDirectory(updateDirectory);
+                Directory.CreateDirectory(AppPaths.GuiBackupDir);
+                Directory.CreateDirectory(helperDirectory);
                 progress?.Report(new ProgressInfo { Percent = 0, Status = "Скачиваю обновление GUI" });
                 await DownloadFileAsync(asset.DownloadUrl, staged, asset.Size, progress, ct).ConfigureAwait(false);
                 progress?.Report(new ProgressInfo { Percent = -1, Status = "Проверяю SHA-256 обновления GUI" });
@@ -244,6 +328,7 @@ namespace ZapretGui.Core
                 SavePlan(plan);
 
                 progress?.Report(new ProgressInfo { Percent = -1, Status = "Готовлю безопасный перезапуск GUI" });
+                AppLog.Info($"[GuiUpdate] Запускаю helper: {helper} {ApplyArgument} {PlanFile}");
                 var startInfo = new ProcessStartInfo
                 {
                     FileName = helper,
@@ -252,8 +337,24 @@ namespace ZapretGui.Core
                     UseShellExecute = true,
                     Verb = "runas"
                 };
-                if (Process.Start(startInfo) == null)
-                    throw new InvalidOperationException("Не удалось запустить временный процесс обновления.");
+                try
+                {
+                    var helperProcess = Process.Start(startInfo);
+                    if (helperProcess == null)
+                        throw new InvalidOperationException("Не удалось запустить временный процесс обновления (Process.Start вернул null).");
+                    AppLog.Info("[GuiUpdate] Helper запущен, ожидаю перезапуск");
+                }
+                catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+                {
+                    // Пользователь нажал "Нет" в диалоге UAC
+                    AppLog.Warn("[GuiUpdate] Пользователь отклонил UAC при запуске helper: " + ex.Message);
+                    throw new OperationCanceledException("Обновление отменено — требуются права администратора. Нажмите «Да» в диалоге UAC или запустите Zapret GUI от имени администратора и повторите.", ex);
+                }
+                catch (System.ComponentModel.Win32Exception ex)
+                {
+                    AppLog.Error("[GuiUpdate] Ошибка запуска helper (Win32): " + ex.Message);
+                    throw new InvalidOperationException("Не удалось запустить helper с правами администратора: " + ex.Message + ". Попробуйте запустить Zapret GUI от имени администратора.", ex);
+                }
 
                 return new GuiUpdateResult
                 {
@@ -265,16 +366,24 @@ namespace ZapretGui.Core
                     Version = release.Tag
                 };
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
                 CleanupUpdateFiles(updateDirectory, PlanFile);
+                // Если это отмена UAC, показываем понятное сообщение
+                if (ex.Message.Contains("UAC") || ex.Message.Contains("администратора"))
+                    return Failure(ex.Message);
                 return Failure("Загрузка обновления GUI отменена.");
             }
             catch (Exception ex)
             {
                 CleanupUpdateFiles(updateDirectory, PlanFile);
-                AppLog.Error("Не удалось подготовить обновление GUI: " + ex.Message);
-                return Failure("Не удалось подготовить обновление GUI: " + ex.Message);
+                AppLog.Error("Не удалось подготовить обновление GUI: " + ex.ToString());
+                // Даём подсказку для ручной установки
+                var text = Describe(ex);
+                var hint = text.Contains("вручную", StringComparison.OrdinalIgnoreCase)
+                    ? ""
+                    : " Попробуйте скачать обновление вручную со страницы релиза.";
+                return Failure("Не удалось подготовить обновление GUI: " + text + hint);
             }
         }
 
@@ -474,7 +583,7 @@ namespace ZapretGui.Core
                 string.IsNullOrWhiteSpace(plan.ExpectedSha256)) return false;
             if (plan.ExpectedSha256.Length != 64 || plan.ExpectedSha256.Any(c => !Uri.IsHexDigit(c))) return false;
             if (!string.Equals(Path.GetExtension(plan.TargetPath), ".exe", StringComparison.OrdinalIgnoreCase)) return false;
-            if (!string.Equals(Path.GetFileNameWithoutExtension(plan.TargetPath), "ZapretGUI", StringComparison.OrdinalIgnoreCase)) return false;
+            if (!Path.GetFileNameWithoutExtension(plan.TargetPath).StartsWith("ZapretGUI", StringComparison.OrdinalIgnoreCase)) return false;
             if (!IsUnder(plan.StagedPath, AppPaths.TempDir) || !IsUnder(plan.HelperPath, AppPaths.TempDir)) return false;
             if (string.Equals(Path.GetFullPath(plan.TargetPath), Path.GetFullPath(plan.HelperPath), StringComparison.OrdinalIgnoreCase)) return false;
             return true;
@@ -527,10 +636,48 @@ namespace ZapretGui.Core
             return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
         }
 
+        /// <summary>Загрузка с повторами (v1.28.2): попытка 1 — обычное соединение; попытка 2 — через 2 с
+        /// (сбои и вмешательство провайдера часто разовые); попытка 3 — без системного прокси. Файл перед
+        /// каждой попыткой пересоздаётся, SHA-256 проверяется после загрузки.</summary>
         private static async Task DownloadFileAsync(string url, string path, long expectedSize,
             IProgress<ProgressInfo>? progress, CancellationToken ct)
         {
-            using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
+            var attempts = new (HttpClient Client, string Name, int DelayMs)[]
+            {
+                (Http, "обычное соединение", 0),
+                (Http, "повтор", 2000),
+                (HttpDirect, "без системного прокси", 4000)
+            };
+            Exception? last = null;
+            for (var i = 0; i < attempts.Length; i++)
+            {
+                var (client, name, delayMs) = attempts[i];
+                if (delayMs > 0)
+                {
+                    progress?.Report(new ProgressInfo { Percent = -1, Status = "Соединение не удалось, повторяю (" + name + ")…" });
+                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
+                }
+                try
+                {
+                    if (i > 0) AppLog.Info($"[GuiUpdate] Повтор загрузки ({i + 1} из {attempts.Length}, {name}): {url}");
+                    await DownloadOnceAsync(client, url, path, expectedSize, progress, ct).ConfigureAwait(false);
+                    return;
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
+                {
+                    last = ex;
+                    AppLog.Warn($"[GuiUpdate] Загрузка не удалась ({name}): {Describe(ex)}");
+                    TryDelete(path);
+                }
+            }
+            throw new IOException("Не удалось скачать обновление. " + Describe(last ?? new IOException("неизвестная ошибка")), last);
+        }
+
+        private static async Task DownloadOnceAsync(HttpClient client, string url, string path, long expectedSize,
+            IProgress<ProgressInfo>? progress, CancellationToken ct)
+        {
+            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
             response.EnsureSuccessStatusCode();
             var total = response.Content.Headers.ContentLength ?? expectedSize;
             await using var source = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);

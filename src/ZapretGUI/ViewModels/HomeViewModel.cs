@@ -31,10 +31,30 @@ namespace ZapretGui.ViewModels
         private DateTime _lastLegacyCheck = DateTime.MinValue;
         private LegacyInstallInfo? _legacyCache;
         private string _newConnectionAddress = "";
+        // ---- Здоровье соединения ----
+        private string _connectionHealthKey = "Muted";
+        private string _connectionHealthText = "";
+        private bool _connectionHealthVisible;
+        // ---- Быстрая проверка «Проверить всё» ----
+        private bool _isFullCheckRunning;
+        private string _fullCheckStatusText = "";
+        private string _fullCheckAdviceText = "";
+        private string _fullCheckSummaryText = "";
+        private string _fullCheckSummaryKey = "Info";
+        private double _fullCheckProgressValue;
+        private double _fullCheckProgressMaximum = 1;
+        private bool _fullCheckProgressIndeterminate = true;
+        private string _fullCheckProgressPercentText = "";
+        private StrategyInfo? _recommendedStrategy;
+        private CancellationTokenSource? _fullCheckCts;
 
         public HomeViewModel(MainViewModel main)
         {
             _main = main;
+            _main.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
+            };
             MonitorTargetStore.EnsureDefaults(main.Settings);
             SettingsStore.Save(main.Settings);
             foreach (var target in main.Settings.MonitorTargets.Where(t => !t.IsGame))
@@ -47,11 +67,25 @@ namespace ZapretGui.ViewModels
             InstallServiceCommand = new AsyncRelayCommand(InstallServiceAsync, () => (HasStrategy || ServiceInstalled) && !IsBusy);
             ReinstallServiceCommand = new AsyncRelayCommand(ReinstallServiceAsync, () => HasStrategy && !IsBusy);
             RemoveServiceCommand = new AsyncRelayCommand(RemoveServiceAsync, () => ServiceInstalled && !IsBusy);
+            ToggleServiceCommand = new AsyncRelayCommand(ToggleServiceAsync, () => !IsBusy);
+            ReapplyServiceCommand = new AsyncRelayCommand(ReinstallServiceAsync, () => ServiceInstalled && !IsBusy && HasStrategy);
             TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync, () => !ConnectionBusy);
             AddConnectionTargetCommand = new RelayCommand(AddConnectionTarget);
             EditConnectionTargetCommand = new RelayCommand(EditConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             RemoveConnectionTargetCommand = new RelayCommand(RemoveConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             CheckUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
+            // Переходы вместо блоков на главном экране (v1.18.0): проверки, подбор и журнал — в своих разделах
+            OpenChecksCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
+            OpenBypassCommand = new RelayCommand(() =>
+            {
+                _main.BypassCenter.SelectedSubTab = 1; // «Подбор»
+                _main.Navigate("bypass-center");
+            });
+            OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
+            // Рабочий стол настройщика (v1.29.3) — виден только в «Эксперте» (кнопка на странице).
+            OpenWorkbenchCommand = new RelayCommand(() => _main.Navigate("configuration"));
+            // «Требует внимания» → сценарии «Помощи» (этап 6): объяснение без технических терминов
+            OpenHelpCommand = new RelayCommand(() => _main.Navigate("help"));
             OpenDiagnosticsCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
             OpenFirstLaunchCommand = new RelayCommand(() => _main.Navigate("first-run"));
             OpenStrategiesCommand = new RelayCommand(() => _main.Navigate("strategies"));
@@ -65,7 +99,7 @@ namespace ZapretGui.ViewModels
             OpenDiscordVoiceFixCommand = new RelayCommand(() =>
             {
                 _main.Navigate("diagnostics");
-                _main.Diagnostics.SelectedSubTab = 5;
+                _main.Diagnostics.SelectedSubTab = 1; // «Сложные сайты и звонки»: голос Discord
             });
             CleanDiscordAndNetworkCommand = new AsyncRelayCommand(async () =>
             {
@@ -78,6 +112,12 @@ namespace ZapretGui.ViewModels
                 if (summary.Ok) ShowSuccess($"✅ {summary.Message}");
                 else ShowError(summary.Message);
             });
+            RunFullCheckCommand = new AsyncRelayCommand(RunFullCheckAsync, () => !IsFullCheckRunning && !IsBusy && HasStrategy);
+            CancelFullCheckCommand = new RelayCommand(CancelFullCheck, () => IsFullCheckRunning);
+            ClearFullCheckResultCommand = new RelayCommand(ClearFullCheckResult, () => FullCheckResultVisible && !IsFullCheckRunning);
+            ApplyRecommendedStrategyCommand = new AsyncRelayCommand(ApplyRecommendedStrategyAsync, () => HasRecommendedStrategy && !IsBusy);
+            // Один клик в «Простом» (v1.29.1): проверка и сразу применение лучшего способа обхода
+            RunOneClickFixCommand = new AsyncRelayCommand(RunOneClickFixAsync, () => !IsFullCheckRunning && !IsBusy && HasStrategy);
             RefreshGamingStatus();
         }
 
@@ -141,11 +181,14 @@ namespace ZapretGui.ViewModels
                 ShowError("Для изменения сетевых параметров Windows требуются права администратора.");
                 return;
             }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Оптимизация сети", "Применение игровых твиков Windows…", "TCP/UDP параметры…", 0, true, false)); } catch {}
 
             var (ok, msg) = await GamingNetworkOptimizer.ApplyTweaksAsync();
             if (ok) ShowSuccess(msg);
             else ShowError(msg);
             RefreshGamingStatus();
+            if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Оптимизация — ошибка", msg)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private async Task RevertGamingTweaksAsync()
@@ -155,11 +198,14 @@ namespace ZapretGui.ViewModels
                 ShowError("Для изменения сетевых параметров Windows требуются права администратора.");
                 return;
             }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Сброс оптимизации", "Откат игровых твиков Windows…", "Восстановление настроек…", 0, true, false)); } catch {}
 
             var (ok, msg) = await GamingNetworkOptimizer.RevertTweaksAsync();
             if (ok) ShowSuccess(msg);
             else ShowError(msg);
             RefreshGamingStatus();
+            if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Откат — ошибка", msg)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         public ObservableCollection<string> StrategyNames { get; } = new();
@@ -182,6 +228,11 @@ namespace ZapretGui.ViewModels
         public string InstallServiceButtonText => ServiceInstalled
             ? "Служба уже установлена, удалить?"
             : "Установить в службу";
+        public string ServiceToggleStatusText => ServiceInstalled ? "Автозапуск включён" : "Автозапуск выключен";
+        public bool IsServiceToggleOn => ServiceInstalled;
+        public bool IsServicePending => StrategyApplicationService.IsServicePending(_status.ServiceState);
+        public string ServicePendingText => StrategyApplicationService.ServicePendingText(_status.ServiceState);
+        public bool IsServiceToggleEnabled => !IsBusy && !IsServicePending;
         public bool HasStrategy => Store.Items.Count > 0;
         public string StatusText => _status.StateText;
         public string StatusKey => _status.State switch
@@ -259,7 +310,11 @@ namespace ZapretGui.ViewModels
             get => _isBusy;
             private set
             {
-                if (Set(ref _isBusy, value)) RaiseCommands();
+                if (Set(ref _isBusy, value))
+                {
+                    Raise(nameof(IsServiceToggleEnabled));
+                    RaiseCommands();
+                }
             }
         }
 
@@ -301,6 +356,114 @@ namespace ZapretGui.ViewModels
             get => _connectionProgressText;
             set => Set(ref _connectionProgressText, value);
         }
+
+        public string ConnectionHealthKey
+        {
+            get => _connectionHealthKey;
+            private set => Set(ref _connectionHealthKey, value);
+        }
+
+        public string ConnectionHealthText
+        {
+            get => _connectionHealthText;
+            private set => Set(ref _connectionHealthText, value);
+        }
+
+        public bool ConnectionHealthVisible
+        {
+            get => _connectionHealthVisible;
+            private set
+            {
+                if (Set(ref _connectionHealthVisible, value))
+                    Raise(nameof(ConnectionHealthVisible));
+            }
+        }
+
+        // ---- Свойства «Проверить всё» ----
+        public bool IsFullCheckRunning
+        {
+            get => _isFullCheckRunning;
+            private set
+            {
+                if (Set(ref _isFullCheckRunning, value))
+                {
+                    Raise(nameof(FullCheckResultVisible));
+                    Raise(nameof(IsQuickSetupIdle));
+                    Raise(nameof(HasRecommendedStrategy));
+                    (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (RunOneClickFixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelFullCheckCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ClearFullCheckResultCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplyRecommendedStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    Raise(nameof(IsFullCheckRunning));
+                }
+            }
+        }
+
+        public string FullCheckStatusText
+        {
+            get => _fullCheckStatusText;
+            private set => Set(ref _fullCheckStatusText, value);
+        }
+
+        public string FullCheckAdviceText
+        {
+            get => _fullCheckAdviceText;
+            private set => Set(ref _fullCheckAdviceText, value);
+        }
+
+        public string FullCheckSummaryText
+        {
+            get => _fullCheckSummaryText;
+            private set
+            {
+                if (Set(ref _fullCheckSummaryText, value))
+                {
+                    Raise(nameof(FullCheckResultVisible));
+                    Raise(nameof(IsQuickSetupIdle));
+                    (ClearFullCheckResultCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (RunOneClickFixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string FullCheckSummaryKey
+        {
+            get => _fullCheckSummaryKey;
+            private set => Set(ref _fullCheckSummaryKey, value);
+        }
+
+        public double FullCheckProgressValue
+        {
+            get => _fullCheckProgressValue;
+            private set => Set(ref _fullCheckProgressValue, value);
+        }
+
+        public double FullCheckProgressMaximum
+        {
+            get => _fullCheckProgressMaximum;
+            private set => Set(ref _fullCheckProgressMaximum, value);
+        }
+
+        public bool FullCheckProgressIndeterminate
+        {
+            get => _fullCheckProgressIndeterminate;
+            private set => Set(ref _fullCheckProgressIndeterminate, value);
+        }
+
+        public string FullCheckProgressPercentText
+        {
+            get => _fullCheckProgressPercentText;
+            private set => Set(ref _fullCheckProgressPercentText, value);
+        }
+
+        public bool FullCheckResultVisible => !string.IsNullOrWhiteSpace(FullCheckSummaryText);
+        public bool HasRecommendedStrategy => _recommendedStrategy != null;
+        public string RecommendedStrategyName => _recommendedStrategy?.Name ?? "";
+        public StrategyInfo? RecommendedStrategy => _recommendedStrategy;
+        /// <summary>Исходное состояние блока — ни прогресса, ни результата; видны кнопки «Проверить всё».</summary>
+        public bool IsQuickSetupIdle => !IsFullCheckRunning && !FullCheckResultVisible;
 
         public string Message
         {
@@ -407,6 +570,15 @@ namespace ZapretGui.ViewModels
         public ICommand InstallServiceCommand { get; }
         public ICommand ReinstallServiceCommand { get; }
         public ICommand RemoveServiceCommand { get; }
+        public ICommand ToggleServiceCommand { get; }
+        public ICommand ReapplyServiceCommand { get; }
+        public ICommand OpenChecksCommand { get; }
+
+        /// <summary>Переход на рабочий стол настройщика: конфигурация целиком, история и откат.</summary>
+        public ICommand OpenWorkbenchCommand { get; }
+        public ICommand OpenBypassCommand { get; }
+        public ICommand OpenLogsCommand { get; }
+        public ICommand OpenHelpCommand { get; }
         public ICommand TestConnectionCommand { get; }
         public ICommand AddConnectionTargetCommand { get; }
         public ICommand EditConnectionTargetCommand { get; }
@@ -418,6 +590,13 @@ namespace ZapretGui.ViewModels
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
         public ICommand ClearMessageCommand { get; }
+        public ICommand RunFullCheckCommand { get; }
+        public ICommand CancelFullCheckCommand { get; }
+        public ICommand ClearFullCheckResultCommand { get; }
+        public ICommand ApplyRecommendedStrategyCommand { get; }
+
+        /// <summary>«Сделать, чтобы работало» — главная (и единственная) кнопка «Простого» режима (v1.29.1).</summary>
+        public ICommand RunOneClickFixCommand { get; }
 
         // ------------------------------------------------------------------ логика
 
@@ -468,6 +647,11 @@ namespace ZapretGui.ViewModels
             _status = Bypass.GetStatus();
             Raise(nameof(IsRunning));
             Raise(nameof(ServiceInstalled));
+            Raise(nameof(ServiceToggleStatusText));
+            Raise(nameof(IsServiceToggleOn));
+            Raise(nameof(IsServicePending));
+            Raise(nameof(ServicePendingText));
+            Raise(nameof(IsServiceToggleEnabled));
             Raise(nameof(InstallServiceButtonText));
             Raise(nameof(StatusText));
             Raise(nameof(StatusKey));
@@ -493,8 +677,15 @@ namespace ZapretGui.ViewModels
             (ToggleBypassCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (ResolveLegacyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (InstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ReinstallServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (RemoveServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ToggleServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ReapplyServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (TestConnectionCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (RunOneClickFixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (CancelFullCheckCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (ApplyRecommendedStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         }
 
         private StrategyInfo? Current()
@@ -665,14 +856,16 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
-            if (!Confirm("Запуск обхода", $"Будет запущен winws.exe со стратегией «{strategy.Name}». Это изменит обработку сетевого трафика и может потребовать WinDivert. Запустить вручную сейчас?"))
-                return;
+            // Авто-запуск без вопроса — пользователь просил бесшовно без окон (1.17.24)
 
             IsBusy = true;
             ShowInfo("Запускаю обход…");
             try
             {
+                var prev = Bypass.GetStatus().ServiceStrategy ?? Bypass.GetStatus().StrategyName ?? "";
                 var result = await Bypass.StartAsync(strategy, CurrentGameFilter(), Settings.ShowWinwsConsole);
+                var modeText = Bypass.GetStatus().ServiceState == ServiceState.Running ? "служба" : "процесс";
+                StrategySwitchHistoryStore.TryAppend(new StrategySwitchRecord { StrategyName = strategy.Name, PreviousStrategyName = prev, Source = "запуск", Mode = modeText, Success = result.Ok, Message = result.Message });
                 if (result.Ok)
                 {
                     ShowSuccess(result.Message);
@@ -714,6 +907,17 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        private async Task ToggleServiceAsync()
+        {
+            if (IsServicePending)
+            {
+                ShowWarning(ServicePendingText + " Подождите завершения перехода.");
+                return;
+            }
+            if (ServiceInstalled) await RemoveServiceAsync();
+            else await InstallServiceAsync();
+        }
+
         private async Task InstallServiceAsync()
         {
             if (ServiceInstalled)
@@ -731,8 +935,7 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
-            if (!Confirm("Установка службы", $"Будет создана и запущена служба zapret со стратегией «{strategy.Name}». Это изменит системную службу, WinDivert и TCP timestamps. Продолжить?"))
-                return;
+            // Установка службы без подтверждения — бесшовно (1.17.24)
 
             IsBusy = true;
             ShowInfo("Устанавливаю службу zapret…");
@@ -759,8 +962,7 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
-            if (!Confirm("Переустановка службы", $"Служба zapret будет переустановлена со стратегией «{strategy.Name}». Продолжить?"))
-                return;
+            // Переустановка службы без вопроса — бесшовно (1.17.24)
 
             IsBusy = true;
             ShowInfo("Переустанавливаю службу zapret…");
@@ -779,8 +981,7 @@ namespace ZapretGui.ViewModels
 
         private async Task RemoveServiceAsync()
         {
-            if (!Confirm("Удаление службы", "Будут остановлены обход и служба zapret, а также удалены связанные службы WinDivert. Продолжить?"))
-                return;
+            // Удаление службы по явному клику тумблера — без лишнего вопроса, только по действию пользователя (1.17.24)
 
             IsBusy = true;
             ShowInfo("Удаляю службы zapret и WinDivert…");
@@ -838,13 +1039,23 @@ namespace ZapretGui.ViewModels
             ConnectionProgressPercentText = "";
             ConnectionProgressText = "Подготавливаю проверку…";
             ConnectionChecks.Clear();
+            ConnectionHealthVisible = false;
             try
             {
                 var results = await ConnectionTester.RunAsync(ConnectionTargets, default,
                     new Progress<string>(UpdateConnectionProgress));
                 foreach (var check in results) ConnectionChecks.Add(check);
 
-                var failed = results.Count(r => !r.Ok);
+                var total = results.Count;
+                var ok = results.Count(r => r.Ok);
+                var avg = ok > 0 ? (int)results.Where(r => r.Ok).Average(r => r.Milliseconds) : 0;
+                ConnectionHealthVisible = total > 0;
+                ConnectionHealthKey = ok == total ? "Success" : ok == 0 ? "Danger" : "Warning";
+                ConnectionHealthText = total > 0 ? $"{ok}/{total} OK" + (ok > 0 ? $" · {avg} мс" : "") : "";
+                Raise(nameof(ConnectionHealthKey));
+                Raise(nameof(ConnectionHealthText));
+
+                var failed = total - ok;
                 if (failed == 0) ShowSuccess("Все проверенные ресурсы доступны");
                 else if (failed == results.Count) ShowError("Ни один ресурс не открылся — проверьте обход и DNS");
                 else ShowWarning($"Часть ресурсов недоступна ({failed} из {results.Count})");
@@ -922,6 +1133,238 @@ namespace ZapretGui.ViewModels
             SettingsStore.Save(Settings);
         }
 
+        public void ClearFullCheckResult()
+        {
+            // Сбрасывает заглушку завершённой проверки — возвращает блок в исходное состояние
+            FullCheckSummaryText = "";
+            FullCheckAdviceText = "";
+            FullCheckSummaryKey = "Info";
+            FullCheckStatusText = "";
+            FullCheckProgressValue = 0;
+            FullCheckProgressPercentText = "";
+            _recommendedStrategy = null;
+            Raise(nameof(HasRecommendedStrategy));
+            Raise(nameof(RecommendedStrategyName));
+            Raise(nameof(ShowRecommendedStrategyRow));
+            Raise(nameof(FullCheckResultVisible));
+            Raise(nameof(IsQuickSetupIdle));
+            (ClearFullCheckResultCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (RunOneClickFixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ApplyRecommendedStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            AppLog.Info("Блок быстрой настройки сброшен — заглушка проверки убрана");
+        }
+
+        public void CancelFullCheck()
+        {
+            _fullCheckCts?.Cancel();
+            FullCheckStatusText = "Отменяю проверку…";
+            AppLog.Info("Отмена полной проверки по кнопке");
+        }
+
+        private async Task ApplyRecommendedStrategyAsync()
+        {
+            if (_recommendedStrategy == null) return;
+            var strat = _recommendedStrategy;
+            var mode = CurrentGameFilter();
+            var status = Bypass.GetStatus();
+            var prev = status.ServiceStrategy ?? status.StrategyName ?? "";
+            if (status.IsRunning && Shell.IsAdmin())
+            {
+                var res = await Bypass.SwitchToStrategyAsync(strat, mode, Settings.ShowWinwsConsole);
+                var ok = res.Ok;
+                var modeText = Bypass.GetStatus().ServiceState == ServiceState.Running ? "служба" : "процесс";
+                StrategySwitchHistoryStore.TryAppend(new StrategySwitchRecord { StrategyName = strat.Name, PreviousStrategyName = prev, Source = "быстрая настройка", Mode = modeText, Success = ok, Message = res.Message });
+                if (ok) ShowSuccess(res.Message);
+                else ShowError(res.Message);
+            }
+            SelectedStrategyName = strat.Name;
+            Settings.SelectedStrategy = strat.Name;
+            SettingsStore.Save(Settings);
+            ReloadFromEngine();
+            if (!status.IsRunning) ShowSuccess($"Стратегия «{strat.Name}» выбрана как основная");
+            if (!status.IsRunning && Shell.IsAdmin())
+            {
+                await StartAsync();
+            }
+        }
+
+        /// <summary>«Сделать, чтобы работало» (v1.29.1): в «Простом» — одна кнопка. Проверяет систему и сеть,
+        /// подбирает способ обхода и сразу применяет его. Ничего технического не спрашивает и не показывает.</summary>
+        public async Task RunOneClickFixAsync()
+        {
+            if (IsFullCheckRunning || IsBusy) return;
+            if (!HasStrategy)
+            {
+                ShowError("Стратегии не найдены — скачайте движок на странице «Обновления»");
+                return;
+            }
+
+            AppLog.Info("Один клик: «Сделать, чтобы работало»");
+            await RunFullCheckAsync();
+
+            var strat = _recommendedStrategy;
+            if (strat == null)
+            {
+                ShowError("Подобрать рабочий способ не получилось. Посмотрите «Проверки» — там видно, что именно не так.");
+                return;
+            }
+
+            await ApplyRecommendedStrategyAsync();
+
+            var status = Bypass.GetStatus();
+            if (status.IsRunning)
+                ShowSuccess($"Готово: обход включён и работает. Если что-то откроется не сразу — нажмите «Проверить снова».");
+            else if (!Shell.IsAdmin())
+                ShowError("Способ обхода подобран и выбран, но для включения нужны права администратора — «Перезапустить от администратора».");
+            else
+                ShowError("Обход выбран, но запустить его не удалось. Нажмите «Сделать, чтобы работало» ещё раз.");
+            RefreshStatus();
+        }
+
+        public async Task RunFullCheckAsync()
+        {
+            if (IsFullCheckRunning) return;
+            if (!HasStrategy)
+            {
+                ShowError("Стратегии не найдены — скачайте движок на странице «Обновления»");
+                return;
+            }
+
+            AppLog.Info("Запущена быстрая проверка «Проверить всё»");
+            IsFullCheckRunning = true;
+            _fullCheckCts = new CancellationTokenSource();
+            // Сбрасываем предыдущий результат без мигания — блок становится активным
+            FullCheckSummaryText = "";
+            FullCheckAdviceText = "";
+            FullCheckSummaryKey = "Info";
+            _recommendedStrategy = null;
+            Raise(nameof(HasRecommendedStrategy));
+            Raise(nameof(RecommendedStrategyName));
+            Raise(nameof(ShowRecommendedStrategyRow));
+            Raise(nameof(FullCheckResultVisible));
+            FullCheckStatusText = "Шаг 1/4: проверяю систему и движок…";
+            FullCheckProgressValue = 0;
+            FullCheckProgressMaximum = 4;
+            FullCheckProgressIndeterminate = false;
+            FullCheckProgressPercentText = "0%";
+
+            try
+            {
+                // Шаг 1: системная диагностика (без лишнего UI шума)
+                FullCheckStatusText = "Шаг 1/4: аудит системы (BFE, WinDivert, права)…";
+                FullCheckProgressValue = 0;
+                try
+                {
+                    await _main.Diagnostics.RunAsync();
+                    var diagSummary = _main.Diagnostics.Summary ?? "";
+                    var diagKey = _main.Diagnostics.SummaryKey ?? "Info";
+                    if (diagKey == "Danger") FullCheckAdviceText = "⚠️ Найдены критичные системные проблемы — откройте «Проверки → Аудит системы» и нажмите «Исправить». ";
+                    else if (diagKey == "Warning") FullCheckAdviceText = "⚠️ Есть предупреждения в аудите системы — рекомендуем исправить перед подбором. ";
+                    else FullCheckAdviceText = "✅ Система в порядке. ";
+                }
+                catch (Exception ex)
+                {
+                    FullCheckAdviceText = $"Не удалось выполнить аудит системы: {ex.Message}. ";
+                }
+                _fullCheckCts.Token.ThrowIfCancellationRequested();
+                FullCheckProgressValue = 1;
+                FullCheckProgressPercentText = "25%";
+
+                // Шаг 2: проверка соединения (ваши хосты + YouTube/Discord)
+                FullCheckStatusText = "Шаг 2/4: проверяю доступность сайтов…";
+                ConnectionChecks.Clear();
+                var connResults = await ConnectionTester.RunAsync(ConnectionTargets, _fullCheckCts.Token, null);
+                foreach (var r in connResults) ConnectionChecks.Add(r);
+                // Обновляем health для кольца
+                {
+                    var total = connResults.Count;
+                    var ok = connResults.Count(x => x.Ok);
+                    var avg = ok > 0 ? (int)connResults.Where(x => x.Ok).Average(x => x.Milliseconds) : 0;
+                    ConnectionHealthVisible = total > 0;
+                    ConnectionHealthKey = ok == total ? "Success" : ok == 0 ? "Danger" : "Warning";
+                    ConnectionHealthText = total > 0 ? $"{ok}/{total} OK" + (ok > 0 ? $" · {avg} мс" : "") : "";
+                    Raise(nameof(ConnectionHealthKey));
+                    Raise(nameof(ConnectionHealthText));
+                }
+                var failedConn = connResults.Count(r => !r.Ok);
+                if (failedConn == 0) FullCheckAdviceText += "Сайты доступны. ";
+                else if (failedConn == connResults.Count) FullCheckAdviceText += $"Ни один сайт не открылся ({failedConn}/{connResults.Count}) — проверьте, запущен ли обход и DNS. ";
+                else FullCheckAdviceText += $"Часть сайтов недоступна ({failedConn}/{connResults.Count}) — это нормально, стратегия должна это исправить. ";
+                _fullCheckCts.Token.ThrowIfCancellationRequested();
+                FullCheckProgressValue = 2;
+                FullCheckProgressPercentText = "50%";
+
+                // Шаг 3: подбор стратегии — прогоняем все 22 стратегии
+                FullCheckStatusText = "Шаг 3/4: тестирую стратегии (1–2 минуты, не закрывайте окно)…";
+                var batch = await _main.StrategiesPage.TestAllAsync(new Progress<string>(s =>
+                {
+                    // Прокидываем прогресс стратегий в наш общий прогресс-текст
+                    if (!string.IsNullOrWhiteSpace(s)) FullCheckStatusText = $"Шаг 3/4: {s}";
+                }));
+                if (batch == null || batch.Cancelled)
+                {
+                    FullCheckSummaryText = "Проверка стратегий отменена";
+                    FullCheckSummaryKey = "Warning";
+                    return;
+                }
+                var best = batch.Best;
+                if (best == null)
+                {
+                    FullCheckSummaryText = "Не удалось протестировать стратегии — попробуйте ещё раз";
+                    FullCheckSummaryKey = "Warning";
+                    FullCheckAdviceText += "Стратегии не дали результата. Попробуйте обновить движок или проверить антивирус.";
+                    return;
+                }
+                _recommendedStrategy = best.Strategy;
+                Raise(nameof(HasRecommendedStrategy));
+                Raise(nameof(RecommendedStrategyName));
+                FullCheckProgressValue = 3;
+                FullCheckProgressPercentText = "75%";
+                _fullCheckCts.Token.ThrowIfCancellationRequested();
+
+                // Шаг 4: итог и подсказки
+                FullCheckStatusText = "Шаг 4/4: формирую рекомендации…";
+                if (best.IsSuitable)
+                {
+                    FullCheckSummaryText = $"Готово! Рекомендована стратегия «{best.Strategy.Name}» — {best.PassedCount}/{best.Checks.Count} проверок OK, задержка {best.AverageLatencyMs} мс. Нажмите «Применить».";
+                    FullCheckSummaryKey = "Success";
+                    FullCheckAdviceText += $"Обратите внимание: стратегия «{best.Strategy.Name}» показала лучший результат из {batch.Results.Count} проверенных. Если позже появятся проблемы — смените её в «Стратегиях» или включите «Игры».";
+                    ShowSuccess(FullCheckSummaryText);
+                }
+                else
+                {
+                    FullCheckSummaryText = $"Лучший кандидат «{best.Strategy.Name}» прошёл только {best.PassedCount}/{best.Checks.Count} проверок — попробуйте его, но будьте готовы сменить стратегию.";
+                    FullCheckSummaryKey = "Warning";
+                    FullCheckAdviceText += "Ни одна стратегия не прошла идеально. Попробуйте другую группу (ALT / FAKE TLS AUTO), проверьте «Фильтры» и убедитесь, что антивирус не блокирует WinDivert.";
+                    ShowWarning(FullCheckSummaryText);
+                }
+                FullCheckProgressValue = 4;
+                FullCheckProgressPercentText = "100%";
+                FullCheckStatusText = "Готово";
+            }
+            catch (OperationCanceledException)
+            {
+                FullCheckSummaryText = "Проверка отменена пользователем";
+                FullCheckSummaryKey = "Warning";
+                FullCheckStatusText = "Отменено";
+            }
+            catch (Exception ex)
+            {
+                FullCheckSummaryText = "Ошибка при проверке: " + ex.Message;
+                FullCheckSummaryKey = "Danger";
+                FullCheckStatusText = "Ошибка";
+                ShowError(FullCheckSummaryText);
+            }
+            finally
+            {
+                IsFullCheckRunning = false;
+                FullCheckProgressIndeterminate = false;
+                _fullCheckCts?.Dispose();
+                _fullCheckCts = null;
+            }
+        }
+
         private async Task<string> SafeLatestAsync()
         {
             try
@@ -958,6 +1401,26 @@ namespace ZapretGui.ViewModels
         {
             MessageKey = key;
             Message = message;
+        }
+
+        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
+        public bool ExpertMode => _main.ExpertMode;
+        public bool SimpleMode => _main.SimpleMode;
+
+        /// <summary>Подзаголовок карточки быстрой настройки — в «Простом» без технических подробностей.</summary>
+        public string QuickSetupHintText => SimpleMode
+            ? "Нажмите одну кнопку: проверю систему и сеть, подберу рабочий способ и включу обход."
+            : "4 шага за 1–2 минуты: система → сайты → 22 стратегии → подсказка.";
+
+        /// <summary>Рекомендация как техническая сущность показывается только в «Эксперте» (v1.29.1).</summary>
+        public bool ShowRecommendedStrategyRow => HasRecommendedStrategy && !SimpleMode;
+
+        private void OnExpertModeChanged()
+        {
+            Raise(nameof(SimpleMode));
+            Raise(nameof(QuickSetupHintText));
+            Raise(nameof(ShowRecommendedStrategyRow));
+            Raise(nameof(ExpertMode));
         }
     }
 }
