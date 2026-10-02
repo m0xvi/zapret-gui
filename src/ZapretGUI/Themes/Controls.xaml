@@ -778,7 +778,7 @@
                                           ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                                           ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                                           Margin="{TemplateBinding Padding}" VerticalAlignment="Center"
-                                          HorizontalAlignment="Left" TextTrimming="CharacterEllipsis" />
+                                          HorizontalAlignment="Left" />
                         <!-- Popup: поле списка натянуто на всю область (Background=Transparent + Margin у рамки
                              внутри), чтобы мышь, идущая от контрола к пункту, не попадала в «мёртвую» прозрачную
                              зону и список не закрывался сам. Анимация выключена — с ней Popup мигает при открытии. -->
