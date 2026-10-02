@@ -1,0 +1,263 @@
+<UserControl x:Class="ZapretGui.Views.ConfigurationPage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="Transparent">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,24" CanContentScroll="False">
+        <StackPanel Margin="24,20,20,32" MaxWidth="980">
+
+            <!-- Заголовок -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <TextBlock Style="{StaticResource DisplayText}" Text="Настройка" />
+                    <TextBlock Style="{StaticResource MutedText}" TextWrapping="Wrap"
+                               Text="Рабочий стол настройщика: что применено сейчас, что поправить и как откатить." />
+                </StackPanel>
+                <Border Grid.Column="1" Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Top">
+                    <TextBlock Style="{StaticResource DimText}" Text="ЭКСПЕРТ" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}" />
+                </Border>
+            </Grid>
+
+            <!-- В «Простом» режиме рабочий стол не нужен: одна кнопка живёт на «Главной» -->
+            <Border Style="{StaticResource NoticeInfo}" Margin="{DynamicResource CardGap}"
+                    Visibility="{Binding IsSimpleMode, Converter={StaticResource BoolToVis}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                        <TextBlock Text="Рабочий стол настройщика — для режима «Эксперт»" Style="{StaticResource BodyText}" FontWeight="SemiBold" />
+                        <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap" Margin="0,3,0,0"
+                                   Text="В «Простом» всё делает одна кнопка «Сделать, чтобы работало» на «Главной». Здесь — ручное управление: параметры обхода, история и откат." />
+                    </StackPanel>
+                    <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" VerticalAlignment="Center"
+                            Content="Включить режим «Эксперт»" Command="{Binding EnableExpertModeCommand}" />
+                </Grid>
+            </Border>
+
+            <StackPanel Visibility="{Binding IsExpertMode, Converter={StaticResource BoolToVis}}">
+
+                <!-- ============ 1. ЧТО ПРИМЕНЕНО СЕЙЧАС ============ -->
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ЧТО ПРИМЕНЕНО СЕЙЧАС" />
+                            <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                    ToolTip="Порядок настройки: права → движок → цели → способ обхода → перехват → DNS → поведение → проверка. Строки идут именно в этом порядке: сверху то, без чего остальное не проверить."
+                                    AutomationProperties.Name="Подсказка: ЧТО ПРИМЕНЕНО СЕЙЧАС" />
+                        </StackPanel>
+
+                        <ItemsControl ItemsSource="{Binding SummaryRows}" Margin="0,10,0,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Style="{StaticResource InnerCard}" Margin="0,0,0,6">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                                <ColumnDefinition Width="Auto" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Grid.Column="0" Style="{StaticResource Badge}" Width="26" Height="26" Padding="0"
+                                                    Background="{Binding Key, Converter={StaticResource SoftSeverityBrush}}" VerticalAlignment="Top">
+                                                <TextBlock Text="{Binding StepText}" FontWeight="Bold" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                           Foreground="{Binding Key, Converter={StaticResource SeverityBrush}}" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="10,0,10,0">
+                                                <TextBlock Text="{Binding Title}" Style="{StaticResource BodyText}" FontWeight="SemiBold" />
+                                                <TextBlock Text="{Binding Value}" Style="{StaticResource DimText}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                                            </StackPanel>
+                                            <Button Grid.Column="2" Style="{StaticResource CompactGhostButton}" Content="Открыть"
+                                                    VerticalAlignment="Center"
+                                                    Command="{Binding DataContext.OpenSectionCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                                    CommandParameter="{Binding Section}"
+                                                    AutomationProperties.Name="Открыть раздел" />
+                                        </Grid>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+
+                        <WrapPanel Margin="0,6,0,0">
+                            <Button Style="{StaticResource CompactGhostButton}" Content="Обновить" Command="{Binding RefreshCommand}" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="10,6,0,0" Text="{Binding StrategyStatusText, Mode=OneWay}" VerticalAlignment="Center" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- ============ 2. ПОПРАВИТЬ И ПРИМЕНИТЬ ============ -->
+                <Border Style="{StaticResource CardAccent}" Margin="{DynamicResource CardGap}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ПОПРАВИТЬ И ПРИМЕНИТЬ" />
+                            <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                    ToolTip="Здесь меняются только параметры обхода. Перебор стратегий и матрица тестов — в «Обходе», пул SNI — в «Стратегиях», списки домен/IP — в «Списках». При нажатии «Применить» приложение сначала сохраняет снимок текущего состояния — к нему можно вернуться."
+                                    AutomationProperties.Name="Подсказка: ПОПРАВИТЬ И ПРИМЕНИТЬ" />
+                        </StackPanel>
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" MinWidth="180" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <!-- Способ обхода -->
+                            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource BodyText}" Text="Способ обхода" VerticalAlignment="Center" />
+                            <Grid Grid.Row="0" Grid.Column="1" Margin="0,6,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" Style="{StaticResource AppComboBox}" MinWidth="240"
+                                          ItemsSource="{Binding StrategyOptions}" SelectedItem="{Binding SelectedStrategy, Mode=TwoWay}"
+                                          DisplayMemberPath="Name" AutomationProperties.Name="Способ обхода" />
+                                <Button Grid.Column="1" Style="{StaticResource CompactGhostButton}" Content="Каталог и тесты →" Margin="8,0,0,0"
+                                        Command="{Binding OpenStrategiesCommand}" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- Игровой фильтр -->
+                            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource BodyText}" Text="Игровой фильтр" VerticalAlignment="Center" />
+                            <ComboBox Grid.Row="1" Grid.Column="1" Style="{StaticResource AppComboBox}" Margin="0,6,0,6"
+                                      ItemsSource="{Binding GameFilterProfiles}" SelectedItem="{Binding SelectedGameFilter, Mode=TwoWay}"
+                                      DisplayMemberPath="DisplayTitle" AutomationProperties.Name="Игровой фильтр" />
+
+                            <!-- Порты -->
+                            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource BodyText}" Text="Порты TCP / UDP / исключения" VerticalAlignment="Center" />
+                            <Grid Grid.Row="2" Grid.Column="1" Margin="0,6,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBox Grid.Column="0" Style="{StaticResource InputBox}" Text="{Binding TcpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="TCP-порты игрового фильтра" />
+                                <TextBox Grid.Column="1" Style="{StaticResource InputBox}" Margin="8,0,0,0" Text="{Binding UdpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="UDP-порты игрового фильтра" />
+                                <TextBox Grid.Column="2" Style="{StaticResource InputBox}" Margin="8,0,0,0" Text="{Binding ExcludedPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         AutomationProperties.Name="Исключённые порты" />
+                            </Grid>
+
+                            <!-- SNI -->
+                            <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource BodyText}" Text="Подмена SNI" VerticalAlignment="Center" />
+                            <Grid Grid.Row="3" Grid.Column="1" Margin="0,6,0,6">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <ComboBox Grid.Column="0" Style="{StaticResource AppComboBox}" MinWidth="200"
+                                          ItemsSource="{Binding SniOptions}" SelectedItem="{Binding SelectedSni, Mode=TwoWay}"
+                                          AutomationProperties.Name="Подмена SNI" />
+                                <Button Grid.Column="1" Style="{StaticResource CompactGhostButton}" Content="Пулы SNI →" Margin="8,0,0,0"
+                                        Command="{Binding OpenSniPoolCommand}" VerticalAlignment="Center" />
+                            </Grid>
+
+                            <!-- ipset и DNS -->
+                            <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource BodyText}" Text="Перехват (ipset)" VerticalAlignment="Center" />
+                            <ComboBox Grid.Row="4" Grid.Column="1" Style="{StaticResource AppComboBox}" Margin="0,6,0,6"
+                                      ItemsSource="{Binding IpsetModes}" SelectedItem="{Binding SelectedIpset, Mode=TwoWay}"
+                                      DisplayMemberPath="Title" AutomationProperties.Name="Режим ipset" />
+
+                            <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource BodyText}" Text="DNS" VerticalAlignment="Center" />
+                            <ComboBox Grid.Row="5" Grid.Column="1" Style="{StaticResource AppComboBox}" Margin="0,6,0,6"
+                                      ItemsSource="{Binding DnsOptions}" SelectedItem="{Binding SelectedDns, Mode=TwoWay}"
+                                      DisplayMemberPath="Title" AutomationProperties.Name="DNS-профиль" />
+
+                            <!-- Флаги -->
+                            <TextBlock Grid.Row="6" Grid.Column="0" Style="{StaticResource BodyText}" Text="Транспорт" VerticalAlignment="Center" />
+                            <WrapPanel Grid.Row="6" Grid.Column="1" Margin="0,6,0,0">
+                                <CheckBox Style="{StaticResource SwitchCheckBox}" Content="DoH для заблокированных" IsChecked="{Binding UseDoh, Mode=TwoWay}"
+                                          ToolTip="DNS-over-HTTPS: ответы приходят шифрованными, провайдер не подменяет IP." />
+                                <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отключить QUIC fake" Margin="16,0,0,0" IsChecked="{Binding DisableQuicFake, Mode=TwoWay}"
+                                          ToolTip="QUIC (UDP 443) не подменяется. Помогает, если YouTube или игры конфликтуют с подменой QUIC." />
+                                <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Приоритет IPv4" Margin="16,0,0,0" IsChecked="{Binding PreferIPv4, Mode=TwoWay}"
+                                          ToolTip="Сначала пробуется IPv4: часть блокировок работает только по протоколу v4." />
+                                <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Ротация SNI" Margin="16,0,0,0" IsChecked="{Binding AutoSniRotation, Mode=TwoWay}"
+                                          ToolTip="Менять SNI по кругу между проверками — сложнее забанить конкретное значение." />
+                            </WrapPanel>
+                        </Grid>
+
+                        <Border Style="{StaticResource NoticeInfo}" Margin="0,12,0,0">
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding ChangeSummary, Mode=OneWay}" TextWrapping="Wrap" />
+                        </Border>
+
+                        <WrapPanel Margin="0,12,0,0">
+                            <Button Style="{StaticResource PrimaryButton}" Content="Применить" Command="{Binding ApplyCommand}"
+                                    ToolTip="Сохранить параметры, применить к движку и перезапустить обход. Перед этим сохраняется снимок текущего состояния." />
+                            <Button Style="{StaticResource SecondaryButton}" Content="Откатить последнее" Margin="8,0,0,0" Command="{Binding RevertCommand}"
+                                    ToolTip="Вернуть состояние из самого свежего снимка истории" />
+                            <Button Style="{StaticResource GhostButton}" Content="Экспорт" Margin="8,0,0,0" Command="{Binding ExportCommand}"
+                                    ToolTip="Сохранить текущую конфигурацию обхода в JSON-файл" />
+                            <ProgressBar Style="{StaticResource ThinProgress}" IsIndeterminate="True" Width="120" Margin="12,8,0,0"
+                                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}" />
+                        </WrapPanel>
+
+                        <TextBlock Style="{StaticResource BodyText}" Margin="0,10,0,0" TextWrapping="Wrap"
+                                   Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}"
+                                   Text="{Binding StatusText, Mode=OneWay}"
+                                   Visibility="{Binding HasStatus, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- ============ 3. ИСТОРИЯ И ОТКАТ ============ -->
+                <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ИСТОРИЯ И ОТКАТ" />
+                            <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                    ToolTip="Снимок делается автоматически перед каждым применением и откатом — хранятся последние 30. «Вернуть выбранное состояние» переключает конфигурацию на выбранный снимок, а текущая сохраняется в историю."
+                                    AutomationProperties.Name="Подсказка: ИСТОРИЯ И ОТКАТ" />
+                        </StackPanel>
+
+                        <ListBox ItemsSource="{Binding History}" SelectedItem="{Binding SelectedSnapshot, Mode=TwoWay}"
+                                 Style="{StaticResource PlainListBox}" Margin="0,10,0,0" MaxHeight="240"
+                                 ItemContainerStyle="{StaticResource CompactRowItemStyle}"
+                                 AutomationProperties.Name="История снимков конфигурации">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Grid.Column="0" Text="{Binding TimeText}" Style="{StaticResource DimText}" VerticalAlignment="Center" />
+                                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                            <TextBlock Text="{Binding StrategyText}" Style="{StaticResource BodyText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                            <TextBlock Style="{StaticResource DimText}" Margin="0,2,0,0" TextWrapping="Wrap">
+                                                <Run Text="{Binding NoteText, Mode=OneWay}" />
+                                                <Run Text=" · " />
+                                                <Run Text="{Binding SummaryText, Mode=OneWay}" />
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Text="Пока снимков нет — история пуста."
+                                   Visibility="{Binding HasHistory, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+
+                        <WrapPanel Margin="0,12,0,0">
+                            <Button Style="{StaticResource SecondaryButton}" Content="Вернуть выбранное состояние"
+                                    Command="{Binding RestoreSnapshotCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Откатить последнее" Margin="8,0,0,0" Command="{Binding RevertCommand}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

@@ -82,6 +82,8 @@ namespace ZapretGui.ViewModels
                 _main.Navigate("bypass-center");
             });
             OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
+            // Рабочий стол настройщика (v1.29.3) — виден только в «Эксперте» (кнопка на странице).
+            OpenWorkbenchCommand = new RelayCommand(() => _main.Navigate("configuration"));
             // «Требует внимания» → сценарии «Помощи» (этап 6): объяснение без технических терминов
             OpenHelpCommand = new RelayCommand(() => _main.Navigate("help"));
             OpenDiagnosticsCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
@@ -571,6 +573,9 @@ namespace ZapretGui.ViewModels
         public ICommand ToggleServiceCommand { get; }
         public ICommand ReapplyServiceCommand { get; }
         public ICommand OpenChecksCommand { get; }
+
+        /// <summary>Переход на рабочий стол настройщика: конфигурация целиком, история и откат.</summary>
+        public ICommand OpenWorkbenchCommand { get; }
         public ICommand OpenBypassCommand { get; }
         public ICommand OpenLogsCommand { get; }
         public ICommand OpenHelpCommand { get; }

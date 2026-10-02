@@ -143,6 +143,25 @@
 ### 5.4 О программе (AboutPage)
 *   **Инфо:** `AppVersion` (`InformationalVersion`), `EngineVersionText`, `EnginePathText`, кнопки `OpenEngineFolder`/`OpenLogs`/`CheckUpdates`, лицензия.
 
+### 5.4b Рабочий стол настройщика (`v1.29.3`)
+
+*   **Страница:** `Views/ConfigurationPage.xaml` + `ViewModels/ConfigurationViewModel.cs`, ключ навигации
+    `configuration` (родитель в меню — «Обход»; страницы в `MainWindow._pages`). В «Простом» — пояснение и
+    `EnableExpertModeCommand`, рабочие блоки видны только в «Эксперте».
+*   **«Что применено сейчас»:** `SummaryRows` — 8 строк `ConfigSummaryRow` (Step, Title, Value, Key, Section) в
+    порядке `docs/SETUP_ORDER.md`; `OpenSectionCommand(section)` ведёт в `checks`/`updates`/`strategies`/
+    `user-lists`/`bypass`/`automation`/`diagnostics`.
+*   **Правка:** `SelectedStrategy` (`StrategyStore.Items`), `SelectedGameFilter` (`GameFilterPortConfig.PredefinedProfiles`),
+    `TcpPorts`/`UdpPorts`/`ExcludedPorts`, `SelectedSni` (+ `SniOptions`), `SelectedIpset` (`IpsetMode`), `SelectedDns`
+    (`DnsManagementService.PredefinedProfiles` + свои профили, первый пункт — «не менять»), флаги `UseDoh`,
+    `DisableQuicFake`, `PreferIPv4`, `AutoSniRotation`; `ChangeSummary` — что изменится при нажатии «Применить».
+*   **Применение/откат/экспорт:** `ApplyCommand`, `RevertCommand`, `RestoreSnapshotCommand`, `ExportCommand`
+    (`SaveFileDialog`, JSON). Применение = запись в `AppSettings` + `SettingsStore.Save` + `EngineService.SetIpsetMode`
+    + `Bypass.InstallServiceAsync`/`SwitchToStrategyAsync` + `DnsManagementService.ApplyDnsProfileAsync`.
+*   **История:** `Core/ConfigurationSnapshot.cs` — `ConfigurationSnapshot` (способ, фильтр и порты, ipset, DNS-профиль,
+    SNI и флаги) и `ConfigurationSnapshotStore` (`AppPaths.ConfigHistoryFile` = `config-history.json`, до 30 снимков;
+    `Capture`/`Push`/`Remove`/`ExportToFile`). Снимок делается до применения и до отката.
+
 ### 5.4a Подсказки «?» и порядок настройки (`v1.29.2`)
 
 *   **Стиль `HelpHint`** (`Themes/Controls.xaml`): круглая кнопка 18×18 с глифом `\uE897` и `ToolTip`. Ставится рядом

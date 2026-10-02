@@ -69,6 +69,7 @@ namespace ZapretGui.ViewModels
             FirstLaunch = new FirstLaunchViewModel(this);
             Logs = new LogsViewModel(this);
             SettingsPage = new SettingsViewModel(this);
+            Configuration = new ConfigurationViewModel(this);
             Help = new HelpViewModel(this);
             Search = new SearchViewModel(this);
 
@@ -265,6 +266,9 @@ namespace ZapretGui.ViewModels
         public UpdatesViewModel Updates { get; }
     public GlobalOverlayViewModel GlobalOverlay { get; }
         public SettingsViewModel SettingsPage { get; }
+
+        /// <summary>Рабочий стол настройщика (v1.29.3): сводка, применение, история и откат конфигурации обхода.</summary>
+        public ConfigurationViewModel Configuration { get; }
         public DiagnosticsViewModel Diagnostics { get; }
         public DeepCheckViewModel DeepCheck { get; }
         public UserListsViewModel UserLists { get; }
@@ -792,7 +796,7 @@ namespace ZapretGui.ViewModels
             // «Профили и копии»/«Обновления»/«О программе» → «Настройки»).
             var parentKey = key switch
             {
-                "strategies" or "user-lists" => "bypass-center",
+                "strategies" or "user-lists" or "configuration" => "bypass-center",
                 "profiles" or "updates" or "about" => "settings",
                 _ => null
             };

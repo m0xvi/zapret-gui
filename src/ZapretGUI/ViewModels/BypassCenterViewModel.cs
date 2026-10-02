@@ -70,6 +70,7 @@ namespace ZapretGui.ViewModels
             ApplyStrategyCommand = new AsyncRelayCommand(ApplySelectedStrategyAsync, () => SelectedStrategy != null && !IsMatrixRunning);
             DismissMessageCommand = new RelayCommand(() => { Message = ""; MessageKey = "Info"; });
             OpenListsCommand = new RelayCommand(() => _main.Navigate("user-lists"));
+            OpenWorkbenchCommand = new RelayCommand(() => _main.Navigate("configuration"));
             // «Подбор» в «Простом» режиме пустовал: матрица стратегия × DNS — экспертный блок (v1.28.0).
             // Вместо пустого экрана показываем пояснение и кнопку включения режима.
             EnableExpertModeCommand = new RelayCommand(() => { if (_main.SimpleMode) _main.ToggleExpertMode(); });
@@ -222,6 +223,9 @@ namespace ZapretGui.ViewModels
         public DnsStrategyMatrixEntry? SelectedMatrixEntry { get => _selectedMatrixEntry; set => Set(ref _selectedMatrixEntry, value); }
 
         public ICommand RefreshCommand { get; }
+
+        /// <summary>Рабочий стол настройщика (v1.29.3): конфигурация целиком, история и откат.</summary>
+        public ICommand OpenWorkbenchCommand { get; }
         public ICommand ApplyDnsCommand { get; }
         public ICommand CheckHijackCommand { get; }
         public ICommand UpdateHostsCommand { get; }

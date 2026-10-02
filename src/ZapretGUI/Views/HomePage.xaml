@@ -163,6 +163,10 @@
                                         <Button Style="{StaticResource GhostButton}" Content="Открыть мастер" Margin="8,0,0,0" Padding="14,7"
                                                 Command="{Binding OpenFirstLaunchCommand}" VerticalAlignment="Center"
                                                 ToolTip="Открыть мастер первого запуска — там можно добавить свои сайты и пропустить шаги" />
+                                        <Button Style="{StaticResource GhostButton}" Content="Рабочий стол настройщика →" Margin="8,0,0,0" Padding="14,7"
+                                                Command="{Binding OpenWorkbenchCommand}" VerticalAlignment="Center"
+                                                AutomationProperties.Name="Рабочий стол настройщика"
+                                                ToolTip="Один экран: что применено сейчас, правка параметров обхода, история снимков и откат" />
                                     </StackPanel>
                                 </WrapPanel>
 

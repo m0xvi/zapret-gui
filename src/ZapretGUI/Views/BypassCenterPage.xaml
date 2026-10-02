@@ -17,6 +17,10 @@
                     <TextBlock Style="{StaticResource MutedText}" Text="Чем и что обходим: стратегии, подбор, DNS, списки и сложные сайты. Всё по подвкладкам — статус всегда сверху." TextWrapping="Wrap"/>
                 </StackPanel>
                 <WrapPanel Grid.Column="1" VerticalAlignment="Top" HorizontalAlignment="Right">
+                    <Button Style="{StaticResource SecondaryButton}" Content="Рабочий стол настройщика →" Command="{Binding OpenWorkbenchCommand}" Margin="0,0,8,0"
+                            Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"
+                            AutomationProperties.Name="Рабочий стол настройщика"
+                            ToolTip="Один экран: что применено сейчас, правка параметров обхода, история снимков и откат" />
                     <Button Style="{StaticResource GhostButton}" Content="Открыть папку движка" Command="{Binding OpenEngineFolderCommand}" Margin="0,0,8,0"/>
                     <Button Style="{StaticResource SecondaryButton}" Content="Обновить статусы" Command="{Binding RefreshCommand}"/>
                 </WrapPanel>
