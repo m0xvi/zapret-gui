@@ -51,9 +51,12 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,12,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРАЯ ПРОВЕРКА САЙТОВ И СЕРВИСОВ" />
-                                <TextBlock Style="{StaticResource MutedText}"
-                                           Text="Проверяет ключевые сервисы (YouTube, Discord и др.) и выявляет источник проблемы: блокировка провайдера или недоступность сервера." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРАЯ ПРОВЕРКА САЙТОВ И СЕРВИСОВ" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Проверяет ключевые сервисы (YouTube, Discord и др.) и выявляет источник проблемы: блокировка провайдера или недоступность сервера."
+                                            AutomationProperties.Name="Подсказка: БЫСТРАЯ ПРОВЕРКА САЙТОВ И СЕРВИСОВ" />
+                                </StackPanel>
                             </StackPanel>
                             <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
                                 <Button Style="{StaticResource PrimaryButton}" Content="Проверить сейчас"
@@ -163,9 +166,12 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,12,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="СЛОЖНЫЕ САЙТЫ: ПРОВЕРКА DPI (34 УЗЛА)" />
-                                <TextBlock Style="{StaticResource MutedText}"
-                                           Text="Проверка DNS, TCP, HTTP/1.1, TLS 1.2 и TLS 1.3 на 34 тестовых endpoint-ах для выявления типа фильтрации трафика." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="СЛОЖНЫЕ САЙТЫ: ПРОВЕРКА DPI (34 УЗЛА)" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Проверка DNS, TCP, HTTP/1.1, TLS 1.2 и TLS 1.3 на 34 тестовых endpoint-ах для выявления типа фильтрации трафика."
+                                            AutomationProperties.Name="Подсказка: СЛОЖНЫЕ САЙТЫ: ПРОВЕРКА DPI (34 УЗЛА)" />
+                                </StackPanel>
                             </StackPanel>
                             <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
                                 <Button Style="{StaticResource PrimaryButton}" Content="Запустить проверку DPI"
@@ -293,9 +299,12 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,12,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА ГОЛОСА DISCORD (RTC / WEBRTC / UDP)" />
-                                <TextBlock Style="{StaticResource MutedText}"
-                                           Text="Диагностика голосовых шлюзов Discord (Роттердам, Франкфурт, Стокгольм и др.), измерение RTT, проверка прохождения UDP-пакетов сквозь ТСПУ и устранение зависания «Подключение к RTC»." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА ГОЛОСА DISCORD (RTC / WEBRTC / UDP)" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Диагностика голосовых шлюзов Discord (Роттердам, Франкфурт, Стокгольм и др.), измерение RTT, проверка прохождения UDP-пакетов сквозь ТСПУ и устранение зависания «Подключение к RTC»."
+                                            AutomationProperties.Name="Подсказка: ПРОВЕРКА ГОЛОСА DISCORD (RTC / WEBRTC / UDP)" />
+                                </StackPanel>
                             </StackPanel>
                             <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
                                 <Button Style="{StaticResource PrimaryButton}" Content="Проверить голос Discord"
@@ -444,9 +453,12 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,12,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ГЛУБОКАЯ ПРОВЕРКА · ПОДБОР СПОСОБА ОБХОДА" />
-                                <TextBlock Style="{StaticResource MutedText}"
-                                           Text="Глубокое тестирование стратегий по матрице тестовых целей и выявление наиболее устойчивой комбинации параметров." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ГЛУБОКАЯ ПРОВЕРКА · ПОДБОР СПОСОБА ОБХОДА" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Глубокое тестирование стратегий по матрице тестовых целей и выявление наиболее устойчивой комбинации параметров."
+                                            AutomationProperties.Name="Подсказка: ГЛУБОКАЯ ПРОВЕРКА · ПОДБОР СПОСОБА ОБХОДА" />
+                                </StackPanel>
                             </StackPanel>
                             <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
                                 <Button Style="{StaticResource PrimaryButton}" Content="Запустить глубокую проверку"
@@ -582,9 +594,12 @@
                                 <TextBlock Text="&#xE81B;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА СИСТЕМЫ" />
-                                <TextBlock Style="{StaticResource DimText}"
-                                           Text="Права, файлы движка, службы, драйвер WinDivert и сеть — одним кликом." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА СИСТЕМЫ" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Права, файлы движка, службы, драйвер WinDivert и сеть — одним кликом."
+                                            AutomationProperties.Name="Подсказка: ПРОВЕРКА СИСТЕМЫ" />
+                                </StackPanel>
                             </StackPanel>
                             <Button Grid.Column="2" Style="{StaticResource CompactButton}" Content="Запустить проверку системы" MinHeight="34"
                                     Command="{Binding RunCommand}" VerticalAlignment="Center"
@@ -703,9 +718,12 @@
                 <StackPanel Visibility="{Binding IsResultsTabSelected, Converter={StaticResource BoolToVis}}">
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="СВОДНЫЙ ОТЧЁТ И СОХРАНЁННЫЕ ДАННЫЕ" />
-                            <TextBlock Style="{StaticResource MutedText}"
-                                       Text="Единый обзор текущего состояния системы, истории проверок и экспорт диагностических пакетов." TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="СВОДНЫЙ ОТЧЁТ И СОХРАНЁННЫЕ ДАННЫЕ" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Единый обзор текущего состояния системы, истории проверок и экспорт диагностических пакетов."
+                                        AutomationProperties.Name="Подсказка: СВОДНЫЙ ОТЧЁТ И СОХРАНЁННЫЕ ДАННЫЕ" />
+                            </StackPanel>
                         </StackPanel>
                     </Border>
 
@@ -770,9 +788,12 @@
                     <!-- Экспорт пакетов -->
                     <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПОРТ ДИАГНОСТИЧЕСКИХ ДАННЫХ" />
-                            <TextBlock Style="{StaticResource MutedText}"
-                                       Text="Все диагностические отчёты формируются локально без сетевых запросов и не содержат персональных данных или паролей." TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПОРТ ДИАГНОСТИЧЕСКИХ ДАННЫХ" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Все диагностические отчёты формируются локально без сетевых запросов и не содержат персональных данных или паролей."
+                                        AutomationProperties.Name="Подсказка: ЭКСПОРТ ДИАГНОСТИЧЕСКИХ ДАННЫХ" />
+                            </StackPanel>
                             <WrapPanel Margin="0,12,0,0">
                                 <Button Style="{StaticResource PrimaryButton}" Content="Экспортировать diagnostics.json"
                                         Command="{Binding ExportReportCommand}"
@@ -790,9 +811,12 @@
                 <StackPanel Visibility="{Binding IsLogsTabSelected, Converter={StaticResource BoolToVis}}">
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ЖУРНАЛ ПРИЛОЖЕНИЯ И СЛУЖБЫ" />
-                            <TextBlock Style="{StaticResource MutedText}"
-                                       Text="Что происходило: запуски обхода, проверки, обновления и ошибки. Фильтры — по уровню и источнику, кнопки «Сохранить», «Копировать» и «Очистить» — над списком." TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ЖУРНАЛ ПРИЛОЖЕНИЯ И СЛУЖБЫ" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Что происходило: запуски обхода, проверки, обновления и ошибки. Фильтры — по уровню и источнику, кнопки «Сохранить», «Копировать» и «Очистить» — над списком."
+                                        AutomationProperties.Name="Подсказка: ЖУРНАЛ ПРИЛОЖЕНИЯ И СЛУЖБЫ" />
+                            </StackPanel>
                         </StackPanel>
                     </Border>
                     <!-- Отрицательный отступ гасит внутренние поля страницы журнала, чтобы карточки совпадали по краям. -->

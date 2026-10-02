@@ -55,9 +55,12 @@
 
             <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionText}" Text="ПАРАМЕТРЫ ПРОБЫ" />
-                    <TextBlock Style="{StaticResource MutedText}"
-                               Text="Пользовательский HTTPS-узел необязателен. Если поле пустое, проверяется внешний набор контрольных узлов. Их операторы не являются вашим интернет-провайдером." TextWrapping="Wrap" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource SectionText}" Text="ПАРАМЕТРЫ ПРОБЫ" />
+                        <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                ToolTip="Пользовательский HTTPS-узел необязателен. Если поле пустое, проверяется внешний набор контрольных узлов. Их операторы не являются вашим интернет-провайдером."
+                                AutomationProperties.Name="Подсказка: ПАРАМЕТРЫ ПРОБЫ" />
+                    </StackPanel>
                     <TextBlock Style="{StaticResource DimText}" Text="Пользовательский HTTPS-хост" Margin="0,10,0,0" />
                     <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomHost, UpdateSourceTrigger=PropertyChanged}"
                              Margin="0,5,0,0" ToolTip="Например, https://example.com или собственный HTTPS-хост" AutomationProperties.Name="Например, https://example.com или собственный HTTPS-хост" />

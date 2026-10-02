@@ -42,8 +42,12 @@
                                 <TextBlock Text="&#xE7E8;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ЗАПУСК ПРИЛОЖЕНИЯ" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Как приложение ведёт себя при старте Windows и при закрытии окна." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ЗАПУСК ПРИЛОЖЕНИЯ" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Как приложение ведёт себя при старте Windows и при закрытии окна."
+                                            AutomationProperties.Name="Подсказка: ЗАПУСК ПРИЛОЖЕНИЯ" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать при входе в систему (от администратора)" Margin="0,14,0,0"
@@ -70,8 +74,12 @@
                                 <TextBlock Text="&#xE81B;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ЗАПУСК ОБХОДА" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Что делает обход при запуске и выходе — без скрытых действий." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ЗАПУСК ОБХОДА" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Что делает обход при запуске и выходе — без скрытых действий."
+                                            AutomationProperties.Name="Подсказка: ЗАПУСК ОБХОДА" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
 
@@ -120,8 +128,12 @@
                                                 <TextBlock Text="&#xE9CA;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                                <TextBlock Style="{StaticResource SectionText}" Text="ЖИВОЙ RTT (ЗАДЕРЖКА)" Margin="0,0,0,2" />
-                                                <TextBlock Style="{StaticResource DimText}" Text="Маленький бейдж в шапке с пингом до YouTube/Discord/GitHub." TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource SectionText}" Text="ЖИВОЙ RTT (ЗАДЕРЖКА)" Margin="0,0,0,2" />
+                                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                                            ToolTip="Маленький бейдж в шапке с пингом до YouTube/Discord/GitHub."
+                                                            AutomationProperties.Name="Подсказка: ЖИВОЙ RTT (ЗАДЕРЖКА)" />
+                                                </StackPanel>
                                             </StackPanel>
                                         </Grid>
                                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать RTT в шапке окна" Margin="0,14,0,0"
@@ -154,8 +166,12 @@
                                                 <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                                <TextBlock Style="{StaticResource SectionText}" Text="АВТОДЕТЕКТ ИГР" Margin="0,0,0,2" />
-                                                <TextBlock Style="{StaticResource DimText}" Text="Отслеживает CS2, Dota 2, Valorant, Apex, War Thunder, Genshin и др. — автоматически включает игровой режим." TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource SectionText}" Text="АВТОДЕТЕКТ ИГР" Margin="0,0,0,2" />
+                                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                                            ToolTip="Отслеживает CS2, Dota 2, Valorant, Apex, War Thunder, Genshin и др. — автоматически включает игровой режим."
+                                                            AutomationProperties.Name="Подсказка: АВТОДЕТЕКТ ИГР" />
+                                                </StackPanel>
                                             </StackPanel>
                                         </Grid>
                                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включить детектор запущенных игр" Margin="0,14,0,0"
@@ -172,9 +188,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,12,0">
-                            <TextBlock Style="{StaticResource SectionText}" Text="МАСТЕР ПЕРВОГО ЗАПУСКА" Margin="0,0,0,2" />
-                            <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
-                                       Text="Пошаговая проверка прав, движка, диагностики и выбор первой стратегии. Мастер сам откроется при первом запуске — можно запустить заново." />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="МАСТЕР ПЕРВОГО ЗАПУСКА" Margin="0,0,0,2" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Пошаговая проверка прав, движка, диагностики и выбор первой стратегии. Мастер сам откроется при первом запуске — можно запустить заново."
+                                        AutomationProperties.Name="Подсказка: МАСТЕР ПЕРВОГО ЗАПУСКА" />
+                            </StackPanel>
                         </StackPanel>
                         <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Запустить мастер" VerticalAlignment="Center"
                                 Command="{Binding RerunFirstLaunchWizardCommand}" ToolTip="Открыть пошаговый мастер настройки" />
@@ -198,8 +217,12 @@
                                 <TextBlock Text="&#xE7BA;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="АВТОМАТИЧЕСКАЯ СМЕНА СТРАТЕГИИ" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="По умолчанию выключено: стратегию выбираете вы. Включите, только если хотите, чтобы приложение подбирало замену само." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="АВТОМАТИЧЕСКАЯ СМЕНА СТРАТЕГИИ" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="По умолчанию выключено: стратегию выбираете вы. Включите, только если хотите, чтобы приложение подбирало замену само."
+                                            AutomationProperties.Name="Подсказка: АВТОМАТИЧЕСКАЯ СМЕНА СТРАТЕГИИ" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Margin="0,14,0,0"
@@ -247,8 +270,12 @@
                                                 <TextBlock Text="&#xE7BA;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                                <TextBlock Style="{StaticResource SectionText}" Text="СТОРОЖЕВОЙ ТАЙМЕР (WATCHDOG)" Margin="0,0,0,2" />
-                                                <TextBlock Style="{StaticResource DimText}" Text="Следит, чтобы winws.exe и служба zapret не падали молча." TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource SectionText}" Text="СТОРОЖЕВОЙ ТАЙМЕР (WATCHDOG)" Margin="0,0,0,2" />
+                                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                                            ToolTip="Следит, чтобы winws.exe и служба zapret не падали молча."
+                                                            AutomationProperties.Name="Подсказка: СТОРОЖЕВОЙ ТАЙМЕР (WATCHDOG)" />
+                                                </StackPanel>
                                             </StackPanel>
                                         </Grid>
                                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включить сторож" Margin="0,14,0,0"
@@ -286,8 +313,12 @@
                                                 <TextBlock Text="&#xE8F5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                                <TextBlock Style="{StaticResource SectionText}" Text="БЕСШОВНОЕ ПЕРЕКЛЮЧЕНИЕ СТРАТЕГИЙ" Margin="0,0,0,2" />
-                                                <TextBlock Style="{StaticResource DimText}" Text="Без окон и подтверждений: сам проверяет YouTube/Discord и тихо переключает на рабочую стратегию, сохраняя режим служба/процесс." TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource SectionText}" Text="БЕСШОВНОЕ ПЕРЕКЛЮЧЕНИЕ СТРАТЕГИЙ" Margin="0,0,0,2" />
+                                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                                            ToolTip="Без окон и подтверждений: сам проверяет YouTube/Discord и тихо переключает на рабочую стратегию, сохраняя режим служба/процесс."
+                                                            AutomationProperties.Name="Подсказка: БЕСШОВНОЕ ПЕРЕКЛЮЧЕНИЕ СТРАТЕГИЙ" />
+                                                </StackPanel>
                                             </StackPanel>
                                             <CheckBox Grid.Column="2" Style="{StaticResource SwitchCheckBox}" Content="" IsChecked="{Binding SeamlessFailoverEnabled, Mode=TwoWay}" ToolTip="Включить бесшовное автопереключение" VerticalAlignment="Center" />
                                         </Grid>
@@ -345,8 +376,12 @@
                                                 <TextBlock Text="&#xE90F;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                                <TextBlock Style="{StaticResource SectionText}" Text="АВТОПОДБОР ПРИ ПЕРВОМ ЗАПУСКЕ" Margin="0,0,0,2" />
-                                                <TextBlock Style="{StaticResource DimText}" Text="Выполняется один раз после установки движка. Повторить можно вручную на странице «Стратегии»." TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource SectionText}" Text="АВТОПОДБОР ПРИ ПЕРВОМ ЗАПУСКЕ" Margin="0,0,0,2" />
+                                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                                            ToolTip="Выполняется один раз после установки движка. Повторить можно вручную на странице «Стратегии»."
+                                                            AutomationProperties.Name="Подсказка: АВТОПОДБОР ПРИ ПЕРВОМ ЗАПУСКЕ" />
+                                                </StackPanel>
                                             </StackPanel>
                                         </Grid>
                                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять все стратегии при первом запуске" Margin="0,14,0,0"
@@ -368,8 +403,12 @@
                                                 <TextBlock Text="&#xE823;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                                             </Border>
                                             <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                                <TextBlock Style="{StaticResource SectionText}" Text="РАСПИСАНИЕ ОБХОДА (ТАЙМЕР/ДНИ)" Margin="0,0,0,2" />
-                                                <TextBlock Style="{StaticResource DimText}" Text="Автоматический старт и стоп в заданные часы — например, ночью отключать, утром включать." TextWrapping="Wrap" />
+                                                <StackPanel Orientation="Horizontal">
+                                                    <TextBlock Style="{StaticResource SectionText}" Text="РАСПИСАНИЕ ОБХОДА (ТАЙМЕР/ДНИ)" Margin="0,0,0,2" />
+                                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                                            ToolTip="Автоматический старт и стоп в заданные часы — например, ночью отключать, утром включать."
+                                                            AutomationProperties.Name="Подсказка: РАСПИСАНИЕ ОБХОДА (ТАЙМЕР/ДНИ)" />
+                                                </StackPanel>
                                             </StackPanel>
                                             <CheckBox Grid.Column="2" Style="{StaticResource SwitchCheckBox}" Content="" IsChecked="{Binding ScheduleEnabled, Mode=TwoWay}" ToolTip="Включить расписание" VerticalAlignment="Center" />
                                         </Grid>

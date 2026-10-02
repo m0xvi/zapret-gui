@@ -143,6 +143,18 @@
 ### 5.4 О программе (AboutPage)
 *   **Инфо:** `AppVersion` (`InformationalVersion`), `EngineVersionText`, `EnginePathText`, кнопки `OpenEngineFolder`/`OpenLogs`/`CheckUpdates`, лицензия.
 
+### 5.4a Подсказки «?» и порядок настройки (`v1.29.2`)
+
+*   **Стиль `HelpHint`** (`Themes/Controls.xaml`): круглая кнопка 18×18 с глифом `\uE897` и `ToolTip`. Ставится рядом
+    с названием инструмента (`SectionText`), чтобы описание не занимало тело карточки. Всего на `v1.29.2` переведено
+    **58** описаний в 11 страницах (Automation 10, Settings 17, Diagnostics 8, Bypass 7, Strategies 4, UserLists 4,
+    Profiles 3, FirstLaunch 2, Home/DeepCheck/Updates по 1).
+*   **`AppComboBox`**: добавлены `ContentTemplateSelector`/`ContentStringFormat` (иначе вместо названия видно имя класса),
+    `PopupAnimation="None"`, у `Popup` — Grid с `Background="Transparent"` (мышь не попадает в прозрачную зону и список
+    не закрывается сам).
+*   **`docs/SETUP_ORDER.md`** — порядок настройки из 8 шагов (права → движок → цели → способ обхода → перехват → DNS →
+    поведение → проверка и фиксация) + ТЗ на экран «Настройка по порядку».
+
 ### 5.5 Первый запуск (FirstLaunchPage / FirstLaunchViewModel)
 *   **Один экран (с `v1.29.0`):** по умолчанию мастер показывает одну карточку с кнопкой **«Сделать, чтобы работало»** — `RunOneClickSetupCommand` → `RunOneClickSetupAsync` (движок → диагностика системы → подбор способа обхода через `Home.RunFullCheckAsync` → установка обхода `Bypass.InstallServiceAsync` → проверка результата; прогресс `OneClickProgressText`, итог `OneClickResultText`/`OneClickResultKey`, права — `OneClickNeedsAdmin` с кнопкой перезапуска). Кнопка **«Настроить по шагам»** (`SwitchToAdvancedStepsCommand`) включает прежний пошаговый мастер: `AdvancedSteps` управляет парой `OneClickVisible`/`StepsVisible`, нижняя панель «Назад/Продолжить» видна только там (`NavigationVisible`).
 *   **Мастер (пошаговый режим):** `FirstLaunchWizardCompleted`/`StrategyTestsCompleted`/`FirstLaunchDiagnosticsCompleted`, выбор `EnginePath`, установка `BFE` (`MessageBox`), очистка `WinDivert` (`MessageBox`), `AutoTestStrategiesOnFirstLaunch` + `AutoDiagnoseOnFirstLaunch`, `SafeMode` переключатель.

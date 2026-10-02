@@ -81,8 +81,12 @@
                                 <TextBlock Text="&#xE8AF;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="АВТОПЕРЕКЛЮЧЕНИЕ ПО СЕТИ" Margin="0,0,0,1"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="Автоматический выбор профиля при смене Wi-Fi / сети или при сбое стратегии"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="АВТОПЕРЕКЛЮЧЕНИЕ ПО СЕТИ" Margin="0,0,0,1"/>
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Автоматический выбор профиля при смене Wi-Fi / сети или при сбое стратегии"
+                                            AutomationProperties.Name="Подсказка: АВТОПЕРЕКЛЮЧЕНИЕ ПО СЕТИ" />
+                                </StackPanel>
                             </StackPanel>
                             <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="↻ Обновить" Padding="10,6" FontSize="11"
                                     Command="{Binding RefreshNetworkCommand}" ToolTip="Перечитать текущую сеть (SSID, шлюз, интерфейс)" VerticalAlignment="Center"/>
@@ -296,10 +300,12 @@
 
                 <Border Style="{StaticResource Card}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionText}" Text="ПОЛНЫЙ АРХИВ КОНФИГУРАЦИИ (ZIP)" />
-                        <TextBlock Style="{StaticResource DimText}"
-                                   Text="Архивирует settings.json, профили, сохранённые кандидаты стратегий, пользовательские списки доменов (*-user.txt) и list-exclude.txt в один переносимый ZIP-файл."
-                                   TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ПОЛНЫЙ АРХИВ КОНФИГУРАЦИИ (ZIP)" />
+                            <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                    ToolTip="Архивирует settings.json, профили, сохранённые кандидаты стратегий, пользовательские списки доменов (*-user.txt) и list-exclude.txt в один переносимый ZIP-файл."
+                                    AutomationProperties.Name="Подсказка: ПОЛНЫЙ АРХИВ КОНФИГУРАЦИИ (ZIP)" />
+                        </StackPanel>
 
                         <WrapPanel Margin="0,14,0,0">
                             <Button Style="{StaticResource PrimaryButton}" Content="Создать полный архив (ZIP)"
@@ -367,9 +373,12 @@
 
                         <Border Style="{StaticResource Divider}" />
 
-                        <TextBlock Style="{StaticResource SectionText}" Text="ОЧИСТКА СИСТЕМЫ ПЕРЕД ПЕРЕНОСОМ" />
-                        <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
-                                   Text="Если вы использовали приложение с правами администратора, в системе могли остаться: служба Windows zapret, драйвер перехвата WinDivert, задача автозапуска и изменённые DNS. Нажмите кнопку ниже, чтобы безопасно выгрузить и удалить все системные компоненты." />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ОЧИСТКА СИСТЕМЫ ПЕРЕД ПЕРЕНОСОМ" />
+                            <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                    ToolTip="Если вы использовали приложение с правами администратора, в системе могли остаться: служба Windows zapret, драйвер перехвата WinDivert, задача автозапуска и изменённые DNS. Нажмите кнопку ниже, чтобы безопасно выгрузить и удалить все системные компоненты."
+                                    AutomationProperties.Name="Подсказка: ОЧИСТКА СИСТЕМЫ ПЕРЕД ПЕРЕНОСОМ" />
+                        </StackPanel>
 
                         <WrapPanel Margin="0,14,0,0">
                             <Button Style="{StaticResource DangerButton}" Content="Полная очистка следов в Windows"

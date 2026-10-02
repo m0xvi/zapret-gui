@@ -257,9 +257,12 @@
             <!-- 6. Резервные копии -->
             <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionText}" Text="РЕЗЕРВНЫЕ КОПИИ" />
-                    <TextBlock Style="{StaticResource MutedText}"
-                               Text="Перед изменением файла hosts копия сохраняется в папку backups. Там же лежат копии при ручных правках." />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource SectionText}" Text="РЕЗЕРВНЫЕ КОПИИ" />
+                        <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                ToolTip="Перед изменением файла hosts копия сохраняется в папку backups. Там же лежат копии при ручных правках."
+                                AutomationProperties.Name="Подсказка: РЕЗЕРВНЫЕ КОПИИ" />
+                    </StackPanel>
                     <Button Style="{StaticResource GhostButton}" Content="Открыть журнал"
                             HorizontalAlignment="Left" Margin="0,8,0,0" Command="{Binding OpenLogsCommand}"
                             ToolTip="Перейти на страницу журнала" />

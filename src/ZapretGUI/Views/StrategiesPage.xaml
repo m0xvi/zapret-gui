@@ -350,8 +350,12 @@
                     <!-- ЛЕВАЯ КОЛОНКА: Форма настройки параметров -->
                     <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,6,0" Padding="{DynamicResource CardPaddingCompact}">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ВИЗУАЛЬНЫЙ КОНСТРУКТОР WINWS" />
-                            <TextBlock Style="{StaticResource MutedText}" Text="Тонкая ручная настройка параметров обхода DPI и генерация аргументов в реальном времени" Margin="0,2,0,12" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ВИЗУАЛЬНЫЙ КОНСТРУКТОР WINWS" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Тонкая ручная настройка параметров обхода DPI и генерация аргументов в реальном времени"
+                                        AutomationProperties.Name="Подсказка: ВИЗУАЛЬНЫЙ КОНСТРУКТОР WINWS" />
+                            </StackPanel>
 
                             <!-- Название стратегии -->
                             <TextBlock Style="{StaticResource DimText}" Text="НАЗВАНИЕ СТРАТЕГИИ" />
@@ -478,8 +482,12 @@
                                 <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" Margin="0,0,4,4"><TextBlock Text="{Binding BuilderFooling, StringFormat='fooling={0}'}" Style="{StaticResource DimText}"/></Border>
                             </WrapPanel>
 
-                            <TextBlock Style="{StaticResource SectionText}" Text="ДЕЙСТВИЯ И ТЕСТИРОВАНИЕ" />
-                            <TextBlock Style="{StaticResource DimText}" Margin="0,2,0,8" TextWrapping="Wrap" Text="Протестируйте параметры без сохранения — временный winws проверит контрольные адреса, затем восстановит прежний обход."/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ДЕЙСТВИЯ И ТЕСТИРОВАНИЕ" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Протестируйте параметры без сохранения — временный winws проверит контрольные адреса, затем восстановит прежний обход."
+                                        AutomationProperties.Name="Подсказка: ДЕЙСТВИЯ И ТЕСТИРОВАНИЕ" />
+                            </StackPanel>
                             <WrapPanel Margin="0,8,0,10">
                                 <Button Style="{StaticResource SecondaryButton}" Content="Протестировать параметры"
                                         Command="{Binding BuilderTestCommand}"
@@ -666,9 +674,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,12,0">
-                            <TextBlock Style="{StaticResource SectionText}" Text="ПУЛ TLS SNI ФЕЙКОВ И РОТАЦИЯ ПРОТИВ ТСПУ" />
-                            <TextBlock Style="{StaticResource MutedText}"
-                                       Text="Winws десинхронизирует TLS-трафик, подставляя доверенный SNI в фейковый ClientHello. Выберите домен с наивысшим доверием у вашего провайдера или запустите автоподбор." TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ПУЛ TLS SNI ФЕЙКОВ И РОТАЦИЯ ПРОТИВ ТСПУ" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Winws десинхронизирует TLS-трафик, подставляя доверенный SNI в фейковый ClientHello. Выберите домен с наивысшим доверием у вашего провайдера или запустите автоподбор."
+                                        AutomationProperties.Name="Подсказка: ПУЛ TLS SNI ФЕЙКОВ И РОТАЦИЯ ПРОТИВ ТСПУ" />
+                            </StackPanel>
                         </StackPanel>
                         <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
                             <Button Style="{StaticResource PrimaryButton}" Content="Подобрать лучший SNI"
@@ -778,9 +789,12 @@
                 <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
             <Border Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="0">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionText}" Text="КОНТРОЛЬНЫЕ СЕРВИСЫ И ЭНДПОИНТЫ ДЛЯ ПРОВЕРКИ" />
-                    <TextBlock Style="{StaticResource MutedText}"
-                               Text="Эти ресурсы проверяются при тестировании любой стратегии. Добавьте свои любимые сервисы, игры или сайты для точной оценки." Margin="0,2,0,10" />
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Style="{StaticResource SectionText}" Text="КОНТРОЛЬНЫЕ СЕРВИСЫ И ЭНДПОИНТЫ ДЛЯ ПРОВЕРКИ" />
+                        <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                ToolTip="Эти ресурсы проверяются при тестировании любой стратегии. Добавьте свои любимые сервисы, игры или сайты для точной оценки."
+                                AutomationProperties.Name="Подсказка: КОНТРОЛЬНЫЕ СЕРВИСЫ И ЭНДПОИНТЫ ДЛЯ ПРОВЕРКИ" />
+                    </StackPanel>
                     <Border Style="{StaticResource InnerCard}" Margin="0,0,0,10" Padding="12,10">
                         <StackPanel>
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Расширять проверку целями из utils/targets.txt (Flowseal)" IsChecked="{Binding UseTargetsTxtForStrategyTest, Mode=TwoWay}" ToolTip="Если включено — к базовым 8 добавляются HTTP-цели из utils/targets.txt движка (Discord, YouTube, Google, Cloudflare из remotes, как в zapret.ps1)" />

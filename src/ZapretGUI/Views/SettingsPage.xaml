@@ -60,8 +60,12 @@
                                 <TextBlock Text="&#xE7EF;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,12,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="РЕЖИМ ИНТЕРФЕЙСА" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="«Простой» — только повседневное. «Эксперт» показывает технические блоки: матрицу 92 тестов, пул SNI, режимы ipset, опасные операции." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="РЕЖИМ ИНТЕРФЕЙСА" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="«Простой» — только повседневное. «Эксперт» показывает технические блоки: матрицу 92 тестов, пул SNI, режимы ipset, опасные операции."
+                                            AutomationProperties.Name="Подсказка: РЕЖИМ ИНТЕРФЕЙСА" />
+                                </StackPanel>
                             </StackPanel>
                             <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" VerticalAlignment="Center"
                                     Command="{Binding ToggleExpertModeCommand}"
@@ -86,8 +90,12 @@
                                 <TextBlock Text="&#xE8B5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Папка со сборкой zapret (внутри должны быть bin, lists и .bat файлы стратегий)." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Папка со сборкой zapret (внутри должны быть bin, lists и .bat файлы стратегий)."
+                                            AutomationProperties.Name="Подсказка: ДВИЖОК ZAPRET" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <Grid Margin="0,14,0,0">
@@ -143,9 +151,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,12,0">
-                            <TextBlock Style="{StaticResource SectionText}" Text="ЗАПУСК И АВТОЗАПУСК" Margin="0,0,0,2" />
-                            <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
-                                       Text="Автозапуск при входе в систему, сворачивание в трей, запуск свёрнутым и запуск мастера — теперь в разделе «Автоматизация» → «Запуск»." />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ЗАПУСК И АВТОЗАПУСК" Margin="0,0,0,2" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Автозапуск при входе в систему, сворачивание в трей, запуск свёрнутым и запуск мастера — теперь в разделе «Автоматизация» → «Запуск»."
+                                        AutomationProperties.Name="Подсказка: ЗАПУСК И АВТОЗАПУСК" />
+                            </StackPanel>
                         </StackPanel>
                         <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Открыть «Автоматизацию»" VerticalAlignment="Center"
                                 Command="{Binding OpenAutomationLaunchCommand}" />
@@ -182,9 +193,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,12,0">
-                            <TextBlock Style="{StaticResource SectionText}" Text="ПРОФИЛИ И КОПИИ" Margin="0,0,0,2" />
-                            <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
-                                       Text="Пресеты настроек, полные резервные копии (ZIP), перенос на другой ПК и «сбросить всё» — на отдельном экране." />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОФИЛИ И КОПИИ" Margin="0,0,0,2" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Пресеты настроек, полные резервные копии (ZIP), перенос на другой ПК и «сбросить всё» — на отдельном экране."
+                                        AutomationProperties.Name="Подсказка: ПРОФИЛИ И КОПИИ" />
+                            </StackPanel>
                         </StackPanel>
                         <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Открыть профили и копии" VerticalAlignment="Center"
                                 Command="{Binding OpenProfilesCommand}" ToolTip="Профили, резервные копии и портативный режим" />
@@ -234,9 +248,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,12,0">
-                            <TextBlock Style="{StaticResource SectionText}" Text="АВТОМАТИЗАЦИЯ" Margin="0,0,0,2" />
-                            <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
-                                       Text="Сторожевой таймер (Watchdog), бесшовное переключение стратегий, расписание обхода и автоподбор при первом запуске переехали в раздел «Автоматизация»." />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="АВТОМАТИЗАЦИЯ" Margin="0,0,0,2" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Сторожевой таймер (Watchdog), бесшовное переключение стратегий, расписание обхода и автоподбор при первом запуске переехали в раздел «Автоматизация»."
+                                        AutomationProperties.Name="Подсказка: АВТОМАТИЗАЦИЯ" />
+                            </StackPanel>
                         </StackPanel>
                         <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                             <Button Style="{StaticResource SecondaryButton}" Content="Восстановление" Command="{Binding OpenAutomationRecoveryCommand}" ToolTip="Watchdog и бесшовное переключение" />
@@ -257,8 +274,12 @@
                                 <TextBlock Text="&#xE81B;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ПОВЕДЕНИЕ ОБХОДА" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Что делает обход при запуске и выходе — без скрытых действий." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ПОВЕДЕНИЕ ОБХОДА" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Что делает обход при запуске и выходе — без скрытых действий."
+                                            AutomationProperties.Name="Подсказка: ПОВЕДЕНИЕ ОБХОДА" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
 
@@ -284,9 +305,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,12,0">
-                            <TextBlock Style="{StaticResource SectionText}" Text="ФОНОВЫЕ ПРОВЕРКИ" Margin="0,0,0,2" />
-                            <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
-                                       Text="Фоновый мониторинг ресурсов, автовосстановление обхода и живой RTT (задержка) переехали в раздел «Автоматизация» → «Восстановление»." />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ФОНОВЫЕ ПРОВЕРКИ" Margin="0,0,0,2" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Фоновый мониторинг ресурсов, автовосстановление обхода и живой RTT (задержка) переехали в раздел «Автоматизация» → «Восстановление»."
+                                        AutomationProperties.Name="Подсказка: ФОНОВЫЕ ПРОВЕРКИ" />
+                            </StackPanel>
                         </StackPanel>
                         <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Открыть «Автоматизацию»" VerticalAlignment="Center"
                                 Command="{Binding OpenAutomationRecoveryCommand}" />
@@ -304,8 +328,12 @@
                                 <TextBlock Text="&#xE774;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="КОНТЕКСТ ПРОВАЙДЕРА" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Необязательно. Помогает автоконструктору приоритизировать гипотезы. Endpoint из DPI-suite не считается вашим провайдером." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="КОНТЕКСТ ПРОВАЙДЕРА" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Необязательно. Помогает автоконструктору приоритизировать гипотезы. Endpoint из DPI-suite не считается вашим провайдером."
+                                            AutomationProperties.Name="Подсказка: КОНТЕКСТ ПРОВАЙДЕРА" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <Grid Margin="0,14,0,0">
@@ -365,8 +393,12 @@
                                 <TextBlock Text="&#xE896;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПОРТ ТЕЛЕМЕТРИИ" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Слепок всех стратегий и сети в 1 клик — для отправки в чат поддержки." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПОРТ ТЕЛЕМЕТРИИ" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Слепок всех стратегий и сети в 1 клик — для отправки в чат поддержки."
+                                            AutomationProperties.Name="Подсказка: ЭКСПОРТ ТЕЛЕМЕТРИИ" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0">
@@ -421,8 +453,12 @@
                                 <TextBlock Text="&#xE7C5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="YOUTUBE (ТЯЖЕЛЫЙ СЛУЧАЙ)" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="QUIC fake, SNI, приоритет IPv4 и DoH — в «Обходе», вкладка «Сложные сайты» (в режиме «Эксперт»). Одна настройка живёт в одном месте." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="YOUTUBE (ТЯЖЕЛЫЙ СЛУЧАЙ)" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="QUIC fake, SNI, приоритет IPv4 и DoH — в «Обходе», вкладка «Сложные сайты» (в режиме «Эксперт»). Одна настройка живёт в одном месте."
+                                            AutomationProperties.Name="Подсказка: YOUTUBE (ТЯЖЕЛЫЙ СЛУЧАЙ)" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <Button Style="{StaticResource SecondaryButton}" Content="Открыть «Обход → Сложные сайты»" Margin="0,12,0,0" HorizontalAlignment="Left"
@@ -501,8 +537,12 @@
                                 <TextBlock Text="&#xE790;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ТЕМА И МАСШТАБ" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Тёмная, светлая или как в системе — меняется на лету. Масштаб 80–140%." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ТЕМА И МАСШТАБ" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Тёмная, светлая или как в системе — меняется на лету. Масштаб 80–140%."
+                                            AutomationProperties.Name="Подсказка: ТЕМА И МАСШТАБ" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <Grid Margin="0,14,0,0">
@@ -548,8 +588,12 @@
                                 <TextBlock Text="&#xE765;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ГОРЯЧИЕ КЛАВИШИ" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Работают даже когда окно не в фокусе — удобно в играх." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ГОРЯЧИЕ КЛАВИШИ" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Работают даже когда окно не в фокусе — удобно в играх."
+                                            AutomationProperties.Name="Подсказка: ГОРЯЧИЕ КЛАВИШИ" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включить глобальные горячие клавиши" Margin="0,14,0,0"
@@ -605,8 +649,12 @@
                                 <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="МИНИ-ВИДЖЕТ (HUD)" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Компактный оверлей поверх всех окон — для игр и быстрого контроля." TextWrapping="Wrap" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="МИНИ-ВИДЖЕТ (HUD)" Margin="0,0,0,2" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Компактный оверлей поверх всех окон — для игр и быстрого контроля."
+                                            AutomationProperties.Name="Подсказка: МИНИ-ВИДЖЕТ (HUD)" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Поверх всех окон (Topmost)" Margin="0,14,0,0"
@@ -643,9 +691,12 @@
                             <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Margin="0,0,12,0">
-                            <TextBlock Style="{StaticResource SectionText}" Text="АВТОДЕТЕКТ ИГР" Margin="0,0,0,2" />
-                            <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
-                                       Text="Обнаружение запущенных игр и автоматическое включение игрового режима переехали в раздел «Автоматизация» → «Запуск»." />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="АВТОДЕТЕКТ ИГР" Margin="0,0,0,2" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Обнаружение запущенных игр и автоматическое включение игрового режима переехали в раздел «Автоматизация» → «Запуск»."
+                                        AutomationProperties.Name="Подсказка: АВТОДЕТЕКТ ИГР" />
+                            </StackPanel>
                         </StackPanel>
                         <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Открыть «Автоматизацию»" VerticalAlignment="Center"
                                 Command="{Binding OpenAutomationLaunchCommand}" />
@@ -698,8 +749,12 @@
                                 <TextBlock Text="&#xE8B5;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" Margin="0,0,0,1" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Версия и путь к сборке — перенесено из Обзора" />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET" Margin="0,0,0,1" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Версия и путь к сборке — перенесено из Обзора"
+                                            AutomationProperties.Name="Подсказка: ДВИЖОК ZAPRET" />
+                                </StackPanel>
                             </StackPanel>
                             <Border Style="{StaticResource Badge}" VerticalAlignment="Center" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="7,3">
                                 <TextBlock FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.9">
@@ -765,8 +820,12 @@
                 </Border>
                 <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionText}" Text="ДРУГИЕ РАЗДЕЛЫ" />
-                        <TextBlock Style="{StaticResource DimText}" Text="Журнал живёт в разделе «Проверки» (вкладка «Журнал»); «О программе» — отдельный экран." TextWrapping="Wrap" />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ДРУГИЕ РАЗДЕЛЫ" />
+                            <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                    ToolTip="Журнал живёт в разделе «Проверки» (вкладка «Журнал»); «О программе» — отдельный экран."
+                                    AutomationProperties.Name="Подсказка: ДРУГИЕ РАЗДЕЛЫ" />
+                        </StackPanel>
                         <WrapPanel Margin="0,10,0,0">
                             <Button Style="{StaticResource SecondaryButton}" Content="Журнал" Padding="12,7" Command="{Binding OpenLogsCommand}" />
                             <Button Style="{StaticResource CompactGhostButton}" Content="О программе" Margin="8,0,0,0" Command="{Binding OpenAboutCommand}" />
@@ -788,8 +847,12 @@
                             <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                            <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМА И ИНФОРМАЦИЯ" />
-                            <TextBlock Style="{StaticResource DimText}" Text="Полезные переходы: журнал, обновления движка и приложения, о программе." TextWrapping="Wrap" />
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМА И ИНФОРМАЦИЯ" />
+                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                        ToolTip="Полезные переходы: журнал, обновления движка и приложения, о программе."
+                                        AutomationProperties.Name="Подсказка: СИСТЕМА И ИНФОРМАЦИЯ" />
+                            </StackPanel>
                         </StackPanel>
                     </Grid>
                     <WrapPanel Margin="0,14,0,0">

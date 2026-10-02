@@ -121,9 +121,12 @@
                     <StackPanel Visibility="{Binding OneClickVisible, Converter={StaticResource BoolToVis}}">
                         <Border Style="{StaticResource CardAccent}" Margin="{DynamicResource CardGap}">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="ЧТО СДЕЛАЕТ ПРИЛОЖЕНИЕ" />
-                                <TextBlock Style="{StaticResource MutedText}" Margin="0,6,0,0" TextWrapping="Wrap"
-                                           Text="Проверит систему, службы Windows и драйвер. Подберёт способ обхода, который открывает ваши сайты. Включит обход и проверит ключевые узлы. Технических вопросов не будет — всё сделаю сам." />
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ЧТО СДЕЛАЕТ ПРИЛОЖЕНИЕ" />
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Проверит систему, службы Windows и драйвер. Подберёт способ обхода, который открывает ваши сайты. Включит обход и проверит ключевые узлы. Технических вопросов не будет — всё сделаю сам."
+                                            AutomationProperties.Name="Подсказка: ЧТО СДЕЛАЕТ ПРИЛОЖЕНИЕ" />
+                                </StackPanel>
                                 <WrapPanel Margin="0,16,0,0">
                                     <Button Style="{StaticResource PrimaryButton}" Content="Сделать, чтобы работало"
                                             Command="{Binding RunOneClickSetupCommand}"
@@ -343,8 +346,12 @@
                             <!-- Быстрая настройка 1-клик и свои сайты — упрощает жизнь новичку -->
                             <Border Style="{StaticResource InnerCard}" Margin="0,14,0,0" Padding="14,12" Background="{DynamicResource AccentSoftBrush}">
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРАЯ НАСТРОЙКА И СВОИ САЙТЫ" />
-                                    <TextBlock Style="{StaticResource DimText}" Text="Необязательно: укажите свои сайты, которые нужно обязательно разблокировать (например, для игр или работы). Мастер добавит их в проверку и подберёт стратегию именно под них." TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРАЯ НАСТРОЙКА И СВОИ САЙТЫ" />
+                                        <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                                ToolTip="Необязательно: укажите свои сайты, которые нужно обязательно разблокировать (например, для игр или работы). Мастер добавит их в проверку и подберёт стратегию именно под них."
+                                                AutomationProperties.Name="Подсказка: БЫСТРАЯ НАСТРОЙКА И СВОИ САЙТЫ" />
+                                    </StackPanel>
                                     <Grid Margin="0,8,0,0">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="*" />

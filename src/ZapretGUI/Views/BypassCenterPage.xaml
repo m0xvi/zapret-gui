@@ -80,8 +80,12 @@
                                 <TextBlock Text="&#xE71D;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="СТРАТЕГИИ"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="Выбор .bat из каталога движка — применится бесшовно (сохранит служба/процесс)." TextWrapping="Wrap"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="СТРАТЕГИИ"/>
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Выбор .bat из каталога движка — применится бесшовно (сохранит служба/процесс)."
+                                            AutomationProperties.Name="Подсказка: СТРАТЕГИИ" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <Grid Margin="0,12,0,0">
@@ -119,9 +123,12 @@
                 <Border Style="{StaticResource NoticeInfo}" Margin="{DynamicResource CardGap}"
                         Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionText}" Text="ПОЛНЫЙ ПЕРЕБОР — В РЕЖИМЕ «ЭКСПЕРТ»" />
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" TextWrapping="Wrap"
-                                   Text="Матрица «каждая стратегия × каждый DNS» — технический инструмент, поэтому в «Простом» режиме она скрыта. Быстрый подбор живёт на «Главной»: «Проверить всё» проходит 4 шага (система → сайты → стратегии → рекомендация) за 1–2 минуты." />
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ПОЛНЫЙ ПЕРЕБОР — В РЕЖИМЕ «ЭКСПЕРТ»" />
+                            <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                    ToolTip="Матрица «каждая стратегия × каждый DNS» — технический инструмент, поэтому в «Простом» режиме она скрыта. Быстрый подбор живёт на «Главной»: «Проверить всё» проходит 4 шага (система → сайты → стратегии → рекомендация) за 1–2 минуты."
+                                    AutomationProperties.Name="Подсказка: ПОЛНЫЙ ПЕРЕБОР — В РЕЖИМЕ «ЭКСПЕРТ»" />
+                        </StackPanel>
                         <Button Style="{StaticResource SecondaryButton}" Content="Включить режим «Эксперт»" Margin="0,10,0,0" HorizontalAlignment="Left"
                                 Command="{Binding EnableExpertModeCommand}" ToolTip="Показать технические блоки: матрица стратегия × DNS, пул SNI, режимы ipset" />
                     </StackPanel>
@@ -172,8 +179,12 @@
 
                         <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Visibility="{Binding MatrixResults.Count, Converter={StaticResource CountToVis}}">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ МАТРИЦЫ (СТРАТЕГИЯ × DNS)"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="Зелёные — работают, жёлтые — частично, красные — блок. Лучшая помечена звёздочкой"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ МАТРИЦЫ (СТРАТЕГИЯ × DNS)"/>
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Зелёные — работают, жёлтые — частично, красные — блок. Лучшая помечена звёздочкой"
+                                            AutomationProperties.Name="Подсказка: РЕЗУЛЬТАТЫ МАТРИЦЫ (СТРАТЕГИЯ × DNS)" />
+                                </StackPanel>
                                 <ListView Margin="0,8,0,0" MaxHeight="420" ItemsSource="{Binding MatrixResults}" SelectedItem="{Binding SelectedMatrixEntry, Mode=TwoWay}" ScrollViewer.VerticalScrollBarVisibility="Auto">
                                     <ListView.View>
                                         <GridView>
@@ -275,8 +286,12 @@
                                 <TextBlock Text="&#xE7C5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="YOUTUBE (ТЯЖЕЛЫЙ СЛУЧАЙ) — ТОНКАЯ НАСТРОЙКА"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="Влияет на обход YouTube, превью и Shorts. Попробуй после «Проверить всё» на подвкладке «Подбор»." TextWrapping="Wrap"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="YOUTUBE (ТЯЖЕЛЫЙ СЛУЧАЙ) — ТОНКАЯ НАСТРОЙКА"/>
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Влияет на обход YouTube, превью и Shorts. Попробуй после «Проверить всё» на подвкладке «Подбор»."
+                                            AutomationProperties.Name="Подсказка: YOUTUBE (ТЯЖЕЛЫЙ СЛУЧАЙ) — ТОНКАЯ НАСТРОЙКА" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отключить QUIC fake (помогает когда YouTube режется, но Discord ок)" Margin="0,12,0,0" IsChecked="{Binding DisableQuicFake, Mode=TwoWay}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"/>
@@ -306,8 +321,12 @@
                                 <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ТЯЖЁЛЫЕ ИГРЫ"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="Фильтр трафика игр (порты выше 1023), профили под конкретные игры и сетевые твики." TextWrapping="Wrap"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ТЯЖЁЛЫЕ ИГРЫ"/>
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Фильтр трафика игр (порты выше 1023), профили под конкретные игры и сетевые твики."
+                                            AutomationProperties.Name="Подсказка: ТЯЖЁЛЫЕ ИГРЫ" />
+                                </StackPanel>
                             </StackPanel>
                             <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Настроить фильтр игр" Command="{Binding OpenListsCommand}" VerticalAlignment="Center" ToolTip="Игровой фильтр настраивается на странице «Списки» — там же профили портов"/>
                         </Grid>
@@ -331,8 +350,12 @@
                                 <TextBlock Text="&#xE7EF;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="СЛУЖБА WINDOWS"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="Служба держит обход включённым до входа в систему и переживает закрытие приложения. Обычный режим — отдельный процесс." TextWrapping="Wrap"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="СЛУЖБА WINDOWS"/>
+                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                            ToolTip="Служба держит обход включённым до входа в систему и переживает закрытие приложения. Обычный режим — отдельный процесс."
+                                            AutomationProperties.Name="Подсказка: СЛУЖБА WINDOWS" />
+                                </StackPanel>
                             </StackPanel>
                         </Grid>
                         <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Background="{DynamicResource ElevatedBrush}">
@@ -368,9 +391,12 @@
 
                 <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
                     <StackPanel>
-                        <TextBlock Style="{StaticResource SectionText}" Text="ОПАСНЫЕ ОПЕРАЦИИ"/>
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" TextWrapping="Wrap"
-                                   Text="Переустановка и удаление служб, TCP timestamps, полный сброс сети и «удалить всё, что установил Zapret GUI» — в разделе «Проверки» на подвкладке «Система». Там каждое действие с подтверждением, чтобы случайно не сломать обход."/>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ОПАСНЫЕ ОПЕРАЦИИ"/>
+                            <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
+                                    ToolTip="Переустановка и удаление служб, TCP timestamps, полный сброс сети и «удалить всё, что установил Zapret GUI» — в разделе «Проверки» на подвкладке «Система». Там каждое действие с подтверждением, чтобы случайно не сломать обход."
+                                    AutomationProperties.Name="Подсказка: ОПАСНЫЕ ОПЕРАЦИИ" />
+                        </StackPanel>
                         <Button Style="{StaticResource GhostButton}" Content="Открыть «Проверки → Система»" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding OpenSystemCheckCommand}"/>
                     </StackPanel>
                 </Border>
