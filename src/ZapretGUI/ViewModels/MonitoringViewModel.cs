@@ -283,6 +283,15 @@ namespace ZapretGui.ViewModels
                 Message = $"Недоступен ресурс: {failed.Target.Name}. Запускаю сравнение прямого подключения и обхода.";
                 MessageKey = "Warning";
 
+                if (!Settings.AutoSwitchStrategyEnabled)
+                {
+                    // Опт-ин (v1.28.3): узел недоступен совсем, но стратегию сам не меняю — предлагаю действие.
+                    Message = $"«{failed.Target.Name}» недоступен совсем. Автосмена стратегии выключена — " +
+                              "включите её в «Автоматизация → Восстановление» или подберите замену вручную.";
+                    MessageKey = "Warning";
+                    return;
+                }
+
                 if (Settings.AutoRecoverStrategy && !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning)
                     await DiagnoseAndRecoverAsync(failed.Target);
             }
@@ -508,7 +517,8 @@ namespace ZapretGui.ViewModels
             if (!Settings.ResourceMonitoringEnabled || IsBusy) return;
             await CheckAllAsync();
             // Фоновая проверка лучшей стратегии, если включено в Настройках → Сеть
-            if (Settings.AutoSwitchToBestStrategy && !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning)
+            if (Settings.AutoSwitchToBestStrategy && Settings.AutoSwitchStrategyEnabled
+                && !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning)
             {
                 var minutes = Math.Clamp(Settings.BestStrategyCheckMinutes, 5, 120);
                 if ((DateTime.Now - _lastBestCheck).TotalMinutes < minutes) return;

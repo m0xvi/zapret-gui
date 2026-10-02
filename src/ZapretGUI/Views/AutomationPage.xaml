@@ -185,6 +185,39 @@
             <!-- ============ 2. ВОССТАНОВЛЕНИЕ ============ -->
             <StackPanel Visibility="{Binding IsAutomationRecoveryTabSelected, Converter={StaticResource BoolToVis}}">
 
+                <!-- Главный выключатель автосмены стратегии (v1.28.3): по умолчанию выключен —
+                     приложение не меняет стратегию само, пока пользователь это не разрешит -->
+                <Border Style="{StaticResource CardAccent}" Margin="{DynamicResource CardGap}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="&#xE7BA;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="АВТОМАТИЧЕСКАЯ СМЕНА СТРАТЕГИИ" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource DimText}" Text="По умолчанию выключено: стратегию выбираете вы. Включите, только если хотите, чтобы приложение подбирало замену само." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Margin="0,14,0,0"
+                                  Content="Разрешить приложению менять стратегию автоматически"
+                                  IsChecked="{Binding AutoSwitchStrategyEnabled, Mode=TwoWay}"
+                                  ToolTip="Когда разрешено: смена возможна только при полной недоступности узла, сбой подтверждается тремя проверками, замена проверяется на всех узлах, а после смены идёт постпроверка с откатом." />
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" TextWrapping="Wrap" Text="{Binding AutoSwitchStrategyHint, Mode=OneWay}" />
+                        <WrapPanel Margin="0,12,0,0">
+                            <Button Style="{StaticResource CompactGhostButton}" Content="Подобрать замену сейчас"
+                                    Command="{Binding FindReplacementNowCommand}"
+                                    ToolTip="Ручной подбор: проверить узлы и, если нужно, найти рабочую замену прямо сейчас — работает и при выключенном выключателе" />
+                            <Button Style="{StaticResource CompactGhostButton}" Content="Проверить узлы сейчас" Margin="8,0,0,0"
+                                    Command="{Binding TestSeamlessNowCommand}"
+                                    ToolTip="Разовая проверка: показать состояние узлов, не меняя стратегию, если автопереключение выключено" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
                 <Border Style="{StaticResource CardAccent}" Margin="{DynamicResource CardGap}" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
                     <Grid>
                         <Grid.ColumnDefinitions>

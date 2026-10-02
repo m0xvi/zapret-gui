@@ -194,6 +194,23 @@ namespace ZapretGui.ViewModels
         public string SeamlessStatus => _main.SeamlessStatusText;
         public string SeamlessStatusKey => _main.SeamlessStatusKey;
 
+        /// <summary>Уведомить интерфейс об изменении главного выключателя автосмены.</summary>
+        public void NotifyAutoSwitchChanged() => Raise(nameof(AutoSwitchStrategyEnabled));
+
+        /// <summary>Разрешена ли автоматическая смена стратегии (главный выключатель, v1.28.3).</summary>
+        public bool AutoSwitchStrategyEnabled
+        {
+            get => Settings.AutoSwitchStrategyEnabled;
+            set
+            {
+                if (Settings.AutoSwitchStrategyEnabled == value) return;
+                Settings.AutoSwitchStrategyEnabled = value;
+                SettingsStore.Save(Settings);
+                _main.NotifySeamlessChanged();
+                Raise(nameof(AutoSwitchStrategyEnabled));
+            }
+        }
+
         // Matrix
         public bool IsMatrixRunning { get => _isMatrixRunning; private set { if (Set(ref _isMatrixRunning, value)) { (RunMatrixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged(); (CancelMatrixCommand as RelayCommand)?.RaiseCanExecuteChanged(); (ApplyBestCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged(); (TestSeamlessNowCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged(); } } }
         public double MatrixProgress { get => _matrixProgress; private set => Set(ref _matrixProgress, value); }

@@ -103,6 +103,35 @@ namespace ZapretGui.ViewModels
         public string SeamlessLastSwitch => _main.SeamlessLastSwitchText;
         public ICommand TestSeamlessNowCommand => new AsyncRelayCommand(async () => { Status = "Запускаю внеплановую проверку…"; await _main.SeamlessFailover.CheckNowAsync(); Raise(nameof(SeamlessStatus)); Status = _main.SeamlessStatusText; }, () => !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning);
 
+        /// <summary>Главный выключатель автосмены стратегии (v1.28.3, по умолчанию выкл).</summary>
+        public bool AutoSwitchStrategyEnabled
+        {
+            get => Settings.AutoSwitchStrategyEnabled;
+            set
+            {
+                if (Settings.AutoSwitchStrategyEnabled == value) return;
+                Settings.AutoSwitchStrategyEnabled = value;
+                SettingsStore.Save(Settings);
+                _main.NotifySeamlessChanged();
+                Raise(nameof(AutoSwitchStrategyEnabled));
+                Raise(nameof(AutoSwitchStrategyHint));
+            }
+        }
+
+        /// <summary>Живая подпись под переключателем: что именно он разрешает и что сейчас работает.</summary>
+        public string AutoSwitchStrategyHint => Settings.AutoSwitchStrategyEnabled
+            ? "Разрешено: приложение может сменить стратегию само — только если узел недоступен совсем, сбой подтверждён трижды, а замена проверена на всех узлах."
+            : "Запрещено: стратегию меняете вы (кнопка «Применить», мини-оверлей, «Подобрать замену сейчас»). Сторож по-прежнему перезапускает ту же стратегию, но не подменяет её.";
+
+        /// <summary>Ручной подбор замены — осознанное действие, главному выключателю не подчиняется.</summary>
+        public ICommand FindReplacementNowCommand => new AsyncRelayCommand(async () =>
+        {
+            Status = "Проверяю узлы и подбираю замену…";
+            await _main.SeamlessFailover.CheckNowAsync(forceSwitch: true);
+            Raise(nameof(SeamlessStatus));
+            Status = _main.SeamlessStatusText;
+        }, () => !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning);
+
         public bool AutoSwitchToBestStrategy
         {
             get => Settings.AutoSwitchToBestStrategy;
@@ -1158,6 +1187,8 @@ namespace ZapretGui.ViewModels
             Raise(nameof(UseGameFilterOnStart));
             Raise(nameof(AutoTestStrategiesOnFirstLaunch));
             Raise(nameof(AutoDiagnoseOnFirstLaunch));
+            Raise(nameof(AutoSwitchStrategyEnabled));
+            Raise(nameof(AutoSwitchStrategyHint));
             Raise(nameof(ResourceMonitoringEnabled));
             Raise(nameof(AutoRecoverStrategy));
             Raise(nameof(MonitorNotificationsEnabled));

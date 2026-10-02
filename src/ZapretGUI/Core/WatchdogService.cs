@@ -271,6 +271,13 @@ namespace ZapretGui.Core
         {
             try
             {
+                // Автосмена стратегии — опт-ин (v1.28.3): сторож продолжает перезапускать ту же
+                // стратегию, но менять её без разрешения пользователя больше не может.
+                if (!_settings.AutoSwitchStrategyEnabled)
+                {
+                    AppLog.Info("[Watchdog] Обход не поднимается, но автоматическая смена стратегии выключена — оставляю текущую");
+                    return false;
+                }
                 if (_allStrategiesResolver == null) return false;
                 var all = _allStrategiesResolver();
                 if (all == null || all.Count == 0) return false;

@@ -93,6 +93,10 @@
                             <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Применить" Margin="8,0,0,0" Command="{Binding ApplyStrategyCommand}"/>
                         </Grid>
                         <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="{Binding SelectedStrategy.Description}" TextWrapping="Wrap" Opacity="0.9"/>
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,10,0,0" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource WarningBrush}"
+                                   Visibility="{Binding AutoSwitchStrategyEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                                   Text="Автосмена стратегии выключена: приложение не меняет стратегию само. Разрешить или подобрать замену вручную — «Автоматизация → Восстановление»." />
                         <WrapPanel Margin="0,10,0,0">
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Бесшовное переключение включено" IsChecked="{Binding SeamlessEnabled, Mode=TwoWay}" ToolTip="Фоново 5 мин. Меняет стратегию только если узел недоступен совсем (DNS/TCP не отвечают) 3 проверки подряд, и только на замену, которая держит остальные узлы"/>
                             <TextBlock Style="{StaticResource DimText}" Margin="12,4,0,0" Text="{Binding SeamlessStatus, Mode=OneWay}" TextWrapping="Wrap" Foreground="{Binding SeamlessStatusKey, Converter={StaticResource SeverityBrush}}"/>

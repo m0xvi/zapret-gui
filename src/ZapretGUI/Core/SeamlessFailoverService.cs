@@ -85,9 +85,11 @@ namespace ZapretGui.Core
         }
 
         /// <summary>Ручной запуск проверки (например по кнопке в настройках) — вне таймера.</summary>
-        public Task CheckNowAsync() => CheckAndFailoverAsync(silent: false);
+        /// <summary>Разовая проверка. `forceSwitch` ставится только кнопкой «Подобрать замену сейчас» —
+        /// это осознанное действие пользователя, оно не подчиняется главному выключателю автосмены.</summary>
+        public Task CheckNowAsync(bool forceSwitch = false) => CheckAndFailoverAsync(silent: false, forceSwitch);
 
-        private async Task CheckAndFailoverAsync(bool silent)
+        private async Task CheckAndFailoverAsync(bool silent, bool forceSwitch = false)
         {
             if (_isChecking) return;
             if (!IsEnabled) return;
@@ -186,6 +188,18 @@ namespace ZapretGui.Core
                     LastReason = $"Сбой «{failed.Target.Name}» {_consecutiveFailures}/{Threshold} · жду подтверждения ({failed.Details})";
                     StatusChanged?.Invoke(LastReason);
                     AppLog.Debug($"[SeamlessFailover] {LastReason}");
+                    return;
+                }
+
+                // Главный выключатель автосмены (v1.28.3): сообщаем о недоступности, но стратегию не меняем.
+                if (!_settings.AutoSwitchStrategyEnabled && !forceSwitch)
+                {
+                    LastReason = $"«{failed.Target.Name}» недоступен совсем, но автопереключение выключено — стратегию не меняю. " +
+                                 "Включить можно в «Автоматизация → Восстановление» или подобрать замену вручную.";
+                    StatusChanged?.Invoke(LastReason);
+                    _settings.SeamlessLastReason = LastReason;
+                    SettingsStore.Save(_settings);
+                    AppLog.Info($"[SeamlessFailover] {LastReason}");
                     return;
                 }
 

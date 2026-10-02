@@ -645,6 +645,7 @@ namespace ZapretGui.ViewModels
             Raise(nameof(SeamlessStatusText));
             Raise(nameof(SeamlessStatusKey));
             Raise(nameof(SeamlessLastSwitchText));
+            BypassCenter?.NotifyAutoSwitchChanged();
         }
         public void NotifyScheduleChanged()
         {
