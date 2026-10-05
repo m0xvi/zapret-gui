@@ -37,6 +37,7 @@ PAGE_VM = {
     "FirstLaunchPage": ["FirstLaunchViewModel"],
     "MonitoringPage": ["MonitoringViewModel"],
     "UserListsPage": ["UserListsViewModel"],
+    "ProfilesPage": ["ProfilesViewModel"],
     "LogsPage": ["LogsViewModel"],
     "SettingsPage": ["SettingsViewModel"],
     "AboutPage": ["MainViewModel"],
@@ -47,20 +48,22 @@ PAGE_VM = {
 ITEM_TYPES = {
     "UpdatesPage": ["EngineConsistencyItem", "EngineBackupInfo"],
     "HomePage": ["ConnectionCheck", "MonitorTarget"],
-    "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord", "MonitorTarget", "AutoTunerStepResult", "SniTestResult", "SniCandidate"],
+    "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord", "StrategySwitchRecord", "MonitorTarget", "AutoTunerStepResult", "SniTestResult", "SniCandidate"],
+    "ProfilesPage": ["UserProfile", "BackupArchiveInfo"],
     "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult", "MonitorTarget", "ResourceProbeResult", "DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "DiscordVoiceServerCheck"],
-    "UserListsPage": ["GameFilterProfile", "DnsProfile"],
+    "UserListsPage": ["GameFilterProfile", "DnsProfile", "DnsHijackEntry", "DnsHijackReport", "UserListOption"],
     "DpiPage": ["DpiTargetResult", "DpiProbeResult"],
     "DeepCheckPage": ["DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "EngineConsistencyCheck"],
     "MonitoringPage": ["MonitorTarget", "ResourceProbeResult"],
     "LogsPage": ["LogEntry"],
+    "SettingsPage": ["MetricHostOption"],
     "MainWindow": ["NavItem"],
 }
 
 # Типы, для которых второй сегмент не проверяем
 SKIP_SECOND = {
     "string", "bool", "int", "double", "ICommand", "AppSettings", "void", "",
-    "ObservableCollection<string>", "List<string>", "ICollectionView",
+    "ObservableCollection<string>", "ObservableCollection<MonitorTarget>", "ObservableCollection<ConnectionCheck>", "ObservableCollection<EngineBackupInfo>", "ObservableCollection<LogEntry>", "ObservableCollection<GameFilterProfile>", "ObservableCollection<DnsProfile>", "ObservableCollection<UserProfile>", "ObservableCollection<BackupArchiveInfo>", "List<string>", "ICollectionView",
 }
 
 
@@ -80,6 +83,16 @@ def collect_members():
             if class_match and ("public" in line or "internal" in line or "sealed" in line):
                 current = class_match.group(1)
 
+            # Поддержка CommunityToolkit [ObservableProperty] private TYPE _field -> public Property
+            obs = re.search(r"\[ObservableProperty\].*private\s+[\w\.<>\?\[\],\s]+\s+_(\w+)\s*[=;]", line)
+            if obs and current:
+                raw = obs.group(1)
+                # _isVisible -> IsVisible, _errorText -> ErrorText
+                prop = raw[0].upper() + raw[1:] if raw else raw
+                members.setdefault(current, set()).add(prop)
+                # тип не критичен для проверки биндингов — оставим object
+                prop_types[(current, prop)] = "object"
+                # Также добавляем связанную команду для [RelayCommand] — будет обработано ниже
             member = re.search(
                 r"public\s+(?:static\s+|virtual\s+|override\s+|readonly\s+|sealed\s+|event\s+)*"
                 r"([\w\.<>?\[\],\s]+?)\s+(\w+)\s*(?:[\{=\(;]|$)", line)
@@ -89,6 +102,26 @@ def collect_members():
                     continue
                 members.setdefault(current, set()).add(name)
                 prop_types[(current, name)] = member.group(1).strip().replace("?", "")
+            # CommunityToolkit [RelayCommand] private void Foo() -> public ICommand FooCommand (учёт раздельных строк)
+            if "[RelayCommand" in line and current:
+                # запоминаем что следующая void-метод — команда
+                # ставим маркер в members через временный атрибут (используем глобальную переменную)
+                # Проще: сразу ищем метод в этой же строке
+                m2 = re.search(r"void\s+(\w+)\s*\(", line)
+                if m2:
+                    members.setdefault(current, set()).add(m2.group(1) + "Command")
+                else:
+                    # отмечаем ожидание команды на следующей строке
+                    members.setdefault(current + "_pendingRelay", set()).add("1")
+                continue
+            if current and (current + "_pendingRelay") in members and "1" in members[current + "_pendingRelay"]:
+                m2 = re.search(r"void\s+(\w+)\s*\(", line)
+                if m2:
+                    members.setdefault(current, set()).add(m2.group(1) + "Command")
+                    members[current + "_pendingRelay"].discard("1")
+                elif line.strip() and not line.strip().startswith("[") and not line.strip().startswith("//"):
+                    # если не метод — сбрасываем ожидание
+                    members[current + "_pendingRelay"].discard("1")
     return members, prop_types
 
 

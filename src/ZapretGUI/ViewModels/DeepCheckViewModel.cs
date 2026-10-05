@@ -45,6 +45,11 @@ namespace ZapretGui.ViewModels
         public DeepCheckViewModel(MainViewModel main)
         {
             _main = main;
+            _main.GlobalOverlay.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(GlobalOverlayViewModel.IsMinimized) || e.PropertyName == nameof(GlobalOverlayViewModel.OverlayVisible) || e.PropertyName == nameof(GlobalOverlayViewModel.MinimizedVisible))
+                    Raise(nameof(IsLocalOverlayVisible));
+            };
             RunCommand = new AsyncRelayCommand(RunAsync, () => !IsRunning);
             CancelCommand = new RelayCommand(Cancel, () => IsRunning);
             ApplyRecommendationCommand = new AsyncRelayCommand(ApplyRecommendationAsync,
@@ -69,6 +74,7 @@ namespace ZapretGui.ViewModels
             {
                 if (!Set(ref _isRunning, value)) return;
                 Raise(nameof(ProgressVisible));
+                Raise(nameof(IsLocalOverlayVisible));
                 (RunCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 (CancelCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 (ApplyRecommendationCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
@@ -209,12 +215,23 @@ namespace ZapretGui.ViewModels
         public ICommand SaveGeneratedCandidateCommand { get; }
         public ICommand AddCustomStrategyToListCommand { get; }
         public ICommand ExportCommand { get; }
+        public ICommand MinimizeOverlayCommand => _main.GlobalOverlay.MinimizeCommand;
+
+        // Локальный оверлей на весь процесс — видимость зависит от IsRunning и минимизации глобального оверлея
+        public bool IsLocalOverlayVisible => IsRunning && !_main.GlobalOverlay.IsMinimized;
 
         private void SetProgress(double value, string text)
         {
             ProgressValue = value;
             ProgressPercentText = $"{ProgressValue:0}%";
             ProgressText = text + "…";
+            // Синхронизируем глобальный оверлей на весь процесс — иначе загрузка была только на части этапов
+            try
+            {
+                var v = Math.Clamp(value, 0, 100);
+                System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(text + "…", text + "…", v, false));
+            }
+            catch {}
         }
 
         private void UpdateProgress(string text)
@@ -324,10 +341,11 @@ namespace ZapretGui.ViewModels
             // timeout, а не тайм-аут отдельной пробы.
             _cts = new CancellationTokenSource(TimeSpan.FromMinutes(30));
             var ct = _cts.Token;
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Глубокая проверка", "DeepCheck — последовательная проверка 7 слоёв + DPI-матрица под каждой стратегией", "Подготовка…", 0, false, true, () => _cts?.Cancel())); } catch {}
 
             try
             {
-                var progress = new Progress<string>(UpdateProgress);
+                var progress = new Progress<string>(s => { UpdateProgress(s); try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(s, "Глубокая проверка…", null, false)); } catch {} });
                 ProviderContext = (Settings.ProviderContext ?? new ProviderContext()).DisplayText;
                 ProviderLimitations = BuildProviderLimitations(Settings.ProviderContext);
                 AddProviderFinding(Settings.ProviderContext);
@@ -490,6 +508,7 @@ namespace ZapretGui.ViewModels
                 _cts = null;
                 ProgressText = "";
                 IsRunning = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -1082,7 +1101,7 @@ namespace ZapretGui.ViewModels
             if (answer != System.Windows.MessageBoxResult.Yes) return;
 
             Message = "Применяю подтверждённую рекомендацию…";
-            var result = await _main.Bypass.StartAsync(strategy, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+            var result = await _main.Bypass.SwitchToStrategyAsync(strategy, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
             if (result.Ok)
             {
                 Settings.SelectedStrategy = strategy.Name;
