@@ -14,7 +14,6 @@ namespace ZapretGui.Core
         private const int HOTKEY_ID_TOGGLE_BYPASS = 9001;
         private const int HOTKEY_ID_TOGGLE_GAMEMODE = 9002;
         private const int HOTKEY_ID_TOGGLE_MINI_OVERLAY = 9003;
-        private const int HOTKEY_ID_TOGGLE_EXPERT_MODE = 9004;
 
         private const uint MOD_ALT = 0x0001;
         private const uint MOD_CONTROL = 0x0002;
@@ -36,7 +35,6 @@ namespace ZapretGui.Core
         public event Action? ToggleBypassRequested;
         public event Action? ToggleGameModeRequested;
         public event Action? ToggleMiniOverlayRequested;
-        public event Action? ToggleExpertModeRequested;
 
         public GlobalHotkeyService(AppSettings settings)
         {
@@ -57,10 +55,9 @@ namespace ZapretGui.Core
                 RegisterKey(HOTKEY_ID_TOGGLE_BYPASS, _settings.HotkeyToggleBypass);
                 RegisterKey(HOTKEY_ID_TOGGLE_GAMEMODE, _settings.HotkeyToggleGameMode);
                 RegisterKey(HOTKEY_ID_TOGGLE_MINI_OVERLAY, _settings.HotkeyToggleMiniOverlay);
-                RegisterKey(HOTKEY_ID_TOGGLE_EXPERT_MODE, _settings.HotkeyToggleExpertMode);
 
                 _isRegistered = true;
-                AppLog.Info($"[Hotkeys] Глобальные клавиши зарегистрированы (Bypass: {_settings.HotkeyToggleBypass}, GameMode: {_settings.HotkeyToggleGameMode}, Overlay: {_settings.HotkeyToggleMiniOverlay}, ExpertMode: {_settings.HotkeyToggleExpertMode})");
+                AppLog.Info($"[Hotkeys] Глобальные клавиши зарегистрированы (Bypass: {_settings.HotkeyToggleBypass}, GameMode: {_settings.HotkeyToggleGameMode}, Overlay: {_settings.HotkeyToggleMiniOverlay})");
             }
             catch (Exception ex)
             {
@@ -79,7 +76,6 @@ namespace ZapretGui.Core
                     UnregisterHotKey(_hWnd, HOTKEY_ID_TOGGLE_BYPASS);
                     UnregisterHotKey(_hWnd, HOTKEY_ID_TOGGLE_GAMEMODE);
                     UnregisterHotKey(_hWnd, HOTKEY_ID_TOGGLE_MINI_OVERLAY);
-                    UnregisterHotKey(_hWnd, HOTKEY_ID_TOGGLE_EXPERT_MODE);
                 }
 
                 _source?.RemoveHook(HwndHook);
@@ -153,10 +149,6 @@ namespace ZapretGui.Core
                         break;
                     case HOTKEY_ID_TOGGLE_MINI_OVERLAY:
                         ToggleMiniOverlayRequested?.Invoke();
-                        handled = true;
-                        break;
-                    case HOTKEY_ID_TOGGLE_EXPERT_MODE:
-                        ToggleExpertModeRequested?.Invoke();
                         handled = true;
                         break;
                 }

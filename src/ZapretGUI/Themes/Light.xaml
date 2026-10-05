@@ -44,14 +44,5 @@
     <SolidColorBrush x:Key="WindowControlHoverBrush" Color="#EDF1F8" />
     <SolidColorBrush x:Key="WindowCloseHoverBrush" Color="#E1443C" />
     <SolidColorBrush x:Key="ShadowBrush" Color="#7C8798" />
-    <!-- Подложки оверлеев: всегда тёмные, не зависят от темы -->
-    <SolidColorBrush x:Key="OverlayScrimBrush" Color="#AA000000" />
-    <SolidColorBrush x:Key="OverlayScrimSoftBrush" Color="#66000000" />
-    <!-- Цвета теней (Color, не Brush — для DropShadowEffect) -->
-    <Color x:Key="SoftShadowColor">#22000000</Color>
-    <Color x:Key="HardShadowColor">#000000</Color>
-    <!-- Окно метрик панели задач: собственный тёмный вид вне темы -->
-    <SolidColorBrush x:Key="TaskbarMetricsBackgroundBrush" Color="#CC1E1E1E" />
-    <SolidColorBrush x:Key="TaskbarMetricsBorderBrush" Color="#33FFFFFF" />
     <sys:Double xmlns:sys="clr-namespace:System;assembly=mscorlib" x:Key="ShadowOpacity">0.18</sys:Double>
 </ResourceDictionary>

@@ -7,7 +7,7 @@
         ResizeMode="NoResize" ShowInTaskbar="False"
         Topmost="True" ShowActivated="False"
         TextOptions.TextFormattingMode="Ideal" UseLayoutRounding="True" SnapsToDevicePixels="True">
-    <Border x:Name="RootBorder" Background="{DynamicResource TaskbarMetricsBackgroundBrush}" CornerRadius="6" BorderBrush="{DynamicResource TaskbarMetricsBorderBrush}" BorderThickness="1" Padding="0" Margin="2"
+    <Border x:Name="RootBorder" Background="#CC1E1E1E" CornerRadius="6" BorderBrush="#33FFFFFF" BorderThickness="1" Padding="0" Margin="2"
             MouseLeftButtonDown="RootBorder_MouseLeftButtonDown" Cursor="SizeAll">
         <Border.Effect>
             <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.3" Color="Black" />
@@ -25,7 +25,7 @@
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Border Width="6" Height="6" CornerRadius="3" VerticalAlignment="Center" Margin="0,0,6,0"
                                         Background="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
-                                <TextBlock Text="{Binding Name}" Foreground="White" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="110" Style="{StaticResource DimText}" />
+                                <TextBlock Text="{Binding Name}" FontSize="11" Foreground="White" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="110" />
                             </StackPanel>
                             <TextBlock Grid.Column="1" Text="{Binding Latency}" FontSize="11" FontFamily="Consolas" FontWeight="SemiBold" Foreground="White" VerticalAlignment="Center" Margin="8,0,0,0" />
                         </Grid>
@@ -35,7 +35,7 @@
             <!-- Кнопка закрытия — маленький крестик в правом верхнем углу без заголовка -->
             <Button Style="{StaticResource SmallIconButton}" Content="&#xE8BB;" FontSize="8" Foreground="White" Opacity="0.5" Width="16" Height="16"
                     HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,4,4,0"
-                    Click="Close_Click" ToolTip="Скрыть метрики (включить снова в Настройки → Сеть → Метрики)" Cursor="Hand" AutomationProperties.Name="Скрыть метрики (включить снова в Настройки → Сеть → Метрики)" />
+                    Click="Close_Click" ToolTip="Скрыть метрики (включить снова в Настройки → Сеть → Метрики)" Cursor="Hand" />
             <!-- Ручка изменения размера — правый нижний угол -->
             <Border x:Name="ResizeGrip" Width="12" Height="12" HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,2,2"
                     Background="Transparent" Cursor="SizeNWSE" MouseLeftButtonDown="ResizeGrip_MouseLeftButtonDown" ToolTip="Потяните для изменения размера">

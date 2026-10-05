@@ -221,25 +221,6 @@ namespace ZapretGui.Core
             }
         }
 
-        /// <summary>Узел недоступен совсем: соединение не устанавливается вовсе — DNS не отвечает,
-        /// TCP/TLS не поднимается, тайм-аут. HTTP-ошибка сюда не входит: сервер ответил, значит узел жив
-        /// (v1.28.1, правило автопереключения «переключаем только когда узел недоступен целиком»).</summary>
-        public static bool IsCompleteOutage(ResourceProbeResult result) =>
-            result.Kind is ResourceResultKind.DnsError or ResourceResultKind.TcpError
-                or ResourceResultKind.Timeout or ResourceResultKind.TlsError;
-
-        /// <summary>Подтверждающая перепроверка: один тайм-аут — ещё не сбой узла. Если первая попытка
-        /// упала по-настоящему (полная недоступность), повторяем ещё раз; результат второго прогона решает.
-        /// Недоступность, подтверждённую дважды подряд, уже можно считать сбоем (v1.28.1).</summary>
-        public static async Task<ResourceProbeResult> CheckConfirmedAsync(MonitorTarget target,
-            CancellationToken ct = default)
-        {
-            var first = await CheckAsync(target, ct).ConfigureAwait(false);
-            if (first.Ok || !IsCompleteOutage(first)) return first;
-            try { await Task.Delay(600, ct).ConfigureAwait(false); } catch (OperationCanceledException) { return first; }
-            return await CheckAsync(target, ct).ConfigureAwait(false);
-        }
-
         public static async Task<ResourceProbeResult> CheckAsync(MonitorTarget target,
             CancellationToken ct = default)
         {

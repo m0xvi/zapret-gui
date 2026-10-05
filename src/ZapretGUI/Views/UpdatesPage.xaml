@@ -67,7 +67,7 @@
 
             <!-- Основные карточки обновления -->
             <!-- 1. Обновление Zapret GUI — теперь первым -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ОБНОВЛЕНИЕ ZAPRET GUI" />
                     <Grid Margin="0,2,0,0">
@@ -108,7 +108,7 @@
             </Border>
 
             <!-- 2. Движок zapret -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ДВИЖОК ZAPRET (ОБХОД)" />
 
@@ -155,7 +155,7 @@
                                       ItemsSource="{Binding AvailableEngineBackups}"
                                       SelectedItem="{Binding SelectedEngineBackup, Mode=TwoWay}"
                                       DisplayMemberPath="DisplayText"
-                                      ToolTip="Выберите сохранённую версию движка для ручного отката" AutomationProperties.Name="Выберите сохранённую версию движка для ручного отката" />
+                                      ToolTip="Выберите сохранённую версию движка для ручного отката" />
                             <Button Style="{StaticResource SecondaryButton}" Content="Вернуться к выбранной версии"
                                     HorizontalAlignment="Left" Margin="0,8,0,0"
                                     Command="{Binding RollbackEngineCommand}"
@@ -192,7 +192,7 @@
             </Border>
 
             <!-- 2. Списки и файл hosts -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="СПИСКИ И ФАЙЛ HOSTS" />
 
@@ -210,8 +210,8 @@
                             </WrapPanel>
                             <TextBlock Style="{StaticResource DimText}" Text="Актуальный список IP-адресов для фильтра ipset. Обновляется отдельно от движка." Margin="0,4,0,0" />
                         </StackPanel>
-                        <Button Grid.Column="1" Style="{StaticResource CompactButton}" Content="Обновить список"
-                                HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding UpdateIpsetCommand}"
+                        <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Обновить список"
+                                HorizontalAlignment="Right" VerticalAlignment="Center" Command="{Binding UpdateIpsetCommand}" Padding="14,7"
                                 ToolTip="Скачать свежий ipset-all.txt из репозитория (при режимах none/any пишется в резервную копию)" />
                     </Grid>
 
@@ -233,7 +233,7 @@
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding HostsStatus}" Margin="0,4,0,0"
                                        Foreground="{Binding HostsStatusKey, Converter={StaticResource SeverityBrush}}" />
                         </StackPanel>
-                        <Button Grid.Column="1" Style="{StaticResource CompactPrimaryButton}" Content="Обновить hosts"
+                        <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Обновить hosts" Padding="14,7"
                                 HorizontalAlignment="Right" VerticalAlignment="Center"
                                 Command="{Binding UpdateHostsCommand}"
                                 ToolTip="Проверить файл hosts и автоматически применить актуальные записи GitHub при необходимости" />
@@ -242,7 +242,7 @@
             </Border>
 
             <!-- 3. Настройки обновлений движка -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="НАСТРОЙКИ ОБНОВЛЕНИЙ ДВИЖКА" />
                     <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять при запуске"
@@ -255,14 +255,11 @@
             </Border>
 
             <!-- 6. Резервные копии -->
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource SectionText}" Text="РЕЗЕРВНЫЕ КОПИИ" />
-                        <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                ToolTip="Перед изменением файла hosts копия сохраняется в папку backups. Там же лежат копии при ручных правках."
-                                AutomationProperties.Name="Подсказка: РЕЗЕРВНЫЕ КОПИИ" />
-                    </StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="РЕЗЕРВНЫЕ КОПИИ" />
+                    <TextBlock Style="{StaticResource MutedText}"
+                               Text="Перед изменением файла hosts копия сохраняется в папку backups. Там же лежат копии при ручных правках." />
                     <Button Style="{StaticResource GhostButton}" Content="Открыть журнал"
                             HorizontalAlignment="Left" Margin="0,8,0,0" Command="{Binding OpenLogsCommand}"
                             ToolTip="Перейти на страницу журнала" />

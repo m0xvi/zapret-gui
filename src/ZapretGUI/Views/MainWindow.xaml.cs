@@ -32,18 +32,16 @@ namespace ZapretGui.Views
             _pages["bypass-center"] = new BypassCenterPage { DataContext = _vm.BypassCenter };
             _pages["first-run"] = new FirstLaunchPage(_vm.FirstLaunch);
             _pages["strategies"] = new StrategiesPage(_vm.StrategiesPage);
+            _pages["monitoring"] = new MonitoringPage(_vm.Monitoring);
             _pages["updates"] = new UpdatesPage(_vm.Updates);
             _pages["diagnostics"] = new DiagnosticsPage(_vm.Diagnostics);
             _pages["deep-check"] = new DeepCheckPage(_vm.DeepCheck);
             _pages["dpi"] = new DpiPage(_vm.Diagnostics);
+            _pages["logs"] = new LogsPage(_vm.Logs);
             _pages["user-lists"] = new UserListsPage(_vm.UserLists);
             _pages["profiles"] = new ProfilesPage(_vm.Profiles);
-            _pages["configuration"] = new ConfigurationPage(_vm.Configuration);
-            _pages["network"] = new NetworkPage(_vm.NetworkProfile);
             _pages["settings"] = new SettingsPage(_vm.SettingsPage);
-            _pages["automation"] = new AutomationPage(_vm.SettingsPage);
             _pages["about"] = new AboutPage(_vm);
-            _pages["help"] = new HelpPage(_vm.Help);
 
             _vm.NavChanged += ShowPage;
             ShowPage(_vm.SelectedNavKey);
@@ -165,27 +163,6 @@ namespace ZapretGui.Views
                     }
                 }));
             }
-
-            // Миграция v1.22.0: нестандартные экспертные параметры → один баллун с предложением
-            // включить режим «Эксперт» (docs/IA_REDESIGN.md §7, правило 4; без модальных окон)
-            _ = System.Threading.Tasks.Task.Run(async () =>
-            {
-                try
-                {
-                    await System.Threading.Tasks.Task.Delay(9000);
-                    if (_vm.Settings.SafeMode) return;
-                    if (!_vm.ShouldSuggestExpertMode()) return;
-                    _vm.Settings.ExpertModeHintShown = true;
-                    SettingsStore.Save(_vm.Settings);
-                    await Dispatcher.InvokeAsync(() => _tray?.ShowBalloon("Режим «Эксперт»",
-                        "У вас настроены продвинутые параметры (SNI, стратегии для отдельных сайтов). " +
-                        "Включить режим «Эксперт», чтобы они были видны? Переключатель — в шапке окна или Ctrl+Shift+E."));
-                }
-                catch (Exception ex)
-                {
-                    AppLog.Warn("Ошибка подсказки режима «Эксперт»: " + ex.Message);
-                }
-            });
 
             // Проверка конфликта со старым запретом — с задержкой, чтобы сначала
             // отработали автоустановка движка и автозапуск обхода
@@ -367,7 +344,7 @@ namespace ZapretGui.Views
                 // TakeOver / Import: запускаем обход через GUI
                 if (!EngineService.IsEngineReady(_vm.Settings.EnginePath))
                 {
-                    _vm.Home.ShowWarning("Старый запрет выключен. Установите движок в «Настройках» → «Обновления».");
+                    _vm.Home.ShowWarning("Старый запрет выключен. Установите движок на странице «Обновления».");
                     _vm.Navigate("updates");
                     return;
                 }
@@ -457,19 +434,6 @@ namespace ZapretGui.Views
 
             if (key == "strategies") _vm.StrategiesPage.Refresh();
             if (key == "home") _vm.Home.RefreshStatus();
-        }
-
-        /// <summary>Поиск (этап 7): при открытии оверлея ставим курсор в строку ввода,
-        /// при закрытии возвращаем фокус окну.</summary>
-        private void SearchOverlay_IsVisibleChanged(object sender, DependencyPropertyChangedEventArgs e)
-        {
-            if (SearchOverlayControl.IsVisible)
-            {
-                SearchOverlayControl.FocusInput();
-                return;
-            }
-
-            SearchOverlayControl.Dispatcher.BeginInvoke(new Action(() => Focus()));
         }
 
         private static void PlayPageTransition(UIElement page)

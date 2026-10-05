@@ -53,21 +53,18 @@
                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message}" TextWrapping="Wrap" />
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource SectionText}" Text="ПАРАМЕТРЫ ПРОБЫ" />
-                        <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                ToolTip="Пользовательский HTTPS-узел необязателен. Если поле пустое, проверяется внешний набор контрольных узлов. Их операторы не являются вашим интернет-провайдером."
-                                AutomationProperties.Name="Подсказка: ПАРАМЕТРЫ ПРОБЫ" />
-                    </StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="ПАРАМЕТРЫ ПРОБЫ" />
+                    <TextBlock Style="{StaticResource MutedText}"
+                               Text="Пользовательский HTTPS-узел необязателен. Если поле пустое, проверяется внешний набор контрольных узлов. Их операторы не являются вашим интернет-провайдером." TextWrapping="Wrap" />
                     <TextBlock Style="{StaticResource DimText}" Text="Пользовательский HTTPS-хост" Margin="0,10,0,0" />
                     <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomHost, UpdateSourceTrigger=PropertyChanged}"
-                             Margin="0,5,0,0" ToolTip="Например, https://example.com или собственный HTTPS-хост" AutomationProperties.Name="Например, https://example.com или собственный HTTPS-хост" />
+                             Margin="0,5,0,0" ToolTip="Например, https://example.com или собственный HTTPS-хост" />
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ПРОВАЙДЕР И ОГРАНИЧЕНИЯ" />
                     <TextBlock Style="{StaticResource BodyText}" Text="{Binding ProviderContext}" TextWrapping="Wrap" />
@@ -82,7 +79,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0"
                     Visibility="{Binding HasMetrics, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="МЕТРИКИ ИЗМЕРЕНИЙ" />
@@ -108,7 +105,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0"
                     Visibility="{Binding HasGeneratedCandidate, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="АВТОКОНСТРУКТОР ПОД ЭТУ СЕТЬ" />
@@ -126,7 +123,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0"
                     Visibility="{Binding HasRecommendations, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="РЕКОМЕНДАЦИИ И АВТОНАСТРОЙКА" />
@@ -158,7 +155,7 @@
                 </StackPanel>
             </Border>
 
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
+            <Border Style="{StaticResource Card}" Margin="0,16,0,0"
                     Visibility="{Binding HasFindings, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ПОЛНЫЙ СПИСОК УСЛОВИЙ И ОГРАНИЧЕНИЙ" />
@@ -196,16 +193,16 @@
             </StackPanel>
         </ScrollViewer>
         <!-- Локальный оверлей загрузки на весь процесс — полупрозрачный фон с кнопкой В фон в правом нижнем углу, скрывается при сворачивании в фон -->
-        <Border Background="{DynamicResource OverlayScrimSoftBrush}" Visibility="{Binding IsLocalOverlayVisible, Converter={StaticResource BoolToVis}}" Panel.ZIndex="100">
+        <Border Background="#66000000" Visibility="{Binding IsLocalOverlayVisible, Converter={StaticResource BoolToVis}}" Panel.ZIndex="100">
             <Grid>
                 <Border Width="420" Padding="24" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" CornerRadius="12"
                         HorizontalAlignment="Center" VerticalAlignment="Center">
                     <StackPanel>
-                        <TextBlock Text="Глубокая проверка" Style="{StaticResource TitleText}" HorizontalAlignment="Center" />
+                        <TextBlock Text="Глубокая проверка" Style="{StaticResource TitleText}" FontSize="16" HorizontalAlignment="Center" />
                         <TextBlock Text="{Binding ProgressText}" Style="{StaticResource BodyText}" FontWeight="SemiBold" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,8,0,0" />
-                        <TextBlock Text="{Binding Summary}" Style="{StaticResource DimText}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,4,0,0" />
+                        <TextBlock Text="{Binding Summary}" Style="{StaticResource DimText}" TextWrapping="Wrap" HorizontalAlignment="Center" Margin="0,4,0,0" FontSize="11" />
                         <ProgressBar Value="{Binding ProgressValue, Mode=OneWay}" Maximum="100" IsIndeterminate="{Binding ProgressIndeterminate, Mode=OneWay}" Height="7" Margin="0,12,0,0" />
-                        <TextBlock Text="{Binding ProgressPercentText}" Style="{StaticResource DimText}" HorizontalAlignment="Center" Margin="0,6,0,0" />
+                        <TextBlock Text="{Binding ProgressPercentText}" Style="{StaticResource DimText}" HorizontalAlignment="Center" Margin="0,6,0,0" FontSize="11" />
                         <Button Content="Отменить" Command="{Binding CancelCommand}" Style="{StaticResource GhostButton}" HorizontalAlignment="Center" Margin="0,12,0,0" MinWidth="120" />
                     </StackPanel>
                 </Border>

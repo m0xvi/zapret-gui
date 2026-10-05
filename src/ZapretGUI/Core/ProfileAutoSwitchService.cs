@@ -182,7 +182,6 @@ namespace ZapretGui.Core
         /// <summary>Попытка автопереключения при диагностированном сбое стратегии (из MonitoringViewModel).</summary>
         public async Task<bool> TrySwitchOnFailureAsync(MonitorTarget failedTarget, BypassStatus before)
         {
-            if (!_settings.AutoSwitchStrategyEnabled) return false;   // опт-ин автосмены (v1.28.3)
             if (!_settings.AutoSwitchProfileOnFailure || !_settings.AutoSwitchProfileOnNetworkChange) return false;
             if (_settings.SafeMode) return false;
             if ((DateTime.UtcNow - _lastSwitchTime).TotalSeconds < CooldownSeconds) return false;

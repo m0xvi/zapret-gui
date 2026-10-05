@@ -16,6 +16,7 @@ namespace ZapretGui.ViewModels
         public string Title { get; init; } = "";
         public string Icon { get; init; } = "";
         public string Hint { get; init; } = "";
+        public bool IsSectionHeader { get; init; }
     }
 
     /// <summary>Главная модель: держит настройки, контроллер обхода и все подстраницы.</summary>
@@ -24,9 +25,7 @@ namespace ZapretGui.ViewModels
         private readonly DispatcherTimer _timer;
         private readonly DispatcherTimer _toolbarMetricsTimer;
         private Views.TaskbarMetricsWindow? _taskbarMetricsWindow;
-        private NavItem? _selectedNav;
-        private NavItem? _selectedUtility;
-        private bool _isHelpActive;
+        private NavItem _selectedNav;
         private bool _isAdmin;
         private DateTime _lastPingProbeTime = DateTime.MinValue;
         private bool _isPingProbing;
@@ -69,10 +68,6 @@ namespace ZapretGui.ViewModels
             FirstLaunch = new FirstLaunchViewModel(this);
             Logs = new LogsViewModel(this);
             SettingsPage = new SettingsViewModel(this);
-            Configuration = new ConfigurationViewModel(this);
-            NetworkProfile = new NetworkProfileViewModel(this);
-            Help = new HelpViewModel(this);
-            Search = new SearchViewModel(this);
 
             GameDetector = new GameDetectionService(settings);
             Hotkeys = new GlobalHotkeyService(settings);
@@ -121,14 +116,6 @@ namespace ZapretGui.ViewModels
             Hotkeys.ToggleMiniOverlayRequested += () => Application.Current?.Dispatcher?.Invoke(() =>
             {
                 ToggleMiniOverlay();
-            });
-
-            Hotkeys.ToggleExpertModeRequested += () => Application.Current?.Dispatcher?.Invoke(() =>
-            {
-                ToggleExpertMode();
-                WatchdogNotificationRequested?.Invoke(Settings.ExpertModeEnabled
-                    ? "🔧 Режим «Эксперт» включён — технические блоки видны"
-                    : "🙂 Включён «Простой» режим — технические блоки скрыты");
             });
 
             Watchdog = new WatchdogService(settings, Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended, () => Strategies.Items.ToList());
@@ -198,26 +185,21 @@ namespace ZapretGui.ViewModels
                 ProfileAutoSwitch.Start();
             }
 
-            // Навигация v1.21.0 (этап 4.5, docs/IA_REDESIGN.md §2): плоский список из 5 разделов, без групп.
-            // «Помощь» (этап 6) — утилита в подвале меню: своя коллекция, поэтому разделов по-прежнему пять.
-            // Прежние пункты «Стратегии», «Списки», «Журнал», «Профили и копии», «Обновления» и «О программе»
-            // больше не верхний уровень: их страницы открываются кнопками внутри своих разделов
-            // (ключи `_pages` и `Navigate` не тронуты — трей, шапка и старые ссылки работают как раньше).
-            NavSections = new ObservableCollection<NavItem>
+            NavItems = new ObservableCollection<NavItem>
             {
-                new() { Key = "home", Title = "Главная", Icon = "\uE80F", Hint = "Состояние обхода и включение" },
-                new() { Key = "bypass-center", Title = "Обход", Icon = "\uE8D2", Hint = "Способ обхода, подбор, DNS, списки, сложные сайты" },
-                new() { Key = "diagnostics", Title = "Проверки", Icon = "\uE90F", Hint = "Быстрая проверка, сайты и звонки, система, журнал" },
-                new() { Key = "automation", Title = "Автоматизация", Icon = "\uE945", Hint = "Автозапуск, присмотр за обходом и расписание" },
-                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Движок и обновления, профили и копии, оформление" },
+                new() { Key = "group-main", Title = "ОСНОВНОЕ", IsSectionHeader = true },
+                new() { Key = "home", Title = "Обзор", Icon = "\uE80F", Hint = "Состояние обхода" },
+                new() { Key = "bypass-center", Title = "Центр обхода", Icon = "\uE8D2", Hint = "Всё в одном — стратегии, DNS, hosts, ipset и тяжёлый YouTube" },
+                new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
+                new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
+                new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check и результаты" },
+                new() { Key = "group-data", Title = "СПИСКИ И ФИЛЬТРЫ", IsSectionHeader = true },
+                new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
+                new() { Key = "profiles", Title = "Профили", Icon = "\uE753", Hint = "Пресеты настроек и полные бэкапы" },
+                new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
+                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация, журнал и о программе" },
             };
-            NavUtilities = new ObservableCollection<NavItem>
-            {
-                new() { Key = "help", Title = "Помощь", Icon = "\uE897", Hint = "Не работает? Пять сценариев и переходы" },
-            };
-            NavItems = new ObservableCollection<NavItem>(NavSections.Concat(NavUtilities));
-            // Стартовый пункт ищем по ключу, а не по индексу: состав меню меняется.
-            _selectedNav = NavSections.First(i => i.Key == "home");
+            _selectedNav = NavItems[1];
 
             _isAdmin = Shell.IsAdmin();
 
@@ -225,12 +207,10 @@ namespace ZapretGui.ViewModels
             RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
-            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.OpenSystemSubTab(); Navigate("diagnostics"); });
+            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 3; Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
             NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
             NavigateActiveCheckCommand = new RelayCommand(NavigateToActiveCheck);
-            ToggleExpertModeCommand = new RelayCommand(ToggleExpertMode);
-            OpenSearchCommand = new RelayCommand(Search.Open);
 
             Strategies.Refresh();
             Home.ReloadFromEngine();
@@ -267,12 +247,6 @@ namespace ZapretGui.ViewModels
         public UpdatesViewModel Updates { get; }
     public GlobalOverlayViewModel GlobalOverlay { get; }
         public SettingsViewModel SettingsPage { get; }
-
-        /// <summary>Рабочий стол настройщика (v1.29.3): сводка, применение, история и откат конфигурации обхода.</summary>
-        public ConfigurationViewModel Configuration { get; }
-
-        /// <summary>«Под мою сеть» (v1.30.0): проверка сети по шагам под конкретного провайдера.</summary>
-        public NetworkProfileViewModel NetworkProfile { get; }
         public DiagnosticsViewModel Diagnostics { get; }
         public DeepCheckViewModel DeepCheck { get; }
         public UserListsViewModel UserLists { get; }
@@ -281,29 +255,15 @@ namespace ZapretGui.ViewModels
         public LogsViewModel Logs { get; }
         public MonitoringViewModel Monitoring { get; }
 
-        /// <summary>«Помощь» — только тексты и переходы (этап 6, docs/IA_REDESIGN.md §3.6).</summary>
-        public HelpViewModel Help { get; }
-
-        /// <summary>Поиск по приложению `Ctrl+K` (этап 7): разделы, настройки, команды, сценарии.</summary>
-        public SearchViewModel Search { get; }
-
-        /// <summary>Пять разделов верхнего уровня (основной список меню).</summary>
-        public ObservableCollection<NavItem> NavSections { get; }
-
-        /// <summary>Утилиты подвала меню: «Помощь». Отдельная коллекция, чтобы разделов оставалось пять.</summary>
-        public ObservableCollection<NavItem> NavUtilities { get; }
-
-        /// <summary>Все пункты навигации (разделы + подвал) — для `Navigate` и подсветки.</summary>
         public ObservableCollection<NavItem> NavItems { get; }
 
-        public NavItem? SelectedNav
+        public NavItem SelectedNav
         {
             get => _selectedNav;
             set
             {
                 if (Set(ref _selectedNav, value))
                 {
-                    if (value != null) SetSelectedUtility(null);
                     Raise(nameof(SelectedNavKey));
                     NavChanged?.Invoke(value?.Key ?? "home");
                 }
@@ -311,49 +271,6 @@ namespace ZapretGui.ViewModels
         }
 
         public string SelectedNavKey => _selectedNav?.Key ?? "home";
-
-        /// <summary>Выбор в подвале меню («Помощь»). Отдельно от <see cref="SelectedNav"/>: два списка
-        /// не должны сбрасывать выбор друг друга (сброс основного списка уводил бы на «Главную»).</summary>
-        public NavItem? SelectedUtility
-        {
-            get => _selectedUtility;
-            set
-            {
-                if (!Set(ref _selectedUtility, value)) return;
-                if (value != null) OpenHelp();
-            }
-        }
-
-        /// <summary>Подсвечена ли «Помощь» — для стиля пункта в подвале меню.</summary>
-        public bool IsHelpActive
-        {
-            get => _isHelpActive;
-            private set => Set(ref _isHelpActive, value);
-        }
-
-        /// <summary>Открыть «Помощь»: раздел вне пяти разделов, поэтому подсветку разделов снимаем
-        /// без `NavChanged` (иначе сработала бы навигация на «Главную»).</summary>
-        public void OpenHelp()
-        {
-            if (_selectedNav != null)
-            {
-                Set(ref _selectedNav, null, nameof(SelectedNav));
-                Raise(nameof(SelectedNavKey));
-            }
-            // Подсвечиваем пункт подвала: без этого вход в «Помощь» из поиска, с «Главной»
-            // или по старой ссылке оставлял пункт невыделенным (исправлено в v1.28.0).
-            SetSelectedUtility(NavUtilities.FirstOrDefault(i => i.Key == "help"));
-            IsHelpActive = true;
-            NavChanged?.Invoke("help");
-        }
-
-        /// <summary>Подсветка пункта подвала меню (этап 6).</summary>
-        private void SetSelectedUtility(NavItem? item)
-        {
-            if (ReferenceEquals(_selectedUtility, item)) return;
-            _selectedUtility = item;
-            Raise(nameof(SelectedUtility));
-        }
 
         public event Action<string>? NavChanged;
 
@@ -388,61 +305,6 @@ namespace ZapretGui.ViewModels
         public string ReadinessDetails => CurrentReadiness.Details;
 
         public string AppVersion => GuiUpdateService.CurrentVersion;
-
-        /// <summary>Экспертный режим интерфейса: технические блоки видимы (по умолчанию выключен — «Простой»).</summary>
-        public bool ExpertMode => Settings.ExpertModeEnabled;
-
-        /// <summary>Инверсия для привязок видимости простых блоков.</summary>
-        public bool SimpleMode => !ExpertMode;
-
-        /// <summary>Бейдж режима рядом с версией: «Эксперт» показывается только в экспертном режиме.</summary>
-        public string ExpertModeBadgeText => ExpertMode ? "Эксперт" : "";
-
-        public bool ExpertModeBadgeVisible => ExpertMode;
-
-        public string ExpertModeToggleText => ExpertMode ? "Простой режим" : "Режим «Эксперт»";
-
-        public string ExpertModeToggleHint => ExpertMode
-            ? "Скрыть технические блоки (Ctrl+Shift+E)"
-            : "Показать технические блоки: матрица 92 тестов, SNI-пул, режимы ipset и другое (Ctrl+Shift+E)";
-
-        public RelayCommand ToggleExpertModeCommand { get; }
-
-        /// <summary>Открыть оверлей поиска (кнопка в шапке и `Ctrl+K`).</summary>
-        public RelayCommand OpenSearchCommand { get; }
-
-        /// <summary>Переключение режима «Простой/Эксперт». Сам переключатель находится в шапке (Ctrl+Shift+E),
-        /// режим сохраняется в настройках и считается источником истины для видимости экспертных блоков.</summary>
-        public void ToggleExpertMode()
-        {
-            SetExpertMode(!Settings.ExpertModeEnabled);
-        }
-
-        public void SetExpertMode(bool enabled)
-        {
-            if (Settings.ExpertModeEnabled == enabled) return;
-            Settings.ExpertModeEnabled = enabled;
-            SettingsStore.Save(Settings);
-            Raise(nameof(ExpertMode));
-            Raise(nameof(SimpleMode));
-            Raise(nameof(ExpertModeBadgeText));
-            Raise(nameof(ExpertModeBadgeVisible));
-            Raise(nameof(ExpertModeToggleText));
-            Raise(nameof(ExpertModeToggleHint));
-            AppLog.Info(enabled ? "[UI] Включён режим «Эксперт»" : "[UI] Включён «Простой» режим");
-        }
-
-        /// <summary>Миграция v1.22.0: если у пользователя есть нестандартные экспертные параметры,
-        /// показываем один баллун с предложением включить «Эксперт» (без модального окна).</summary>
-        public bool ShouldSuggestExpertMode()
-        {
-            if (Settings.ExpertModeEnabled || Settings.ExpertModeHintShown) return false;
-            if (Settings.CustomSniList.Count > 0) return true;
-            if (Settings.HostSpecificStrategies.Count > 0) return true;
-            if (Settings.AutoSniRotationEnabled) return true;
-            if (Settings.UseDohForBlockedHosts) return true;
-            return !string.IsNullOrWhiteSpace(Settings.YoutubeSniOverride);
-        }
 
         public string EngineVersionText
         {
@@ -653,7 +515,6 @@ namespace ZapretGui.ViewModels
             Raise(nameof(SeamlessStatusText));
             Raise(nameof(SeamlessStatusKey));
             Raise(nameof(SeamlessLastSwitchText));
-            BypassCenter?.NotifyAutoSwitchChanged();
         }
         public void NotifyScheduleChanged()
         {
@@ -707,7 +568,7 @@ namespace ZapretGui.ViewModels
             }
             else if (DeepCheck.IsRunning)
             {
-                Diagnostics.SelectedSubTab = 3;
+                Diagnostics.SelectedSubTab = 2;
                 Navigate("diagnostics");
             }
             else if (StrategiesPage.IsTestingAll || StrategiesPage.IsEvaluatingCandidates)
@@ -716,7 +577,7 @@ namespace ZapretGui.ViewModels
             }
             else if (Diagnostics.IsRunning)
             {
-                Diagnostics.SelectedSubTab = 2;
+                Diagnostics.SelectedSubTab = 3;
                 Navigate("diagnostics");
             }
             else if (Monitoring.IsBusy)
@@ -757,29 +618,16 @@ namespace ZapretGui.ViewModels
 
         public void Navigate(string key)
         {
-            // «Помощь» живёт в подвале меню (этап 6) — открывается своим путём.
-            if (key == "help")
+            if (key is "monitoring" or "dpi" or "deep-check" or "results")
             {
-                OpenHelp();
-                return;
-            }
-
-            // «Журнал» с v1.21.0 живёт внутри «Проверок» (вкладка 5), отдельного пункта меню нет —
-            // ключ сохранён, чтобы трей, «Настройки» и «Главная» продолжали работать.
-            if (key is "monitoring" or "dpi" or "deep-check" or "results" or "logs")
-            {
-                // Индексы подразделов «Проверок» v1.20.0 (docs/IA_REDESIGN.md §3.3).
                 var tab = key switch
                 {
-                    "monitoring" => 0,   // Быстрая проверка
-                    "dpi" => 1,          // Сложные сайты и звонки
-                    "deep-check" => 3,   // Глубокая проверка
-                    "results" => 4,      // История и отчёты
-                    "logs" => 5,         // Журнал
+                    "monitoring" => 0,
+                    "dpi" => 1,
+                    "deep-check" => 2,
+                    "results" => 4,
                     _ => 0
                 };
-                // В «Простом» режиме экспертных подразделов нет — ведём на быструю проверку.
-                if (!ExpertMode && tab is 2 or 3 or 4) tab = 0;
                 Diagnostics.SelectedSubTab = tab;
                 key = "diagnostics";
             }
@@ -790,32 +638,6 @@ namespace ZapretGui.ViewModels
                 SelectedNav = item;
                 return;
             }
-
-            // Вложенный экран или старый ключ: подсветка «Помощи» в подвале снимается.
-            IsHelpActive = false;
-            SetSelectedUtility(null);
-
-            // Вложенные экраны (этап 4.5): самого пункта в меню нет, но подсвечиваем родительский
-            // раздел — так видно, где пользователь находится («Стратегии»/«Списки» → «Обход»,
-            // «Профили и копии»/«Обновления»/«О программе» → «Настройки»).
-            var parentKey = key switch
-            {
-                "strategies" or "user-lists" or "configuration" or "network" => "bypass-center",
-                "profiles" or "updates" or "about" => "settings",
-                _ => null
-            };
-            if (parentKey != null)
-            {
-                var parent = NavItems.FirstOrDefault(i => i.Key == parentKey);
-                if (parent != null && !ReferenceEquals(_selectedNav, parent))
-                {
-                    Set(ref _selectedNav, parent, nameof(SelectedNav));
-                    Raise(nameof(SelectedNavKey));
-                }
-            }
-
-            // Сценарий «под мою сеть» перечитывает состояние при открытии (v1.30.0).
-            if (key == "network") NetworkProfile.Reload();
 
             NavChanged?.Invoke(key);
         }

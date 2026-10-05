@@ -7,31 +7,11 @@ namespace ZapretGui.Views
 {
     public partial class LogsPage : UserControl
     {
-        private LogsViewModel? _viewModel;
-
-        /// <summary>Страница журнала как отдельный экран (пункт меню «Журнал»).</summary>
-        public LogsPage(LogsViewModel viewModel) : this()
-        {
-            Attach(viewModel);
-        }
-
-        /// <summary>Журнал внутри вкладки «Проверки → Журнал»: DataContext приходит от родителя.</summary>
-        public LogsPage()
+        public LogsPage(LogsViewModel viewModel)
         {
             InitializeComponent();
-            DataContextChanged += (_, e) => Attach(e.NewValue as LogsViewModel);
-        }
-
-        private void Attach(LogsViewModel? viewModel)
-        {
-            if (ReferenceEquals(_viewModel, viewModel)) return;
-
-            if (_viewModel != null) _viewModel.ScrollToEndRequested -= ScrollToEnd;
-            _viewModel = viewModel;
-            if (_viewModel == null) return;
-
-            DataContext = _viewModel;
-            _viewModel.ScrollToEndRequested += ScrollToEnd;
+            DataContext = viewModel;
+            viewModel.ScrollToEndRequested += ScrollToEnd;
         }
 
         private void ScrollToEnd()

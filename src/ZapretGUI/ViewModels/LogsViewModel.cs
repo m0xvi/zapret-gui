@@ -23,14 +23,6 @@ namespace ZapretGui.ViewModels
         public LogsViewModel(MainViewModel? main = null)
         {
             _main = main;
-            if (_main != null)
-                _main.PropertyChanged += (_, e) =>
-                {
-                    if (e.PropertyName != nameof(MainViewModel.ExpertMode)) return;
-                    // В «Простом» режиме чекбокс «Отладка» скрыт — выключаем его, чтобы журнал оставался читаемым.
-                    if (!ExpertMode) ShowDebug = false;
-                    Raise(nameof(ExpertMode));
-                };
             foreach (var entry in AppLog.Entries) Entries.Add(entry);
             AppLog.EntryAdded += OnEntryAdded;
 
@@ -171,8 +163,5 @@ namespace ZapretGui.ViewModels
                 AppLog.Error("Не удалось сохранить журнал: " + ex.Message);
             }
         }
-
-        /// <summary>Экспертный режим интерфейса (этап 5): детальные уровни журнала показываются только в нём.</summary>
-        public bool ExpertMode => _main?.ExpertMode ?? false;
     }
 }

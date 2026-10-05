@@ -43,15 +43,10 @@ namespace ZapretGui.ViewModels
         private string _matrixSummary = "Готов к проверке — нажми «Проверить всё»";
         private string _matrixBestText = "—";
         private DnsStrategyMatrixEntry? _selectedMatrixEntry;
-        private int _selectedSubTab;
 
         public BypassCenterViewModel(MainViewModel main)
         {
             _main = main;
-            _main.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
-            };
             MatrixResults = new ObservableCollection<DnsStrategyMatrixEntry>();
             DnsProfiles = DnsManagementService.PredefinedProfiles;
             SelectedDnsProfile = DnsProfiles.FirstOrDefault(p => p.Id == "cloudflare") ?? DnsProfiles[0];
@@ -69,95 +64,14 @@ namespace ZapretGui.ViewModels
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             ApplyStrategyCommand = new AsyncRelayCommand(ApplySelectedStrategyAsync, () => SelectedStrategy != null && !IsMatrixRunning);
             DismissMessageCommand = new RelayCommand(() => { Message = ""; MessageKey = "Info"; });
-            OpenListsCommand = new RelayCommand(() => _main.Navigate("user-lists"));
-            OpenWorkbenchCommand = new RelayCommand(() => _main.Navigate("configuration"));
-            OpenNetworkCommand = new RelayCommand(() => _main.Navigate("network"));
-            // «Подбор» в «Простом» режиме пустовал: матрица стратегия × DNS — экспертный блок (v1.28.0).
-            // Вместо пустого экрана показываем пояснение и кнопку включения режима.
-            EnableExpertModeCommand = new RelayCommand(() => { if (_main.SimpleMode) _main.ToggleExpertMode(); });
-            OpenSystemCheckCommand = new RelayCommand(() =>
-            {
-                _main.Diagnostics.OpenSystemSubTab(); // «Система» в разделе «Проверки» (в «Простом» — быстрая проверка)
-                _main.Navigate("diagnostics");
-            });
 
             RefreshAll();
             _main.Bypass.GetStatus(); // warm
             try { _main.Strategies.PropertyChanged += (_, __) => RefreshStrategies(); } catch { }
         }
 
-        // ===== Подвкладки раздела «Обход» (v1.18.0) =====
-        // Страница больше не «свалка всё в одном»: статус всегда сверху, дальше — 6 подвкладок.
-        // Логика и команды те же, что были на одной странице, — менялась только раскладка.
-
-        private static readonly string[] AllBypassTabs = { "🎯 Стратегия", "🧠 Подбор", "🌐 DNS", "📋 Списки", "🔥 Сложные сайты", "🛠 Дополнительно" };
-        private static readonly string[] SimpleBypassTabs = { "🎯 Стратегия", "🧠 Подбор", "🌐 DNS", "📋 Списки", "🔥 Сложные сайты" };
-        private static readonly int[] ExpertTabMap = { 0, 1, 2, 3, 4, 5 };
-        private static readonly int[] SimpleTabMap = { 0, 1, 2, 3, 4 };
-
-        /// <summary>Видимые подвкладки: в «Простом» режиме «Дополнительно» скрыта целиком (docs/IA_REDESIGN.md §7).</summary>
-        public string[] BypassTabs => ExpertMode ? AllBypassTabs : SimpleBypassTabs;
-
-        /// <summary>Индекс выбранной подвкладки в видимом списке (часть вкладок может быть скрыта режимом).</summary>
-        public int VisibleSubTab
-        {
-            get
-            {
-                var index = Array.IndexOf(VisibleIndexMap, _selectedSubTab);
-                return index < 0 ? 0 : index;
-            }
-            set
-            {
-                if (value >= 0 && value < VisibleIndexMap.Length) SelectedSubTab = VisibleIndexMap[value];
-            }
-        }
-
-        private int[] VisibleIndexMap => ExpertMode ? ExpertTabMap : SimpleTabMap;
-
-        public string BypassTabHintText => SelectedSubTab switch
-        {
-            0 => "Выбор способа обхода из каталога движка • применяется бесшовно (служба/процесс сохраняется)",
-            1 => "Подбор: 4 шага (аудит → сайты → стратегии → рекомендация) и перебор каждой стратегии с каждым DNS",
-            2 => "DNS-профили, применение и проверка подмены",
-            3 => "Списки доменов, hosts и ipset • полный редактор — на странице «Списки»",
-            4 => "Тонкая настройка под YouTube/Discord и фильтр трафика игр",
-            5 => "Служба Windows, папка движка и переход к опасным операциям",
-            _ => ""
-        };
-
-        public int SelectedSubTab
-        {
-            get => _selectedSubTab;
-            set
-            {
-                if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 5)))
-                {
-                    Raise(nameof(BypassTabHintText));
-                    Raise(nameof(VisibleSubTab));
-                    Raise(nameof(IsStrategyTabSelected));
-                    Raise(nameof(IsPickTabSelected));
-                    Raise(nameof(IsDnsTabSelected));
-                    Raise(nameof(IsListsTabSelected));
-                    Raise(nameof(IsHardTabSelected));
-                    Raise(nameof(IsAdvancedTabSelected));
-                }
-            }
-        }
-
-        public bool IsStrategyTabSelected { get => _selectedSubTab == 0; set { if (value) SelectedSubTab = 0; } }
-        public bool IsPickTabSelected { get => _selectedSubTab == 1; set { if (value) SelectedSubTab = 1; } }
-        public bool IsDnsTabSelected { get => _selectedSubTab == 2; set { if (value) SelectedSubTab = 2; } }
-        public bool IsListsTabSelected { get => _selectedSubTab == 3; set { if (value) SelectedSubTab = 3; } }
-        public bool IsHardTabSelected { get => _selectedSubTab == 4; set { if (value) SelectedSubTab = 4; } }
-        public bool IsAdvancedTabSelected { get => _selectedSubTab == 5; set { if (value) SelectedSubTab = 5; } }
-
-
         public AppSettings Settings => _main.Settings;
         public StrategyStore Strategies => _main.Strategies;
-
-        /// <summary>Главная: оттуда в «Обход → Дополнительно» переехали управление службой и статус соединения.
-        /// Логика остаётся одна — в HomeViewModel, здесь только проксирование для биндингов.</summary>
-        public HomeViewModel Home => _main.Home;
         public ObservableCollection<DnsStrategyMatrixEntry> MatrixResults { get; }
         public IReadOnlyList<DnsProfile> DnsProfiles { get; }
 
@@ -196,23 +110,6 @@ namespace ZapretGui.ViewModels
         public string SeamlessStatus => _main.SeamlessStatusText;
         public string SeamlessStatusKey => _main.SeamlessStatusKey;
 
-        /// <summary>Уведомить интерфейс об изменении главного выключателя автосмены.</summary>
-        public void NotifyAutoSwitchChanged() => Raise(nameof(AutoSwitchStrategyEnabled));
-
-        /// <summary>Разрешена ли автоматическая смена стратегии (главный выключатель, v1.28.3).</summary>
-        public bool AutoSwitchStrategyEnabled
-        {
-            get => Settings.AutoSwitchStrategyEnabled;
-            set
-            {
-                if (Settings.AutoSwitchStrategyEnabled == value) return;
-                Settings.AutoSwitchStrategyEnabled = value;
-                SettingsStore.Save(Settings);
-                _main.NotifySeamlessChanged();
-                Raise(nameof(AutoSwitchStrategyEnabled));
-            }
-        }
-
         // Matrix
         public bool IsMatrixRunning { get => _isMatrixRunning; private set { if (Set(ref _isMatrixRunning, value)) { (RunMatrixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged(); (CancelMatrixCommand as RelayCommand)?.RaiseCanExecuteChanged(); (ApplyBestCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged(); (TestSeamlessNowCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged(); } } }
         public double MatrixProgress { get => _matrixProgress; private set => Set(ref _matrixProgress, value); }
@@ -224,12 +121,6 @@ namespace ZapretGui.ViewModels
         public DnsStrategyMatrixEntry? SelectedMatrixEntry { get => _selectedMatrixEntry; set => Set(ref _selectedMatrixEntry, value); }
 
         public ICommand RefreshCommand { get; }
-
-        /// <summary>Рабочий стол настройщика (v1.29.3): конфигурация целиком, история и откат.</summary>
-        public ICommand OpenWorkbenchCommand { get; }
-
-        /// <summary>Сценарий «под мою сеть» (v1.30.0): провайдер, перехват, порты, таймстемпы, DNS, IPv4/IPv6.</summary>
-        public ICommand OpenNetworkCommand { get; }
         public ICommand ApplyDnsCommand { get; }
         public ICommand CheckHijackCommand { get; }
         public ICommand UpdateHostsCommand { get; }
@@ -239,11 +130,6 @@ namespace ZapretGui.ViewModels
         public ICommand RunMatrixCommand { get; }
         public ICommand CancelMatrixCommand { get; }
         public ICommand ApplyBestCommand { get; }
-        public ICommand OpenListsCommand { get; }
-        public ICommand OpenSystemCheckCommand { get; }
-
-        /// <summary>Включить режим «Эксперт» из «Подбора»: матрица стратегия × DNS скрыта в «Простом».</summary>
-        public ICommand EnableExpertModeCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand ApplyStrategyCommand { get; }
 
@@ -528,17 +414,6 @@ namespace ZapretGui.ViewModels
             _main.Home.RefreshStatus();
             Raise(nameof(CurrentDnsText));
             Raise(nameof(BypassStatusText));
-        }
-
-        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
-        public bool ExpertMode => _main.ExpertMode;
-
-        private void OnExpertModeChanged()
-        {
-            Raise(nameof(ExpertMode));
-            Raise(nameof(BypassTabs));
-            Raise(nameof(VisibleSubTab));
-            if (!VisibleIndexMap.Contains(_selectedSubTab)) SelectedSubTab = 0;
         }
     }
 }

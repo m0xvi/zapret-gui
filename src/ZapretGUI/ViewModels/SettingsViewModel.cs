@@ -25,9 +25,7 @@ namespace ZapretGui.ViewModels
         private bool _isProviderLookupBusy;
         private int _selectedTabIndex;
 
-        // v1.20.0: вкладки «Журнал» и «О программе» убраны — журнал живёт в «Проверках»,
-        // о программе — отдельным пунктом меню (docs/IA_REDESIGN.md §4.1).
-        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления" };
+        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления", "📄 Журнал", "ℹ️ О программе" };
 
         public int SelectedTabIndex
         {
@@ -42,6 +40,8 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsAppearanceTabSelected));
                     Raise(nameof(IsGamingTabSelected));
                     Raise(nameof(IsUpdatesTabSelected));
+                    Raise(nameof(IsLogsTabSelected));
+                    Raise(nameof(IsAboutTabSelected));
                     Raise(nameof(SelectedTabHint));
                 }
             }
@@ -83,6 +83,18 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedTabIndex = 5; }
         }
 
+        public bool IsLogsTabSelected
+        {
+            get => _selectedTabIndex == 6;
+            set { if (value) SelectedTabIndex = 6; }
+        }
+
+        public bool IsAboutTabSelected
+        {
+            get => _selectedTabIndex == 7;
+            set { if (value) SelectedTabIndex = 7; }
+        }
+
         public bool SeamlessFailoverEnabled
         {
             get => Settings.SeamlessFailoverEnabled;
@@ -102,35 +114,6 @@ namespace ZapretGui.ViewModels
         public string SeamlessStatusKey => _main.SeamlessStatusKey;
         public string SeamlessLastSwitch => _main.SeamlessLastSwitchText;
         public ICommand TestSeamlessNowCommand => new AsyncRelayCommand(async () => { Status = "Запускаю внеплановую проверку…"; await _main.SeamlessFailover.CheckNowAsync(); Raise(nameof(SeamlessStatus)); Status = _main.SeamlessStatusText; }, () => !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning);
-
-        /// <summary>Главный выключатель автосмены стратегии (v1.28.3, по умолчанию выкл).</summary>
-        public bool AutoSwitchStrategyEnabled
-        {
-            get => Settings.AutoSwitchStrategyEnabled;
-            set
-            {
-                if (Settings.AutoSwitchStrategyEnabled == value) return;
-                Settings.AutoSwitchStrategyEnabled = value;
-                SettingsStore.Save(Settings);
-                _main.NotifySeamlessChanged();
-                Raise(nameof(AutoSwitchStrategyEnabled));
-                Raise(nameof(AutoSwitchStrategyHint));
-            }
-        }
-
-        /// <summary>Живая подпись под переключателем: что именно он разрешает и что сейчас работает.</summary>
-        public string AutoSwitchStrategyHint => Settings.AutoSwitchStrategyEnabled
-            ? "Разрешено: приложение может сменить стратегию само — только если узел недоступен совсем, сбой подтверждён трижды, а замена проверена на всех узлах."
-            : "Запрещено: стратегию меняете вы (кнопка «Применить», мини-оверлей, «Подобрать замену сейчас»). Сторож по-прежнему перезапускает ту же стратегию, но не подменяет её.";
-
-        /// <summary>Ручной подбор замены — осознанное действие, главному выключателю не подчиняется.</summary>
-        public ICommand FindReplacementNowCommand => new AsyncRelayCommand(async () =>
-        {
-            Status = "Проверяю узлы и подбираю замену…";
-            await _main.SeamlessFailover.CheckNowAsync(forceSwitch: true);
-            Raise(nameof(SeamlessStatus));
-            Status = _main.SeamlessStatusText;
-        }, () => !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning);
 
         public bool AutoSwitchToBestStrategy
         {
@@ -157,10 +140,6 @@ namespace ZapretGui.ViewModels
         public SettingsViewModel(MainViewModel main)
         {
             _main = main;
-            _main.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
-            };
             _enginePath = main.Settings.EnginePath;
             _themeIndex = (int)main.Settings.Theme;
             SyncProviderDraft();
@@ -184,20 +163,8 @@ namespace ZapretGui.ViewModels
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
             OpenOverlayCommand = new RelayCommand(() => _main.ToggleMiniOverlay());
             OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
-            // Переходы в «Автоматизацию» из «Настроек» и с «Главной» (v1.19.0)
-            OpenAutomationLaunchCommand = new RelayCommand(() => OpenAutomation(0));
-            OpenAutomationRecoveryCommand = new RelayCommand(() => OpenAutomation(1));
-            OpenAutomationScheduleCommand = new RelayCommand(() => OpenAutomation(2));
-            OpenProfilesCommand = new RelayCommand(() => _main.Navigate("profiles"));
             OpenUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
             OpenAboutCommand = new RelayCommand(() => _main.Navigate("about"));
-            // «YouTube (Тяжелый случай)» живёт в «Обходе» (v1.27.0): здесь — только переход,
-            // чтобы одна настройка не существовала в двух местах (правило §7.2).
-            OpenBypassHardSitesCommand = new RelayCommand(() =>
-            {
-                _main.BypassCenter.SelectedSubTab = 4; // «Сложные сайты»
-                _main.Navigate("dpi");
-            });
             RunFullDiagnosticsAndExportCommand = new AsyncRelayCommand(RunFullDiagnosticsAndExportAsync, () => !IsRunningFullCheckCycle);
             CancelFullDiagnosticsCommand = new RelayCommand(CancelFullDiagnostics, () => IsRunningFullCheckCycle);
             CopyTelemetryMarkdownCommand = new RelayCommand(CopyTelemetryMarkdown);
@@ -635,19 +602,6 @@ namespace ZapretGui.ViewModels
             set { Settings.PreserveUserDataOnUpdate = value; OnSettingChanged(); }
         }
 
-        /// <summary>Флаг utils\check_updates.enabled — переехал с «Главной» (v1.18.0).
-        /// Логика одна и та же: EngineService.Get/SetBatAutoUpdateFlag, ключ в файле движка, не в AppSettings.</summary>
-        public bool BatAutoUpdate
-        {
-            get => EngineService.GetBatAutoUpdateFlag(Settings.EnginePath);
-            set
-            {
-                EngineService.SetBatAutoUpdateFlag(Settings.EnginePath, value);
-                OnSettingChanged();
-                Raise(nameof(BatAutoUpdate));
-            }
-        }
-
         public bool ConfirmOnStop
         {
             get => Settings.ConfirmOnStop;
@@ -1016,80 +970,9 @@ namespace ZapretGui.ViewModels
         public ICommand ApplyGamingTweaksCommand { get; }
         public ICommand RevertGamingTweaksCommand { get; }
         public ICommand OpenOverlayCommand { get; }
-        // ===== Раздел «Автоматизация» (v1.19.0) =====
-        // Настройки переехали из вкладок «Настроек» на отдельную страницу. DataContext тот же
-        // (SettingsViewModel), поэтому сохранение и логика остались ровно те же — менялось место в UI.
-
-        private static readonly string[] AllAutomationTabs = { "🚀 Запуск", "🔄 Восстановление", "🗓 Расписание", "🌐 Профили по сетям" };
-        private static readonly string[] SimpleAutomationTabs = { "🚀 Запуск", "🔄 Восстановление", "🗓 Расписание" };
-        private static readonly int[] AutomationExpertMap = { 0, 1, 2, 3 };
-        private static readonly int[] AutomationSimpleMap = { 0, 1, 2 };
-
-        /// <summary>Подвкладки «Автоматизации»: таблица сетей — экспертная (§7).</summary>
-        public string[] AutomationTabs => ExpertMode ? AllAutomationTabs : SimpleAutomationTabs;
-
-        /// <summary>Индекс выбранной подвкладки «Автоматизации» в видимом списке.</summary>
-        public int VisibleAutomationTab
-        {
-            get
-            {
-                var index = Array.IndexOf(VisibleAutomationMap, _automationTabIndex);
-                return index < 0 ? 0 : index;
-            }
-            set
-            {
-                if (value >= 0 && value < VisibleAutomationMap.Length) AutomationTabIndex = VisibleAutomationMap[value];
-            }
-        }
-
-        private int[] VisibleAutomationMap => ExpertMode ? AutomationExpertMap : AutomationSimpleMap;
-
-        public string AutomationTabHintText => AutomationTabIndex switch
-        {
-            0 => "Автозапуск приложения и обхода, задержка старта, безопасный режим, автодетект игр и мастер первого запуска",
-            1 => "Присмотр за обходом (Watchdog), переключение при ухудшении, фоновый мониторинг и живой RTT",
-            2 => "Обход включён по дням недели и часам — расписание применяется в фоне",
-            3 => "Какая сеть определена сейчас и где привязываются профили",
-            _ => ""
-        };
-
-        private int _automationTabIndex;
-
-        public int AutomationTabIndex
-        {
-            get => _automationTabIndex;
-            set
-            {
-                if (Set(ref _automationTabIndex, Math.Clamp(value, 0, 3)))
-                {
-                    Raise(nameof(AutomationTabHintText));
-                    Raise(nameof(VisibleAutomationTab));
-                    Raise(nameof(IsAutomationLaunchTabSelected));
-                    Raise(nameof(IsAutomationRecoveryTabSelected));
-                    Raise(nameof(IsAutomationScheduleTabSelected));
-                    Raise(nameof(IsAutomationNetsTabSelected));
-                }
-            }
-        }
-
-        public bool IsAutomationLaunchTabSelected { get => AutomationTabIndex == 0; set { if (value) AutomationTabIndex = 0; } }
-        public bool IsAutomationRecoveryTabSelected { get => AutomationTabIndex == 1; set { if (value) AutomationTabIndex = 1; } }
-        public bool IsAutomationScheduleTabSelected { get => AutomationTabIndex == 2; set { if (value) AutomationTabIndex = 2; } }
-        public bool IsAutomationNetsTabSelected { get => AutomationTabIndex == 3; set { if (value) AutomationTabIndex = 3; } }
-
-        /// <summary>Текущая сеть по данным ProfileAutoSwitchService — только чтение (привязка профилей живёт на странице «Профили»).</summary>
-        public string AutoSwitchNetworkStatus => _main.AutoSwitchNetworkStatus;
-        public string AutoSwitchLastReason => _main.AutoSwitchLastReason;
-
-        public ICommand OpenAutomationLaunchCommand { get; }
-        public ICommand OpenAutomationRecoveryCommand { get; }
-        public ICommand OpenAutomationScheduleCommand { get; }
-        public ICommand OpenProfilesCommand { get; }
-
         public ICommand OpenLogsCommand { get; }
         public ICommand OpenUpdatesCommand { get; }
         public ICommand OpenAboutCommand { get; }
-        public ICommand OpenBypassHardSitesCommand { get; }
 
         public void RefreshGamingOptimization()
         {
@@ -1182,13 +1065,10 @@ namespace ZapretGui.ViewModels
             Raise(nameof(AutoCheckEngineUpdates));
             Raise(nameof(IncludePrerelease));
             Raise(nameof(PreserveUserDataOnUpdate));
-            Raise(nameof(BatAutoUpdate));
             Raise(nameof(ConfirmOnStop));
             Raise(nameof(UseGameFilterOnStart));
             Raise(nameof(AutoTestStrategiesOnFirstLaunch));
             Raise(nameof(AutoDiagnoseOnFirstLaunch));
-            Raise(nameof(AutoSwitchStrategyEnabled));
-            Raise(nameof(AutoSwitchStrategyHint));
             Raise(nameof(ResourceMonitoringEnabled));
             Raise(nameof(AutoRecoverStrategy));
             Raise(nameof(MonitorNotificationsEnabled));
@@ -1472,13 +1352,6 @@ namespace ZapretGui.ViewModels
             Status = "Настройки сброшены";
         }
 
-        /// <summary>Открыть раздел «Автоматизация» на нужной подвкладке.</summary>
-        private void OpenAutomation(int tabIndex)
-        {
-            AutomationTabIndex = tabIndex;
-            _main.Navigate("automation");
-        }
-
         private void RerunFirstLaunchWizard()
         {
             var answer = System.Windows.MessageBox.Show(
@@ -1537,21 +1410,6 @@ namespace ZapretGui.ViewModels
             }
             catch { return "Резервных копий пока нет"; }
         }
-        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
-        public bool ExpertMode => _main.ExpertMode;
-        /// <summary>Переключатель режима для карточки «Настройки → Общие» (команда живёт во MainViewModel).</summary>
-        public RelayCommand ToggleExpertModeCommand => _main.ToggleExpertModeCommand;
-        public string ExpertModeToggleText => _main.ExpertModeToggleText;
-        public string ExpertModeToggleHint => _main.ExpertModeToggleHint;
-        private void OnExpertModeChanged()
-        {
-            Raise(nameof(ExpertMode));
-            Raise(nameof(ExpertModeToggleText));
-            Raise(nameof(ExpertModeToggleHint));
-            Raise(nameof(AutomationTabs));
-            Raise(nameof(VisibleAutomationTab));
-            if (!VisibleAutomationMap.Contains(_automationTabIndex)) AutomationTabIndex = 0;
-        }
     }
     public sealed class MetricHostOption : ObservableObject
     {
@@ -1570,4 +1428,5 @@ namespace ZapretGui.ViewModels
         public bool IsSelected { get => _isSelected; set { if (Set(ref _isSelected, value) && IsEnabled) _parent.UpdateToolbarMetricsHostsFromSelection(); } }
         public string DisplayText => string.IsNullOrWhiteSpace(Host) ? Name : $"{Name} ({Host})";
     }
+
 }

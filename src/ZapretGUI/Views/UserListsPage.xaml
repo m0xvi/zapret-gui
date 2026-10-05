@@ -17,8 +17,6 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                <Button Style="{StaticResource GhostButton}" Content="← В «Обход»" Padding="10,4" FontSize="11" HorizontalAlignment="Left" Margin="0,0,0,8"
-                        Click="BackToBypass_Click" ToolTip="Вернуться в раздел «Обход» (вкладка «Списки»)" />
                 <TextBlock Style="{StaticResource DisplayText}" Text="Списки доменов и DNS" />
                 <TextBlock Style="{StaticResource MutedText}"
                            Text="Визуальный редактор доменов, авто-обновление списков Flowseal, безопасный DNS (DoH) и игровые фильтры" />
@@ -47,7 +45,7 @@
             </Grid.RowDefinitions>
 
             <!-- Выбор списка и панель автообновления -->
-            <Border Grid.Row="0" Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}" Margin="0,0,0,10">
+            <Border Grid.Row="0" Style="{StaticResource Card}" Padding="14,12" Margin="0,0,0,10">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -59,7 +57,7 @@
                             <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
                                       ItemsSource="{Binding ListOptions}"
                                       SelectedValuePath="Key"
-                                      SelectedValue="{Binding SelectedListKey, Mode=TwoWay}" AutomationProperties.Name="ВЫБОР ФАЙЛА СПИСКА">
+                                      SelectedValue="{Binding SelectedListKey, Mode=TwoWay}">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Title}" />
@@ -71,7 +69,7 @@
                             <Button Style="{StaticResource SecondaryButton}" Content="Обновить списки с GitHub"
                                     Command="{Binding UpdateListsFromGithubCommand}"
                                     ToolTip="Загрузить свежие списки general, discord, youtube и ipset от Flowseal" />
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть в Блокноте" Margin="8,0,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"
+                            <Button Style="{StaticResource GhostButton}" Content="Открыть в Блокноте" Margin="8,0,0,0"
                                     Command="{Binding OpenInNotepadCommand}" ToolTip="Открыть этот файл в стандартном Блокноте" />
                         </WrapPanel>
                     </Grid>
@@ -88,12 +86,19 @@
             </Border>
 
             <!-- Содержимое списка и визуальный редактор -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="14,12">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
 
-            <Grid Grid.Row="1">
-                <Grid.RowDefinitions><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="Auto" /><RowDefinition Height="*" /></Grid.RowDefinitions>
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="0">
-                <StackPanel>
-                    <Grid Margin="0,0,0,10" IsEnabled="{Binding CanEditCurrentList}">
+                    <!-- Строка быстрого добавления домена и утилиты -->
+                    <Grid Grid.Row="0" Margin="0,0,0,10" IsEnabled="{Binding CanEditCurrentList}">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
@@ -102,7 +107,7 @@
 
                         <Grid Margin="0,0,8,0">
                             <TextBox Style="{StaticResource SearchBox}" Text="{Binding QuickDomainInput, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Введите домен или IP (например, twitch.tv или open.spotify.com)" AutomationProperties.Name="Новый домен или IP" />
+                                     ToolTip="Введите домен или IP (например, twitch.tv или open.spotify.com)" />
                             <TextBlock Style="{StaticResource DimText}" Text="Быстрое добавление домена (например, twitch.tv)…" Margin="13,0,0,0"
                                        VerticalAlignment="Center" IsHitTestVisible="False"
                                        Visibility="{Binding QuickDomainInput, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
@@ -122,11 +127,9 @@
                                     Command="{Binding ImportListCommand}" ToolTip="Загрузить домены из внешнего файла" />
                         </WrapPanel>
                     </Grid>
-                </StackPanel>
-            </Border>
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="1">
-                <StackPanel>
-                    <Border Margin="0,0,0,10" Padding="12,10" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Visibility="{Binding CanEditCurrentList, Converter={StaticResource BoolToVis}}">
+
+                    <!-- Пачка: массовая вставка доменов — улучшена: детальный счётчик + превью чипов -->
+                    <Border Grid.Row="1" Margin="0,0,0,10" Padding="12,10" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Visibility="{Binding CanEditCurrentList, Converter={StaticResource BoolToVis}}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="*"/>
@@ -136,10 +139,10 @@
                                 <Grid>
                                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                                     <TextBlock Style="{StaticResource SectionText}" Text="МАССОВАЯ ВСТАВКА (ПАЧКОЙ)" VerticalAlignment="Center" />
-                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding BulkLineCountText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource AccentBrush}" />
+                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding BulkLineCountText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="8,0,0,0" Foreground="{DynamicResource AccentBrush}" />
                                 </Grid>
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding BulkDetailedCountText}" Margin="0,3,0,6" TextWrapping="Wrap" Opacity="0.9" />
-                                <TextBox Style="{StaticResource InputBox}" Text="{Binding BulkPasteText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="96" MinHeight="56" ToolTip="Вставьте много доменов — каждый с новой строки (поддерживает https://, пробелы обрежутся). Пустые и дубликаты пропускаются." AutomationProperties.Name="Массовое добавление доменов" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding BulkDetailedCountText}" Margin="0,3,0,6" FontSize="11" TextWrapping="Wrap" Opacity="0.9" />
+                                <TextBox Style="{StaticResource InputBox}" Text="{Binding BulkPasteText, UpdateSourceTrigger=PropertyChanged}" AcceptsReturn="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" MaxHeight="96" MinHeight="56" ToolTip="Вставьте много доменов — каждый с новой строки (поддерживает https://, пробелы обрежутся). Пустые и дубликаты пропускаются." />
                                 <!-- Превью первых 8 нормализованных доменов как чипы -->
                                 <ItemsControl ItemsSource="{Binding BulkPreviewItems}" Margin="0,8,0,0" Visibility="{Binding BulkHasPreview, Converter={StaticResource BoolToVis}}">
                                     <ItemsControl.ItemsPanel>
@@ -148,37 +151,38 @@
                                     <ItemsControl.ItemTemplate>
                                         <DataTemplate>
                                             <Border CornerRadius="6" Padding="7,3" Margin="0,0,6,6" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
-                                                <TextBlock Text="{Binding}" Foreground="{DynamicResource TextBrush}" Style="{StaticResource DimText}" />
+                                                <TextBlock Text="{Binding}" FontSize="11" Foreground="{DynamicResource TextBrush}" />
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Style="{StaticResource DimText}" Text="Показаны первые 8 из пачки — остальные проверятся при добавлении" Margin="0,2,0,0" Opacity="0.7" Visibility="{Binding BulkHasPreview, Converter={StaticResource BoolToVis}}" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Показаны первые 8 из пачки — остальные проверятся при добавлении" FontSize="10" Margin="0,2,0,0" Opacity="0.7" Visibility="{Binding BulkHasPreview, Converter={StaticResource BoolToVis}}" />
                             </StackPanel>
                             <Button Grid.Column="1" Style="{StaticResource PrimaryButton}" Content="Добавить пачкой" Margin="12,0,0,0" VerticalAlignment="Bottom" Padding="16,7" MinHeight="36"
                                     Command="{Binding BulkAddCommand}" ToolTip="Разобрать строки, почистить, проверить формат и сохранить в файл" />
                         </Grid>
                     </Border>
 
-                    <StackPanel Margin="0,0,0,8">
-                        <Border
-                                Visibility="{Binding IsBuiltInList, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6" Style="{StaticResource NoticeWarning}">
-                            <TextBlock Style="{StaticResource BodyText}" Text="Встроенный список Flowseal — только чтение. Редактируйте пользовательскую копию (list-*-user.txt)." TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold"/>
+                    <!-- Баннеры состояния -->
+                    <StackPanel Grid.Row="2" Margin="0,0,0,8">
+                        <Border Padding="10,8" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+                                Visibility="{Binding IsBuiltInList, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
+                            <TextBlock Style="{StaticResource BodyText}" Text="🔒 Встроенный список Flowseal — только чтение. Редактируйте пользовательскую копию (list-*-user.txt)." TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" FontWeight="SemiBold"/>
                         </Border>
 
-                        <Border
-                                Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6" Style="{StaticResource NoticeWarning}">
+                        <Border Padding="10,8" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1"
+                                Visibility="{Binding HasUnsavedChanges, Converter={StaticResource BoolToVis}}" Margin="0,0,0,6">
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*"/>
                                     <ColumnDefinition Width="Auto"/>
                                 </Grid.ColumnDefinitions>
                                 <StackPanel VerticalAlignment="Center">
-                                    <TextBlock Style="{StaticResource BodyText}" Text="Есть несохранённые изменения" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}"/>
-                                    <TextBlock Style="{StaticResource DimText}" Text="Нажмите «Сохранить» чтобы записать на диск, или «Отменить» чтобы откатить."/>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="⚠ Есть несохранённые изменения" FontWeight="SemiBold" Foreground="{DynamicResource WarningBrush}"/>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Нажмите «Сохранить» чтобы записать на диск, или «Отменить» чтобы откатить." FontSize="11"/>
                                 </StackPanel>
                                 <WrapPanel Grid.Column="1" VerticalAlignment="Center">
-                                    <Button Style="{StaticResource PrimaryButton}" Content="Сохранить" Command="{Binding SaveCommand}" ToolTip="Записать список на диск"/>
+                                    <Button Style="{StaticResource PrimaryButton}" Content="💾 Сохранить" Command="{Binding SaveCommand}" ToolTip="Записать список на диск"/>
                                     <Button Style="{StaticResource GhostButton}" Content="Отменить" Margin="6,0,0,0" Command="{Binding CancelChangesCommand}" ToolTip="Отменить несохранённые правки"/>
                                 </WrapPanel>
                             </Grid>
@@ -193,11 +197,10 @@
                             <TextBlock Style="{StaticResource DimText}" Text="— исправьте записи" Margin="6,0,0,0" VerticalAlignment="Center"/>
                         </WrapPanel>
                     </StackPanel>
-                </StackPanel>
-            </Border>
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="2">
-                <StackPanel>
-                    <Grid Margin="0,0,0,8">
+
+
+                    <!-- Поиск по списку и статусная строка -->
+                    <Grid Grid.Row="3" Margin="0,0,0,8">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="220" />
                             <ColumnDefinition Width="*" />
@@ -211,34 +214,33 @@
                             </Grid.ColumnDefinitions>
                             <Grid>
                                 <TextBox Style="{StaticResource SearchBox}" Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"
-                                         ToolTip="Поиск и фильтрация строк в текущем списке" AutomationProperties.Name="Поиск по списку" />
+                                         ToolTip="Поиск и фильтрация строк в текущем списке" />
                                 <TextBlock Style="{StaticResource DimText}" Text="Поиск в списке…" Margin="13,0,0,0"
                                            VerticalAlignment="Center" IsHitTestVisible="False"
                                            Visibility="{Binding SearchText, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
                             </Grid>
-                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="&#xE711;" FontFamily="{DynamicResource IconFont}" Margin="4,0,0,0" Padding="6,2" FontSize="11"
-                                    Command="{Binding ClearSearchCommand}" ToolTip="Сбросить поиск" Visibility="{Binding SearchText, Converter={StaticResource StringToVis}}" AutomationProperties.Name="Сбросить поиск"/>
+                            <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="✕" Margin="4,0,0,0" Padding="6,2" FontSize="11"
+                                    Command="{Binding ClearSearchCommand}" ToolTip="Сбросить поиск" Visibility="{Binding SearchText, Converter={StaticResource StringToVis}}"/>
                         </Grid>
 
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding Status}" TextTrimming="CharacterEllipsis" />
                             <TextBlock Style="{StaticResource DimText}" Text=" · " Visibility="{Binding FileInfoText, Converter={StaticResource StringToVis}}" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding FileInfoText}" Opacity="0.8" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding FileInfoText}" Opacity="0.8" FontSize="11" />
                         </StackPanel>
 
                         <TextBlock Grid.Column="2" Style="{StaticResource DimText}" Text="{Binding CountText}"
                                    VerticalAlignment="Center" HorizontalAlignment="Right" FontWeight="SemiBold" />
                     </Grid>
 
-                    <TextBlock Margin="0,4,0,6" Style="{StaticResource DimText}" TextWrapping="Wrap" Opacity="0.7" MaxWidth="720" HorizontalAlignment="Left">
+                    <!-- Подсказка: максимально минималистично, не растянута -->
+                    <TextBlock Grid.Row="4" Margin="0,4,0,6" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Opacity="0.7" MaxWidth="720" HorizontalAlignment="Left">
                         <Run FontFamily="{DynamicResource IconFont}" Text="&#xE946; " Foreground="{DynamicResource TextMutedBrush}" FontSize="11" />
-                        <Run Text="Списки — точечный обход: добавь домен → сохрани в «Профили и копии». Двойной клик/Enter — править, «Проверки» — диагностика." />
+                        <Run Text="Списки — точечный обход: добавь домен → сохрани в «Профили». Двойной клик/Enter — править, «Проверка» — диагностика." />
                     </TextBlock>
-                </StackPanel>
-            </Border>
-            <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingCompact}" Grid.Row="3">
-                <StackPanel>
-                    <Grid>
+
+                    <!-- Таблица / Список записей -->
+                    <Grid Grid.Row="5">
                         <ListBox Style="{StaticResource PlainListBox}" Background="Transparent"
                                  ItemsSource="{Binding EntriesView}"
                                  SelectedItem="{Binding SelectedEntry, Mode=TwoWay}"
@@ -259,11 +261,11 @@
                                             <Button Style="{StaticResource SmallIconButton}" Content="&#xE70F;"
                                                     ToolTip="Изменить запись (Enter)"
                                                     Command="{Binding DataContext.EditEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="Изменить запись (Enter)" />
+                                                    CommandParameter="{Binding}" />
                                             <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;" Margin="4,0,0,0"
                                                     ToolTip="Удалить запись (Del)"
                                                     Command="{Binding DataContext.RemoveEntryCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                    CommandParameter="{Binding}" AutomationProperties.Name="Удалить запись (Del)" />
+                                                    CommandParameter="{Binding}" />
                                         </WrapPanel>
                                     </Grid>
                                 </DataTemplate>
@@ -274,7 +276,7 @@
                         <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="8" Padding="16" VerticalAlignment="Center" HorizontalAlignment="Center"
                                 Visibility="{Binding IsFilteredEmpty, Converter={StaticResource BoolToVis}}" Margin="0,20,0,0">
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="&#xE721;" FontFamily="{DynamicResource IconFont}" FontSize="22" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Opacity="0.7"/>
+                                <TextBlock Text="🔍" FontSize="22" HorizontalAlignment="Center" Opacity="0.7"/>
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding EmptyStateText}" Margin="0,6,0,0" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360"/>
                                 <Button Style="{StaticResource GhostButton}" Content="Сбросить поиск" Margin="0,8,0,0" Command="{Binding ClearSearchCommand}" HorizontalAlignment="Center"/>
                             </StackPanel>
@@ -282,16 +284,15 @@
                         <Border Background="{DynamicResource ElevatedBrush}" CornerRadius="8" Padding="16" VerticalAlignment="Center" HorizontalAlignment="Center"
                                 Visibility="{Binding IsListEmpty, Converter={StaticResource BoolToVis}}" Margin="0,20,0,0">
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="&#xE8A5;" FontFamily="{DynamicResource IconFont}" FontSize="22" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" Opacity="0.7"/>
+                                <TextBlock Text="📄" FontSize="22" HorizontalAlignment="Center" Opacity="0.7"/>
                                 <TextBlock Style="{StaticResource BodyText}" Text="Список пуст" FontWeight="SemiBold" HorizontalAlignment="Center"/>
                                 <TextBlock Style="{StaticResource DimText}" Text="Добавьте первый домен через поле выше или импортируйте файл." Margin="0,4,0,0" TextWrapping="Wrap" TextAlignment="Center" MaxWidth="360"/>
                             </StackPanel>
                         </Border>
                     </Grid>
-                </StackPanel>
+                </Grid>
             </Border>
-            </Grid>
-                    </Grid>
+        </Grid>
 
         <!-- ============================== ВКЛАДКА 2: БЕЗОПАСНЫЙ DNS (DOH) ============================== -->
         <Grid Grid.Row="2" Visibility="{Binding IsDnsTabVisible, Converter={StaticResource BoolToVis}}">
@@ -304,20 +305,17 @@
                     </Grid.ColumnDefinitions>
 
                     <!-- ЛЕВАЯ КОЛОНКА: Выбор и применение безопасного DNS -->
-                    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,6,0" Padding="{DynamicResource CardPaddingCompact}">
+                    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,6,0" Padding="16,14">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource SectionText}" Text="НАСТРОЙКА БЕЗОПАСНОГО DNS" />
-                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                        ToolTip="Шифрованный и независимый DNS защищает от подмены IP-адресов сайтов провайдером (DNS poisoning / hijacking)."
-                                        AutomationProperties.Name="Подсказка: НАСТРОЙКА БЕЗОПАСНОГО DNS" />
-                            </StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="НАСТРОЙКА БЕЗОПАСНОГО DNS" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Text="Шифрованный и независимый DNS защищает от подмены IP-адресов сайтов провайдером (DNS poisoning / hijacking)." Margin="0,2,0,12" />
 
                             <TextBlock Style="{StaticResource DimText}" Text="ВЫБЕРИТЕ ПРОФИЛЬ DNS" />
                             <ComboBox Style="{StaticResource AppComboBox}" Margin="0,4,0,10"
                                       ItemsSource="{Binding DnsProfiles}"
                                       SelectedItem="{Binding SelectedDnsProfile, Mode=TwoWay}"
-                                      ToolTip="Выберите безопасный DNS-сервер" AutomationProperties.Name="Выберите безопасный DNS-сервер">
+                                      ToolTip="Выберите безопасный DNS-сервер">
                                 <ComboBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding DisplayTitle}" />
@@ -371,7 +369,7 @@
                     </Border>
 
                     <!-- ПРАВАЯ КОЛОНКА: Статус DNS в системе и диагностика -->
-                    <Border Grid.Column="1" Style="{StaticResource Card}" Margin="6,0,0,0" Padding="{DynamicResource CardPaddingCompact}">
+                    <Border Grid.Column="1" Style="{StaticResource Card}" Margin="6,0,0,0" Padding="16,14">
                         <StackPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -399,12 +397,8 @@
 
                             <Border Style="{StaticResource InnerCard}" Margin="0,14,0,0" Padding="12,10">
                                 <StackPanel>
-                                    <StackPanel Orientation="Horizontal">
-                                        <TextBlock Style="{StaticResource SectionText}" Text="ПОЧЕМУ DNS ВАЖЕН ДЛЯ ОБХОДА" />
-                                        <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                                ToolTip="Некоторые провайдеры подменяют ответы стандартного DNS (перенаправляют на страницу-заглушку). Установка Cloudflare 1.1.1.1 или Quad9 9.9.9.9 гарантирует получение подлинных IP-адресов YouTube, Discord и заблокированных сайтов."
-                                                AutomationProperties.Name="Подсказка: ПОЧЕМУ DNS ВАЖЕН ДЛЯ ОБХОДА" />
-                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ПОЧЕМУ DNS ВАЖЕН ДЛЯ ОБХОДА" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="Некоторые провайдеры подменяют ответы стандартного DNS (перенаправляют на страницу-заглушку). Установка Cloudflare 1.1.1.1 или Quad9 9.9.9.9 гарантирует получение подлинных IP-адресов YouTube, Discord и заблокированных сайтов." TextWrapping="Wrap" Margin="0,4,0,0" />
                                 </StackPanel>
                             </Border>
                         </StackPanel>
@@ -412,7 +406,7 @@
                 </Grid>
 
                 <!-- Проверка подмены DNS — DoH эталон -->
-                <Border Style="{StaticResource Card}" Padding="{DynamicResource CardPaddingCompact}" Margin="{DynamicResource CardGap}">
+                <Border Style="{StaticResource Card}" Padding="16,14">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -424,23 +418,19 @@
                                 <TextBlock Text="&#xE9CE;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                             </Border>
                             <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА ПОДМЕНЫ DNS (СИСТЕМНЫЙ VS DOH)"/>
-                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                            ToolTip="Сравнивает ответы провайдерского DNS с эталонным Cloudflare DoH для 4 доменов"
-                                            AutomationProperties.Name="Подсказка: ПРОВЕРКА ПОДМЕНЫ DNS (СИСТЕМНЫЙ VS DOH)" />
-                                </StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА ПОДМЕНЫ DNS (СИСТЕМНЫЙ vs DoH)"/>
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="Сравнивает ответы провайдерского DNS с эталонным Cloudflare DoH для 4 доменов" />
                             </StackPanel>
                             <WrapPanel Grid.Column="2" VerticalAlignment="Center">
                                 <Button Style="{StaticResource SecondaryButton}" Content="Проверить подмену" Command="{Binding CheckHijackCommand}" ToolTip="Сравнить системный DNS и DoH-ответы" />
-                                <Button Style="{StaticResource PrimaryButton}" Content="Защитить DNS" Margin="8,0,0,0" Command="{Binding ApplySecureDnsCommand}" ToolTip="При подмене — одним кликом установить Cloudflare 1.1.1.1"/>
+                                <Button Style="{StaticResource PrimaryButton}" Content="🛡 Защитить DNS" Margin="8,0,0,0" Command="{Binding ApplySecureDnsCommand}" ToolTip="При подмене — одним кликом установить Cloudflare 1.1.1.1"/>
                             </WrapPanel>
                         </Grid>
 
                         <Border Margin="0,12,0,0" Padding="12,10" CornerRadius="8" Background="{Binding HijackSummaryKey, Converter={StaticResource SoftSeverityBrush}}" Visibility="{Binding HijackSummary, Converter={StaticResource StringToVis}}">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding HijackSummary}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding HijackCheckedAtText}" Margin="0,4,0,0"/>
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding HijackCheckedAtText}" Margin="0,4,0,0" FontSize="11"/>
                             </StackPanel>
                         </Border>
 
@@ -458,20 +448,20 @@
                                                     </Grid.ColumnDefinitions>
                                                     <TextBlock Style="{StaticResource BodyText}" Text="{Binding Domain}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                                                     <StackPanel Grid.Column="1" Margin="8,0,8,0">
-                                                        <TextBlock Style="{StaticResource MonoText}" TextWrapping="Wrap">
+                                                        <TextBlock Style="{StaticResource MonoText}" FontSize="11" TextWrapping="Wrap">
                                                             <Run Text="Системный: "/><Run Text="{Binding SystemIpsText, Mode=OneWay}"/><Run Text=" · DoH: "/><Run Text="{Binding DohIpsText, Mode=OneWay}"/>
                                                         </TextBlock>
-                                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" TextWrapping="Wrap" Opacity="0.8"/>
+                                                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding Details}" TextWrapping="Wrap" Opacity="0.8"/>
                                                     </StackPanel>
                                                     <Border Grid.Column="2" Style="{StaticResource Badge}" Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}" VerticalAlignment="Center">
-                                                        <TextBlock Text="{Binding StatusText}" FontWeight="Bold" Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" Style="{StaticResource DimText}"/>
+                                                        <TextBlock Text="{Binding StatusText}" FontSize="11" FontWeight="Bold" Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}"/>
                                                     </Border>
                                                 </Grid>
                                             </Border>
                                         </DataTemplate>
                                     </ItemsControl.ItemTemplate>
                                 </ItemsControl>
-                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
                                            Text="Примечание: разные IP не всегда означают подмену — CDN могут отдавать разные адреса по гео. Красный статус ставится только при приватных/заглушечных IP или полном отсутствии ответа системы при успехе DoH."/>
                             </StackPanel>
                         </Border>
@@ -490,14 +480,11 @@
 
         <!-- ============================== ВКЛАДКА 3: РЕЖИМЫ ФИЛЬТРАЦИИ ============================== -->
         <Grid Grid.Row="2" Visibility="{Binding IsFiltersTabVisible, Converter={StaticResource BoolToVis}}">
-            <Border Style="{StaticResource Card}">
+            <Border Style="{StaticResource Card}" Padding="18,16">
                 <StackPanel>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource SectionText}" Text="РЕЖИМЫ ФИЛЬТРАЦИИ IP И ПОРТОВ (IPSET / GAMES)" />
-                        <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                ToolTip="Тонкая настройка перехвата сетевого трафика драйвером WinDivert"
-                                AutomationProperties.Name="Подсказка: РЕЖИМЫ ФИЛЬТРАЦИИ IP И ПОРТОВ (IPSET / GAMES)" />
-                    </StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="РЕЖИМЫ ФИЛЬТРАЦИИ IP И ПОРТОВ (IPSET / GAMES)" />
+                    <TextBlock Style="{StaticResource MutedText}"
+                               Text="Тонкая настройка перехвата сетевого трафика драйвером WinDivert" Margin="0,2,0,14" />
 
                     <Grid Margin="0,6,0,0">
                         <Grid.ColumnDefinitions>
@@ -505,13 +492,13 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <Border Grid.Column="0" Style="{StaticResource InnerCard}" Margin="0,0,8,0" Padding="14,12" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}">
+                        <Border Grid.Column="0" Style="{StaticResource InnerCard}" Margin="0,0,8,0" Padding="14,12">
                             <StackPanel>
                                 <TextBlock Style="{StaticResource SectionText}" Text="ФИЛЬТРАЦИЯ IP (IPSET)" />
                                 <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
                                           ItemsSource="{Binding IpsetOptions}"
                                           SelectedIndex="{Binding IpsetModeIndex, Mode=TwoWay}"
-                                          ToolTip="Режим фильтрации IP: по файлу ipset-all.txt, все адреса (Any) или отключено (None)" AutomationProperties.Name="Режим фильтрации IP: по файлу ipset-all.txt, все адреса (Any) или отключено (None)" />
+                                          ToolTip="Режим фильтрации IP: по файлу ipset-all.txt, все адреса (Any) или отключено (None)" />
                                 <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
                                            Text="• По списку ipset-all.txt (рекомендуется) — обрабатывает только IP заблокированных сервисов, снижая нагрузку на процессор.&#x0a;• Все IP / Any — максимальный охват без ограничений по IP.&#x0a;• Без фильтрации / None — отключение ipset фильтрации." TextWrapping="Wrap" />
                             </StackPanel>
@@ -523,7 +510,7 @@
                                 <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
                                           ItemsSource="{Binding GameFilterOptions}"
                                           SelectedIndex="{Binding GameFilterIndex, Mode=TwoWay}"
-                                          ToolTip="Игровой фильтр: обрабатывать ли трафик игр, Discord голосовых каналов и сторонних сервисов" AutomationProperties.Name="Игровой фильтр: обрабатывать ли трафик игр, Discord голосовых каналов и сторонних сервисов" />
+                                          ToolTip="Игровой фильтр: обрабатывать ли трафик игр, Discord голосовых каналов и сторонних сервисов" />
                                 <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
                                            Text="• TCP + UDP — оптимально для голосовых серверов Discord (UDP 50000-65535) и онлайн-игр.&#x0a;• Только TCP / Только UDP — выборочный перехват протоколов.&#x0a;• Выключен — обрабатываются только стандартные порты 80 и 443." TextWrapping="Wrap" />
 
@@ -532,7 +519,7 @@
                                           ItemsSource="{Binding GameFilterProfiles}"
                                           DisplayMemberPath="Name"
                                           SelectedItem="{Binding SelectedGameFilterProfile, Mode=TwoWay}"
-                                          ToolTip="Выберите профиль портов для исключения античитов и оптимизации задержки" AutomationProperties.Name="Выберите профиль портов для исключения античитов и оптимизации задержки" />
+                                          ToolTip="Выберите профиль портов для исключения античитов и оптимизации задержки" />
                                 <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0"
                                            Text="{Binding SelectedGameFilterProfile.Description}" TextWrapping="Wrap" />
 
@@ -545,15 +532,15 @@
                                         </Grid.ColumnDefinitions>
                                         <StackPanel Grid.Column="0" Margin="0,0,4,0">
                                             <TextBlock Style="{StaticResource SectionText}" Text="TCP ПОРТЫ" />
-                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterTcpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="TCP ПОРТЫ" />
+                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterTcpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" Margin="4,0,0,0">
                                             <TextBlock Style="{StaticResource SectionText}" Text="UDP ПОРТЫ" />
-                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterUdpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="UDP ПОРТЫ" />
+                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterUdpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                         </StackPanel>
                                     </Grid>
                                     <TextBlock Style="{StaticResource SectionText}" Text="ИСКЛЮЧЁННЫЕ ПОРТЫ" Margin="0,6,0,0" />
-                                    <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomExcludedPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" AutomationProperties.Name="ИСКЛЮЧЁННЫЕ ПОРТЫ" />
+                                    <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomExcludedPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                                 </StackPanel>
 
                                 <Button Style="{StaticResource SecondaryButton}" Content="Применить настройки портов" Margin="0,10,0,0"

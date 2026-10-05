@@ -138,22 +138,13 @@ namespace ZapretGui.Core
         /// <summary>Задержка автозапуска обхода при старте Windows в секундах (0-60).</summary>
         public int StartupDelaySeconds { get; set; } = 5;
 
-        /// <summary>ГЛАВНЫЙ выключатель автоматической смены стратегии (v1.28.3, по умолчанию ВЫКЛ).
-        /// Пока он снят, приложение не меняет стратегию само ни по одному сценарию: ни бесшовное
-        /// переключение, ни сторож, ни мониторинг, ни фоновый подбор, ни автопрофиль при сбое.
-        /// Перезапуск той же стратегии и все кнопки ручного выбора работают как обычно.
-        /// Пользователь просил: «переключать нужно, если узел недоступен совсем» — и решать это он
-        /// хочет сам, поэтому смена стала опт-ином, а не поведением по умолчанию.</summary>
-        public bool AutoSwitchStrategyEnabled { get; set; } = false;
+        /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.
+        /// По умолчанию выключено (v1.32.0): приложение не меняет стратегию само — выключатель в «Автоматизации».</summary>
+        public bool AutoRecoverStrategy { get; set; } = false;
 
-        /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода
-        /// (действует только при включённом AutoSwitchStrategyEnabled).</summary>
-        public bool AutoRecoverStrategy { get; set; } = true;
-
-        /// <summary>Бесшовное автопереключение без окон и подтверждений. С v1.28.1 меняет стратегию
-        /// только при полной недоступности узла (DNS/TCP/TLS), 3 подтверждённых проверки подряд,
-        /// и лишь на замену, которая держит остальные узлы набора.</summary>
-        public bool SeamlessFailoverEnabled { get; set; } = true;
+        /// <summary>Бесшовное автопереключение без окон и подтверждений (новый движок failover).
+        /// По умолчанию выключено (v1.32.0): смена стратегии — только по решению пользователя.</summary>
+        public bool SeamlessFailoverEnabled { get; set; } = false;
 
         /// <summary>Интервал бесшовной проверки в минутах (2-60).</summary>
         public int SeamlessCheckMinutes { get; set; } = 5;
@@ -224,21 +215,6 @@ namespace ZapretGui.Core
         /// <summary>Горячая клавиша открытия мини-виджета (по умолчанию Ctrl+Shift+O).</summary>
         public string HotkeyToggleMiniOverlay { get; set; } = "Ctrl+Shift+O";
 
-        /// <summary>Горячая клавиша переключения режима интерфейса «Простой/Эксперт» (по умолчанию Ctrl+Shift+E).</summary>
-        public string HotkeyToggleExpertMode { get; set; } = "Ctrl+Shift+E";
-
-        /// <summary>Поиск (этап 7): последние места, куда переходили из поиска, — до 5 идентификаторов.</summary>
-        public List<string> SearchRecentIds { get; set; } = new();
-
-        /// <summary>Поиск (этап 7): избранное — идентификаторы пунктов, отмеченных звёздочкой.</summary>
-        public List<string> SearchFavoriteIds { get; set; } = new();
-
-        /// <summary>Экспертный режим интерфейса: показывает технические блоки (по умолчанию «Простой»).</summary>
-        public bool ExpertModeEnabled { get; set; }
-
-        /// <summary>Баллун «включить режим „Эксперт“?» уже показывался (миграция v1.22.0).</summary>
-        public bool ExpertModeHintShown { get; set; }
-
         /// <summary>Координата X мини-виджета на экране (-1 = по умолчанию).</summary>
         public double MiniOverlayLeft { get; set; } = -1;
 
@@ -272,8 +248,7 @@ namespace ZapretGui.Core
         /// <summary>Автоматически переключать профиль при диагностированном сбое стратегии (требует AutoRecoverStrategy).</summary>
         public bool AutoSwitchProfileOnFailure { get; set; }
 
-        /// <summary>Фоновый подбор замены, если стратегия перестала открывать узел (полная недоступность).
-        /// С v1.28.1 переключения ради скорости отключены: сравнение включается только при сбое.</summary>
+        /// <summary>Фоновый мониторинг: автоматически переключать на самую быструю рабочую стратегию.</summary>
         public bool AutoSwitchToBestStrategy { get; set; } = false;
 
         /// <summary>Интервал фонового сравнения стратегий (минуты), если AutoSwitchToBestStrategy включён.</summary>

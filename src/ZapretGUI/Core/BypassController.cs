@@ -319,7 +319,7 @@ namespace ZapretGui.Core
                 return new StrategyTestResult
                 {
                     Strategy = strategy,
-                    ErrorMessage = "Найден другой запущенный запрет. Сначала разрешите конфликт на странице «Главная»."
+                    ErrorMessage = "Найден другой запущенный запрет. Сначала разрешите конфликт на странице «Обзор»."
                 };
             }
 
@@ -707,92 +707,6 @@ namespace ZapretGui.Core
         /// Проверяет конкретную стратегию непосредственно на игровом ресурсе и возвращает
         /// TCP-задержку. Пользовательские настройки и исходное состояние обхода восстанавливаются.
         /// </summary>
-        /// <summary>Проверка стратегии сразу на нескольких узлах за один прогон (v1.28.1): обход
-        /// останавливается один раз, кандидат поднимается в тестовом режиме, опрашиваются все цели,
-        /// затем прежний обход восстанавливается. Нужна, чтобы замена не «чинила» один узел ценой
-        /// поломки остальных — автопереключение сравнивает не только сбойную цель, но и весь набор.</summary>
-        public async Task<List<ResourceProbeResult>> TestStrategyOnTargetsAsync(StrategyInfo strategy,
-            IReadOnlyList<MonitorTarget> targets, CancellationToken ct = default)
-        {
-            var results = new List<ResourceProbeResult>();
-            var before = GetStatus();
-            var restoreService = before.State == BypassState.RunningService;
-            var restoreStandalone = before.State == BypassState.RunningStandalone;
-            var previousName = before.ServiceStrategy.Length > 0 ? before.ServiceStrategy : _settings.SelectedStrategy;
-
-            try
-            {
-                if (before.IsRunning)
-                {
-                    var stopped = await StopAsync(ct).ConfigureAwait(false);
-                    if (!stopped.Ok)
-                    {
-                        foreach (var t in targets)
-                            results.Add(new ResourceProbeResult { Target = t, Kind = ResourceResultKind.Unknown, Details = stopped.Message });
-                        return results;
-                    }
-                }
-
-                var start = await StartAsync(strategy,
-                    EngineService.GetGameFilterMode(EngineRoot), false, ct, testMode: true).ConfigureAwait(false);
-                if (!start.Ok)
-                {
-                    foreach (var t in targets)
-                        results.Add(new ResourceProbeResult { Target = t, Kind = ResourceResultKind.Unknown, Details = start.Message });
-                    return results;
-                }
-
-                await Task.Delay(1000, ct).ConfigureAwait(false);
-                foreach (var t in targets)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    results.Add(await ResourceProbe.CheckAsync(t, ct).ConfigureAwait(false));
-                }
-                return results;
-            }
-            catch (OperationCanceledException)
-            {
-                foreach (var t in targets)
-                    if (results.Count < targets.Count)
-                        results.Add(new ResourceProbeResult { Target = t, Kind = ResourceResultKind.Unknown, Details = "Проверка отменена" });
-                return results;
-            }
-            catch (Exception ex)
-            {
-                foreach (var t in targets)
-                    if (results.Count < targets.Count)
-                        results.Add(new ResourceProbeResult { Target = t, Kind = ResourceResultKind.Unknown, Details = ex.Message });
-                return results;
-            }
-            finally
-            {
-                try { await StopAsync().ConfigureAwait(false); } catch { }
-                try
-                {
-                    if (restoreService)
-                    {
-                        WinServices.Start(WinServices.ZapretService);
-                        await Shell.WaitForAsync(
-                            () => _queryService(WinServices.ZapretService) == ServiceState.Running,
-                            15000).ConfigureAwait(false);
-                    }
-                    else if (restoreStandalone && previousName.Length > 0)
-                    {
-                        var previous = StrategyParser.LoadAll(EngineRoot)
-                            .FirstOrDefault(s => s.Name.Equals(previousName, StringComparison.OrdinalIgnoreCase))
-                            ?? StrategyCandidateStore.FindStrategy(previousName);
-                        if (previous != null)
-                            await StartAsync(previous, EngineService.GetGameFilterMode(EngineRoot),
-                                _settings.ShowWinwsConsole).ConfigureAwait(false);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    AppLog.SvcWarn("Не удалось восстановить обход после проверки набора узлов: " + ex.Message);
-                }
-            }
-        }
-
         public async Task<ResourceProbeResult> TestStrategyOnResourceAsync(StrategyInfo strategy,
             MonitorTarget target, CancellationToken ct = default)
         {

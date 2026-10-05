@@ -1,24 +1,18 @@
 # Структура приложения Zapret GUI — разделы, подразделы и их функции
 
-> Версия документа: `v1.28.0` (ветка `arena/01a0f306-zapret-gui`; этапы 1–8 информационной архитектуры внедрены, `v1.25.0` — единый стиль карточек, `v1.26.0` — семантика и регистр, `v1.27.0` — иконки, доступность и плашки, `v1.28.0` — зазоры, разгрузка карточек и хвосты)
+> Версия документа: `v1.17.24` (`arena/01a0c100-zapret-gui` `22f6d87`)  
 > Стек: `C# .NET 8 + WPF (MVVM)`, движок `Flowseal/zapret-discord-youtube` (`bin/winws.exe`, `WinDivert`), служба `zapret`
 > Язык интерфейса: русский. Сборка: `windows-latest` GitHub Actions.
 
-Документ — полный перечень видимых разделов/подразделов приложения и фоновых служб в форме `Название: функция`. Источник — фактические `View`/`ViewModel`/`Core` на ветке `arena/01a0f306-zapret-gui`.
-
-> **См. также:** [`docs/IA_REDESIGN.md`](IA_REDESIGN.md) — информационная архитектура (5 разделов, «Помощь», режимы «Простой/Эксперт», поиск `Ctrl+K`) со статусом внедрения по этапам; кликабельные прототипы — [`docs/mockup.html`](mockup.html) (актуальный, с режимами и поиском) и [`docs/ia_prototype.html`](ia_prototype.html) (исходный проект).
+Документ — полный перечень видимых разделов/подразделов приложения и фоновых служб в форме `Название: функция`. Источник — фактические `View`/`ViewModel`/`Core` на ветке `arena/01a0c100-zapret-gui`.
 
 ---
 
 ## 1. Навигация и каркас
 
-*   **Боковое меню (MainWindow + MainViewModel):** коллекции `NavSections` (пять разделов), `NavUtilities` («Помощь» в подвале) и `NavItems` (объединение для `Navigate` и подсветки). Группы-заголовки `ОСНОВНОЕ / ПРОВЕРКИ / СПИСКИ И ФИЛЬТРЫ / СИСТЕМА` удалены в `v1.21.0`; шаблон пункта — общий `NavItemTemplate` из `Window.Resources`. Парные индикаторы состояния показываются в шапке (обход, способ обхода, мониторинг, RTT, игровой режим, идущая проверка, готовность).
-*   **Пункты меню (`v1.21.0`, этап 4.5 — плоский список из 5 разделов, без групп):** `Главная` (`home`) · `Обход` (`bypass-center`) · `Проверки` (`diagnostics`) · `Автоматизация` (`automation`) · `Настройки` (`settings`). Прежние пункты переехали внутрь разделов (страницы сохранены в `_pages`, вход — кнопками): `Стратегии` — «Обход → Стратегия → Открыть каталог стратегий», `Списки` — «Обход → Списки → Редактор списков доменов», `Журнал` — «Проверки → Журнал» (отдельной страницы нет, ключ `logs` в `Navigate` ведёт на подвкладку 5), `Профили и копии` — «Настройки → Общие → Профили и копии» (и «Автоматизация → Профили по сетям»), `Обновления` — «Настройки → Обновления → Перейти к обновлениям», `О программе` — карточка «Система и информация» в «Настройках». У `Стратегий`, `Списков`, `Профилей` и `Обновлений` есть кнопка возврата в родительский раздел; `NavItem.IsSectionHeader` и его стиль удалены. До `v1.17.25` пункты `Журнал`, `Обновления`, `О программе` были недостижимы из меню (открывались только ссылками со страниц), а `Мониторинг` (`monitoring`) — мёртвый ключ. С `v1.20.0` мёртвый экран `MonitoringPage` удалён, а ключи `monitoring`/`dpi`/`deep-check`/`results` в `Navigate` ведут на подвкладки 0/1/3/4 раздела «Проверки»; с `v1.21.0` туда же ведёт `logs` (подвкладка 5 «Журнал») — совместимость со старыми ссылками, треем и шапкой сохранена. План дальнейшей перестройки — `docs/IA_REDESIGN.md`.
-*   **«Помощь» в подвале меню (`v1.23.0`, этап 6, §3.6 IA):** шестой пункт навигации — визуально отделён разделителем, лежит в отдельной коллекции `NavUtilities` (верхний список остаётся из пяти разделов), выбор хранится в `SelectedUtility`/`IsHelpActive`. `HelpPage` + `HelpViewModel`: пять сценариев («Не открывается YouTube», «Пропал голос в Discord», «Пропал интернет после установки», «Лагают игры», «Хочу вернуть как было»), карточка «Как это работает» (5 фраз) и «Не помогло? Отправьте отчёт». Правило раздела: **Помощь объясняет, Проверки делают** — ни настроек, ни своих проверок, только тексты, переходы и вызовы существующих команд (`ToggleBypassCommand`, `ToggleGameModeCommand`, `ExportArchiveCommand`, `ExportReportCommand`); кнопка «Полный сброс сети» ведёт в экспертный подраздел «Система» и скрыта в «Простом» режиме. Блок «требует внимания» на «Главной» получил ссылку «Что это значит?» → «Помощь».
-*   **Поиск `Ctrl+K` (`v1.24.0`, этап 7, §10.4 IA):** оверлей поверх окна — `Views/SearchOverlay.xaml` + `ViewModels/SearchViewModel.cs`, индекс и скоринг — `Core/SearchCatalog.cs`. Один вход ко всем разделам, подразделам, настройкам, командам и сценариям «Помощи» (44 пункта), плюс «Избранное» (звёздочка в строке) и «Недавние» (5 последних мест, ключи `SearchRecentIds`/`SearchFavoriteIds` в `AppSettings`). Индекс обязан находить и старые термины (`watchdog`, `бесшовное`, `матрица`, `SNI`, `DPI`, `Voice RTC`, `Deep Check`, `аудит`, `бэкап`, `SSID`), поэтому у каждого пункта есть поле `Aliases`. `Ctrl+K` — комбинация окна (`Window.InputBindings`), не глобальная: клавиша не отбирается у других программ; вторая точка входа — кнопка поиска в шапке.
+*   **Боковое меню (MainWindow + MainViewModel.NavItems):** переключение страниц, бейджи `Watchdog/Seamless/Мониторинг`, индикатор `BypassState`. Группы `ОСНОВНОЕ / ПРОВЕРКИ / СПИСКИ И ФИЛЬТРЫ / СИСТЕМА`.
 *   **Шапка и трей:** `TrayIcon` — двойной клик возвращает окно, меню `Запустить/Остановить обход`, `Смена стратегии/DNS/Профиля`, `Игровой режим`, `Логи`, `Выход`. `Balloon` — мягкие уведомления `Watchdog`/`Seamless`/`Мониторинг` без модальных окон.
-*   **Горячие клавиши (GlobalHotkeyService):** `Ctrl+Shift+Z` — переключить обход, `Ctrl+Shift+G` — игровой режим, `Ctrl+Shift+O` — мини-оверлей, `Ctrl+Shift+E` — режим «Простой/Эксперт». Регистрируются на `MainWindow`.
-*   **Режимы «Простой/Эксперт» (`v1.22.0`, этап 5, §7 IA):** по умолчанию «Простой» (`AppSettings.ExpertModeEnabled = false`). Переключение — кнопка в шапке, карточка «Настройки → Общие → Режим интерфейса» и `Ctrl+Shift+E`; текущий режим виден бейджем «Эксперт» рядом с версией в подвале меню. Экспертные блоки скрываются инлайн через `Visibility="{Binding ExpertMode, …}"` (зеркало `MainViewModel.ExpertMode` в каждой странице): матрица 92 тестов (Обход → Подбор), пул SNI и аргументы `winws` (Стратегии), режимы ipset (Списки), QUIC-fake/SNI/IPv4/DoH (Сложные сайты), подвкладка «Дополнительно», подразделы «Система»/«Глубокая проверка»/«История и отчёты» и опасные операции (Проверки), таблица сетей и интервалы (Автоматизация), горячие клавиши, метрики панели задач и телеметрия (Настройки), «Отладка» в журнале. При включении/выключении режима активная скрытая подвкладка возвращается на первую видимую; ключи `Navigate` учитывают режим. Опасные операции требуют подтверждения в обоих режимах; при нестандартных экспертных параметрах один раз показывается баллун-предложение включить «Эксперт».
+*   **Горячие клавиши (GlobalHotkeyService):** `Ctrl+Shift+Z` — переключить обход, `Ctrl+Shift+G` — игровой режим, `Ctrl+Shift+O` — мини-оверлей. Регистрируются на `MainWindow`.
 *   **Мини-оверлей (MiniOverlayWindow / MiniOverlayViewModel):** компактное окно поверх игр — статус обхода, `Uptime`, `Ping`, быстрый `Start/Stop`.
 *   **Метрики на панели задач (TaskbarMetricsWindow):** окно как в `MSI Afterburner` рядом с треем — живой `RTT` по `YouTube/Discord/GitHub`, перетаскивается, интервал `ToolbarMetricsIntervalSeconds`.
 *   **Глобальный оверлей загрузки (GlobalOverlayViewModel):** модальный прогресс с отменой для длительных операций (проверка SNI, тест стратегий, обновление движка). `Esc` — закрыть/отменить.
@@ -27,26 +21,16 @@
 
 ## 2. ОСНОВНОЕ
 
-### 2.1 Главная (HomePage / HomeViewModel) — главный экран
+### 2.1 Обзор (HomePage / HomeViewModel) — главный экран
 *   **Кнопка питания (PowerButton → ToggleBypassCommand):** бесшовно вкл/выкл обхода без вопроса (с `v1.17.24` без `MessageBox`), сохраняет режим `служба/процесс`.
-*   **Быстрые переходы (`v1.18.0`):** `Проверить сайты` (`OpenChecksCommand` → «Проверки»), `Подобрать обход заново` (`OpenBypassCommand` → «Обход» с подвкладкой «Подбор»), `Открыть журнал` (`OpenLogsCommand` → «Проверки → Журнал»).
-*   **Что убрано с главного экрана в `v1.18.0` (перенесено, не удалено):** тумблер службы Windows → «Обход → Дополнительно»; блок «Продвинутые настройки» (игровой фильтр, ipset, флаг `.bat`, проверка соединения) → «Списки», «Обход → Дополнительно» и «Настройки»; список адресов и результаты проверки соединения → «Проверки → Экспресс» (там тот же `MonitorTargetStore`). На главной остались кольцо здоровья соединения (`ConnectionHealth*`) и строка `ServiceText`.
 *   **Статус обхода:** `StatusText` / `StatusKey` (`Обход запущен` / `Обход выключен` / `Ошибка`), `StrategyText`, `UptimeText`, `PidText`, `ServiceText` (`Служба запущена: ALT11` / `Служба установлена, но остановлена` / `Служба не установлена`), `BypassStateKey` для цвета.
 *   **Здоровье соединения:** `ConnectionHealthVisible/Key/Text` — кольцо `ok/total OK · avg мс` по результатам `ConnectionTester`.
 *   **Служба Windows:** тумблер `ServiceInstalled` → `ToggleServiceCommand` (без вопроса с `v1.17.24`), индикатор `IsServicePending`/`ServicePendingText` (`START_PENDING`/`STOP_PENDING`), кнопка `Обновить службу` (`ReinstallServiceCommand`).
 *   **Баннер конфликта:** `LegacyWarningVisible/Text` — обнаружен старый `zapret` из другой папки, кнопка `ResolveLegacyCommand` с диалогом `LegacyZapretDialog` (варианты `TakeOver`/`ImportAndTakeOver`/`StopOnly`).
-*   **Один клик в «Простом» (с `v1.29.1`):** на карточке быстрой настройки одна кнопка **«Сделать, чтобы работало»** — `RunOneClickFixCommand` → `RunOneClickFixAsync` (полная проверка `RunFullCheckAsync`, затем сразу `ApplyRecommendedStrategyAsync`; итог — сообщение «Готово: обход включён и работает» либо подсказка про права администратора). Кнопка «Проверить снова» повторяет тот же конвейер. Строка рекомендации (`ShowRecommendedStrategyRow`) видна только в «Эксперте».
 *   **Быстрая настройка — 1 клик (RunFullCheckCommand):** 4 шага 1–2 мин: `1) аудит системы (BFE/WinDivert)` → `2) проверка сайтов` → `3) тест 22 стратегий` → `4) рекомендация лучшей`. Прогресс `FullCheckProgress`, результат `FullCheckSummaryText/Key`, кнопка `Применить` рекомендованную `ApplyRecommendedStrategyCommand`.
 *   **Игровой режим:** `GameModeActive`, `GameStatusBadgeText`, кнопка `ToggleGameMode`, блок оптимизации сети `GamingNetworkOptimizer` (`ApplyGamingTweaks/Revert`).
 
-### 2.2 Обход (BypassCenterPage / BypassCenterViewModel) — 6 подвкладок с `v1.18.0`
-
-*   **Подвкладки (`BypassTabs` / `SelectedSubTab`, `SegmentedControl` как в «Проверках»):** `🎯 Стратегия` · `🧠 Подбор` · `🌐 DNS` · `📋 Списки` · `🔥 Сложные сайты` · `🛠 Дополнительно`. Карточка «СТАТУС» и баннер сообщения — над вкладками, поэтому статус виден всегда. Логика, команды и все биндинги прежние: менялась только раскладка (было «всё в одном» одной простынёй).
-*   `Дополнительно` — управление службой Windows, переехавшее с «Главной»: `Home.ServiceToggleStatusText`, `Home.ServiceText`, `Home.ServiceInstalled` + `Home.ToggleServiceCommand`, `Home.ReinstallServiceCommand`, `Home.IsServicePending`/`Home.ServicePendingText` (проксируются через `BypassCenterViewModel.Home`). Плюс кнопка перехода в «Проверки → Аудит системы» (`OpenSystemCheckCommand`) для опасных операций.
-*   `Списки` — статусы `HostsStatusText`/`IpsetStatusText`, кнопки `Обновить hosts` / `Обновить ipset` / `Списки OK` и переход в полный редактор списков (`OpenListsCommand` → страница «Списки»).
-*   `Сложные сайты` — карточка YouTube (QUIC-fake, SNI, IPv4, DoH) и карточка «Тяжёлые игры» со ссылкой на фильтр игр (сам фильтр живёт на странице «Списки» — без второго экземпляра настроек).
-
-#### Прежнее содержимое (осталось внутри подвкладок)
+### 2.2 Центр обхода (BypassCenterPage / BypassCenterViewModel) — всё в одном, новое в `v1.17.22`
 *   **Заголовок:** описание + кнопки `Открыть папку движка` (`OpenEngineFolderCommand`) и `Обновить статусы` (`RefreshCommand`).
 *   **Баннер сообщения:** `Message`/`MessageKey`/`MessageVisible` с крестиком `DismissMessageCommand` (без рефлексии).
 *   **Статус:** `BypassStatusText`/`BypassStatusKey`, `EngineStatusText` (`Готов · vX.Y · стратегий N`), `CurrentDnsText` (`GetCurrentDnsSummary`), `ListsStatusText`, бейджи `HostsStatusText` / `IpsetStatusText`.
@@ -56,7 +40,7 @@
 *   **YouTube (Тяжёлый случай) — тонкая настройка:** вынесено из глубины настроек — `DisableQuicFake`, `YoutubeSniOverride` (список `YoutubeSniOptions`: `google.com`/`googlevideo.com`/`yt3.ggpht.com`...), `PreferIPv4`, `UseDohForBlocked` — прокси в `AppSettings` → `SettingsStore.Save`.
 *   **Исчерпывающая матрица стратегия×DNS:** `RunMatrixCommand` — `23 стратегии × 4 DNS = 92 теста` (каждый — `TestStrategyAsync` на 16 эндпоинтах `Dns+Tcp+Http`), прогресс `MatrixProgress/Max/Text/Percent/Summary`, `CancelMatrixCommand`, карточка лучшего `MatrixBestText` + `ApplyBestCommand` (`ApplyDnsProfileAsync` + `SwitchTo/InstallService` + `hosts`), таблица `ListView MatrixResults` (`Strategy/Dns/Status/Summary/⭐ IsBest`), `SelectedMatrixEntry`. При прерывании восстанавливает исходный `DNS` и обход.
 
-### 2.3 Стратегии (StrategiesPage / StrategiesViewModel) — отдельный экран внутри «Обхода» с `v1.21.0`
+### 2.3 Стратегии (StrategiesPage / StrategiesViewModel)
 *   **Каталог:** `StrategyStore.Items` — парсинг `general*.bat` (`StrategyParser`), имя/категория `ALT`/`GENERAL`/`EXP`, `ArgsPreview`, `IsRecommended`, `TestResult` (`Passed/Total/AvgMs`).
 *   **Выбор и применение:** `Selected` → `RunAsync` (`StartAsync`/`SwitchTo`/`InstallService` через `StrategyApplicationService.ApplyAsync` бесшовно, без вопроса с `v1.17.24`), `SelectAsDefault` без вопроса.
 *   **Тестирование:** `TestStrategyAsync` (одна стратегия, `ConnectionTester.RunAsync` + `Progress`), `TestAllAsync` (перебор 22-х с `CancellationToken`), `TestProgress`, `IsTestingAll`, кандидаты `StrategyCandidateStore`/`CandidatePreview` (`MakeCandidatePrimary` бесшовно).
@@ -67,12 +51,8 @@
 
 ## 3. ПРОВЕРКИ
 
-### 3.1 Проверки (DiagnosticsPage / DiagnosticsViewModel) — 6 подразделов с `v1.20.0`
-*   **Подвкладки (`DiagnosticsTabs` / `SelectedSubTab`, `SegmentedControl`):** `⚡ Быстрая проверка` (0) · `📡 Сайты и звонки` (1, = DPI по 34 узлам + проверка голоса Discord) · `🛠 Система` (2) · `Глубокая проверка` (3) · `📊 История и отчёты` (4) · `📄 Журнал` (5).
-*   **Журнал внутри «Проверок»:** вкладка 5 хостит `LogsPage` с `DataContext="{Binding Logs}"` — тот же `LogsViewModel`, что и у страницы «Журнал» (без второго экземпляра данных); кнопка «Назад в Настройки» на вкладке скрыта (`ShowBackButton="False"`).
-*   **Внешние переходы:** `Navigate("monitoring")→0`, `("dpi")→1`, `("deep-check")→3`, `("results")→4`; «Проверки → Система» — `OpenSystemCheckCommand` из «Обхода» и `NavigateDiagnosticsCommand` из шапки.
-*   **Прежнее содержимое вкладок (осталось внутри подразделов):**
-*   **Система (аудит):** `RunAsync` — 14 пунктов: `BFE`, `WinDivert/WinDivert14`, админ-права, `TCP timestamps`, служба `zapret`, `ipset`/`lists`, `hosts`, `DNS`. Карточки `StatusKey` (`Success/Warning/Danger`), `FixHint`/`FixId`.
+### 3.1 Проверка (DiagnosticsPage / DiagnosticsViewModel — бывший Аудит)
+*   **Экспресс-диагностика:** `RunAsync` — 14 пунктов: `BFE`, `WinDivert/WinDivert14`, админ-права, `TCP timestamps`, служба `zapret`, `ipset`/`lists`, `hosts`, `DNS`. Карточки `StatusKey` (`Success/Warning/Danger`), `FixHint`/`FixId`.
 *   **Исправления:** `FixAsync` (`bfe`, `timestamps`, `zapretstuck`...), `RemoveServiceAsync`, `ChangeTcpTimestamps`, `DeepResetNetwork` — с подтверждениями `MessageBox` (только здесь).
 *   **DPI-suite:** `RunDpiCheckAsync` (`temporaryStrategy`, `ipset any` на время, восстановление), прогресс `ProgressVisible/ProgressText`.
 *   **Экспорт:** `ExportDiagnostics` — `DiagnosticsExportReport` (`DiagnosticsHistoryStore`, `StrategyEvaluationHistory`, `RecoveryJournal`) + `ProviderTelemetryExporter`.
@@ -82,8 +62,7 @@
 *   **Запуск:** `RunDeepCheckAsync` — многоточечная проверка, `ProgressVisible/Text/Percent`, `IsRunning`, `Findings`/`Metrics`/`Recommendations`.
 *   **Кандидат:** `GeneratedCandidateName/Summary/Features`, `HasGeneratedCandidate`, `SaveCandidate`, `ApplyCandidate`.
 
-### 3.3 Быстрая проверка сайтов (бывший «Мониторинг», `MonitoringViewModel`)
-*   **Экран удалён (`v1.20.0`):** `MonitoringPage.xaml`/`.xaml.cs` больше нет, UI живёт во вкладке «Проверки → Быстрая проверка» (`IsExpressTabSelected`). `MonitoringViewModel` остался — им пользуются «Главная» (плитка соединения), шапка (`MonitoringSummaryText`) и та же вкладка.
+### 3.3 Мониторинг ресурсов (MonitoringPage / MonitoringViewModel)
 *   **Цели:** `Targets` (`MonitorTargetStore.EnsureDefaults` + пользовательские), `Results` (`ResourceProbe.CheckAsync`), `SelectedTarget`, `LastCheckText`.
 *   **Ручная проверка:** `CheckAllCommand` → `CheckAllAsync` с прогрессом `ProgressValue/Maximum/Text`, `Diagnosis` (`DiagnoseSelectedAsync`).
 *   **Фон:** `ResourceMonitoringEnabled` (`DispatcherTimer` `GetInterval()` 5–120 мин), `AutoRecoverStrategy` (при `StrategyBreaks` → `DiagnoseAndRecoverAsync` → `ProfileAutoSwitch.TrySwitchOnFailure` → `TestAll` → `SelectAsDefault` + `StartSelectedStrategyAsync` без окон), `AutoSwitchToBestStrategy` (`TrySwitchToBestStrategyAsync`).
@@ -93,39 +72,27 @@
 
 ## 4. СПИСКИ И ФИЛЬТРЫ
 
-### 4.1 Списки (UserListsPage / UserListsViewModel) — отдельный экран внутри «Обхода» с `v1.21.0`
+### 4.1 Списки (UserListsPage / UserListsViewModel)
 *   **Списки:** `list-general.txt` (68), `list-youtube.txt` (38), `list-discord.txt` (23) + `list-*-user.txt` (пользовательские добавления) + `list-general-user` и т.д. Счётчики `CountLines`, двойной клик/Enter — правка.
 *   **IPSet:** `ipset-all.txt` (33048), `ipset-discord.txt`, `ipset-user.txt`, режим `IpsetMode` (`Loaded/None/Any` через `EngineService.Get/SetIpsetMode`), `UpdateIpsetAsync` (скачивание), `SystemIpsText`/`DohIpsText`.
 *   **Игровой фильтр:** `GameFilterMode` (`Disabled/TcpAndUdp/TcpOnly/UdpOnly`), `GameFilterProfileId` + кастом порты, чекбокс `UseGameFilterOnStart`.
 *   **DNS внутри списков:** выбор профиля `SelectedDnsProfile`, отображение `PrimaryServer/SecondaryServer/DohUrl`.
 
-### 4.2 Профили (ProfilesPage / ProfilesViewModel) — открывается из «Настроек» с `v1.21.0`
+### 4.2 Профили (ProfilesPage / ProfilesViewModel)
 *   **Пресеты:** `ProfileManager` — сохранение `AppSettings` + `EnginePath` + `WatchdogEnabled` и т.д. в `UserProfile`. Список `Profiles`, применение `ApplyProfileAsync`, удаление `DeleteProfile` (с `MessageBox`).
 *   **Бэкапы:** `BackupRestoreService` — полные архивы `BackupHistory`, `RestoreBackup`, `DeleteBackup`, `ClearSystem`.
 *   **Сеть:** `NetworkDetector` → `NetworkIdentity` (`Fingerprint/Ssid/DisplayName`), `ProfileAutoSwitchService` (таймер 30с + `NetworkAddressChanged` с дебаунсом 3с, `Cooldown 60с`).
 
 ---
 
-## 4.5 АВТОМАТИЗАЦИЯ (AutomationPage / SettingsViewModel) — новое в `v1.19.0`
-
-Отдельный пункт меню `Автоматизация` (`automation`). DataContext — тот же `SettingsViewModel`, что у «Настроек»: настройки переехали из вкладок по месту, логика сохранения (`SettingsStore.Save` в сеттерах) осталась одна.
-
-*   **Подвкладки (`AutomationTabs` / `AutomationTabIndex`):** `🚀 Запуск` · `🔄 Восстановление` · `🗓 Расписание` · `🌐 Профили по сетям`.
-*   **Запуск:** `RunAtStartup`, `Status`, `CloseToTray`, `StartMinimized`; `AutoStartBypass`, `StartupDelaySeconds` (0–30), `SafeMode`, `StopBypassOnExit`; `AutoTestStrategiesOnFirstLaunch`/`AutoDiagnoseOnFirstLaunch`; `GameDetectionEnabled`/`AutoGameModeOnLaunch`; кнопка «Запустить мастер» (`RerunFirstLaunchWizardCommand`).
-*   **Восстановление:** первая карточка (в обоих режимах) — главный выключатель `AutoSwitchStrategyEnabled` («Автоматическая смена стратегии», по умолчанию **выкл.**, подпись `AutoSwitchStrategyHint`, кнопки «Подобрать замену сейчас» = `FindReplacementNowCommand` → `SeamlessFailover.CheckNowAsync(forceSwitch: true)` и «Проверить узлы сейчас» = `TestSeamlessNowCommand`); далее карточка «Что делал автопилот» (`SeamlessStatus`, `SeamlessLastSwitch`, `TestSeamlessNowCommand`, `OpenLogsCommand`) + `Watchdog*` (сторожевой таймер), `Seamless*` (бесшовное переключение), `ResourceMonitoringEnabled`/`MonitoringIntervalMinutes`/`AutoRecoverStrategy`/`AutoSwitchToBestStrategy`/`MonitorNotificationsEnabled`/`BestStrategyCheckMinutes` (фоновый мониторинг; с `v1.28.1` порог 3 подтверждённых сбоя, частичная деградация не считается сбоем, а фоновый подбор `AutoSwitchToBestStrategy` сравнивает стратегии только когда узел недоступен совсем и не переключает «на более быструю»), `RealTimePingEnabled`/`RealTimePingIntervalSeconds` (живой RTT).
-*   **Расписание:** `ScheduleEnabled`, `ScheduleStartTime`/`ScheduleStopTime`, дни недели (`ScheduleDay*`), `ScheduleUseService`, `ScheduleSummary`.
-*   **Профили по сетям:** только чтение — `AutoSwitchNetworkStatus`, `AutoSwitchLastReason` (проксирование `MainViewModel`) и переход `OpenProfilesCommand` в «Профили и копии», где профиль привязывается к сети. Второго экземпляра переключателей «При смене сети»/«При сбое» здесь сознательно нет — иначе одна настройка жила бы в двух местах.
-*   **Переходы:** `OpenAutomationLaunchCommand` / `OpenAutomationRecoveryCommand` / `OpenAutomationScheduleCommand` (из «Настроек» и с «Главной»).
-
 ## 5. СИСТЕМА
 
 ### 5.1 Настройки (SettingsPage / SettingsViewModel)
-*   **Подвкладки (`SettingsTabs`, 6 шт. с `v1.20.0`):** `⚙ Общие` · `🛡 Обход` · `🌐 Сеть` · `🎨 Интерфейс` · `🎮 Игры` · `🔄 Обновления`. Табы «Журнал» и «О программе» удалены как дубли: журнал живёт в «Проверках → Журнал», «О программе» — отдельным пунктом меню; переходы к ним остались в карточке «Система и информация» внизу страницы.
 *   **Общие:** тема `ThemeMode` (`System/Dark/Light`), масштаб `InterfaceZoomPercent` (80–140), `CloseToTray`, `StartMinimized`, `RunAtStartup` (планировщик/реестр), `ConfirmOnStop` (только для ручной остановки, по умолчанию выкл).
-*   **Обход и движок:** `EnginePath`, `ShowWinwsConsole`, `AutoCheckEngineUpdates`/`IncludePrerelease`/`PreserveUserDataOnUpdate`, `SelectedFakeSni` + `AutoSniRotationEnabled` + `CustomSniList`. Флаг `BatAutoUpdate` (`utils\check_updates.enabled`) с `v1.18.0` настраивается здесь (переехал с «Главной»); `GameFilterOptions`/`IpsetOptions` живут на странице «Списки» и в «Обход → Сложные сайты».
-*   **Автозапуск:** переехал в раздел «Автоматизация» → «Запуск» (`v1.19.0`); в «Настройках» осталась карточка-указатель с кнопкой перехода.
-*   **Watchdog:** переехал в «Автоматизация» → «Восстановление» (`v1.19.0`): `WatchdogEnabled` (по умолчанию вкл), `WatchdogIntervalSeconds` (5–120), `WatchdogAutoRestart`, `WatchdogNotifyUser` — сам сервис `WatchdogService` не менялся (15с проверка `winws`/`zapret`, автоперезапуск + `BFE`). С `v1.28.1` запасная стратегия выбирается не «первая запустившаяся», а только та, что реально открывает контролируемые узлы (`TestStrategyOnTargetsAsync`), и только когда связь не работает совсем (`ResourceProbe.IsCompleteOutage`); кандидатов 3 вместо 5.
-*   **Бесшовное переключение:** переехало в «Автоматизация» → «Восстановление» (`v1.19.0`): `SeamlessFailoverEnabled` (вкл), `SeamlessCheckMinutes` (2–60), `SeamlessCooldownMinutes` (5–120), статус `SeamlessLastReason`/`SeamlessLastSwitchTime` — сам `SeamlessFailoverService` не менялся (5 мин порог 2, cooldown 10 мин, 8 кандидатов). **С `v1.28.1` правила другие:** проверка каждые 5 мин, но смена — только при полной недоступности узла (DNS/TCP/TLS), 3 подтверждённых сбоя подряд (`CheckConfirmedAsync`), кандидатов 4, каждый проверяется на всём наборе узлов, после переключения — постпроверка с откатом на прежнюю стратегию, если стало хуже.
+*   **Обход и движок:** `EnginePath`, `ShowWinwsConsole`, `AutoCheckEngineUpdates`/`IncludePrerelease`/`PreserveUserDataOnUpdate`, `SelectedFakeSni` + `AutoSniRotationEnabled` + `CustomSniList`, `GameFilterOptions`/`IpsetOptions`/`BatAutoUpdate`.
+*   **Автозапуск:** `AutoStartBypass`, `StartupDelaySeconds` (0–60), `StopBypassOnExit`, `SafeMode`.
+*   **Watchdog:** `WatchdogEnabled` (по умолчанию вкл), `WatchdogIntervalSeconds` (5–120), `WatchdogAutoRestart`, `WatchdogNotifyUser` — `WatchdogService` (15с проверка `winws`/`zapret`, автоперезапуск + `BFE` + fallback на 5 альтернативных стратегий с `v1.17.24`).
+*   **Бесшовное переключение:** `SeamlessFailoverEnabled` (вкл), `SeamlessCheckMinutes` (2–60), `SeamlessCooldownMinutes` (5–120), статус `SeamlessLastReason`/`SeamlessLastSwitchTime` — `SeamlessFailoverService` (5 мин порог 2, cooldown 10 мин, 8 кандидатов).
 *   **Профили/сеть:** `AutoSwitchProfileOnNetworkChange`/`OnFailure`, `LastNetworkFingerprint`/`LastAutoSwitchedProfileId`.
 *   **Расписание:** `ScheduleService` (`BypassScheduleService`) — время вкл/выкл.
 *   **Уведомления и метрики:** `MonitorNotificationsEnabled`, `ResourceMonitoringEnabled`/`IntervalMinutes`, `RealTimePingEnabled`/`IntervalSeconds`, `ToolbarMetricsEnabled`/`IntervalSeconds`/`VisibleTargets`, позиция `TaskbarMetricsLeft/Top`.
@@ -133,9 +100,9 @@
 *   **Горячие клавиши и игры:** `GameDetectionEnabled`, `AutoGameModeOnLaunch`, `Hotkey` настройки.
 *   **Сброс:** `ResetSettings` → `MessageBox`.
 
-### 5.2 Обновления (UpdatesPage / UpdatesViewModel) — открывается из «Настроек» с `v1.21.0`
+### 5.2 Обновления (UpdatesPage / UpdatesViewModel)
 *   **Движок:** текущая `EngineVersion` (`ReadVersion`), последняя `LatestVersionText` (`GetLatestVersionTextAsync`), `UpdateAvailable` (`CompareVersions`), кнопка `UpdateEngine` (`PrepareForEngineUpdateAsync` → остановка `zapret`+`WinDivert` → `WaitForDriverUnloadAsync` → `CopyEngine` → восстановление), `AutoCheckEngineUpdates`.
-*   **GUI:** `GuiUpdateService` (`CheckGuiUpdates`, `DefaultRepository` `m0xvi/zapret-gui`), `AutoCheckGuiUpdates`, `InstallGuiUpdate` (замена `exe` через копию). С `v1.28.2` загрузка устойчива к блокировкам: три попытки (обычная → повтор → без системного прокси), явные TLS 1.2/1.3, понятная причина через `GuiUpdateService.Describe`, а при SSL-сбое и выключенном обходе `UpdatesViewModel` предлагает включить обход и повторить.
+*   **GUI:** `GuiUpdateService` (`CheckGuiUpdates`, `DefaultRepository` `m0xvi/zapret-gui`), `AutoCheckGuiUpdates`, `InstallGuiUpdate` (замена `exe` через копию).
 
 ### 5.3 Журнал (LogsPage / LogsViewModel)
 *   **Лог:** `AppLog` (категории `SvcInfo/SvcWarn/Error/Debug`), фильтр по уровню, очистка, автоскролл.
@@ -143,75 +110,8 @@
 ### 5.4 О программе (AboutPage)
 *   **Инфо:** `AppVersion` (`InformationalVersion`), `EngineVersionText`, `EnginePathText`, кнопки `OpenEngineFolder`/`OpenLogs`/`CheckUpdates`, лицензия.
 
-### 5.4d Пресеты конфигурации и «предыдущая рабочая» (`v1.31.0`)
-
-*   **`ConfigurationPreset`** (`Core/ConfigurationSnapshot.cs`): Id, Name, Description, `Config` (полный
-    `ConfigurationSnapshot`), CreatedAt. Хранилище — `ConfigurationPresetStore` (`AppPaths.PresetsFile` =
-    `config-presets.json`, до 50): `Load`/`Save`/`Upsert` (одноимённый заменяется)/`Remove`/`ExportToFile`/
-    `ImportFromFile` (совпадающие имена получают пометку времени).
-*   **Отличие от профилей:** профиль (`ProfileManager`, `profiles.json`) — стратегия + DNS + игровой фильтр и
-    привязка к сети (срабатывает сам при смене сети); пресет — вся конфигурация обхода (ipset, порты, SNI, флаги)
-    и применяется вручную с рабочего стола. Взаимных ссылок-дублей нет: из карточки пресетов есть переход
-    «Профили по сетям →».
-*   **Команды рабочего стола:** `SaveAsPresetCommand` (имя через `Views.InputDialog`), `ApplyPresetCommand`
-    (значения пресета → поля → обычный `ApplyAsync`), `DeletePresetCommand`, `ExportPresetCommand`,
-    `ExportAllPresetsCommand`, `ImportPresetsCommand` (`OpenFileDialog`), `RevertToWorkingCommand`,
-    `OpenProfilesCommand`.
-*   **«Вернуть предыдущую рабочую»:** `ConfigurationSnapshot.BypassWasRunning` заполняется в `Capture(...)` по
-    `Bypass.GetStatus().IsRunning`; команда ищет самый свежий снимок с этой пометкой и откатывает к нему. В списке
-    истории такие снимки помечены бейджем «рабочая» (`WorkingText`).
-
-### 5.4c «Под мою сеть» (`v1.30.0`)
-
-*   **Страница:** `Views/NetworkPage.xaml` + `ViewModels/NetworkProfileViewModel.cs`, ключ навигации `network`
-    (родитель в меню — «Обход», страница в `MainWindow._pages`; при переходе вызывается `Reload()`). В «Простом» —
-    пояснение и кнопка включения режима.
-*   **Шесть шагов** (`NetworkStep`: Number, Title, WhatText, ValueText, Key, Section): 1) провайдер и ASN;
-    2) перехват (ipset: режим + число сетей); 3) порты и игровой фильтр; 4) TCP-таймстемпы; 5) DNS и DoH;
-    6) IPv4/IPv6. `CheckAllCommand` — прогон всех проверок без изменений в системе.
-*   **Правки только там, где их нет на рабочем столе:** провайдер/ASN (`ProviderDetectionService`, кнопки
-    «Определить»/«Сохранить») и TCP-таймстемпы (`WinServices.EnsureTcpTimestamps`). Остальные шаги ведут кнопкой
-    «Поправить» на рабочий стол настройщика или в раздел (`OpenStepCommand`, `Section`); для шага 1 это «Настройки»,
-    для шага 4 кнопки нет — правится на месте.
-*   **`Core/ProviderDetectionService.cs`:** `ProviderInfo` (Name, Asn, Ip, Source) и `DetectAsync()` — три источника
-    по очереди (`ipwho.is` → `ipinfo.io` → `api.ipify.org`), таймаут 12 с, без записи в настройки.
-*   **Источник провайдера** сохраняется в `Settings.ProviderContext` (`ProviderContextSource.UserInput`, `CheckedAt`,
-    `Confidence = 100`).
-
-### 5.4b Рабочий стол настройщика (`v1.29.3`)
-
-*   **Страница:** `Views/ConfigurationPage.xaml` + `ViewModels/ConfigurationViewModel.cs`, ключ навигации
-    `configuration` (родитель в меню — «Обход»; страницы в `MainWindow._pages`). В «Простом» — пояснение и
-    `EnableExpertModeCommand`, рабочие блоки видны только в «Эксперте».
-*   **«Что применено сейчас»:** `SummaryRows` — 8 строк `ConfigSummaryRow` (Step, Title, Value, Key, Section) в
-    порядке `docs/SETUP_ORDER.md`; `OpenSectionCommand(section)` ведёт в `checks`/`updates`/`strategies`/
-    `user-lists`/`bypass`/`automation`/`diagnostics`.
-*   **Правка:** `SelectedStrategy` (`StrategyStore.Items`), `SelectedGameFilter` (`GameFilterPortConfig.PredefinedProfiles`),
-    `TcpPorts`/`UdpPorts`/`ExcludedPorts`, `SelectedSni` (+ `SniOptions`), `SelectedIpset` (`IpsetMode`), `SelectedDns`
-    (`DnsManagementService.PredefinedProfiles` + свои профили, первый пункт — «не менять»), флаги `UseDoh`,
-    `DisableQuicFake`, `PreferIPv4`, `AutoSniRotation`; `ChangeSummary` — что изменится при нажатии «Применить».
-*   **Применение/откат/экспорт:** `ApplyCommand`, `RevertCommand`, `RestoreSnapshotCommand`, `ExportCommand`
-    (`SaveFileDialog`, JSON). Применение = запись в `AppSettings` + `SettingsStore.Save` + `EngineService.SetIpsetMode`
-    + `Bypass.InstallServiceAsync`/`SwitchToStrategyAsync` + `DnsManagementService.ApplyDnsProfileAsync`.
-*   **История:** `Core/ConfigurationSnapshot.cs` — `ConfigurationSnapshot` (способ, фильтр и порты, ipset, DNS-профиль,
-    SNI и флаги) и `ConfigurationSnapshotStore` (`AppPaths.ConfigHistoryFile` = `config-history.json`, до 30 снимков;
-    `Capture`/`Push`/`Remove`/`ExportToFile`). Снимок делается до применения и до отката.
-
-### 5.4a Подсказки «?» и порядок настройки (`v1.29.2`)
-
-*   **Стиль `HelpHint`** (`Themes/Controls.xaml`): круглая кнопка 18×18 с глифом `\uE897` и `ToolTip`. Ставится рядом
-    с названием инструмента (`SectionText`), чтобы описание не занимало тело карточки. Всего на `v1.29.2` переведено
-    **58** описаний в 11 страницах (Automation 10, Settings 17, Diagnostics 8, Bypass 7, Strategies 4, UserLists 4,
-    Profiles 3, FirstLaunch 2, Home/DeepCheck/Updates по 1).
-*   **`AppComboBox`**: добавлены `ContentTemplateSelector`/`ContentStringFormat` (иначе вместо названия видно имя класса),
-    `PopupAnimation="None"`, у `Popup` — Grid с `Background="Transparent"` (мышь не попадает в прозрачную зону и список
-    не закрывается сам).
-*   **`docs/SETUP_ORDER.md`** — порядок настройки из 8 шагов (права → движок → цели → способ обхода → перехват → DNS →
-    поведение → проверка и фиксация) + ТЗ на экран «Настройка по порядку».
-
 ### 5.5 Первый запуск (FirstLaunchPage / FirstLaunchViewModel)
-*   **Один экран (с `v1.29.0`):** по умолчанию мастер показывает одну карточку с кнопкой **«Сделать, чтобы работало»** — `RunOneClickSetupCommand` → `RunOneClickSetupAsync` (движок → диагностика системы → подбор способа обхода через `Home.RunFullCheckAsync` → установка обхода `Bypass.InstallServiceAsync` → проверка результата; прогресс `OneClickProgressText`, итог `OneClickResultText`/`OneClickResultKey`, права — `OneClickNeedsAdmin` с кнопкой перезапуска). Кнопка **«Настроить по шагам»** (`SwitchToAdvancedStepsCommand`) включает прежний пошаговый мастер: `AdvancedSteps` управляет парой `OneClickVisible`/`StepsVisible`, нижняя панель «Назад/Продолжить» видна только там (`NavigationVisible`).
-*   **Мастер (пошаговый режим):** `FirstLaunchWizardCompleted`/`StrategyTestsCompleted`/`FirstLaunchDiagnosticsCompleted`, выбор `EnginePath`, установка `BFE` (`MessageBox`), очистка `WinDivert` (`MessageBox`), `AutoTestStrategiesOnFirstLaunch` + `AutoDiagnoseOnFirstLaunch`, `SafeMode` переключатель.
+*   **Мастер:** `FirstLaunchWizardCompleted`/`StrategyTestsCompleted`/`FirstLaunchDiagnosticsCompleted`, выбор `EnginePath`, установка `BFE` (`MessageBox`), очистка `WinDivert` (`MessageBox`), `AutoTestStrategiesOnFirstLaunch` + `AutoDiagnoseOnFirstLaunch`, `SafeMode` переключатель.
 
 ---
 
@@ -231,9 +131,7 @@
 
 ## 7. Сборка и версия
 
-*   **csproj:** `<Version>1.28.0</Version>` / `AssemblyVersion`/`FileVersion`/`InformationalVersion` `1.28.0.0`, `LangVersion latest`, `System.Text.Encoding.CodePages`.
+*   **csproj:** `<Version>1.17.24</Version>` / `AssemblyVersion`/`FileVersion`/`InformationalVersion` `1.17.24.0`, `LangVersion latest`, `System.Text.Encoding.CodePages`.
 *   **Workflow:** `.github/workflows/build.yml` (`windows-latest`, `dotnet 8.0.x`, `restore → build → WindowsIntegrationHarness → CoreLogicHarness → publish portable / framework-dependent → release` на `v*`).
-*   **Проверка привязок и стиля:** `python3 tools/check_bindings.py` — 22 `XAML` / 118 ключей (включая оверлей поиска: карта `SearchOverlay → SearchViewModel`/`SearchResultItem`), `Run Text Mode=OneWay` для `read-only`. С `v1.25.0` — плюс 5 правил стиля, с `v1.26.0` — ещё 2, с `v1.27.0` — ещё 4, с `v1.28.0` — ещё 1 (зазор между карточками): всего 14 проверок — 5 ошибок и 9 предупреждений: карточка с `Padding` вне токенов, ручные кисти у карточки или плашки, иконочная кнопка без `AutomationProperties.Name` = ошибки; литеральный цвет вне `Themes/`, `TextBlock` с `FontSize` без стиля, карточка без заголовка, надзаголовок не ЗАГЛАВНЫМИ, эмодзи в кнопке/заголовке, поле ввода без подписи и слипшиеся карточки (зазор < 12 px) = предупреждения.
-*   **Токены стиля (`v1.25.0`):** `CardPadding` 18 · `CardPaddingCompact` 14,12 · `CardPaddingList` 8 · `InnerCardPadding` 14 · `CardGap` 0,14 · `BlockGap` 0,12 (`Themes/Controls.xaml`), шкала кеглей **11 · 13 · 17 · 20 · 25**, стиль `SubtitleText`; кисти-исключения оверлеев и метрик панели задач — в `Themes/Dark.xaml` + `Themes/Light.xaml` (44/44). Семантические карточки `CardAccent`/`CardWarning`/`CardSuccess`/`CardInfo` — на базе `Card`; плашки `Notice*` — фон + рамка по смыслу.
-*   **Доступность (`v1.27.0`):** 79 `AutomationProperties.Name` — все иконочные кнопки и поля ввода; иконки интерфейса — MDL2 через `IconFont`, эмодзи — только в подписях навигации.
+*   **Проверка привязок:** `python3 tools/check_bindings.py` — 20 `XAML` / 93 ключа, `Run Text Mode=OneWay` для `read-only`.
 

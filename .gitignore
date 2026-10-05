@@ -1,7 +1,3 @@
-# Артефакты Python
-__pycache__/
-*.pyc
-
 # Артефакты сборки .NET
 bin/
 obj/

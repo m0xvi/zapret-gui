@@ -11,13 +11,6 @@ namespace ZapretGui.Views
             DataContext = viewModel;
         }
 
-        /// <summary>«Списки» — часть раздела «Обход» с v1.21.0: отдельного пункта меню больше нет.</summary>
-        private void BackToBypass_Click(object sender, System.Windows.RoutedEventArgs e)
-        {
-            var main = (System.Windows.Application.Current.MainWindow as MainWindow)?.DataContext as MainViewModel;
-            main?.Navigate("bypass-center");
-        }
-
         private void EntriesList_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             if (DataContext is not UserListsViewModel vm) return;

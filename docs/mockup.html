@@ -137,33 +137,12 @@ body.light .note .n{background:#fff;border-color:#E3E8F1;color:#5A6474}
 .note .n b{color:#EAEDF3;display:block;margin-bottom:6px}
 body.light .note .n b{color:#15191F}
 .note .n code{background:rgba(120,140,180,.22);padding:1px 5px;border-radius:5px;font-size:11.5px}
-
-/* Режимы «Простой» / «Эксперт»: в «Простом» технические блоки скрыты инлайн */
-body:not(.expert) .expert{display:none!important}
-body:not(.expert) .expert-note{display:block}
-body.expert .expert-note{display:none}
-
-/* Оверлей поиска (Ctrl+K) — этап 7 */
-.search-overlay{position:fixed;inset:0;background:rgba(0,0,0,.62);z-index:60;display:none;align-items:flex-start;justify-content:center;padding-top:80px}
-.search-overlay.open{display:flex}
-.search-card{width:620px;max-height:500px;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 18px 48px rgba(0,0,0,.45);display:flex;flex-direction:column;overflow:hidden}
-.search-head{display:flex;align-items:center;gap:10px;padding:12px 12px 12px 16px;border-bottom:1px solid var(--border)}
-.search-head .ic{opacity:.7}
-.search-head input{flex:1;background:transparent;border:0;outline:0;color:var(--text);font:inherit;font-size:13.5px}
-.search-body{overflow:auto;padding:6px 4px}
-.search-foot{padding:9px 16px;background:var(--elevated);border-top:1px solid var(--border);color:var(--dim);font-size:10.5px;line-height:1.45}
-.srow{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:9px;cursor:pointer}
-.srow:hover,.srow.on{background:var(--card-hover)}
-.srow .ic{width:22px;text-align:center;opacity:.7}
-.srow .name{font-size:13px;color:var(--text)}
-.srow .meta{font-size:10.5px;color:var(--dim)}
-.sempty{padding:18px 16px;color:var(--dim);font-size:12px}
 </style>
 </head>
 <body>
 
 <div class="hint">
-  <span><b>Zapret GUI</b> — интерактивный макет интерфейса (этапы 1–8 IA). Нажимайте разделы слева, переключайте тему, режим «Простой/Эксперт» (🔧 в шапке или <b>Ctrl+Shift+E</b>) и открывайте поиск по приложению — <b>Ctrl+K</b> или 🔍 в шапке.</span>
+  <span><b>Zapret GUI</b> — интерактивный макет интерфейса. Нажимайте разделы слева, переключайте тему, кнопки и фильтры.</span>
   <button onclick="toggleTheme()" id="themeBtn">🌙 Тёмная тема</button>
 </div>
 
@@ -172,8 +151,6 @@ body.expert .expert-note{display:none}
     <div class="logo">⚡</div>
     <div class="appname">Zapret GUI</div>
     <div class="pill"><span class="dot" style="background:var(--success)"></span><span>Обход запущен</span></div>
-    <div class="pill" id="modePill" style="cursor:pointer" onclick="toggleExpert()" title="Переключить режим интерфейса: простой / эксперт (Ctrl+Shift+E)">🔧 Простой режим</div>
-    <div class="pill" style="cursor:pointer" title="Поиск по приложению: разделы, настройки и команды (Ctrl+K)" onclick="openSearch()">🔍 Ctrl+K</div>
     <div class="titlebars">
       <div class="tbtn" title="Переключить тему" onclick="toggleTheme()">◐</div>
       <div class="tbtn" title="Открыть папку движка">🗀</div>
@@ -186,15 +163,13 @@ body.expert .expert-note{display:none}
   <div class="body">
     <div class="sidebar">
       <div class="nav" id="nav">
-        <div class="nav-item active" data-page="home"><span class="ic">⌂</span>Главная</div>
-        <div class="nav-item" data-page="bypass"><span class="ic">🛡</span>Обход</div>
-        <div class="nav-item" data-page="diagnostics"><span class="ic">🛠</span>Проверки</div>
-        <div class="nav-item" data-page="automation"><span class="ic">⚡</span>Автоматизация</div>
+        <div class="nav-item active" data-page="home"><span class="ic">⌂</span>Обзор</div>
+        <div class="nav-item" data-page="strategies"><span class="ic">☰</span>Стратегии</div>
+        <div class="nav-item" data-page="updates"><span class="ic">⟳</span>Обновления</div>
+        <div class="nav-item" data-page="diagnostics"><span class="ic">🛠</span>Диагностика</div>
+        <div class="nav-item" data-page="logs"><span class="ic">🗎</span>Журнал</div>
         <div class="nav-item" data-page="settings"><span class="ic">⚙</span>Настройки</div>
-        <div style="height:1px;background:var(--border);margin:10px 14px"></div>
-        <div class="nav-item" id="nav-help" data-page="help"><span class="ic">?</span>Помощь</div>
-        <div class="dim" style="padding:10px 12px 4px">v1.24.0: поиск <b>Ctrl+K</b> (кнопка 🔍 в шапке) ищет по разделам, подразделам, настройкам, командам и сценариям «Помощи», включая прежние термины — watchdog, бесшовное, матрица, SNI, DPI, Voice RTC, Deep Check, аудит, бэкап, SSID. Внутри поиска — избранное (звёздочка) и пять недавних мест.</div>
-        <div class="dim" style="padding:10px 12px 4px">v1.23.0: режим «Простой» (по умолчанию) скрывает технические блоки — матрицу 92 тестов, пул SNI, режимы ipset, интервалы; их показывает «Эксперт» (кнопка в шапке или Ctrl+Shift+E). «Стратегии», «Списки», «Журнал», «Профили и копии», «Обновления» и «О программе» открываются кнопками внутри разделов.</div>
+        <div class="nav-item" data-page="about"><span class="ic">ⓘ</span>О программе</div>
       </div>
       <div class="side-foot">
         <div class="inner-card">
@@ -202,7 +177,7 @@ body.expert .expert-note{display:none}
           <div style="font-size:14px;font-weight:600;margin:3px 0">1.10.2</div>
           <div class="dim" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">%LOCALAPPDATA%\ZapretGUI\engine</div>
         </div>
-        <div class="dim" style="text-align:center">Zapret GUI 1.22.0 · лицензия MIT</div>
+        <div class="dim" style="text-align:center">Zapret GUI 1.0.0 · лицензия MIT</div>
       </div>
     </div>
 
@@ -210,8 +185,8 @@ body.expert .expert-note{display:none}
 
       <!-- ОБЗОР -->
       <div class="page active" id="page-home">
-        <h1>Главная</h1>
-        <div class="sub">Обход, состояние соединения и быстрые действия</div>
+        <h1>Обзор</h1>
+        <div class="sub">Запуск обхода, служба Windows, фильтры и состояние движка</div>
         <div class="msg ok">Стратегия «general (FAKE TLS AUTO)» запущена</div>
 
         <div class="row">
@@ -222,30 +197,59 @@ body.expert .expert-note{display:none}
                 <div>
                   <h2>Обход запущен</h2>
                   <div class="muted">Стратегия: general (FAKE TLS AUTO)</div>
-                  <div class="badges"><span class="badge">Время работы: 1 ч 24 мин</span><span class="badge expert">Процесс: PID 12844</span></div>
+                  <div class="badges"><span class="badge">Время работы: 1 ч 24 мин</span><span class="badge">Процесс: PID 12844</span></div>
                   <div class="dim" style="margin-top:8px">Служба не установлена</div>
                 </div>
                 <div style="width:190px" class="stack">
                   <button class="btn danger">Остановить обход</button>
-                  <button class="btn ghost">Подобрать обход заново</button>
+                  <button class="btn secondary">Установить в службу</button>
+                  <button class="btn ghost">Удалить службы</button>
                 </div>
               </div>
             </div>
 
             <div class="card">
-              <div class="section">БЫСТРЫЕ ПЕРЕХОДЫ</div>
-              <div class="muted">Проверки, подбор обхода и журнал живут в своих разделах — на главной остались только статус и одно действие.</div>
-              <div class="btns" style="margin-top:12px">
-                <button class="btn secondary">Проверить сайты → Проверки</button>
-                <button class="btn ghost">Подобрать обход заново → Обход</button>
-                <button class="btn ghost">Открыть журнал → Проверки</button>
+              <div class="section">ФИЛЬТРЫ</div>
+              <div class="grid2">
+                <div>
+                  <div style="font-size:13px;font-weight:600">Игровой фильтр</div>
+                  <div class="dim">Обработка портов выше 1023 (игры, сторонние сервисы). После изменения перезапустите обход.</div>
+                </div>
+                <div class="seg" data-group="game">
+                  <button>Выключен</button><button class="on">TCP + UDP</button><button>Только TCP</button><button>Только UDP</button>
+                </div>
               </div>
-              <div class="dim" style="margin-top:10px">Фильтры (игровой, ipset, .bat) — на странице «Списки»; служба Windows — «Обход → Дополнительно»; флаг .bat — «Настройки».</div>
+              <div class="divider"></div>
+              <div class="grid2">
+                <div>
+                  <div style="font-size:13px;font-weight:600">Фильтр ipset</div>
+                  <div class="dim">loaded — проверять IP по списку, none — отключить фильтр, any — фильтровать любые IP.</div>
+                </div>
+                <div class="seg" data-group="ipset">
+                  <button class="on">Списки (loaded)</button><button>Отключён (none)</button><button>Все IP (any)</button>
+                </div>
+              </div>
+              <div class="divider"></div>
+              <div class="switch-row">
+                <div>
+                  <div style="font-size:13px;font-weight:600">Проверка обновлений для .bat</div>
+                  <div class="dim">Флаг utils\check_updates.enabled — используется при запуске обхода через .bat-файлы.</div>
+                </div>
+                <div class="switch on" onclick="this.classList.toggle('on')"><i></i></div>
+              </div>
             </div>
 
             <div class="card">
-              <div class="section">СОСТОЯНИЕ СОЕДИНЕНИЯ</div>
-              <div class="diag"><div class="ic ok">✓</div><div><h4>Последняя проверка: 26/28 OK · ср. 42 мс</h4><p>Подробности и свои адреса — «Проверки → Быстрая проверка»</p></div></div>
+              <div class="grid2" style="margin-bottom:6px">
+                <div class="section" style="margin:0">ПРОВЕРКА СОЕДИНЕНИЯ</div>
+                <button class="btn secondary sm">Проверить</button>
+              </div>
+              <div class="dim">Быстрая проверка доступности YouTube, Discord и GitHub (нужны для загрузки обновлений).</div>
+              <div class="checks">
+                <div class="diag"><div class="ic ok">✓</div><div><h4>YouTube</h4><p>TCP 42 мс · HTTP 204</p></div></div>
+                <div class="diag"><div class="ic ok">✓</div><div><h4>Discord</h4><p>TCP 55 мс · HTTP 200</p></div></div>
+                <div class="diag"><div class="ic err">✕</div><div><h4>GitHub (обновления)</h4><p>Превышено время ожидания</p></div></div>
+              </div>
             </div>
           </div>
 
@@ -278,54 +282,7 @@ body.expert .expert-note{display:none}
       </div>
 
       <!-- СТРАТЕГИИ -->
-      <!-- АВТОМАТИЗАЦИЯ -->
-      <div class="page" id="page-automation">
-        <h1>Автоматизация</h1>
-        <div class="sub">Всё, что работает без вас: автозапуск, присмотр за обходом, автовосстановление, расписание и профили по сетям</div>
-        <div class="card">
-          <div class="section">СОСТАВ РАЗДЕЛА (v1.19.0)</div>
-          <div class="muted"><b>🚀 Запуск</b> — автозапуск приложения и обхода, задержка старта, безопасный режим, автодетект игр, мастер первого запуска.</div>
-          <div class="muted" style="margin-top:6px"><b>🔄 Восстановление</b> — присмотр за обходом (Watchdog), переключение при ухудшении, фоновый мониторинг, живой RTT, «что делал автопилот».</div>
-          <div class="muted" style="margin-top:6px"><b>🗓 Расписание</b> — обход включён по дням недели и часам.</div>
-          <div class="muted" style="margin-top:6px"><b>🌐 Профили по сетям</b> — текущая сеть и переход к профилям (привязка профиля к сети живёт рядом со списком профилей).</div>
-          <div class="dim" style="margin-top:12px">В «Настройках» на месте этих карточек остались ссылки «Открыть Автоматизацию» — настройки не дублируются.</div>
-        </div>
-      </div>
-
-      <div class="page" id="page-bypass">
-        <div class="row">
-          <div>
-            <h1>Обход</h1>
-            <div class="sub">Чем и что обходим: способ обхода, подбор, DNS, списки и сложные сайты</div>
-          </div>
-          <div style="margin-left:auto"><button class="btn primary">Включить обход</button></div>
-        </div>
-
-        <div class="card" style="margin-top:16px">
-          <div class="section">СОСТАВ РАЗДЕЛА (v1.21.0)</div>
-          <div class="muted"><b data-label-simple="🎯 Способ обхода" data-label-expert="🎯 Стратегия">🎯 Способ обхода</b> — выбор .bat из каталога движка, бесшовное применение, кнопка «Открыть каталог стратегий».</div>
-          <div class="muted" style="margin-top:6px"><b>🧠 Подбор</b> — перебор стратегий и рекомендация.</div>
-          <div class="muted" style="margin-top:6px"><b>🌐 DNS</b> — профили DNS и проверка подмены (единственное место настройки DNS).</div>
-          <div class="muted" style="margin-top:6px"><b>📋 Списки</b> — hosts, ipset и кнопка «Редактор списков доменов».</div>
-          <div class="muted" style="margin-top:6px"><b>🔥 Сложные сайты</b> — YouTube, тяжёлые игры, фильтр трафика игр.</div>
-          <div class="muted" style="margin-top:6px"><b>🛠 Дополнительно</b> — служба Windows и опасные операции (с подтверждением).</div>
-          <div class="dim" style="margin-top:12px">Пунктов «Стратегии» и «Списки» в меню больше нет: их каталог и редактор открываются кнопками из этих подвкладок.</div>
-        </div>
-
-        <div class="card expert">
-          <div class="section">ТОЛЬКО В РЕЖИМЕ «ЭКСПЕРТ»</div>
-          <div class="muted">• Режимы ipset (<span class="mono">loaded / none / any</span>), пути к файлам списков и «открыть в блокноте».</div>
-          <div class="muted" style="margin-top:6px">• Пул SNI, кандидаты, история оценок способа обхода и аргументы <span class="mono">winws</span>.</div>
-          <div class="muted" style="margin-top:6px">• Матрица «Перебор с разными DNS» (92 теста) в подборе и подвкладка «Дополнительно» (режим службы, консоль winws).</div>
-        </div>
-        <div class="card expert-note">
-          <div class="section">ВКЛЮЧИТЕ «ЭКСПЕРТ»</div>
-          <div class="muted">Часть блоков скрыта: по умолчанию приложение работает в «Простом» режиме. Переключатель — 🔧 в шапке или <b>Ctrl+Shift+E</b>; те же блоки появятся на «Главной», «Проверках», «Автоматизации» и в «Настройках». Найти спрятанное можно поиском <b>Ctrl+K</b> — он ищет и по техническим терминам.</div>
-        </div>
-      </div>
-
       <div class="page" id="page-strategies">
-        <button class="btn ghost sm goto" data-page="bypass">← В «Обход»</button>
         <div class="row">
           <div>
             <h1>Стратегии</h1>
@@ -364,8 +321,8 @@ body.expert .expert-note{display:none}
               <div class="dim" id="selDesc" style="margin-top:6px">подмена пакетов (fake) · фейк TLS с SNI www.google.com · фейк QUIC (UDP 443) · повторы 11 · fooling badseq</div>
               <div class="badge" style="margin-top:10px">FAKE TLS AUTO</div>
               <div class="divider"></div>
-              <div class="section expert">ПАРАМЕТРЫ WINWS.EXE</div>
-              <div class="inner-card expert">
+              <div class="section">ПАРАМЕТРЫ WINWS.EXE</div>
+              <div class="inner-card">
                 <div class="mono">--wf-tcp=80,443,2053,2083,2087,2096,8443,12 --wf-udp=443,19294-19344,50000-50100,12
 --filter-udp=443 --hostlist=...\lists\list-general.txt --dpi-desync=fake --dpi-desync-repeats=6 --dpi-desync-fake-quic=...\bin\quic_initial_www_google_com.bin --new
 --filter-tcp=80,443 --dpi-desync=multisplit --dpi-desync-split-pos=1 --dpi-desync-split-seqovl=568 …</div>
@@ -384,7 +341,6 @@ body.expert .expert-note{display:none}
 
       <!-- ОБНОВЛЕНИЯ -->
       <div class="page" id="page-updates">
-        <button class="btn ghost sm goto" data-page="settings">← В «Настройки»</button>
         <div class="row">
           <div>
             <h1>Обновления</h1>
@@ -471,20 +427,10 @@ body.expert .expert-note{display:none}
       <div class="page" id="page-diagnostics">
         <div class="row">
           <div>
-            <h1>Проверки</h1>
-            <div class="sub">Что-то не работает — найти причину и починить: сайты, звонки, система, глубокая проверка, история и журнал</div>
+            <h1>Диагностика</h1>
+            <div class="sub">Проверка типичных причин, из-за которых обход не работает (аналог Run Diagnostics)</div>
           </div>
-          <div style="margin-left:auto"><button class="btn primary">Проверить всё</button></div>
-        </div>
-
-        <div class="card" style="margin-top:16px">
-          <div class="section">СОСТАВ РАЗДЕЛА (v1.20.0)</div>
-          <div class="muted"><b>⚡ Быстрая проверка</b> — сайты и сервисы со статусом и задержкой, «Проверить всё», «Определить причину».</div>
-          <div class="muted" style="margin-top:6px"><b>📡 Сайты и звонки</b> — DPI по 34 узлам и проверка голоса Discord с исправлением.</div>
-          <div class="muted expert" style="margin-top:6px"><b>🛠 Система</b> — проверка Windows и драйверов (14 пунктов) с кнопкой «Исправить»; опасные операции — внизу.</div>
-          <div class="muted expert" style="margin-top:6px"><b>Глубокая проверка</b> — свои хосты, многоточечная проверка, рекомендации (экспертный уровень).</div>
-          <div class="muted expert" style="margin-top:6px"><b>📊 История и отчёты</b> — результаты проверок, история переключений, экспорт JSON/ZIP.</div>
-          <div class="muted" style="margin-top:6px"><b>📄 Журнал</b> — тот же журнал, что и отдельным пунктом меню: фильтры, поиск, копирование и очистка.</div>
+          <div style="margin-left:auto"><button class="btn primary">Запустить проверку</button></div>
         </div>
 
         <div class="msg warn" style="margin-top:16px">Критичных проблем нет, предупреждений: 2</div>
@@ -508,7 +454,7 @@ body.expert .expert-note{display:none}
           </div>
 
           <div class="col-side">
-            <div class="card expert">
+            <div class="card">
               <div class="section">ИСПРАВЛЕНИЯ В ОДИН КЛИК</div>
               <div class="stack">
                 <button class="btn secondary">Полностью удалить службы</button>
@@ -529,11 +475,10 @@ body.expert .expert-note{display:none}
 
       <!-- ЖУРНАЛ -->
       <div class="page" id="page-logs">
-        <button class="btn ghost sm goto" data-page="diagnostics">← В «Проверки»</button>
         <div class="row">
           <div>
             <h1>Журнал</h1>
-            <div class="sub">Все действия приложения, вывод winws.exe, ошибки обновлений и служб. С v1.20.0 журнал живёт и внутри «Проверок» (подраздел «Журнал») — данные и фильтры одни и те же</div>
+            <div class="sub">Все действия приложения, вывод winws.exe, ошибки обновлений и служб</div>
           </div>
           <div style="margin-left:auto" class="btns">
             <button class="btn secondary sm">Сохранить в файл</button>
@@ -546,7 +491,7 @@ body.expert .expert-note{display:none}
         <div style="display:flex;justify-content:space-between;align-items:center;margin:16px 0 12px">
           <div class="btns" style="gap:14px">
             <span class="dim">Записей: 11</span>
-            <label class="muted expert"><input type="checkbox" checked> Отладка</label>
+            <label class="muted"><input type="checkbox" checked> Отладка</label>
             <label class="muted"><input type="checkbox" checked> Инфо</label>
             <label class="muted"><input type="checkbox" checked> Предупреждения</label>
             <label class="muted"><input type="checkbox" checked> Ошибки</label>
@@ -637,7 +582,7 @@ body.expert .expert-note{display:none}
               </div>
             </div>
 
-            <div class="card expert">
+            <div class="card">
               <div class="section">СИСТЕМА И ФАЙЛЫ</div>
               <div class="switch-row"><div style="font-size:13px">Запускать при входе в систему</div><div class="switch" onclick="this.classList.toggle('on')"><i></i></div></div>
               <div class="dim" style="margin-top:8px">Настройки сохранены</div>
@@ -654,68 +599,7 @@ body.expert .expert-note{display:none}
       </div>
 
       <!-- О ПРОГРАММЕ -->
-      <div class="page" id="page-help">
-        <div style="display:flex;gap:16px;align-items:center">
-          <div style="width:56px;height:56px;border-radius:16px;background:var(--info);display:grid;place-items:center;font-size:26px">?</div>
-          <div><h1 style="margin:0">Помощь</h1><div class="sub" style="margin:2px 0 0">Пять частых ситуаций и что делать. Помощь объясняет — Проверки делают.</div></div>
-        </div>
-
-        <div class="card" style="margin-top:18px">
-          <div class="section">НЕ ОТКРЫВАЕТСЯ YOUTUBE</div>
-          <div class="muted">1. Включите обход на «Главной» (Ctrl+Shift+Z).<br>2. «Проверки → Быстрая проверка» — 2–3 минуты, обход не останавливается.<br>3. Не помогло — «Обход → Сложные сайты»: QUIC fake и другой способ обхода.</div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button class="btn primary sm goto" data-page="diagnostics">Проверить YouTube</button>
-            <button class="btn ghost sm goto" data-page="bypass">Открыть «Сложные сайты»</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="section">ПРОПАЛ ГОЛОС В DISCORD</div>
-          <div class="muted">1. Убедитесь, что обход включён.<br>2. «Проверки → Сайты и звонки» → «Проверить голос Discord».<br>3. Висит «Подключение к RTC» — там же «Очистить кэш и сбросить сеть (1 клик)» и перезапуск Discord.</div>
-          <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm goto" data-page="diagnostics">Проверить голос</button></div>
-        </div>
-
-        <div class="card">
-          <div class="section">ПРОПАЛ ИНТЕРНЕТ ПОСЛЕ УСТАНОВКИ</div>
-          <div class="muted">1. Нажмите «Выключить обход» (та же кнопка, что на «Главной»).<br>2. Не помогло — «Проверки → Система»: «Сбросить сеть (winsock + ip)» и перезагрузка.<br>3. Предупреждение про старую сборку — «Решить конфликт» в баннере на «Главной».</div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button class="btn sm goto" data-page="home">Выключить обход</button>
-            <button class="btn ghost sm goto" data-page="diagnostics">Полный сброс сети</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="section">ЛАГАЮТ ИГРЫ</div>
-          <div class="muted">1. Включите «Игровой режим» (Ctrl+Shift+G).<br>2. Обход не выключайте: часть лаунчеров и голосовых каналов работает только с ним.<br>3. Нужен фильтр портов — «Обход → Сложные сайты → Тяжёлые игры».</div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button class="btn sm goto" data-page="home">Игровой режим</button>
-            <button class="btn ghost sm goto" data-page="bypass">Фильтр трафика игр</button>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="section">ХОЧУ ВЕРНУТЬ КАК БЫЛО</div>
-          <div class="muted">1. «Настройки → Профили и копии» → «Восстановить из выбранного архива».<br>2. Нет архива — «Создать полный архив (ZIP)»: настройки, профили, списки и история.<br>3. Убрать всё — «Полная очистка следов в Windows» (движок и ваши списки останутся).</div>
-          <div style="display:flex;gap:8px;margin-top:10px"><button class="btn primary sm goto" data-page="settings">Открыть «Профили и копии»</button></div>
-        </div>
-
-        <div class="card">
-          <div class="section">КАК ЭТО РАБОТАЕТ</div>
-          <div class="muted">• Обход — не VPN: пакеты переписываются на месте, трафик не идёт через чужой сервер.<br>• Способ обхода (стратегия) — набор правил для winws.exe; у разных провайдеров работают разные.<br>• Служба держит обход включённым до входа в Windows и после закрытия приложения.<br>• DNS — «телефонная книга»: при подмене ответов сайт не откроется даже с рабочим обходом («Обход → DNS»).<br>• Иногда не помогает, потому что провайдер меняет правила — помогает новый подбор, другой DNS или переключение QUIC fake.</div>
-        </div>
-
-        <div class="card">
-          <div class="section">НЕ ПОМОГЛО? ОТПРАВЬТЕ ОТЧЁТ</div>
-          <div class="muted">Архив собирает журнал, результаты проверок и версии в один файл. Приложение ничего не отправляет само — файл сохраняется туда, куда вы укажете.</div>
-          <div style="display:flex;gap:8px;margin-top:10px">
-            <button class="btn primary sm goto" data-page="diagnostics">Собрать архив отчёта (ZIP)</button>
-            <button class="btn ghost sm goto" data-page="logs">Открыть журнал</button>
-          </div>
-        </div>
-      </div>
-
       <div class="page" id="page-about">
-        <button class="btn ghost sm goto" data-page="settings">← В «Настройки»</button>
         <div style="display:flex;gap:16px;align-items:center">
           <div style="width:56px;height:56px;border-radius:16px;background:var(--accent);display:grid;place-items:center;font-size:26px">⚡</div>
           <div><h1 style="margin:0">Zapret GUI</h1><div class="sub" style="margin:2px 0 0">Удобный графический интерфейс для zapret-discord-youtube</div></div>
@@ -769,8 +653,6 @@ body.expert .expert-note{display:none}
 <div class="note">
   <div class="n"><b>Что уже работает в исходниках</b>
     Запуск/остановка обхода, служба <code>zapret</code>, игровой фильтр, режимы ipset, автопроверка и установка обновлений движка с GitHub, обновление <code>ipset</code> и <code>hosts</code>, диагностика, журнал, трей, темы.</div>
-  <div class="n"><b>Версия макета</b>
-    Макет синхронизирован с v1.18.0: главная — статус и быстрые переходы, фильтры и служба переехали в «Списки» и «Обход». Структура разделов — в <code>docs/ia_prototype.html</code>.</div>
   <div class="n"><b>Куда писать пожелания</b>
     Опишите номер раздела («Обзор», «Стратегии»…) и что поменять: порядок элементов, тексты, состав кнопок, что убрать и что добавить. Я поправлю и макет, и код.</div>
   <div class="n"><b>Планы на следующие итерации</b>
@@ -778,11 +660,11 @@ body.expert .expert-note{display:none}
 </div>
 
 <script>
-document.querySelectorAll('#nav .nav-item, #nav-help, .goto').forEach(function(item){
+document.querySelectorAll('#nav .nav-item').forEach(function(item){
   item.addEventListener('click', function(){ show(item.dataset.page); });
 });
 function show(page){
-  document.querySelectorAll('#nav .nav-item, #nav-help').forEach(function(i){ i.classList.toggle('active', i.dataset.page===page); });
+  document.querySelectorAll('#nav .nav-item').forEach(function(i){ i.classList.toggle('active', i.dataset.page===page); });
   document.querySelectorAll('.page').forEach(function(p){ p.classList.toggle('active', p.id==='page-'+page); });
   document.querySelector('.content').scrollTop = 0;
 }
@@ -821,68 +703,6 @@ function demoProgress(){
     if(p>=100) clearInterval(t);
   },90);
 }
-</script>
-<!-- Оверлей поиска (Ctrl+K) — этап 7 -->
-<div class="search-overlay" id="searchOverlay" onclick="if(event.target===this) closeSearch()">
-  <div class="search-card">
-    <div class="search-head">
-      <span class="ic">🔍</span>
-      <input id="searchInput" placeholder="Раздел, настройка или команда: «журнал», «стратегия», «watchdog»…" oninput="renderSearch()">
-      <div class="tbtn" title="Закрыть (Esc)" onclick="closeSearch()">✕</div>
-    </div>
-    <div class="search-body" id="searchBody"></div>
-    <div class="search-foot">↑ ↓ — выбор · Enter — открыть · Esc — закрыть · Индекс включает прежние термины: watchdog, бесшовное, матрица, SNI, DPI, Voice RTC, Deep Check, аудит, бэкап, SSID</div>
-  </div>
-</div>
-
-<script>
-var SEARCH_INDEX = [
-  {t:'Главная', p:'Раздел', page:'home', a:'статус обзор включить обход'},
-  {t:'Обход', p:'Раздел · способ обхода, подбор, DNS, списки', page:'bypass', a:'bypass способ обхода стратегия dns списки'},
-  {t:'Способ обхода (стратегия)', p:'Подраздел · Обход', page:'bypass', a:'стратегия способ обхода winws alt11 sni аргументы'},
-  {t:'Подбор способа обхода', p:'Подраздел · Обход', page:'bypass', a:'подбор матрица 92 теста автоподбор'},
-  {t:'Сложные сайты', p:'Подраздел · Обход', page:'bypass', a:'youtube discord quic sni ipv4 doh'},
-  {t:'Проверки', p:'Раздел · быстрая проверка, сайты и звонки, журнал', page:'diagnostics', a:'проверка диагностика тест'},
-  {t:'Быстрая проверка', p:'Подраздел · Проверки', page:'diagnostics', a:'быстрая мониторинг проверить всё youtube'},
-  {t:'Сайты и звонки (DPI)', p:'Подраздел · Проверки', page:'diagnostics', a:'dpi voice rtc discord голос звонки 34 узла'},
-  {t:'Журнал', p:'Подраздел · Проверки', page:'diagnostics', a:'журнал логи лог отладка debug ошибки'},
-  {t:'Автоматизация', p:'Раздел', page:'automation', a:'автозапуск watchdog расписание автопилот'},
-  {t:'Восстановление (присмотр)', p:'Подраздел · Автоматизация', page:'automation', a:'watchdog бесшовное переключение seamless автоперезапуск кулдаун'},
-  {t:'Профили по сетям', p:'Подраздел · Автоматизация', page:'automation', a:'ssid сети профиль по сети'},
-  {t:'Настройки', p:'Раздел · движок, обновления, профили и копии', page:'settings', a:'настройка параметры конфиг тема'},
-  {t:'Профили и копии', p:'Настройка · Настройки', page:'settings', a:'профили бэкап архив восстановить экспорт импорт'},
-  {t:'Помощь', p:'Подвал меню · пять сценариев', page:'help', a:'не работает что делать сценарии инструкция'},
-  {t:'Проверить обновления движка', p:'Команда', page:'updates', a:'обновление движок update'},
-];
-function openSearch(){ document.getElementById('searchOverlay').classList.add('open'); var i=document.getElementById('searchInput'); i.value=''; renderSearch(); i.focus(); }
-function closeSearch(){ document.getElementById('searchOverlay').classList.remove('open'); }
-function searchHit(item, tokens){ var hay=(item.t+' '+item.p+' '+item.a).toLowerCase().replace(/ё/g,'е'); return tokens.every(function(t){ return hay.indexOf(t)>=0; }); }
-function renderSearch(){
-  var q=document.getElementById('searchInput').value.toLowerCase().replace(/ё/g,'е').trim();
-  var body=document.getElementById('searchBody');
-  var tokens=q?q.split(/\s+/):[];
-  var list=tokens.length?SEARCH_INDEX.filter(function(i){ return searchHit(i,tokens); }):SEARCH_INDEX.slice(0,6);
-  if(!list.length){ body.innerHTML='<div class="sempty">Ничего не найдено по запросу «'+q+'». Попробуйте «журнал», «стратегия», «watchdog» или «отчёт».</div>'; return; }
-  body.innerHTML=list.map(function(i,idx){
-    return '<div class="srow'+(idx===0?' on':'')+'" onclick="searchGo(\''+i.page+'\')"><span class="ic">•</span><span><span class="name">'+i.t+'</span><br><span class="meta">'+i.p+'</span></span><span style="margin-left:auto;opacity:.55">☆</span></div>';
-  }).join('');
-}
-function searchGo(page){ closeSearch(); show(page); }
-function applyMode(){
-  var expert = document.body.classList.contains('expert');
-  document.getElementById('modePill').textContent = expert ? '🔬 Эксперт' : '🔧 Простой режим';
-  document.querySelectorAll('[data-label-simple]').forEach(function(el){
-    el.textContent = expert ? el.getAttribute('data-label-expert') : el.getAttribute('data-label-simple');
-  });
-}
-function toggleExpert(){ document.body.classList.toggle('expert'); applyMode(); }
-document.addEventListener('keydown', function(e){
-  if(e.ctrlKey && (e.key==='k'||e.key==='K')){ e.preventDefault(); openSearch(); }
-  else if(e.ctrlKey && e.shiftKey && (e.key==='E'||e.key==='e'||e.key==='У'||e.key==='у')){ e.preventDefault(); toggleExpert(); }
-  else if(e.key==='Escape'){ closeSearch(); }
-  else if(e.key==='Enter' && document.getElementById('searchOverlay').classList.contains('open')){ searchGo(SEARCH_INDEX[0].page); }
-});
-applyMode();
 </script>
 </body>
 </html>

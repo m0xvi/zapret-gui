@@ -3,12 +3,12 @@ using ZapretGui.ViewModels;
 
 namespace ZapretGui.Views
 {
-    public partial class ProfilesPage : UserControl
+    public partial class MonitoringPage : UserControl
     {
-        public ProfilesPage(ProfilesViewModel vm)
+        public MonitoringPage(MonitoringViewModel viewModel)
         {
             InitializeComponent();
-            DataContext = vm;
+            DataContext = viewModel;
         }
     }
 }

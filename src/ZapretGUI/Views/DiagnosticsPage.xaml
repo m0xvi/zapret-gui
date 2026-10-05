@@ -2,7 +2,6 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
-             xmlns:views="clr-namespace:ZapretGui.Views"
              Background="Transparent">
         <Grid Margin="24,20,20,32">
             <Grid.RowDefinitions>
@@ -18,9 +17,9 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                    <TextBlock Style="{StaticResource DisplayText}" Text="Проверки и диагностика" />
+                    <TextBlock Style="{StaticResource DisplayText}" Text="Проверка и диагностика" />
                     <TextBlock Style="{StaticResource MutedText}"
-                               Text="Проверить, что не работает, найти причину и починить: сайты и звонки, система, глубокая проверка, история и журнал." TextWrapping="Wrap" />
+                               Text="Единый центр проверки доступности, DPI-метрик, глубокого анализа сети и системных компонентов." TextWrapping="Wrap" />
                 </StackPanel>
                 <WrapPanel Grid.Column="1" MaxWidth="440" HorizontalAlignment="Right" VerticalAlignment="Top">
                     <Button Style="{StaticResource GhostButton}" Content="Экспорт JSON"
@@ -34,15 +33,15 @@
 
             <!-- Сегментированный переключатель вкладок — sticky, единый стиль с Каталогом стратегий -->
             <StackPanel Grid.Row="1" Margin="0,14,0,0">
-                <controls:SegmentedControl ItemsSource="{Binding DiagnosticsTabs}" SelectedIndex="{Binding VisibleSubTab, Mode=TwoWay}" MinWidth="880" HorizontalAlignment="Left" />
-                <TextBlock Style="{StaticResource DimText}" Text="{Binding DiagnosticsTabHintText}" Margin="0,6,0,12" TextWrapping="Wrap" Opacity="0.85" />
+                <controls:SegmentedControl ItemsSource="{Binding DiagnosticsTabs}" SelectedIndex="{Binding SelectedSubTab, Mode=TwoWay}" MinWidth="620" />
+                <TextBlock Style="{StaticResource DimText}" Text="{Binding DiagnosticsTabHintText}" Margin="0,6,0,12" FontSize="11" TextWrapping="Wrap" Opacity="0.85" />
             </StackPanel>
 
             <!-- Содержимое активной вкладки — скроллится, табы остаются на месте -->
             <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly" Padding="0,0,4,0">
                 <StackPanel>
 
-                <!-- ==================== ВКЛАДКА 0: БЫСТРАЯ ПРОВЕРКА (САЙТЫ И СЕРВИСЫ) ==================== -->
+                <!-- ==================== ВКЛАДКА 0: ЭКСПРЕСС / МОНИТОРИНГ ==================== -->
                 <StackPanel Visibility="{Binding IsExpressTabSelected, Converter={StaticResource BoolToVis}}">
                     <Border Style="{StaticResource Card}">
                         <Grid>
@@ -51,12 +50,9 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,12,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРАЯ ПРОВЕРКА САЙТОВ И СЕРВИСОВ" />
-                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                            ToolTip="Проверяет ключевые сервисы (YouTube, Discord и др.) и выявляет источник проблемы: блокировка провайдера или недоступность сервера."
-                                            AutomationProperties.Name="Подсказка: БЫСТРАЯ ПРОВЕРКА САЙТОВ И СЕРВИСОВ" />
-                                </StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПРЕСС-ПРОВЕРКА РЕСУРСОВ" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="Проверяет ключевые сервисы (YouTube, Discord и др.) и выявляет источник проблемы: блокировка провайдера или недоступность сервера." TextWrapping="Wrap" />
                             </StackPanel>
                             <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
                                 <Button Style="{StaticResource PrimaryButton}" Content="Проверить сейчас"
@@ -69,7 +65,7 @@
                         </Grid>
                     </Border>
 
-                    <!-- Статус и прогресс быстрой проверки -->
+                    <!-- Статус и прогресс экспресс-проверки -->
                     <Border CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
                             Background="{Binding Monitoring.MessageKey, Converter={StaticResource SoftSeverityBrush}}"
                             Visibility="{Binding Monitoring.MessageVisible, Converter={StaticResource BoolToVis}}">
@@ -98,8 +94,8 @@
                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.DiagnosisText}" TextWrapping="Wrap" />
                     </Border>
 
-                    <!-- Список сайтов и сервисов быстрой проверки -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingList}">
+                    <!-- Список ресурсов экспресс-мониторинга -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -117,7 +113,7 @@
                                         <ColumnDefinition Width="*" />
                                     </Grid.ColumnDefinitions>
                                     <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource InfoBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
-                                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" TextWrapping="Wrap" Text="Проверка — когда сайт не открывается: «Быстрая проверка» — 10 сек без остановки обхода, «Сложные сайты и звонки» — анализ фильтра и голоса, результаты теперь справа от ресурса (иконка корзины остаётся)." />
+                                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Проверка — когда сайт не открывается: «Экспресс» — 10 сек без остановки обхода, «DPI 34 узла» — анализ фильтра, результаты теперь справа от ресурса (иконка корзины остаётся)." />
                                 </Grid>
                             </Border>
                             <ListBox Grid.Row="2" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Monitoring.Targets}"
@@ -139,13 +135,13 @@
                                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}" />
                                             </StackPanel>
                                             <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding LastStatusText}" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                <TextBlock Text="{Binding LastStatusText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
                                                            Foreground="{Binding LastStatusKey, Converter={StaticResource SeverityBrush}}"
-                                                           Visibility="{Binding LastStatusText, Converter={StaticResource StringToVis}}" ToolTip="{Binding LastDetails}" Style="{StaticResource DimText}" />
+                                                           Visibility="{Binding LastStatusText, Converter={StaticResource StringToVis}}" ToolTip="{Binding LastDetails}" />
                                                 <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
                                                         Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
-                                                        ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" AutomationProperties.Name="Убрать пользовательский ресурс из мониторинга" />
+                                                        ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" />
                                             </StackPanel>
                                         </Grid>
                                     </DataTemplate>
@@ -157,8 +153,8 @@
                     <!-- Управление ресурсами и последние результаты удалены 24.09 — дублируют верхние ОТСЛЕЖИВАЕМЫЕ РЕСУРСЫ, результаты теперь справа от ресурса -->
                 </StackPanel>
 
-                <!-- ==================== ВКЛАДКА 1: СЛОЖНЫЕ САЙТЫ И ЗВОНКИ — DPI (34 УЗЛА) ==================== -->
-                <StackPanel Visibility="{Binding IsComplexSitesTabSelected, Converter={StaticResource BoolToVis}}">
+                <!-- ==================== ВКЛАДКА 1: ПРОВЕРКА DPI (34 УЗЛА) ==================== -->
+                <StackPanel Visibility="{Binding IsDpiTabSelected, Converter={StaticResource BoolToVis}}">
                     <Border Style="{StaticResource Card}">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -166,12 +162,9 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,12,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource SectionText}" Text="СЛОЖНЫЕ САЙТЫ: ПРОВЕРКА DPI (34 УЗЛА)" />
-                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                            ToolTip="Проверка DNS, TCP, HTTP/1.1, TLS 1.2 и TLS 1.3 на 34 тестовых endpoint-ах для выявления типа фильтрации трафика."
-                                            AutomationProperties.Name="Подсказка: СЛОЖНЫЕ САЙТЫ: ПРОВЕРКА DPI (34 УЗЛА)" />
-                                </StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="СЕТЕВАЯ ПРОВЕРКА DPI (34 УЗЛА)" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="Проверка DNS, TCP, HTTP/1.1, TLS 1.2 и TLS 1.3 на 34 тестовых endpoint-ах для выявления типа фильтрации трафика." TextWrapping="Wrap" />
                             </StackPanel>
                             <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
                                 <Button Style="{StaticResource PrimaryButton}" Content="Запустить проверку DPI"
@@ -213,17 +206,17 @@
                     </Border>
 
                     <!-- Параметры хоста -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ПОЛЬЗОВАТЕЛЬСКИЙ ХОСТ (НЕОБЯЗАТЕЛЬНО)" />
                             <TextBox Style="{StaticResource InputBox}" Margin="0,6,0,0"
                                      Text="{Binding DpiCustomHost, UpdateSourceTrigger=PropertyChanged}"
-                                     ToolTip="Необязательно: один собственный HTTPS-хост для проверки вместо общего набора узлов" AutomationProperties.Name="Необязательно: один собственный HTTPS-хост для проверки вместо общего набора узлов" />
+                                     ToolTip="Необязательно: один собственный HTTPS-хост для проверки вместо общего набора узлов" />
                         </StackPanel>
                     </Border>
 
                     <!-- Признаки сети и прямое сравнение -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ПРИЗНАКИ СЕТИ И СРАВНЕНИЕ С ОБХОДОМ" />
                             <TextBlock Style="{StaticResource BodyText}" Text="{Binding DpiObservationText}" TextWrapping="Wrap" />
@@ -254,7 +247,7 @@
                     </Border>
 
                     <!-- Результаты по endpoint-ам -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПО ТЕСТОВЫМ УЗЛАМ (DPI-SUITE)" />
                             <ItemsControl ItemsSource="{Binding DpiResults}" Margin="0,8,0,0">
@@ -290,8 +283,8 @@
                     </Border>
                 </StackPanel>
 
-                <!-- ==================== ВКЛАДКА 1 (продолжение): ГОЛОС DISCORD (RTC / WebRTC) ==================== -->
-                <StackPanel Visibility="{Binding IsComplexSitesTabSelected, Converter={StaticResource BoolToVis}}">
+                <!-- ==================== ВКЛАДКА: DISCORD VOICE (RTC / WebRTC) ==================== -->
+                <StackPanel Visibility="{Binding IsVoiceRtcTabSelected, Converter={StaticResource BoolToVis}}">
                     <Border Style="{StaticResource Card}">
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -299,15 +292,12 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,12,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА ГОЛОСА DISCORD (RTC / WEBRTC / UDP)" />
-                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                            ToolTip="Диагностика голосовых шлюзов Discord (Роттердам, Франкфурт, Стокгольм и др.), измерение RTT, проверка прохождения UDP-пакетов сквозь ТСПУ и устранение зависания «Подключение к RTC»."
-                                            AutomationProperties.Name="Подсказка: ПРОВЕРКА ГОЛОСА DISCORD (RTC / WEBRTC / UDP)" />
-                                </StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="ГОЛОСОВОЙ СТЕК DISCORD (RTC / WebRTC / UDP)" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="Диагностика голосовых шлюзов Discord (Роттердам, Франкфурт, Стокгольм и др.), измерение RTT, проверка прохождения UDP-пакетов сквозь ТСПУ и устранение зависания «Подключение к RTC»." TextWrapping="Wrap" />
                             </StackPanel>
                             <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                <Button Style="{StaticResource PrimaryButton}" Content="Проверить голос Discord"
+                                <Button Style="{StaticResource PrimaryButton}" Content="Проверить Voice RTC"
                                         Command="{Binding RunVoiceRtcAuditCommand}"
                                         ToolTip="Отправить STUN/UDP тестовые пакеты на все голосовые серверы Discord" />
                                 <Button Style="{StaticResource SecondaryButton}" Content="Применить фикс для Discord Voice" Margin="8,0,0,0"
@@ -318,7 +308,7 @@
                     </Border>
 
                     <!-- Панель: Очистка кэша Discord и сетевого стека в 1 клик -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
                         <StackPanel>
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -326,7 +316,7 @@
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Style="{StaticResource SectionText}" Text="ОЧИСТКА КЭША DISCORD И СЕТЕВОГО СТЕКА (1 КЛИК)" />
+                                    <TextBlock Style="{StaticResource SectionText}" Text="⚡ ОЧИСТКА КЭША DISCORD И СЕТЕВОГО СТЕКА (1 КЛИК)" />
                                     <TextBlock Style="{StaticResource DimText}" Text="{Binding DiscordCacheStatusText}" Margin="0,2,0,0" />
                                 </StackPanel>
                                 <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="Обновить размер"
@@ -338,13 +328,13 @@
                                        Text="Закрывает процессы Discord, удаляет медиа/RTC-кэш, шейдеры GPU, сбрасывает DNS-кэш, ARP-таблицу шлюзов и включает TCP Timestamps для WinDivert. Устраняет зависания «Подключение к RTC» и «Маршрут не найден»." />
 
                             <WrapPanel Margin="0,12,0,0">
-                                <Button Style="{StaticResource PrimaryButton}" Content="Очистить кэш и сбросить сеть (1 клик)"
+                                <Button Style="{StaticResource PrimaryButton}" Content="⚡ Очистить кэш и сбросить сеть (1 клик)"
                                         Command="{Binding CleanDiscordAndNetworkCommand}"
                                         ToolTip="Закрыть Discord, очистить кэш всех редакций, сбросить DNS/ARP и включить TCP Timestamps" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Очистить и перезапустить Discord" Margin="8,0,0,0"
+                                <Button Style="{StaticResource SecondaryButton}" Content="🔄 Очистить и перезапустить Discord" Margin="8,0,0,0"
                                         Command="{Binding CleanAndRestartDiscordCommand}"
                                         ToolTip="Выполнить очистку кэша и сети, а затем автоматически запустить Discord" />
-                                <Button Style="{StaticResource DangerButton}" Content="Глубокий сброс сетевого стека" Margin="8,0,0,0" Visibility="{Binding ExpertMode, Converter={StaticResource BoolToVis}}"
+                                <Button Style="{StaticResource DangerButton}" Content="🧹 Глубокий сброс сетевого стека" Margin="8,0,0,0"
                                         Command="{Binding DeepNetworkResetCommand}"
                                         ToolTip="Полный сброс Winsock, TCP/IP стека, WinHTTP прокси, DNS и ARP (потребуется перезагрузка)" />
                             </WrapPanel>
@@ -385,7 +375,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Статус и вердикт проверки голоса Discord -->
+                    <!-- Статус и вердикт Voice RTC -->
                     <Border CornerRadius="10" Padding="14,12" Margin="0,12,0,0"
                             Background="{Binding VoiceRtcDiagnosisKey, Converter={StaticResource SoftSeverityBrush}}">
                         <Grid>
@@ -412,7 +402,7 @@
                     </Border>
 
                     <!-- Список проверенных голосовых шлюзов -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПРОВЕРКИ ГОЛОСОВЫХ ШЛЮЗОВ (UDP / STUN)" />
                             
@@ -432,8 +422,8 @@
                                                 </StackPanel>
                                                 <Border Grid.Column="1" CornerRadius="6" Padding="8,4" VerticalAlignment="Center"
                                                         Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}">
-                                                    <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold"
-                                                               Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" Style="{StaticResource DimText}" />
+                                                    <TextBlock Text="{Binding StatusText}" FontWeight="SemiBold" FontSize="11"
+                                                               Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" />
                                                 </Border>
                                             </Grid>
                                         </Border>
@@ -444,7 +434,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- ==================== ВКЛАДКА 3: ГЛУБОКАЯ ПРОВЕРКА (МАТРИЦА) ==================== -->
+                <!-- ==================== ВКЛАДКА 2: DEEP CHECK (МАТРИЦА) ==================== -->
                 <StackPanel Visibility="{Binding IsDeepCheckTabSelected, Converter={StaticResource BoolToVis}}">
                     <Border Style="{StaticResource Card}">
                         <Grid>
@@ -453,15 +443,12 @@
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
                             <StackPanel Margin="0,0,12,0">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource SectionText}" Text="ГЛУБОКАЯ ПРОВЕРКА · ПОДБОР СПОСОБА ОБХОДА" />
-                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                            ToolTip="Глубокое тестирование стратегий по матрице тестовых целей и выявление наиболее устойчивой комбинации параметров."
-                                            AutomationProperties.Name="Подсказка: ГЛУБОКАЯ ПРОВЕРКА · ПОДБОР СПОСОБА ОБХОДА" />
-                                </StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="DEEP CHECK · ПОДБОР СТРАТЕГИИ" />
+                                <TextBlock Style="{StaticResource MutedText}"
+                                           Text="Глубокое тестирование стратегий по матрице тестовых целей и выявление наиболее устойчивой комбинации параметров." TextWrapping="Wrap" />
                             </StackPanel>
                             <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                <Button Style="{StaticResource PrimaryButton}" Content="Запустить глубокую проверку"
+                                <Button Style="{StaticResource PrimaryButton}" Content="Запустить Deep Check"
                                         Command="{Binding DeepCheck.RunCommand}"
                                         ToolTip="Проверить условия, сеть и стратегии по матрице" />
                                 <Button Style="{StaticResource DangerButton}" Content="Остановить" Margin="8,0,0,0"
@@ -497,7 +484,7 @@
                     </Border>
 
                     <!-- Рекомендации и найденная стратегия -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0"
                             Visibility="{Binding DeepCheck.HasRecommendations, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="РЕКОМЕНДОВАННАЯ СТРАТЕГИЯ" />
@@ -517,7 +504,7 @@
                     </Border>
 
                     <!-- Метрики измерений -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0"
                             Visibility="{Binding DeepCheck.HasMetrics, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="МЕТРИКИ ИЗМЕРЕНИЙ" />
@@ -544,7 +531,7 @@
                     </Border>
 
                     <!-- Результаты условий и ограничений -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}"
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0"
                             Visibility="{Binding DeepCheck.HasFindings, Converter={StaticResource BoolToVis}}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ ПРОВЕРКИ СЕТИ" />
@@ -581,7 +568,7 @@
                     </Border>
                 </StackPanel>
 
-                <!-- ==================== ВКЛАДКА 2: СИСТЕМА (ПРОВЕРКА И ПОЧИНКА) ==================== -->
+                <!-- ==================== ВКЛАДКА 3: АУДИТ СИСТЕМЫ ==================== -->
                 <StackPanel Visibility="{Binding IsSystemTabSelected, Converter={StaticResource BoolToVis}}">
                     <Border Style="{StaticResource Card}">
                         <Grid>
@@ -594,20 +581,17 @@
                                 <TextBlock Text="&#xE81B;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                <StackPanel Orientation="Horizontal">
-                                    <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА СИСТЕМЫ" />
-                                    <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                            ToolTip="Права, файлы движка, службы, драйвер WinDivert и сеть — одним кликом."
-                                            AutomationProperties.Name="Подсказка: ПРОВЕРКА СИСТЕМЫ" />
-                                </StackPanel>
+                                <TextBlock Style="{StaticResource SectionText}" Text="АУДИТ СИСТЕМЫ И ПРАВ" />
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11"
+                                           Text="Права, файлы движка, службы, драйвер WinDivert и сеть — одним кликом." TextWrapping="Wrap" />
                             </StackPanel>
-                            <Button Grid.Column="2" Style="{StaticResource CompactButton}" Content="Запустить проверку системы" MinHeight="34"
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Запустить аудит" Padding="14,7" MinHeight="34"
                                     Command="{Binding RunCommand}" VerticalAlignment="Center"
                                     ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
                         </Grid>
                     </Border>
 
-                    <!-- Статус проверки системы -->
+                    <!-- Статус аудита системы -->
                     <Border CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
                             Background="{Binding SummaryKey, Converter={StaticResource SoftSeverityBrush}}">
                         <StackPanel>
@@ -639,8 +623,8 @@
                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message}" />
                     </Border>
 
-                    <!-- Список проверок системы -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}" Padding="{DynamicResource CardPaddingList}">
+                    <!-- Список проверок аудита -->
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
                         <ListBox Style="{StaticResource PlainListBox}" ItemsSource="{Binding Items}"
                                  ScrollViewer.VerticalScrollBarVisibility="Auto" Background="Transparent">
                             <ListBox.ItemTemplate>
@@ -652,9 +636,9 @@
                                         </Grid.ColumnDefinitions>
                                         <Border Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"
                                                 Background="{Binding SeverityKey, Converter={StaticResource SoftSeverityBrush}}">
-                                            <TextBlock Text="{Binding Icon}" FontWeight="Bold"
+                                            <TextBlock Text="{Binding Icon}" FontSize="12" FontWeight="Bold"
                                                        Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}"
-                                                       HorizontalAlignment="Center" VerticalAlignment="Center" Style="{StaticResource BodyText}" />
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
                                         </Border>
                                         <StackPanel Grid.Column="1" Margin="12,0,0,0">
                                             <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontWeight="SemiBold" />
@@ -676,7 +660,7 @@
                     </Border>
 
                     <!-- Исправления в один клик -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="ИСПРАВЛЕНИЯ В ОДИН КЛИК" />
                             <Button Style="{StaticResource SecondaryButton}" Content="Восстановить обход"
@@ -688,17 +672,17 @@
                             <Button Style="{StaticResource SecondaryButton}" Content="Включить TCP timestamps" Margin="0,8,0,0"
                                     Command="{Binding FixTimestampsCommand}"
                                     ToolTip="Выполнить netsh interface tcp set global timestamps=enabled" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="Очистить кэш Discord и сбросить сеть (1 клик)" Margin="0,8,0,0"
+                            <Button Style="{StaticResource SecondaryButton}" Content="⚡ Очистить кэш Discord и сбросить сеть (1 клик)" Margin="0,8,0,0"
                                     Command="{Binding CleanDiscordAndNetworkCommand}"
                                     ToolTip="Закрыть Discord, удалить кэш всех версий, сбросить DNS/ARP и включить TCP Timestamps" />
-                            <Button Style="{StaticResource DangerButton}" Content="Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
+                            <Button Style="{StaticResource DangerButton}" Content="🧹 Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
                                     Command="{Binding ResetNetworkCommand}"
                                     ToolTip="netsh winsock reset, netsh int ip reset all, netsh winhttp reset proxy, ipconfig /flushdns" />
                         </StackPanel>
                     </Border>
 
                     <!-- Быстрый доступ к системным инструментам -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
                         <StackPanel>
                             <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМНЫЕ ФАЙЛЫ И ПАРАМЕТРЫ" />
                             <Button Style="{StaticResource GhostButton}" Content="Открыть hosts в блокноте"
@@ -714,16 +698,13 @@
                     </Border>
                 </StackPanel>
 
-                <!-- ==================== ВКЛАДКА 4: ИСТОРИЯ И ОТЧЁТЫ ==================== -->
+                <!-- ==================== ВКЛАДКА 4: СВОДНЫЕ РЕЗУЛЬТАТЫ ==================== -->
                 <StackPanel Visibility="{Binding IsResultsTabSelected, Converter={StaticResource BoolToVis}}">
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource SectionText}" Text="СВОДНЫЙ ОТЧЁТ И СОХРАНЁННЫЕ ДАННЫЕ" />
-                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                        ToolTip="Единый обзор текущего состояния системы, истории проверок и экспорт диагностических пакетов."
-                                        AutomationProperties.Name="Подсказка: СВОДНЫЙ ОТЧЁТ И СОХРАНЁННЫЕ ДАННЫЕ" />
-                            </StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="СВОДНЫЙ ОТЧЁТ И СОХРАНЁННЫЕ ДАННЫЕ" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Text="Единый обзор текущего состояния системы, истории проверок и экспорт диагностических пакетов." TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
 
@@ -734,12 +715,12 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Быстрая проверка: статус -->
-                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="{DynamicResource CardGap}">
+                        <!-- Экспресс / Мониторинг статус -->
+                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="0,0,6,0">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="БЫСТРАЯ ПРОВЕРКА" />
+                                <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПРЕСС-ПРОВЕРКА" />
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.LastCheckText}" FontWeight="SemiBold" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к быстрой проверке" Margin="0,10,0,0"
+                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к мониторингу" Margin="0,10,0,0"
                                         Command="{Binding SelectExpressTabCommand}" />
                             </StackPanel>
                         </Border>
@@ -762,38 +743,35 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- Глубокая проверка: статус -->
-                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="{DynamicResource CardGap}">
+                        <!-- Deep Check статус -->
+                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="0,0,6,0">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="ГЛУБОКАЯ ПРОВЕРКА" />
+                                <TextBlock Style="{StaticResource SectionText}" Text="DEEP CHECK" />
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding DeepCheck.LastCheckText}" FontWeight="SemiBold" />
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding DeepCheck.Summary}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к глубокой проверке" Margin="0,10,0,0"
+                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к Deep Check" Margin="0,10,0,0"
                                         Command="{Binding SelectDeepCheckTabCommand}" />
                             </StackPanel>
                         </Border>
 
-                        <!-- Система: статус -->
+                        <!-- Аудит системы статус -->
                         <Border Style="{StaticResource Card}" Grid.Column="1" Margin="6,0,0,0">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОВЕРКА СИСТЕМЫ" />
+                                <TextBlock Style="{StaticResource SectionText}" Text="АУДИТ СИСТЕМЫ" />
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding LastSavedText}" FontWeight="SemiBold" />
                                 <TextBlock Style="{StaticResource DimText}" Text="{Binding Summary}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к проверке системы" Margin="0,10,0,0"
+                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к аудиту" Margin="0,10,0,0"
                                         Command="{Binding SelectSystemTabCommand}" />
                             </StackPanel>
                         </Border>
                     </Grid>
 
                     <!-- Экспорт пакетов -->
-                    <Border Style="{StaticResource Card}" Margin="{DynamicResource CardGap}">
+                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
                         <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПОРТ ДИАГНОСТИЧЕСКИХ ДАННЫХ" />
-                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                        ToolTip="Все диагностические отчёты формируются локально без сетевых запросов и не содержат персональных данных или паролей."
-                                        AutomationProperties.Name="Подсказка: ЭКСПОРТ ДИАГНОСТИЧЕСКИХ ДАННЫХ" />
-                            </StackPanel>
+                            <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПОРТ ДИАГНОСТИЧЕСКИХ ДАННЫХ" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Text="Все диагностические отчёты формируются локально без сетевых запросов и не содержат персональных данных или паролей." TextWrapping="Wrap" />
                             <WrapPanel Margin="0,12,0,0">
                                 <Button Style="{StaticResource PrimaryButton}" Content="Экспортировать diagnostics.json"
                                         Command="{Binding ExportReportCommand}"
@@ -804,24 +782,6 @@
                             </WrapPanel>
                         </StackPanel>
                     </Border>
-                </StackPanel>
-
-                <!-- ==================== ВКЛАДКА 5: ЖУРНАЛ ==================== -->
-                <!-- Журнал переехал в «Проверки» (docs/IA_REDESIGN.md §3.3): тот же LogsViewModel, что и на отдельной странице. -->
-                <StackPanel Visibility="{Binding IsLogsTabSelected, Converter={StaticResource BoolToVis}}">
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <StackPanel Orientation="Horizontal">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ЖУРНАЛ ПРИЛОЖЕНИЯ И СЛУЖБЫ" />
-                                <Button Style="{StaticResource HelpHint}" VerticalAlignment="Center"
-                                        ToolTip="Что происходило: запуски обхода, проверки, обновления и ошибки. Фильтры — по уровню и источнику, кнопки «Сохранить», «Копировать» и «Очистить» — над списком."
-                                        AutomationProperties.Name="Подсказка: ЖУРНАЛ ПРИЛОЖЕНИЯ И СЛУЖБЫ" />
-                            </StackPanel>
-                        </StackPanel>
-                    </Border>
-                    <!-- Отрицательный отступ гасит внутренние поля страницы журнала, чтобы карточки совпадали по краям. -->
-                    <views:LogsPage DataContext="{Binding Logs}" Height="640"
-                                    Margin="-24,-20,-20,-26" />
                 </StackPanel>
 
                 </StackPanel>

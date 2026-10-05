@@ -51,10 +51,6 @@ namespace ZapretGui.ViewModels
         public HomeViewModel(MainViewModel main)
         {
             _main = main;
-            _main.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
-            };
             MonitorTargetStore.EnsureDefaults(main.Settings);
             SettingsStore.Save(main.Settings);
             foreach (var target in main.Settings.MonitorTargets.Where(t => !t.IsGame))
@@ -74,18 +70,6 @@ namespace ZapretGui.ViewModels
             EditConnectionTargetCommand = new RelayCommand(EditConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             RemoveConnectionTargetCommand = new RelayCommand(RemoveConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             CheckUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
-            // Переходы вместо блоков на главном экране (v1.18.0): проверки, подбор и журнал — в своих разделах
-            OpenChecksCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
-            OpenBypassCommand = new RelayCommand(() =>
-            {
-                _main.BypassCenter.SelectedSubTab = 1; // «Подбор»
-                _main.Navigate("bypass-center");
-            });
-            OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
-            // Рабочий стол настройщика (v1.29.3) — виден только в «Эксперте» (кнопка на странице).
-            OpenWorkbenchCommand = new RelayCommand(() => _main.Navigate("configuration"));
-            // «Требует внимания» → сценарии «Помощи» (этап 6): объяснение без технических терминов
-            OpenHelpCommand = new RelayCommand(() => _main.Navigate("help"));
             OpenDiagnosticsCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
             OpenFirstLaunchCommand = new RelayCommand(() => _main.Navigate("first-run"));
             OpenStrategiesCommand = new RelayCommand(() => _main.Navigate("strategies"));
@@ -99,7 +83,7 @@ namespace ZapretGui.ViewModels
             OpenDiscordVoiceFixCommand = new RelayCommand(() =>
             {
                 _main.Navigate("diagnostics");
-                _main.Diagnostics.SelectedSubTab = 1; // «Сложные сайты и звонки»: голос Discord
+                _main.Diagnostics.SelectedSubTab = 5;
             });
             CleanDiscordAndNetworkCommand = new AsyncRelayCommand(async () =>
             {
@@ -116,8 +100,6 @@ namespace ZapretGui.ViewModels
             CancelFullCheckCommand = new RelayCommand(CancelFullCheck, () => IsFullCheckRunning);
             ClearFullCheckResultCommand = new RelayCommand(ClearFullCheckResult, () => FullCheckResultVisible && !IsFullCheckRunning);
             ApplyRecommendedStrategyCommand = new AsyncRelayCommand(ApplyRecommendedStrategyAsync, () => HasRecommendedStrategy && !IsBusy);
-            // Один клик в «Простом» (v1.29.1): проверка и сразу применение лучшего способа обхода
-            RunOneClickFixCommand = new AsyncRelayCommand(RunOneClickFixAsync, () => !IsFullCheckRunning && !IsBusy && HasStrategy);
             RefreshGamingStatus();
         }
 
@@ -391,7 +373,6 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsQuickSetupIdle));
                     Raise(nameof(HasRecommendedStrategy));
                     (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (RunOneClickFixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (CancelFullCheckCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (ClearFullCheckResultCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (ApplyRecommendedStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
@@ -423,7 +404,6 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsQuickSetupIdle));
                     (ClearFullCheckResultCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (RunOneClickFixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -572,13 +552,6 @@ namespace ZapretGui.ViewModels
         public ICommand RemoveServiceCommand { get; }
         public ICommand ToggleServiceCommand { get; }
         public ICommand ReapplyServiceCommand { get; }
-        public ICommand OpenChecksCommand { get; }
-
-        /// <summary>Переход на рабочий стол настройщика: конфигурация целиком, история и откат.</summary>
-        public ICommand OpenWorkbenchCommand { get; }
-        public ICommand OpenBypassCommand { get; }
-        public ICommand OpenLogsCommand { get; }
-        public ICommand OpenHelpCommand { get; }
         public ICommand TestConnectionCommand { get; }
         public ICommand AddConnectionTargetCommand { get; }
         public ICommand EditConnectionTargetCommand { get; }
@@ -594,9 +567,6 @@ namespace ZapretGui.ViewModels
         public ICommand CancelFullCheckCommand { get; }
         public ICommand ClearFullCheckResultCommand { get; }
         public ICommand ApplyRecommendedStrategyCommand { get; }
-
-        /// <summary>«Сделать, чтобы работало» — главная (и единственная) кнопка «Простого» режима (v1.29.1).</summary>
-        public ICommand RunOneClickFixCommand { get; }
 
         // ------------------------------------------------------------------ логика
 
@@ -683,7 +653,6 @@ namespace ZapretGui.ViewModels
             (ReapplyServiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (TestConnectionCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (RunOneClickFixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (CancelFullCheckCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ApplyRecommendedStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
         }
@@ -1145,12 +1114,10 @@ namespace ZapretGui.ViewModels
             _recommendedStrategy = null;
             Raise(nameof(HasRecommendedStrategy));
             Raise(nameof(RecommendedStrategyName));
-            Raise(nameof(ShowRecommendedStrategyRow));
             Raise(nameof(FullCheckResultVisible));
             Raise(nameof(IsQuickSetupIdle));
             (ClearFullCheckResultCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (RunFullCheckCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-            (RunOneClickFixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             (ApplyRecommendedStrategyCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
             AppLog.Info("Блок быстрой настройки сброшен — заглушка проверки убрана");
         }
@@ -1189,39 +1156,6 @@ namespace ZapretGui.ViewModels
             }
         }
 
-        /// <summary>«Сделать, чтобы работало» (v1.29.1): в «Простом» — одна кнопка. Проверяет систему и сеть,
-        /// подбирает способ обхода и сразу применяет его. Ничего технического не спрашивает и не показывает.</summary>
-        public async Task RunOneClickFixAsync()
-        {
-            if (IsFullCheckRunning || IsBusy) return;
-            if (!HasStrategy)
-            {
-                ShowError("Стратегии не найдены — скачайте движок на странице «Обновления»");
-                return;
-            }
-
-            AppLog.Info("Один клик: «Сделать, чтобы работало»");
-            await RunFullCheckAsync();
-
-            var strat = _recommendedStrategy;
-            if (strat == null)
-            {
-                ShowError("Подобрать рабочий способ не получилось. Посмотрите «Проверки» — там видно, что именно не так.");
-                return;
-            }
-
-            await ApplyRecommendedStrategyAsync();
-
-            var status = Bypass.GetStatus();
-            if (status.IsRunning)
-                ShowSuccess($"Готово: обход включён и работает. Если что-то откроется не сразу — нажмите «Проверить снова».");
-            else if (!Shell.IsAdmin())
-                ShowError("Способ обхода подобран и выбран, но для включения нужны права администратора — «Перезапустить от администратора».");
-            else
-                ShowError("Обход выбран, но запустить его не удалось. Нажмите «Сделать, чтобы работало» ещё раз.");
-            RefreshStatus();
-        }
-
         public async Task RunFullCheckAsync()
         {
             if (IsFullCheckRunning) return;
@@ -1241,7 +1175,6 @@ namespace ZapretGui.ViewModels
             _recommendedStrategy = null;
             Raise(nameof(HasRecommendedStrategy));
             Raise(nameof(RecommendedStrategyName));
-            Raise(nameof(ShowRecommendedStrategyRow));
             Raise(nameof(FullCheckResultVisible));
             FullCheckStatusText = "Шаг 1/4: проверяю систему и движок…";
             FullCheckProgressValue = 0;
@@ -1259,7 +1192,7 @@ namespace ZapretGui.ViewModels
                     await _main.Diagnostics.RunAsync();
                     var diagSummary = _main.Diagnostics.Summary ?? "";
                     var diagKey = _main.Diagnostics.SummaryKey ?? "Info";
-                    if (diagKey == "Danger") FullCheckAdviceText = "⚠️ Найдены критичные системные проблемы — откройте «Проверки → Аудит системы» и нажмите «Исправить». ";
+                    if (diagKey == "Danger") FullCheckAdviceText = "⚠️ Найдены критичные системные проблемы — откройте «Проверка → Аудит системы» и нажмите «Исправить». ";
                     else if (diagKey == "Warning") FullCheckAdviceText = "⚠️ Есть предупреждения в аудите системы — рекомендуем исправить перед подбором. ";
                     else FullCheckAdviceText = "✅ Система в порядке. ";
                 }
@@ -1401,26 +1334,6 @@ namespace ZapretGui.ViewModels
         {
             MessageKey = key;
             Message = message;
-        }
-
-        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
-        public bool ExpertMode => _main.ExpertMode;
-        public bool SimpleMode => _main.SimpleMode;
-
-        /// <summary>Подзаголовок карточки быстрой настройки — в «Простом» без технических подробностей.</summary>
-        public string QuickSetupHintText => SimpleMode
-            ? "Нажмите одну кнопку: проверю систему и сеть, подберу рабочий способ и включу обход."
-            : "4 шага за 1–2 минуты: система → сайты → 22 стратегии → подсказка.";
-
-        /// <summary>Рекомендация как техническая сущность показывается только в «Эксперте» (v1.29.1).</summary>
-        public bool ShowRecommendedStrategyRow => HasRecommendedStrategy && !SimpleMode;
-
-        private void OnExpertModeChanged()
-        {
-            Raise(nameof(SimpleMode));
-            Raise(nameof(QuickSetupHintText));
-            Raise(nameof(ShowRecommendedStrategyRow));
-            Raise(nameof(ExpertMode));
         }
     }
 }

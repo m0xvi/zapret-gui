@@ -57,10 +57,6 @@ namespace ZapretGui.ViewModels
         public UserListsViewModel(MainViewModel main)
         {
             _main = main;
-            _main.PropertyChanged += (_, e) =>
-            {
-                if (e.PropertyName == nameof(MainViewModel.ExpertMode)) OnExpertModeChanged();
-            };
             SubTabs = new[] { "Редактор списков", "Безопасный DNS (DoH)", "Режимы фильтрации" };
             DnsProfiles = DnsManagementService.PredefinedProfiles;
             _selectedDnsProfile = DnsProfiles.FirstOrDefault() ?? DnsProfiles[0];
@@ -1284,14 +1280,6 @@ namespace ZapretGui.ViewModels
             (CancelChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ImportListCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (StartInlineEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
-        }
-
-        /// <summary>Экспертный режим интерфейса (этап 5): технические блоки видны только в нём.</summary>
-        public bool ExpertMode => _main.ExpertMode;
-
-        private void OnExpertModeChanged()
-        {
-            Raise(nameof(ExpertMode));
         }
     }
 }
