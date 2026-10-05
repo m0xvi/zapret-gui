@@ -83,6 +83,13 @@ namespace ZapretGui.Views
             _vm.WatchdogNotificationRequested += text => Dispatcher.Invoke(() =>
                 _tray?.ShowBalloon("Zapret", text));
 
+            // 1.32.1: не включаем принудительно если пользователь вручную выключил (фикс «сам включается»)
+            if (_vm.Settings.BypassManuallyStopped)
+            {
+                AppLog.Info("[Startup] Пропускаю автозапуск — пользователь вручную выключил (BypassManuallyStopped)");
+            }
+            else
+            {
             // 1.17.24: автозапуск бесшовно без окон, корректно для службы (проблема «установлена, но остановлена»)
             var shouldAutoStartBypass = _vm.Settings.FirstLaunchWizardCompleted &&
                 !_vm.Settings.SafeMode &&
@@ -164,6 +171,7 @@ namespace ZapretGui.Views
                 }));
             }
 
+            } // end BypassManuallyStopped guard
             // Проверка конфликта со старым запретом — с задержкой, чтобы сначала
             // отработали автоустановка движка и автозапуск обхода
             _ = System.Threading.Tasks.Task.Run(async () =>
@@ -195,11 +203,13 @@ namespace ZapretGui.Views
                     var status = _vm.Bypass.GetStatus();
                     if (status.IsRunning)
                     {
+                        _vm.Settings.BypassManuallyStopped = true; SettingsStore.Save(_vm.Settings); _vm.Watchdog.NotifyManualStop();
                         var result = await _vm.Bypass.StopAsync();
                         _tray?.ShowBalloon("Zapret GUI", result.Message);
                     }
                     else
                     {
+                        _vm.Settings.BypassManuallyStopped = false; SettingsStore.Save(_vm.Settings); _vm.Watchdog.NotifyManualStart();
                         var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
                         if (strategy == null)
                         {

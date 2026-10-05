@@ -257,6 +257,7 @@ namespace ZapretGui.Core
             if (!testMode)
             {
                 _settings.SelectedStrategy = strategy.Name;
+                _settings.BypassManuallyStopped = false;
                 SettingsStore.Save(_settings);
 
                 // Мягкая проверка обновлений — как это делает general.bat
@@ -972,6 +973,7 @@ namespace ZapretGui.Core
                 return OperationResult.Fail("Служба создана, но не запустилась: " + start.All);
 
             _settings.SelectedStrategy = strategy.Name;
+            _settings.BypassManuallyStopped = false;
             SettingsStore.Save(_settings);
             return OperationResult.Success($"Служба zapret установлена со стратегией «{strategy.Name}»");
         }

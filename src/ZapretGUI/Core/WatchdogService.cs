@@ -55,9 +55,26 @@ namespace ZapretGui.Core
             _timer.Change(Timeout.Infinite, Timeout.Infinite);
         }
 
+        /// <summary>Пользователь вручную выключил — не трогаем (фикс v1.32.1: «сам включается»).</summary>
+        public void NotifyManualStop()
+        {
+            AppLog.Info("[Watchdog] Ручное выключение — подавляю автозапуск до ручного включения");
+        }
+        public void NotifyManualStart()
+        {
+            _recentCrashCount = 0;
+            _lastCrashTime = DateTime.MinValue;
+            AppLog.Info("[Watchdog] Ручное включение — сбрасываю подавление");
+        }
+
         private async void OnTimerTick(object? state)
         {
             if (!IsRunning || _isRecovering || !_settings.WatchdogEnabled || _settings.SafeMode) return;
+            if (_settings.BypassManuallyStopped)
+            {
+                // Пользователь выключил — не восстанавливаем принудительно
+                return;
+            }
 
             try
             {
@@ -121,6 +138,7 @@ namespace ZapretGui.Core
         private async Task HandleCrashAsync(string strategyName, bool isService)
         {
             if (_isRecovering || !_settings.WatchdogAutoRestart) return;
+            if (_settings.BypassManuallyStopped) return;
 
             _isRecovering = true;
             try

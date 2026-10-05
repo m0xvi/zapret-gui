@@ -827,6 +827,7 @@ namespace ZapretGui.ViewModels
 
             // Авто-запуск без вопроса — пользователь просил бесшовно без окон (1.17.24)
 
+            Settings.BypassManuallyStopped = false; SettingsStore.Save(Settings); _main.Watchdog.NotifyManualStart();
             IsBusy = true;
             ShowInfo("Запускаю обход…");
             try
@@ -862,6 +863,7 @@ namespace ZapretGui.ViewModels
             var confirmed = !Settings.ConfirmOnStop || Confirm("Остановить обход?", "Трафик перестанет обрабатываться, доступ к части сайтов может пропасть.");
             if (!confirmed) return;
 
+            Settings.BypassManuallyStopped = true; SettingsStore.Save(Settings); _main.Watchdog.NotifyManualStop();
             IsBusy = true;
             ShowInfo("Останавливаю обход…");
             try
@@ -906,6 +908,7 @@ namespace ZapretGui.ViewModels
 
             // Установка службы без подтверждения — бесшовно (1.17.24)
 
+            Settings.BypassManuallyStopped = false; SettingsStore.Save(Settings); _main.Watchdog.NotifyManualStart();
             IsBusy = true;
             ShowInfo("Устанавливаю службу zapret…");
             try
@@ -933,6 +936,7 @@ namespace ZapretGui.ViewModels
 
             // Переустановка службы без вопроса — бесшовно (1.17.24)
 
+            Settings.BypassManuallyStopped = false; SettingsStore.Save(Settings); _main.Watchdog.NotifyManualStart();
             IsBusy = true;
             ShowInfo("Переустанавливаю службу zapret…");
             try
@@ -952,6 +956,7 @@ namespace ZapretGui.ViewModels
         {
             // Удаление службы по явному клику тумблера — без лишнего вопроса, только по действию пользователя (1.17.24)
 
+            Settings.BypassManuallyStopped = true; SettingsStore.Save(Settings); _main.Watchdog.NotifyManualStop();
             IsBusy = true;
             ShowInfo("Удаляю службы zapret и WinDivert…");
             try

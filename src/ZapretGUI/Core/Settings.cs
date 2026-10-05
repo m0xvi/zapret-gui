@@ -278,6 +278,9 @@ namespace ZapretGui.Core
 
         /// <summary>При расписании: оставлять службу (true) или процесс.</summary>
         public bool ScheduleUseService { get; set; } = true;
+
+        /// <summary>Пользователь вручную выключил запрет — не включать принудительно (фикс v1.32.1: «несмотря на выключение сам включается»).</summary>
+        public bool BypassManuallyStopped { get; set; } = false;
     }
 
     /// <summary>Загрузка/сохранение settings.json.</summary>
