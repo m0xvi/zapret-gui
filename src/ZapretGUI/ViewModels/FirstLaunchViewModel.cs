@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
@@ -21,6 +22,7 @@ namespace ZapretGui.ViewModels
         private bool _trialCompleted;
         private bool _isSafeModeChoice = true;
         private string _selectedStrategyName = "";
+        private string _customHostInput = "";
         private ServiceHealthSnapshot? _serviceHealth;
         private string _status = "";
         private string _statusKey = "Info";
@@ -55,6 +57,10 @@ namespace ZapretGui.ViewModels
                 () => !IsBusy && IsAdmin && SelectedStrategy != null);
             SkipWizardCommand = new RelayCommand(() => FinishWizard(true));
             OpenUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
+            AddCustomHostCommand = new RelayCommand(AddCustomHost, () => !string.IsNullOrWhiteSpace(CustomHostInput) && !IsBusy);
+            SkipCustomHostsCommand = new RelayCommand(() => SetStatus("Добавление своих сайтов пропущено — вы всегда можете добавить их позже в «Обзор → Проверка соединения» или «Проверка → Экспресс»", "Info"));
+            RunWizardFullCheckCommand = new AsyncRelayCommand(RunWizardFullCheckAsync, () => !IsBusy && !IsEngineReady == false);
+
         }
 
         public AppSettings Settings => _main.Settings;
@@ -156,6 +162,29 @@ namespace ZapretGui.ViewModels
         public string SelectedStrategyText => string.IsNullOrWhiteSpace(SelectedStrategyName)
             ? "Стратегия не выбрана"
             : "Выбрана: " + SelectedStrategyName;
+
+        public string CustomHostInput
+        {
+            get => _customHostInput;
+            set
+            {
+                if (Set(ref _customHostInput, value ?? ""))
+                {
+                    (AddCustomHostCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string CustomHostsHint => "Введите адреса через запятую или с новой строки, например: youtube.com, mygame.example.com, https://custom.site";
+
+        public string CustomHostsStatus
+        {
+            get
+            {
+                var count = _main.Settings.MonitorTargets.Count(t => !t.IsBuiltIn);
+                return count == 0 ? "Свои сайты пока не добавлены — можно пропустить" : $"Добавлено своих сайтов: {count}";
+            }
+        }
 
         public bool IsSafeModeChoice
         {
@@ -289,6 +318,9 @@ namespace ZapretGui.ViewModels
         public ICommand InstallServiceCommand { get; }
         public ICommand SkipWizardCommand { get; }
         public ICommand OpenUpdatesCommand { get; }
+        public ICommand AddCustomHostCommand { get; }
+        public ICommand SkipCustomHostsCommand { get; }
+        public ICommand RunWizardFullCheckCommand { get; }
 
         private void StrategiesPageOnPropertyChanged(object? sender, PropertyChangedEventArgs e)
         {
@@ -636,6 +668,76 @@ namespace ZapretGui.ViewModels
             finally
             {
                 SetBusy(false);
+            }
+        }
+
+        private void AddCustomHost()
+        {
+            var raw = (CustomHostInput ?? "").Trim();
+            if (string.IsNullOrWhiteSpace(raw))
+            {
+                SetStatus("Введите хотя бы один адрес", "Warning");
+                return;
+            }
+            var tokens = raw.Split(new[] { ',', ';', '\n', '\r', ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+            var added = 0;
+            var errors = new List<string>();
+            foreach (var token in tokens)
+            {
+                var trimmed = token.Trim();
+                if (string.IsNullOrWhiteSpace(trimmed)) continue;
+                if (!MonitorTarget.TryCreate(trimmed, null, out var target, out var error) || target == null)
+                {
+                    errors.Add($"{trimmed}: {error}");
+                    continue;
+                }
+                if (_main.Settings.MonitorTargets.Any(t => t.Host.Equals(target.Host, StringComparison.OrdinalIgnoreCase)))
+                {
+                    errors.Add($"{trimmed}: уже в списке");
+                    continue;
+                }
+                _main.Settings.MonitorTargets.Add(target);
+                // также в Home, чтобы сразу видно в Обзоре
+                _main.Home.ConnectionTargets.Add(target);
+                added++;
+            }
+            SettingsStore.Save(_main.Settings);
+            _main.Monitoring.Reload();
+            Raise(nameof(CustomHostsStatus));
+            CustomHostInput = "";
+            if (added > 0) SetStatus($"Добавлено сайтов: {added}. " + (errors.Count > 0 ? "Ошибки: " + string.Join("; ", errors) : ""), errors.Count > 0 ? "Warning" : "Success");
+            else SetStatus("Ничего не добавлено: " + string.Join("; ", errors), "Warning");
+            RaiseCommands();
+        }
+
+        private async Task RunWizardFullCheckAsync()
+        {
+            // Если введён текст, но не нажали «Добавить» — попробуем добавить автоматически
+            if (!string.IsNullOrWhiteSpace(CustomHostInput))
+                AddCustomHost();
+
+            SetBusy(true, "Запускаю быструю настройку: аудит → проверка сайтов → подбор стратегии…");
+            try
+            {
+                await _main.Home.RunFullCheckAsync();
+                // после полного теста берём рекомендованную стратегию из Home
+                var rec = _main.Home.RecommendedStrategy;
+                if (rec != null)
+                {
+                    SelectedStrategyName = rec.Name;
+                    Settings.SelectedStrategy = rec.Name;
+                    SettingsStore.Save(Settings);
+                    SetStatus($"Мастер: подобрана стратегия «{rec.Name}» — можете переходить к пробному запуску или завершить", "Success");
+                }
+                else
+                {
+                    SetStatus("Мастер: проверка завершена, но подходящая стратегия не найдена — попробуйте ручной выбор", "Warning");
+                }
+            }
+            finally
+            {
+                SetBusy(false);
+                Raise(nameof(CustomHostsStatus));
             }
         }
 

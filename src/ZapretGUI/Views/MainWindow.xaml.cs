@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Linq;
 using ZapretGui.Core;
 using ZapretGui.ViewModels;
 
@@ -29,6 +30,7 @@ namespace ZapretGui.Views
             DataContext = _vm;
 
             _pages["home"] = new HomePage(_vm.Home);
+            _pages["bypass-center"] = new BypassCenterPage { DataContext = _vm.BypassCenter };
             _pages["first-run"] = new FirstLaunchPage(_vm.FirstLaunch);
             _pages["strategies"] = new StrategiesPage(_vm.StrategiesPage);
             _pages["monitoring"] = new MonitoringPage(_vm.Monitoring);
@@ -50,6 +52,21 @@ namespace ZapretGui.Views
                 _vm.Hotkeys.Register(this);
             };
 
+            // Esc закрывает глобальный оверлей (ошибка → Dismiss, иначе отмена/скрытие)
+            PreviewKeyDown += (_, e) =>
+            {
+                if (e.Key == System.Windows.Input.Key.Escape && _vm.GlobalOverlay.IsVisible)
+                {
+                    if (_vm.GlobalOverlay.HasError)
+                        _vm.GlobalOverlay.DismissCommand.Execute(null);
+                    else if (_vm.GlobalOverlay.CanCancel)
+                        _vm.GlobalOverlay.CancelCommand.Execute(null);
+                    else
+                        _vm.GlobalOverlay.Hide();
+                    e.Handled = true;
+                }
+            };
+
             _vm.RequestToggleOverlay += () => Dispatcher.Invoke(ToggleMiniOverlayWindow);
 
             _vm.Home.PropertyChanged += (_, e) =>
@@ -67,32 +84,95 @@ namespace ZapretGui.Views
             _vm.WatchdogNotificationRequested += text => Dispatcher.Invoke(() =>
                 _tray?.ShowBalloon("Zapret", text));
 
-            if (_vm.Settings.FirstLaunchWizardCompleted &&
+            // 1.32.1: не включаем принудительно если пользователь вручную выключил (фикс «сам включается»)
+            if (_vm.Settings.BypassManuallyStopped)
+            {
+                AppLog.Info("[Startup] Пропускаю автозапуск — пользователь вручную выключил (BypassManuallyStopped)");
+            }
+            else
+            {
+            // 1.17.24: автозапуск бесшовно без окон, корректно для службы (проблема «установлена, но остановлена»)
+            var shouldAutoStartBypass = _vm.Settings.FirstLaunchWizardCompleted &&
                 !_vm.Settings.SafeMode &&
                 _vm.Settings.AutoStartBypass &&
                 !string.IsNullOrEmpty(_vm.Settings.SelectedStrategy) &&
-                _vm.Strategies.Find(_vm.Settings.SelectedStrategy) != null)
+                _vm.Strategies.Find(_vm.Settings.SelectedStrategy) != null;
+            // Если служба уже установлена — убеждаемся что она Running даже если AutoStartBypass выключен (Windows должна была запустить, но могла упасть)
+            var serviceInstalledAtStartup = _vm.Bypass.IsServiceInstalled();
+            if ((shouldAutoStartBypass || serviceInstalledAtStartup) && !_vm.Settings.SafeMode)
             {
                 Dispatcher.BeginInvoke(new Action(async () =>
                 {
-                    var delay = Math.Clamp(_vm.Settings.StartupDelaySeconds, 0, 60);
-                    if (delay > 0)
+                    try
                     {
-                        AppLog.Info($"[Startup] Отложенный запуск обхода: ожидание {delay} сек для инициализации сети...");
-                        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(delay));
-                    }
+                        var delay = Math.Clamp(_vm.Settings.StartupDelaySeconds, 0, 60);
+                        if (delay > 0)
+                        {
+                            AppLog.Info($"[Startup] Отложенный запуск: ожидание {delay} сек...");
+                            await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(delay));
+                        }
 
-                    var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy);
-                    if (strategy == null) return;
-                    var result = await _vm.Bypass.StartAsync(strategy,
-                        EngineService.GetGameFilterMode(_vm.Settings.EnginePath), _vm.Settings.ShowWinwsConsole);
-                    _vm.Home.ShowInfo(result.Message);
-                    _vm.Home.RefreshStatus();
-                    UpdateTrayStatus();
-                    _tray?.ShowBalloon("Zapret GUI", result.Message);
+                        var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
+                        if (strategy == null)
+                        {
+                            AppLog.Warn("[Startup] Стратегия для автозапуска не найдена");
+                            return;
+                        }
+
+                        var status = _vm.Bypass.GetStatus();
+                        // Если служба установлена — стартуем именно службу, а не standalone процесс
+                        if (status.ServiceState != ServiceState.NotInstalled)
+                        {
+                            if (status.ServiceState != ServiceState.Running)
+                            {
+                                AppLog.Info($"[Startup] Служба в состоянии {status.ServiceState} — запускаю бесшовно");
+                                // Пробуем обычный старт, если не поможет — переустановка бесшовно
+                                var started = false;
+                                try
+                                {
+                                    var r = WinServices.Start(WinServices.ZapretService);
+                                    AppLog.Info($"[Startup] sc start result: ok={r.Ok}");
+                                    started = await Shell.WaitForAsync(() => WinServices.Query(WinServices.ZapretService) == ServiceState.Running, 12000);
+                                    if (!started)
+                                    {
+                                        AppLog.Warn("[Startup] sc start не помог — переустанавливаю службу с выбранной стратегией");
+                                        var res = await _vm.Bypass.InstallServiceAsync(strategy, EngineService.GetGameFilterMode(_vm.Settings.EnginePath));
+                                        AppLog.Info($"[Startup] InstallService: {res.Message}");
+                                        _vm.Home.ShowInfo(res.Message);
+                                    }
+                                    else
+                                    {
+                                        AppLog.Info("[Startup] Служба успешно запущена");
+                                        _vm.Home.ShowInfo("Служба zapret запущена");
+                                    }
+                                }
+                                catch (Exception ex) { AppLog.Warn("[Startup] Ошибка запуска службы: " + ex.Message); }
+                            }
+                            else
+                            {
+                                AppLog.Info("[Startup] Служба уже запущена — автозапуск не нужен");
+                            }
+                        }
+                        else if (shouldAutoStartBypass)
+                        {
+                            // Службы нет, но AutoStart включён — запускаем standalone без вопроса
+                            var result = await _vm.Bypass.StartAsync(strategy,
+                                EngineService.GetGameFilterMode(_vm.Settings.EnginePath), _vm.Settings.ShowWinwsConsole);
+                            AppLog.Info($"[Startup] Standalone старт: {result.Message}");
+                            _vm.Home.ShowInfo(result.Message);
+                        }
+
+                        _vm.Home.RefreshStatus();
+                        UpdateTrayStatus();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.Warn("[Startup] Ошибка автозапуска: " + ex.Message);
+                    }
                 }));
             }
 
+            } // end BypassManuallyStopped guard
             // Проверка конфликта со старым запретом — с задержкой, чтобы сначала
             // отработали автоустановка движка и автозапуск обхода
             _ = System.Threading.Tasks.Task.Run(async () =>
@@ -124,21 +204,20 @@ namespace ZapretGui.Views
                     var status = _vm.Bypass.GetStatus();
                     if (status.IsRunning)
                     {
+                        _vm.Settings.BypassManuallyStopped = true; SettingsStore.Save(_vm.Settings); _vm.Watchdog.NotifyManualStop();
                         var result = await _vm.Bypass.StopAsync();
                         _tray?.ShowBalloon("Zapret GUI", result.Message);
                     }
                     else
                     {
+                        _vm.Settings.BypassManuallyStopped = false; SettingsStore.Save(_vm.Settings); _vm.Watchdog.NotifyManualStart();
                         var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
                         if (strategy == null)
                         {
                             _tray?.ShowBalloon("Zapret GUI", "Стратегия не выбрана");
                             return;
                         }
-                        var answer = MessageBox.Show(
-                            $"Будет запущен обход со стратегией «{strategy.Name}». Это изменит обработку сетевого трафика и может потребовать WinDivert. Запустить вручную?",
-                            "Запуск обхода из трея", MessageBoxButton.YesNo, MessageBoxImage.Question);
-                        if (answer != MessageBoxResult.Yes) return;
+                        // Запуск из трея без вопроса — бесшовно (1.17.24)
                         var result = await _vm.Bypass.StartAsync(strategy,
                             EngineService.GetGameFilterMode(_vm.Settings.EnginePath), _vm.Settings.ShowWinwsConsole);
                         _tray?.ShowBalloon("Zapret GUI", result.Message);
@@ -171,7 +250,7 @@ namespace ZapretGui.Views
                         SettingsStore.Save(_vm.Settings);
                         if (_vm.Bypass.GetStatus().IsRunning)
                         {
-                            var res = await _vm.Bypass.StartAsync(strat,
+                            var res = await _vm.Bypass.SwitchToStrategyAsync(strat,
                                 EngineService.GetGameFilterMode(_vm.Settings.EnginePath), _vm.Settings.ShowWinwsConsole);
                             _tray?.ShowBalloon("Смена стратегии", res.Message);
                         }
@@ -184,6 +263,7 @@ namespace ZapretGui.Views
                     var res = await DnsManagementService.ApplyDnsProfileAsync(profile);
                     _tray?.ShowBalloon("Безопасный DNS", res.Message);
                 });
+                _tray.AddResourceRequested += () => Dispatcher.Invoke(ShowAddResourceDialog);
                 _tray.OpenLogsRequested += () => Dispatcher.Invoke(() =>
                 {
                     ShowFromTray();
@@ -200,6 +280,63 @@ namespace ZapretGui.Views
             catch (Exception ex)
             {
                 AppLog.Warn("Не удалось создать иконку в трее: " + ex.Message);
+            }
+        }
+
+        /// <summary>v1.32.4: быстрый пункт трея — добавить ресурс в мониторинг и в список обхода.</summary>
+        private void ShowAddResourceDialog()
+        {
+            try
+            {
+                var dlg = new InputDialog(
+                    "Добавить ресурс в список",
+                    "Введите URL или домен ресурса (например, https://example.com или example.com):",
+                    "Название ресурса (необязательно):",
+                    "Добавить в список обхода (General) + мониторинг")
+                { Owner = this };
+                if (dlg.ShowDialog() != true) return;
+                var url = dlg.Value?.Trim() ?? "";
+                var name = dlg.SecondaryValue?.Trim() ?? "";
+                var addToBypass = dlg.IsChecked;
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    _tray?.ShowBalloon("Добавить ресурс", "URL не указан");
+                    return;
+                }
+                if (!MonitorTarget.TryCreate(url, name, out var target, out var error) || target == null)
+                {
+                    _tray?.ShowBalloon("Добавить ресурс", error);
+                    System.Windows.MessageBox.Show(error, "Добавить ресурс", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    return;
+                }
+                // дубликат?
+                if (_vm.Settings.MonitorTargets.Any(x => x.Host.Equals(target.Host, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _tray?.ShowBalloon("Добавить ресурс", "Этот домен уже в списке мониторинга");
+                    return;
+                }
+                // добавляем в мониторинг
+                target.IsGame = false;
+                _vm.Settings.MonitorTargets.Add(target);
+                _vm.Monitoring.Targets.Add(target);
+                SettingsStore.Save(_vm.Settings);
+                var msg = $"Ресурс «{target.Name}» ({target.Host}) добавлен в мониторинг";
+                // и опционально в список обхода
+                if (addToBypass)
+                {
+                    var res = MonitorTargetStore.AddToGeneralList(_vm.Settings, target);
+                    msg += " и " + (res.Ok ? "в список обхода" : res.Message);
+                }
+                _tray?.ShowBalloon("Добавить ресурс", msg);
+                _vm.Monitoring.Reload();
+                UpdateTrayStatus();
+                ShowFromTray();
+                _vm.Navigate("monitoring");
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Ошибка добавления ресурса из трея: " + ex.Message);
+                _tray?.ShowBalloon("Добавить ресурс", "Ошибка: " + ex.Message);
             }
         }
 
@@ -432,6 +569,7 @@ namespace ZapretGui.Views
 
             SettingsStore.Save(_vm.Settings);
             _vm.Hotkeys.Unregister();
+            _vm.CloseTaskbarMetricsWindow();
             _overlayWindow?.CloseDirectly();
             _tray?.Dispose();
 

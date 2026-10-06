@@ -21,8 +21,32 @@ namespace ZapretGui.Views
             var item = e.OriginalSource is DependencyObject source ? FindListBoxItem(source) : null;
             var strategy = item?.DataContext as StrategyInfo ?? viewModel.Selected;
             if (strategy == null) return;
-            if (viewModel.RunCommand.CanExecute(strategy))
-                viewModel.RunCommand.Execute(strategy);
+            var res = MessageBox.Show(
+                $"Применить стратегию «{strategy.Name}»?\n\nПараметры: {strategy.ArgsPreview}\n\n«Да» — применить и запустить (процесс), «Нет» — только сделать основной, «Отмена» — не применять.",
+                "Применить стратегию", MessageBoxButton.YesNoCancel, MessageBoxImage.Question);
+            if (res == MessageBoxResult.Cancel) return;
+            if (res == MessageBoxResult.No)
+            {
+                if (viewModel.SetDefaultCommand.CanExecute(strategy))
+                    viewModel.SetDefaultCommand.Execute(strategy);
+                return;
+            }
+            // Да — спросить про службу
+            var svc = MessageBox.Show(
+                $"Стратегия «{strategy.Name}» будет применена.\n\nУстановить её как службу Windows (автозапуск) или запустить как обычный процесс?\n\n«Да» — как службу, «Нет» — как процесс.",
+                "Служба или процесс", MessageBoxButton.YesNo, MessageBoxImage.Question);
+            if (svc == MessageBoxResult.Yes)
+            {
+                if (viewModel.InstallServiceCommand.CanExecute(strategy))
+                    viewModel.InstallServiceCommand.Execute(strategy);
+                else if (viewModel.RunCommand.CanExecute(strategy))
+                    viewModel.RunCommand.Execute(strategy);
+            }
+            else
+            {
+                if (viewModel.RunCommand.CanExecute(strategy))
+                    viewModel.RunCommand.Execute(strategy);
+            }
         }
 
         private void StrategyList_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)

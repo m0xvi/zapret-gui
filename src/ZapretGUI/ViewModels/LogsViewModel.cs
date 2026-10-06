@@ -1,9 +1,11 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Windows.Input;
+using System.Windows.Threading;
 using ZapretGui.Core;
 
 namespace ZapretGui.ViewModels
@@ -18,16 +20,32 @@ namespace ZapretGui.ViewModels
         private bool _showApp = true;
         private bool _showBypass = true;
 
-        public LogsViewModel()
+        private readonly MainViewModel? _main;
+        private readonly Queue<LogEntry> _pending = new();
+        private readonly object _pendingLock = new();
+        private readonly DispatcherTimer _flushTimer;
+        private bool _isReloading;
+        private DateTime _lastWinwsLog = DateTime.MinValue;
+        private int _suppressedWinws;
+
+        public LogsViewModel(MainViewModel? main = null)
         {
+            _main = main;
+            // Начальная загрузка — без триггера перефильтрации, сразу из буфера
             foreach (var entry in AppLog.Entries) Entries.Add(entry);
             AppLog.EntryAdded += OnEntryAdded;
+
+            // Таймер батч-добавления: 180мс, Background — не блокирует ввод
+            var dispatcher = System.Windows.Application.Current?.Dispatcher ?? Dispatcher.CurrentDispatcher;
+            _flushTimer = new DispatcherTimer(TimeSpan.FromMilliseconds(180), DispatcherPriority.Background, OnFlush, dispatcher);
+            _flushTimer.Stop();
 
             ClearCommand = new RelayCommand(Clear);
             CopyCommand = new RelayCommand(CopyAll, () => Entries.Count > 0);
             SaveCommand = new RelayCommand(SaveToFile, () => Entries.Count > 0);
             OpenFolderCommand = new RelayCommand(() => Shell.OpenFolder(AppPaths.LogDir));
             RefreshCommand = new RelayCommand(Reload);
+            BackToSettingsCommand = new RelayCommand(() => _main?.Navigate("settings"), () => _main != null);
         }
 
         public ObservableCollection<LogEntry> Entries { get; } = new();
@@ -51,25 +69,67 @@ namespace ZapretGui.ViewModels
         /// <summary>Показывать записи обхода и служб (winws.exe, zapret, WinDivert).</summary>
         public bool ShowBypass { get => _showBypass; set { if (Set(ref _showBypass, value)) Reload(); } }
 
-        public string CountText => $"Записей: {Entries.Count}";
+        public string CountText => $"Записей: {Entries.Count}" + (_pending.Count > 0 ? $" (+{_pending.Count} в очереди)" : "");
 
         public ICommand ClearCommand { get; }
         public ICommand CopyCommand { get; }
         public ICommand SaveCommand { get; }
         public ICommand OpenFolderCommand { get; }
         public ICommand RefreshCommand { get; }
+        public ICommand BackToSettingsCommand { get; }
 
         private void OnEntryAdded(LogEntry entry)
         {
             if (!Accepts(entry)) return;
-            RelayCommand.Dispatch(() =>
+
+            // v1.32.4: троттлинг живого вывода winws — не флудим журнал и UI
+            if (entry.Category == AppLog.BypassCategory && entry.Level == LogLevel.Debug && entry.Message.StartsWith("[winws", StringComparison.Ordinal))
+            {
+                var now = DateTime.UtcNow;
+                // не чаще 1 строки в 250мс для winws, остальное агрегируем
+                if ((now - _lastWinwsLog).TotalMilliseconds < 250)
+                {
+                    _suppressedWinws++;
+                    // раз в 2 сек показываем агрегат
+                    if (_suppressedWinws % 8 != 0) return;
+                    entry = new LogEntry { Time = entry.Time, Level = entry.Level, Category = entry.Category, Message = $"[winws] подавлено {_suppressedWinws} строк, последняя: {entry.Message}" };
+                }
+                else
+                {
+                    if (_suppressedWinws > 0)
+                    {
+                        // сброс счётчика
+                        _suppressedWinws = 0;
+                    }
+                    _lastWinwsLog = now;
+                }
+            }
+
+            lock (_pendingLock) _pending.Enqueue(entry);
+            // запускаем таймер батча — не дергаем Dispatcher на каждую строку
+            if (!_flushTimer.IsEnabled)
+                _flushTimer.Start();
+        }
+
+        private void OnFlush(object? sender, EventArgs e)
+        {
+            List<LogEntry> batch = new();
+            lock (_pendingLock)
+            {
+                var take = Math.Min(80, _pending.Count);
+                for (int i = 0; i < take; i++) batch.Add(_pending.Dequeue());
+                if (_pending.Count == 0) _flushTimer.Stop();
+            }
+            if (batch.Count == 0) return;
+            foreach (var entry in batch)
             {
                 Entries.Add(entry);
-                Raise(nameof(CountText));
-                (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
-                if (AutoScroll) ScrollToEndRequested?.Invoke();
-            });
+                if (Entries.Count > 3000) Entries.RemoveAt(0); // v1.32.4: лимит 3000 вместо 4000 для лёгкости UI
+            }
+            Raise(nameof(CountText));
+            (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            if (AutoScroll) ScrollToEndRequested?.Invoke();
         }
 
         private bool Accepts(LogEntry entry)
@@ -90,22 +150,82 @@ namespace ZapretGui.ViewModels
 
         public void RefreshTheme()
         {
-            var entries = Entries.ToList();
-            Entries.Clear();
-            foreach (var entry in entries) Entries.Add(entry);
+            // v1.32.4: не пересоздаём 2000 элементов — достаточно уведомить UI о смене темы
+            // Старый код делал Clear+Add и вешал систему
+            Raise(nameof(CountText));
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            dispatcher?.BeginInvoke(new Action(() =>
+            {
+                // форсируем перерисовку без полной пересборки коллекции
+                var tmp = Entries.ToList();
+                Entries.Clear();
+                // добавляем батчами по 200 с уступкой диспетчеру
+                AddBatched(tmp, 200);
+            }), DispatcherPriority.Background);
+        }
+
+        private void AddBatched(IReadOnlyList<LogEntry> items, int chunk)
+        {
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            if (dispatcher == null)
+            {
+                foreach (var e in items) Entries.Add(e);
+                Raise(nameof(CountText));
+                return;
+            }
+            // батчами чтобы не блокировать UI
+            int index = 0;
+            void AddChunk()
+            {
+                var take = Math.Min(chunk, items.Count - index);
+                for (int i = 0; i < take; i++) Entries.Add(items[index + i]);
+                index += take;
+                Raise(nameof(CountText));
+                (CopyCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                if (index < items.Count)
+                    dispatcher.BeginInvoke(new Action(AddChunk), DispatcherPriority.Background);
+                else if (AutoScroll)
+                    ScrollToEndRequested?.Invoke();
+            }
+            AddChunk();
         }
 
         private void Reload()
         {
-            Entries.Clear();
-            foreach (var entry in AppLog.Entries.Where(Accepts)) Entries.Add(entry);
-            Raise(nameof(CountText));
+            if (_isReloading) return;
+            _isReloading = true;
+            // останавливаем флаш и чистим очередь — переходим к новому фильтру
+            _flushTimer.Stop();
+            lock (_pendingLock) _pending.Clear();
+            var dispatcher = System.Windows.Application.Current?.Dispatcher;
+            System.Threading.Tasks.Task.Run(() =>
+            {
+                var filtered = AppLog.Entries.Where(Accepts).ToList();
+                // ограничиваем показ последними 2500 для скорости (в буфере 3000)
+                if (filtered.Count > 2500) filtered = filtered.Skip(filtered.Count - 2500).ToList();
+                return filtered;
+            }).ContinueWith(t =>
+                {
+                    var filtered = t.Result;
+                    void Apply()
+                    {
+                        Entries.Clear();
+                        AddBatched(filtered, 250);
+                        _isReloading = false;
+                    }
+                    if (dispatcher != null && !dispatcher.CheckAccess()) dispatcher.BeginInvoke(new Action(Apply), DispatcherPriority.Background);
+                    else Apply();
+                }, System.Threading.Tasks.TaskScheduler.Default);
         }
 
         private void Clear()
         {
+            _flushTimer.Stop();
+            lock (_pendingLock) _pending.Clear();
             AppLog.Clear();
             Entries.Clear();
+            _suppressedWinws = 0;
             AppLog.Info("Журнал очищен");
             Raise(nameof(CountText));
         }
@@ -114,7 +234,9 @@ namespace ZapretGui.ViewModels
         {
             try
             {
-                System.Windows.Clipboard.SetText(string.Join(Environment.NewLine, Entries.Select(e => e.ToString())));
+                // копируем не более 2000 строк чтобы не вешать буфер обмена
+                var lines = Entries.Take(2000).Select(e => e.ToString());
+                System.Windows.Clipboard.SetText(string.Join(Environment.NewLine, lines));
             }
             catch { }
         }
@@ -124,6 +246,7 @@ namespace ZapretGui.ViewModels
             try
             {
                 var path = Path.Combine(AppPaths.LogDir, $"zapretgui-{DateTime.Now:yyyyMMdd-HHmmss}.txt");
+                // пишем батчами
                 File.WriteAllLines(path, Entries.Select(e => e.ToString()), new UTF8Encoding(false));
                 Shell.OpenFolder(path, selectFile: true);
             }

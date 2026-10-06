@@ -33,6 +33,7 @@ namespace ZapretGui.ViewModels
         private string _messageKey = "Info";
         private string _lastCheckText = "Проверка ещё не выполнялась";
         private DateTime _lastRecovery = DateTime.MinValue;
+        private DateTime _lastBestCheck = DateTime.MinValue;
         private int _consecutiveStrategyFailures;
         private string _failureTargetId = "";
         private const int RecoveryFailureThreshold = 2;
@@ -49,6 +50,7 @@ namespace ZapretGui.ViewModels
             AddResourceCommand = new RelayCommand(AddResource);
             RemoveResourceCommand = new RelayCommand(RemoveResource, p => p is MonitorTarget target && !target.IsBuiltIn);
             AddToBypassListCommand = new RelayCommand(AddSelectedToBypassList, () => SelectedTarget != null);
+            OpenUnifiedCheckCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
             SelectedTarget = Targets.FirstOrDefault();
 
             _timer = new DispatcherTimer(DispatcherPriority.Background, System.Windows.Application.Current.Dispatcher)
@@ -222,6 +224,7 @@ namespace ZapretGui.ViewModels
 
         public ICommand CheckAllCommand { get; }
         public ICommand DiagnoseCommand { get; }
+        public ICommand OpenUnifiedCheckCommand { get; }
         public ICommand AddResourceCommand { get; }
         public ICommand RemoveResourceCommand { get; }
         public ICommand AddToBypassListCommand { get; }
@@ -247,6 +250,9 @@ namespace ZapretGui.ViewModels
                     ProgressText = $"Проверяю {i + 1} из {enabled.Count}: {target.Name}…";
                     var probe = await ResourceProbe.CheckAsync(target);
                     Results.Add(probe);
+                    target.LastStatusText = probe.StatusText;
+                    target.LastStatusKey = probe.StatusKey;
+                    target.LastDetails = probe.Details;
                     ProgressValue = i + 1;
                     ProgressPercentText = $"{ProgressValue / ProgressMaximum * 100:0}%";
                 }
@@ -332,6 +338,30 @@ namespace ZapretGui.ViewModels
             MessageKey = "Warning";
             var before = _main.Bypass.GetStatus();
 
+            // P0 1.7.0: сначала пробуем профиль, привязанный к текущей сети / любой подходящий профиль
+            if (Settings.AutoSwitchProfileOnFailure && Settings.AutoSwitchProfileOnNetworkChange)
+            {
+                try
+                {
+                    var switched = await _main.ProfileAutoSwitch.TrySwitchOnFailureAsync(target, before);
+                    if (switched)
+                    {
+                        _main.Home.RefreshStatus();
+                        _main.Profiles.RefreshNetwork();
+                        Message = $"📶 Автопрофиль применён для восстановления «{target.Name}»";
+                        MessageKey = "Success";
+                        // v1.32.3: смена стратегии — уведомляем всегда
+                        NotificationRequested?.Invoke(Message);
+                        try { _main.NotifyStrategyAutoSwitched(Message); } catch {}
+                        return;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Debug("[Monitoring] Ошибка автопрофиля при сбое: " + ex.Message);
+                }
+            }
+
             if (target.IsGame)
             {
                 await RecoverGameStrategyAsync(target, before);
@@ -346,23 +376,31 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
+            var prevName = before.StrategyName;
             _main.StrategiesPage.SelectAsDefault(best.Strategy);
             var result = await StartSelectedStrategyAsync(best.Strategy, before);
             _main.Home.RefreshStatus();
-            SetMessage(result.Ok
-                ? $"Выбрана стратегия «{best.Strategy.Name}» — ресурс восстановлен"
-                : "Новая стратегия найдена, но запустить её не удалось: " + result.Message,
+            var okMsg = $"🔄 Стратегия сменена: «{prevName}» → «{best.Strategy.Name}» — ресурс «{target.Name}» восстановлен";
+            SetMessage(result.Ok ? okMsg : "Новая стратегия найдена, но запустить её не удалось: " + result.Message,
                 result.Ok ? "Success" : "Danger");
-            if (Settings.MonitorNotificationsEnabled)
+            // v1.32.3: уведомление о смене стратегии всегда
+            if (result.Ok)
+            {
+                NotificationRequested?.Invoke(Message);
+                try { _main.NotifyStrategyAutoSwitched(Message); } catch {}
+            }
+            else if (Settings.MonitorNotificationsEnabled)
                 NotificationRequested?.Invoke(Message);
         }
 
         private async Task RecoverGameStrategyAsync(MonitorTarget target, BypassStatus before)
         {
             var current = Diagnosis?.WithBypass;
+            // v1.32.3: сортировка по реальным тестам, пропуск битых
             var candidates = _main.Strategies.Items
                 .Where(s => !s.Name.Equals(before.StrategyName, StringComparison.OrdinalIgnoreCase))
-                .OrderByDescending(s => s.IsRecommended)
+                .OrderByDescending(s => s.TestResult?.PassedCount ?? -1)
+                .ThenByDescending(s => s.IsRecommended)
                 .ThenBy(s => s.Name)
                 .Take(3)
                 .ToList();
@@ -384,22 +422,35 @@ namespace ZapretGui.ViewModels
                 return;
             }
 
+            var prevGame = before.StrategyName;
             _main.StrategiesPage.SelectAsDefault(best.Strategy);
             var result = await StartSelectedStrategyAsync(best.Strategy, before);
             _main.Home.RefreshStatus();
-            SetMessage(result.Ok
-                ? $"Для игры выбрана «{best.Strategy.Name}»: TCP {best.Probe.Milliseconds} мс"
-                : "Игровая стратегия найдена, но запустить её не удалось: " + result.Message,
-                result.Ok ? "Success" : "Danger");
-            if (Settings.MonitorNotificationsEnabled)
+            var gameMsg = result.Ok
+                ? $"🔄 Стратегия для игры сменена: «{prevGame}» → «{best.Strategy.Name}»: TCP {best.Probe.Milliseconds} мс"
+                : "Игровая стратегия найдена, но запустить её не удалось: " + result.Message;
+            SetMessage(gameMsg, result.Ok ? "Success" : "Danger");
+            if (result.Ok)
+            {
+                NotificationRequested?.Invoke(Message);
+                try { _main.NotifyStrategyAutoSwitched(Message); } catch {}
+            }
+            else if (Settings.MonitorNotificationsEnabled)
                 NotificationRequested?.Invoke(Message);
         }
 
         private async Task<OperationResult> StartSelectedStrategyAsync(StrategyInfo strategy, BypassStatus before)
         {
-            if (before.State == BypassState.RunningService)
+            // Бесшовное переключение с учётом актуального режима службы/процесса
+            var current = _main.Bypass.GetStatus();
+            if (current.ServiceState == ServiceState.Running
+                || current.ServiceState == ServiceState.StartPending
+                || current.ServiceState == ServiceState.StopPending)
                 return await _main.Bypass.InstallServiceAsync(strategy,
                     EngineService.GetGameFilterMode(Settings.EnginePath));
+            if (current.IsRunning)
+                return await _main.Bypass.SwitchToStrategyAsync(strategy,
+                    EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
             return await _main.Bypass.StartAsync(strategy,
                 EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
         }
@@ -460,6 +511,86 @@ namespace ZapretGui.ViewModels
         {
             if (!Settings.ResourceMonitoringEnabled || IsBusy) return;
             await CheckAllAsync();
+            // Фоновая проверка лучшей стратегии, если включено в Настройках → Сеть
+            if (Settings.AutoSwitchToBestStrategy && !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning)
+            {
+                var minutes = Math.Clamp(Settings.BestStrategyCheckMinutes, 5, 120);
+                if ((DateTime.Now - _lastBestCheck).TotalMinutes < minutes) return;
+                _lastBestCheck = DateTime.Now;
+                try { await TrySwitchToBestStrategyAsync(); } catch { }
+            }
+        }
+
+        // v1.32.3: нормализовано — только рабочие (YouTube+Discord) и с уведомлением, а не «абы какие»
+        private async Task TrySwitchToBestStrategyAsync()
+        {
+            var before = _main.Bypass.GetStatus();
+            // сортируем по реальным тестам, пропуск битых
+            var candidates = _main.Strategies.Items
+                .Where(s => !s.Name.Equals(before.StrategyName, StringComparison.OrdinalIgnoreCase))
+                .OrderByDescending(s => s.TestResult?.PassedCount ?? -1)
+                .ThenByDescending(s => s.IsRecommended)
+                .ThenBy(s => s.Name)
+                .Take(6).ToList();
+            if (candidates.Count == 0) return;
+            // фильтруем заведомо нерабочие по последним тестам
+            candidates = candidates.Where(c => c.TestResult == null || c.TestResult.PassedCount > 0).ToList();
+            if (candidates.Count == 0) return;
+            // для сравнения скорости используем YouTube как критичный ресурс, а не случайный первый
+            var ytTarget = MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204");
+            var discordTarget = MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway");
+            var currentStrat = _main.Strategies.Items.FirstOrDefault(s => s.Name == before.StrategyName) ?? candidates[0];
+            var currentYt = await _main.Bypass.TestStrategyOnResourceAsync(currentStrat, ytTarget);
+            var currentDiscord = await _main.Bypass.TestStrategyOnResourceAsync(currentStrat, discordTarget);
+            // если текущая уже не подходит (YouTube/Discord не работают) — не сравниваем скорость, а ищем любую рабочую (логика Diagnose)
+            bool currentIsSuitable = currentYt.Ok && currentDiscord.Ok;
+            long currentMs = currentYt.Ok ? currentYt.Milliseconds : long.MaxValue;
+            (StrategyInfo Strategy, ResourceProbeResult Probe) best = (null!, null!);
+            foreach (var c in candidates)
+            {
+                // пропуск если уже известно что YouTube не работает
+                if (c.TestResult != null && c.TestResult.Started && c.TestResult.Checks.Count >= 3)
+                {
+                    var ytCheck = c.TestResult.Checks.FirstOrDefault(x => x.Title == "YouTube");
+                    if (ytCheck != null && !ytCheck.Ok) continue;
+                    if (!c.TestResult.IsSuitable && c.TestResult.PassedCount < 3) continue;
+                }
+                var ytProbe = await _main.Bypass.TestStrategyOnResourceAsync(c, ytTarget);
+                if (!ytProbe.Ok) continue;
+                var discordProbe = await _main.Bypass.TestStrategyOnResourceAsync(c, discordTarget);
+                if (!discordProbe.Ok) continue;
+                // требуем чтобы была действительно подходящей (YouTube+Discord)
+                // скорость сравниваем только если текущая тоже подходящая
+                if (best.Strategy == null)
+                    best = (c, ytProbe);
+                else if (!currentIsSuitable)
+                {
+                    // текущая битая — берём первую рабочую
+                    best = (c, ytProbe);
+                    break;
+                }
+                else if (ytProbe.Milliseconds + 15 < currentMs && ytProbe.Milliseconds < (best.Probe?.Milliseconds ?? long.MaxValue))
+                    best = (c, ytProbe);
+            }
+            if (best.Strategy == null || best.Probe == null) return;
+            if (currentIsSuitable && currentMs != long.MaxValue && best.Probe!.Milliseconds + 15 >= currentMs) return;
+            var prevName = before.StrategyName;
+            _main.StrategiesPage.SelectAsDefault(best.Strategy);
+            var res = await StartSelectedStrategyAsync(best.Strategy, before);
+            if (res.Ok)
+            {
+                var msg = $"🔄 Стратегия сменена (фон): «{prevName}» → «{best.Strategy!.Name}» (YouTube {best.Probe!.Milliseconds} мс, Discord OK)";
+                AppLog.Info($"[Фон] {msg} vs {currentMs} мс");
+                // v1.32.3: уведомление всегда при смене стратегии (ранее только лог)
+                NotificationRequested?.Invoke(msg);
+                // также пробрасываем через MainViewModel для системного трея
+                try { _main.NotifyStrategyAutoSwitched(msg); } catch {}
+                SetMessage(msg, "Success");
+            }
+            else
+            {
+                AppLog.Warn($"[Фон] Не удалось переключить на «{best.Strategy!.Name}»: {res.Message}");
+            }
         }
 
         private int GetInterval() => Math.Clamp(Settings.ResourceMonitoringIntervalMinutes, 5, 120);

@@ -4,7 +4,7 @@
              Background="Transparent">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto"
                   PanningMode="VerticalOnly" Padding="0,0,4,0">
-        <StackPanel Margin="24,20,20,26">
+        <StackPanel Margin="24,20,20,32">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />

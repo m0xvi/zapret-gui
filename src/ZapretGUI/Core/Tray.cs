@@ -21,6 +21,7 @@ namespace ZapretGui.Core
         private readonly ToolStripMenuItem _strategiesSubMenu;
         private readonly ToolStripMenuItem _dnsSubMenu;
         private readonly ToolStripMenuItem _miniOverlayItem;
+        private readonly ToolStripMenuItem _addResourceItem;
         private readonly ToolStripMenuItem _openItem;
         private readonly ToolStripMenuItem _logsItem;
 
@@ -31,6 +32,7 @@ namespace ZapretGui.Core
         public event Action<UserProfile>? SelectProfileRequested;
         public event Action<string>? SelectStrategyRequested;
         public event Action<DnsProfile>? SelectDnsRequested;
+        public event Action? AddResourceRequested;
         public event Action? OpenLogsRequested;
         public event Action? ExitRequested;
 
@@ -51,6 +53,7 @@ namespace ZapretGui.Core
             _strategiesSubMenu = new ToolStripMenuItem("Выбор стратегии обхода");
             _dnsSubMenu = new ToolStripMenuItem("Безопасный DNS (DoH)");
             _miniOverlayItem = new ToolStripMenuItem("Компактный мини-виджет (HUD)", null, (_, __) => ToggleMiniOverlayRequested?.Invoke());
+            _addResourceItem = new ToolStripMenuItem("➕ Добавить ресурс в список", null, (_, __) => AddResourceRequested?.Invoke());
             _logsItem = new ToolStripMenuItem("Журнал логов", null, (_, __) => OpenLogsRequested?.Invoke());
             var exitItem = new ToolStripMenuItem("Выход", null, (_, __) => ExitRequested?.Invoke());
 
@@ -63,6 +66,7 @@ namespace ZapretGui.Core
             _menu.Items.Add(_profilesSubMenu);
             _menu.Items.Add(_strategiesSubMenu);
             _menu.Items.Add(_dnsSubMenu);
+            _menu.Items.Add(_addResourceItem);
             _menu.Items.Add(_miniOverlayItem);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_logsItem);
