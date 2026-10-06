@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Linq;
 using ZapretGui.Core;
 using ZapretGui.ViewModels;
 
@@ -262,6 +263,7 @@ namespace ZapretGui.Views
                     var res = await DnsManagementService.ApplyDnsProfileAsync(profile);
                     _tray?.ShowBalloon("Безопасный DNS", res.Message);
                 });
+                _tray.AddResourceRequested += () => Dispatcher.Invoke(ShowAddResourceDialog);
                 _tray.OpenLogsRequested += () => Dispatcher.Invoke(() =>
                 {
                     ShowFromTray();
@@ -278,6 +280,63 @@ namespace ZapretGui.Views
             catch (Exception ex)
             {
                 AppLog.Warn("Не удалось создать иконку в трее: " + ex.Message);
+            }
+        }
+
+        /// <summary>v1.32.4: быстрый пункт трея — добавить ресурс в мониторинг и в список обхода.</summary>
+        private void ShowAddResourceDialog()
+        {
+            try
+            {
+                var dlg = new InputDialog(
+                    "Добавить ресурс в список",
+                    "Введите URL или домен ресурса (например, https://example.com или example.com):",
+                    "Название ресурса (необязательно):",
+                    "Добавить в список обхода (General) + мониторинг")
+                { Owner = this };
+                if (dlg.ShowDialog() != true) return;
+                var url = dlg.Value?.Trim() ?? "";
+                var name = dlg.SecondaryValue?.Trim() ?? "";
+                var addToBypass = dlg.IsChecked;
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    _tray?.ShowBalloon("Добавить ресурс", "URL не указан");
+                    return;
+                }
+                if (!MonitorTarget.TryCreate(url, name, out var target, out var error) || target == null)
+                {
+                    _tray?.ShowBalloon("Добавить ресурс", error);
+                    System.Windows.MessageBox.Show(error, "Добавить ресурс", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    return;
+                }
+                // дубликат?
+                if (_vm.Settings.MonitorTargets.Any(x => x.Host.Equals(target.Host, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _tray?.ShowBalloon("Добавить ресурс", "Этот домен уже в списке мониторинга");
+                    return;
+                }
+                // добавляем в мониторинг
+                target.IsGame = false;
+                _vm.Settings.MonitorTargets.Add(target);
+                _vm.Monitoring.Targets.Add(target);
+                SettingsStore.Save(_vm.Settings);
+                var msg = $"Ресурс «{target.Name}» ({target.Host}) добавлен в мониторинг";
+                // и опционально в список обхода
+                if (addToBypass)
+                {
+                    var res = MonitorTargetStore.AddToGeneralList(_vm.Settings, target);
+                    msg += " и " + (res.Ok ? "в список обхода" : res.Message);
+                }
+                _tray?.ShowBalloon("Добавить ресурс", msg);
+                _vm.Monitoring.Reload();
+                UpdateTrayStatus();
+                ShowFromTray();
+                _vm.Navigate("monitoring");
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Ошибка добавления ресурса из трея: " + ex.Message);
+                _tray?.ShowBalloon("Добавить ресурс", "Ошибка: " + ex.Message);
             }
         }
 

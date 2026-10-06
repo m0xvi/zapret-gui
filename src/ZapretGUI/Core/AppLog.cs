@@ -49,8 +49,9 @@ namespace ZapretGui.Core
         public const string BypassCategory = "Обход";
 
         private static readonly object Gate = new();
+        private static readonly object FileGate = new();
         private static readonly List<LogEntry> Buffer = new();
-        private const int MaxBuffer = 2000;
+        private const int MaxBuffer = 3000;
         private const long MaxFileSize = 1024 * 1024;
 
         public static event Action<LogEntry>? EntryAdded;
@@ -86,7 +87,7 @@ namespace ZapretGui.Core
                 if (Buffer.Count > MaxBuffer) Buffer.RemoveRange(0, Buffer.Count - MaxBuffer);
             }
 
-            // Файл — в фоне, чтобы UI-поток не вис при живой отладке winws.exe
+            // Файл — в фоне, отдельный FileGate чтобы не блокировать Buffer
             try
             {
                 var line = entry + Environment.NewLine;
@@ -94,8 +95,11 @@ namespace ZapretGui.Core
                 {
                     try
                     {
-                        lock (Gate) { Rotate(); }
-                        File.AppendAllText(AppPaths.LogFile, line, Encoding.UTF8);
+                        lock (FileGate)
+                        {
+                            Rotate();
+                            File.AppendAllText(AppPaths.LogFile, line, Encoding.UTF8);
+                        }
                     }
                     catch { }
                 });
