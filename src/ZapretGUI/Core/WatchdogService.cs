@@ -308,8 +308,9 @@ namespace ZapretGui.Core
                     .ToList();
                 if (candidates.Count == 0) return false;
                 AppLog.Info($"[Watchdog] Пробую {candidates.Count} альтернативных стратегий после падения «{failedName}»");
-                // Для проверки используем YouTube как критичный ресурс — если general его не чинит, пропускаем
-                var probeTarget = MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204");
+                // v1.32.3: проверяем что кандидат реально чинит критичные ресурсы (YouTube + Discord), а не просто держит службу
+                var ytTarget = MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204");
+                var discordTarget = MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway");
                 foreach (var cand in candidates)
                 {
                     // Пропускаем заведомо битые по последним тестам (0/16)
@@ -317,6 +318,16 @@ namespace ZapretGui.Core
                     {
                         AppLog.Info($"[Watchdog] Пропускаю «{cand.Name}» — последний тест 0/{cand.TestResult.Checks.Count}, заведомо не рабочая");
                         continue;
+                    }
+                    // если известно что YouTube не пройден — пропускаем
+                    if (cand.TestResult != null && cand.TestResult.Started && cand.TestResult.Checks.Count >= 3)
+                    {
+                        var ytCheck = cand.TestResult.Checks.FirstOrDefault(c => c.Title == "YouTube");
+                        if (ytCheck != null && !ytCheck.Ok)
+                        {
+                            AppLog.Info($"[Watchdog] Пропускаю «{cand.Name}» — YouTube не пройден в последнем тесте");
+                            continue;
+                        }
                     }
                     AppLog.Info($"[Watchdog] Пробую альтернативу «{cand.Name}» бесшовно");
                     var mode = EngineService.GetGameFilterMode(_settings.EnginePath);
@@ -340,31 +351,41 @@ namespace ZapretGui.Core
                         await Task.Delay(800);
                         continue;
                     }
-                    // v1.32.2: проверяем что стратегия реально чинит YouTube, а не просто держит службу
+                    // v1.32.3: проверяем что стратегия реально чинит YouTube (и Discord) с текущим установленным обходом — без лишнего перезапуска
                     await Task.Delay(1200);
-                    ResourceProbeResult probe;
-                    try { probe = await _bypass.TestStrategyOnResourceAsync(cand, probeTarget); }
-                    catch (Exception ex) { AppLog.Warn($"[Watchdog] Ошибка пробы «{cand.Name}»: {ex.Message}"); await Task.Delay(800); continue; }
-                    // TestStrategyOnResource внутри делает Stop/Start и возвращает пробу С обходом — если Ok, значит стратегия реально работает
-                    if (!probe.Ok)
+                    ResourceProbeResult ytProbe;
+                    try { ytProbe = await ResourceProbe.CheckAsync(ytTarget); }
+                    catch (Exception ex) { AppLog.Warn($"[Watchdog] Ошибка YouTube-пробы «{cand.Name}»: {ex.Message}"); await Task.Delay(800); continue; }
+                    if (!ytProbe.Ok)
                     {
-                        AppLog.Warn($"[Watchdog] «{cand.Name}» держит службу, но YouTube не чинит ({probe.Details}) — пробую следующую");
-                        // Восстанавливаем предыдущую? TestStrategyOnResource уже восстановил, но мы уже установили cand как службу — нужно откатить? 
-                        // Для простоты оставим cand, но попробуем следующую — она перезапишет службу
+                        AppLog.Warn($"[Watchdog] «{cand.Name}» держит службу, но YouTube не чинит ({ytProbe.Details}) — пробую следующую");
                         await Task.Delay(800);
                         continue;
                     }
+                    // дополнительно проверяем Discord чтобы не ломать его
+                    ResourceProbeResult discordProbe;
+                    try { discordProbe = await ResourceProbe.CheckAsync(discordTarget); }
+                    catch (Exception ex) { AppLog.Warn($"[Watchdog] Ошибка Discord-пробы «{cand.Name}»: {ex.Message}"); await Task.Delay(800); continue; }
+                    if (!discordProbe.Ok)
+                    {
+                        AppLog.Warn($"[Watchdog] «{cand.Name}» чинит YouTube, но Discord не доступен ({discordProbe.Details}) — пробую следующую");
+                        await Task.Delay(800);
+                        continue;
+                    }
+                    var prevName = _settings.SelectedStrategy;
                     _settings.SelectedStrategy = cand.Name;
                     SettingsStore.Save(_settings);
-                    var msg = $"[Watchdog] ✅ Автоматически переключил на «{cand.Name}» после сбоя «{failedName}» (YouTube {probe.Milliseconds} мс)";
+                    var msg = $"[Watchdog] ✅ Автоматически переключил на «{cand.Name}» после сбоя «{failedName}» (YouTube {ytProbe.Milliseconds} мс, Discord {discordProbe.Milliseconds} мс)";
                     AppLog.Info(msg);
                     LastEventText = msg;
+                    // v1.32.3: уведомление всегда, даже если WatchdogNotifyUser выключен — пользователь просил уведомлять о смене стратегии
                     EventLogged?.Invoke(msg);
+                    AlertRaised?.Invoke($"🔄 Стратегия сменена: «{prevName}» → «{cand.Name}» (Watchdog, YouTube восстановлен)");
                     LastRecoveryTime = DateTime.Now;
                     _recentCrashCount = 0;
                     return true;
                 }
-                AppLog.Warn("[Watchdog] Ни одна из 5 альтернатив не починила YouTube — оставляю как есть, не переключаю на general");
+                AppLog.Warn("[Watchdog] Ни одна из 5 альтернатив не починила YouTube+Discord — оставляю как есть, не переключаю на general");
             }
             catch (Exception ex)
             {

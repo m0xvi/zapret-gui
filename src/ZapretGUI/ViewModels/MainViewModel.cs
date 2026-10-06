@@ -121,7 +121,8 @@ namespace ZapretGui.ViewModels
             Watchdog = new WatchdogService(settings, Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended, () => Strategies.Items.ToList());
             Watchdog.EventLogged += msg =>
             {
-                if (Settings.WatchdogNotifyUser)
+                // v1.32.3: уведомление о смене стратегии всегда, даже если пользователь выключил общие уведомления
+                if (msg.Contains("переключил") || msg.Contains("Переключил") || Settings.WatchdogNotifyUser)
                     WatchdogNotificationRequested?.Invoke(msg);
             };
             Watchdog.AlertRaised += alert =>
@@ -146,14 +147,14 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(ActiveStrategySummaryText));
                 Raise(nameof(SeamlessStatusText));
                 Raise(nameof(SeamlessStatusKey));
-                if (Settings.MonitorNotificationsEnabled || Settings.WatchdogNotifyUser)
-                    WatchdogNotificationRequested?.Invoke(msg);
+                // v1.32.3: смена стратегии — уведомляем всегда
+                WatchdogNotificationRequested?.Invoke(msg);
             });
             SeamlessFailover.FailoverFailed += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
             {
                 Raise(nameof(SeamlessStatusText));
-                if (Settings.MonitorNotificationsEnabled)
-                    WatchdogNotificationRequested?.Invoke(msg);
+                // v1.32.3: даже неудачу показываем если влияет на стратегию
+                WatchdogNotificationRequested?.Invoke(msg);
             });
             if (settings.SeamlessFailoverEnabled && !settings.SafeMode)
                 SeamlessFailover.Start();
@@ -782,6 +783,12 @@ namespace ZapretGui.ViewModels
             Profiles?.RefreshNetwork();
             Raise(nameof(AutoSwitchNetworkStatus));
             Raise(nameof(AutoSwitchLastReason));
+        }
+
+        /// <summary>v1.32.3: централизованное уведомление о фоновой смене стратегии — всегда показывает баллон.</summary>
+        public void NotifyStrategyAutoSwitched(string message)
+        {
+            WatchdogNotificationRequested?.Invoke(message);
         }
 
         /// <summary>Вызывается при выходе: остановка обхода, если так настроено.</summary>
