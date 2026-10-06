@@ -139,10 +139,10 @@ namespace ZapretGui.Core
         public int StartupDelaySeconds { get; set; } = 5;
 
         /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.</summary>
-        public bool AutoRecoverStrategy { get; set; } = true;
+        public bool AutoRecoverStrategy { get; set; } = false;
 
         /// <summary>Бесшовное автопереключение без окон и подтверждений (новый движок failover).</summary>
-        public bool SeamlessFailoverEnabled { get; set; } = true;
+        public bool SeamlessFailoverEnabled { get; set; } = false;
 
         /// <summary>Интервал бесшовной проверки в минутах (2-60).</summary>
         public int SeamlessCheckMinutes { get; set; } = 5;

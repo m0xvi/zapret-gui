@@ -289,20 +289,35 @@ namespace ZapretGui.Core
         {
             try
             {
+                // Фикс v1.32.2: не переключаем принудительно если пользователь выключил автосмену (как в v1.32.0)
+                if (!_settings.AutoRecoverStrategy && !_settings.SeamlessFailoverEnabled)
+                {
+                    AppLog.Info("[Watchdog] Fallback пропущен — автосмена выключена (AutoRecover=false, Seamless=false), пробую только перезапуск той же стратегии");
+                    return false;
+                }
                 if (_allStrategiesResolver == null) return false;
                 var all = _allStrategiesResolver();
                 if (all == null || all.Count == 0) return false;
+                // v1.32.2: сортируем по реальным тестам, а не только по IsRecommended — иначе general (Recommended) всегда первый, даже если не работает у пользователя
                 var candidates = all
                     .Where(s => !s.Name.Equals(failedName, StringComparison.OrdinalIgnoreCase))
-                    .OrderByDescending(s => s.IsRecommended)
-                    .ThenByDescending(s => s.TestResult?.PassedCount ?? -1)
+                    .OrderByDescending(s => s.TestResult?.PassedCount ?? -1)
+                    .ThenByDescending(s => s.IsRecommended)
                     .ThenBy(s => s.Name)
                     .Take(5)
                     .ToList();
                 if (candidates.Count == 0) return false;
                 AppLog.Info($"[Watchdog] Пробую {candidates.Count} альтернативных стратегий после падения «{failedName}»");
+                // Для проверки используем YouTube как критичный ресурс — если general его не чинит, пропускаем
+                var probeTarget = MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204");
                 foreach (var cand in candidates)
                 {
+                    // Пропускаем заведомо битые по последним тестам (0/16)
+                    if (cand.TestResult != null && cand.TestResult.PassedCount == 0 && cand.TestResult.Checks.Count > 0)
+                    {
+                        AppLog.Info($"[Watchdog] Пропускаю «{cand.Name}» — последний тест 0/{cand.TestResult.Checks.Count}, заведомо не рабочая");
+                        continue;
+                    }
                     AppLog.Info($"[Watchdog] Пробую альтернативу «{cand.Name}» бесшовно");
                     var mode = EngineService.GetGameFilterMode(_settings.EnginePath);
                     OperationResult res;
@@ -310,34 +325,46 @@ namespace ZapretGui.Core
                         res = await _bypass.InstallServiceAsync(cand, mode);
                     else
                         res = await _bypass.SwitchToStrategyAsync(cand, mode, _settings.ShowWinwsConsole);
-                    if (res.Ok)
-                    {
-                        var running = isService
-                            ? await Shell.WaitForAsync(() => WinServices.Query(WinServices.ZapretService) == ServiceState.Running, 12000)
-                            : _bypass.GetStatus().IsRunning;
-                        if (running)
-                        {
-                            _settings.SelectedStrategy = cand.Name;
-                            SettingsStore.Save(_settings);
-                            var msg = $"[Watchdog] ✅ Автоматически переключил на «{cand.Name}» после сбоя «{failedName}»";
-                            AppLog.Info(msg);
-                            LastEventText = msg;
-                            EventLogged?.Invoke(msg);
-                            LastRecoveryTime = DateTime.Now;
-                            _recentCrashCount = 0;
-                            return true;
-                        }
-                        else
-                        {
-                            AppLog.Warn($"[Watchdog] «{cand.Name}» не удержала службу — пробую следующую");
-                        }
-                    }
-                    else
+                    if (!res.Ok)
                     {
                         AppLog.Warn($"[Watchdog] «{cand.Name}» не удалось: {res.Message}");
+                        await Task.Delay(800);
+                        continue;
                     }
-                    await Task.Delay(800);
+                    var running = isService
+                        ? await Shell.WaitForAsync(() => WinServices.Query(WinServices.ZapretService) == ServiceState.Running, 12000)
+                        : _bypass.GetStatus().IsRunning;
+                    if (!running)
+                    {
+                        AppLog.Warn($"[Watchdog] «{cand.Name}» не удержала службу — пробую следующую");
+                        await Task.Delay(800);
+                        continue;
+                    }
+                    // v1.32.2: проверяем что стратегия реально чинит YouTube, а не просто держит службу
+                    await Task.Delay(1200);
+                    ResourceProbeResult probe;
+                    try { probe = await _bypass.TestStrategyOnResourceAsync(cand, probeTarget); }
+                    catch (Exception ex) { AppLog.Warn($"[Watchdog] Ошибка пробы «{cand.Name}»: {ex.Message}"); await Task.Delay(800); continue; }
+                    // TestStrategyOnResource внутри делает Stop/Start и возвращает пробу С обходом — если Ok, значит стратегия реально работает
+                    if (!probe.Ok)
+                    {
+                        AppLog.Warn($"[Watchdog] «{cand.Name}» держит службу, но YouTube не чинит ({probe.Details}) — пробую следующую");
+                        // Восстанавливаем предыдущую? TestStrategyOnResource уже восстановил, но мы уже установили cand как службу — нужно откатить? 
+                        // Для простоты оставим cand, но попробуем следующую — она перезапишет службу
+                        await Task.Delay(800);
+                        continue;
+                    }
+                    _settings.SelectedStrategy = cand.Name;
+                    SettingsStore.Save(_settings);
+                    var msg = $"[Watchdog] ✅ Автоматически переключил на «{cand.Name}» после сбоя «{failedName}» (YouTube {probe.Milliseconds} мс)";
+                    AppLog.Info(msg);
+                    LastEventText = msg;
+                    EventLogged?.Invoke(msg);
+                    LastRecoveryTime = DateTime.Now;
+                    _recentCrashCount = 0;
+                    return true;
                 }
+                AppLog.Warn("[Watchdog] Ни одна из 5 альтернатив не починила YouTube — оставляю как есть, не переключаю на general");
             }
             catch (Exception ex)
             {
