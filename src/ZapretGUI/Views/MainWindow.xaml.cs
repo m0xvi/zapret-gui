@@ -264,6 +264,7 @@ namespace ZapretGui.Views
                     _tray?.ShowBalloon("Безопасный DNS", res.Message);
                 });
                 _tray.AddResourceRequested += () => Dispatcher.Invoke(ShowAddResourceDialog);
+                _tray.EnableChatGptRequested += () => Dispatcher.Invoke(EnableChatGptPreset);
                 _tray.OpenLogsRequested += () => Dispatcher.Invoke(() =>
                 {
                     ShowFromTray();
@@ -337,6 +338,48 @@ namespace ZapretGui.Views
             {
                 AppLog.Error("Ошибка добавления ресурса из трея: " + ex.Message);
                 _tray?.ShowBalloon("Добавить ресурс", "Ошибка: " + ex.Message);
+            }
+        }
+
+        private void EnableChatGptPreset()
+        {
+            try
+            {
+                var (ok, msg) = MonitorTargetStore.AddChatGptPreset(_vm.Settings);
+                _tray?.ShowBalloon("ChatGPT", msg);
+                if (ok)
+                {
+                    // обновляем мониторинг и перезапускаем обход если запущен
+                    _vm.Monitoring.Reload();
+                    UpdateTrayStatus();
+                    var status = _vm.Bypass.GetStatus();
+                    if (status.IsRunning)
+                    {
+                        var strat = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
+                        if (strat != null)
+                        {
+                            // бесшовный перезапуск с новым списком
+                            var _ = Dispatcher.InvokeAsync(async () =>
+                            {
+                                var mode = EngineService.GetGameFilterMode(_vm.Settings.EnginePath);
+                                var res = status.ServiceState == ServiceState.Running
+                                    ? await _vm.Bypass.InstallServiceAsync(strat, mode)
+                                    : await _vm.Bypass.SwitchToStrategyAsync(strat, mode, _vm.Settings.ShowWinwsConsole);
+                                _tray?.ShowBalloon("ChatGPT", res.Ok ? "Обход перезапущен с ChatGPT" : res.Message);
+                                _vm.Home.RefreshStatus();
+                                UpdateTrayStatus();
+                            });
+                        }
+                    }
+                    // открываем мониторинг чтобы видеть статус ChatGPT
+                    ShowFromTray();
+                    _vm.Navigate("monitoring");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Ошибка ChatGPT пресета: " + ex.Message);
+                _tray?.ShowBalloon("ChatGPT", "Ошибка: " + ex.Message);
             }
         }
 

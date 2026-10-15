@@ -39,6 +39,8 @@ namespace ZapretGui.Core
                 MonitorTarget.CreateBuiltIn("YouTube lh3", "https://lh3.googleusercontent.com/generate_204"),
                 MonitorTarget.CreateBuiltIn("Google", "https://www.google.com/generate_204"),
                 MonitorTarget.CreateBuiltIn("Cloudflare", "https://www.cloudflare.com"),
+                MonitorTarget.CreateBuiltIn("ChatGPT", "https://chatgpt.com"),
+                MonitorTarget.CreateBuiltIn("OpenAI", "https://openai.com"),
                 MonitorTarget.CreateBuiltIn("GitHub (обновления)", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
             };
 
