@@ -18,6 +18,9 @@ namespace ZapretGui.ViewModels
         private string _statusText = "Готово к работе";
         private string _statusKey = "Info";
         private bool _isBusy;
+        private string _currentNetworkDisplay = "";
+        private string _currentNetworkFingerprint = "";
+        private string _autoSwitchStatus = "";
 
         public ProfilesViewModel(MainViewModel main)
         {
@@ -36,7 +39,13 @@ namespace ZapretGui.ViewModels
             RefreshBackupHistoryCommand = new RelayCommand(RefreshBackupHistory);
             CleanSystemCommand = new AsyncRelayCommand(CleanSystemAsync, () => !IsBusy);
 
+            BindToCurrentNetworkCommand = new RelayCommand(BindSelectedToCurrentNetwork, () => SelectedProfile != null);
+            UnbindNetworkCommand = new RelayCommand(UnbindSelectedNetwork, () => SelectedProfile != null && SelectedProfile.IsNetworkBound);
+            RefreshNetworkCommand = new RelayCommand(RefreshNetwork);
+            CopyNetworkFingerprintCommand = new RelayCommand(CopyNetworkFingerprint, () => !string.IsNullOrWhiteSpace(CurrentNetworkFingerprint));
+
             Reload();
+            RefreshNetwork();
         }
 
         public AppSettings Settings => _main.Settings;
@@ -81,6 +90,8 @@ namespace ZapretGui.ViewModels
                     (DuplicateProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (DeleteProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (ExportProfileCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (BindToCurrentNetworkCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (UnbindNetworkCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -125,6 +136,73 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        public string CurrentNetworkDisplay
+        {
+            get => _currentNetworkDisplay;
+            private set => Set(ref _currentNetworkDisplay, value);
+        }
+
+        public string CurrentNetworkFingerprint
+        {
+            get => _currentNetworkFingerprint;
+            private set => Set(ref _currentNetworkFingerprint, value);
+        }
+
+        public string AutoSwitchStatus
+        {
+            get => _autoSwitchStatus;
+            private set
+            {
+                if (Set(ref _autoSwitchStatus, value))
+                {
+                    Raise(nameof(AutoSwitchStatusKey));
+                    Raise(nameof(AutoSwitchStatusVisible));
+                }
+            }
+        }
+
+        public string AutoSwitchStatusKey
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(AutoSwitchStatus)) return "Info";
+                if (AutoSwitchStatus.Contains("ошибка", StringComparison.OrdinalIgnoreCase) || AutoSwitchStatus.Contains("не удалось", StringComparison.OrdinalIgnoreCase)) return "Danger";
+                if (AutoSwitchStatus.Contains("переключаю", StringComparison.OrdinalIgnoreCase) || AutoSwitchStatus.Contains("применён", StringComparison.OrdinalIgnoreCase) || AutoSwitchStatus.Contains("профиль", StringComparison.OrdinalIgnoreCase)) return "Success";
+                return "Info";
+            }
+        }
+
+        public bool AutoSwitchStatusVisible => !string.IsNullOrWhiteSpace(AutoSwitchStatus);
+
+        public bool AutoSwitchOnNetworkChange
+        {
+            get => Settings.AutoSwitchProfileOnNetworkChange;
+            set
+            {
+                if (Settings.AutoSwitchProfileOnNetworkChange == value) return;
+                Settings.AutoSwitchProfileOnNetworkChange = value;
+                SettingsStore.Save(Settings);
+                Raise(nameof(AutoSwitchOnNetworkChange));
+                StatusText = value ? "Автопереключение профилей при смене сети включено" : "Автопереключение при смене сети выключено";
+                StatusKey = "Success";
+                _main.NotifyAutoSwitchChanged();
+            }
+        }
+
+        public bool AutoSwitchOnFailure
+        {
+            get => Settings.AutoSwitchProfileOnFailure;
+            set
+            {
+                if (Settings.AutoSwitchProfileOnFailure == value) return;
+                Settings.AutoSwitchProfileOnFailure = value;
+                SettingsStore.Save(Settings);
+                Raise(nameof(AutoSwitchOnFailure));
+                StatusText = value ? "Автопереключение при сбое стратегии включено" : "Автопереключение при сбое выключено";
+                StatusKey = "Success";
+            }
+        }
+
         public ICommand ApplyProfileCommand { get; }
         public ICommand CreateProfileFromCurrentCommand { get; }
         public ICommand DuplicateProfileCommand { get; }
@@ -137,6 +215,10 @@ namespace ZapretGui.ViewModels
         public ICommand DeleteBackupCommand { get; }
         public ICommand RefreshBackupHistoryCommand { get; }
         public ICommand CleanSystemCommand { get; }
+        public ICommand BindToCurrentNetworkCommand { get; }
+        public ICommand UnbindNetworkCommand { get; }
+        public ICommand RefreshNetworkCommand { get; }
+        public ICommand CopyNetworkFingerprintCommand { get; }
 
         public void Reload()
         {
@@ -162,6 +244,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             StatusText = $"Применяю профиль «{SelectedProfile.Name}»…";
             StatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show($"Применение профиля «{SelectedProfile.Name}»", StatusText, "Переключение стратегии и настроек…", 0, true, false)); } catch {}
 
             try
             {
@@ -172,10 +255,17 @@ namespace ZapretGui.ViewModels
                 StatusKey = ok ? "Success" : "Danger";
                 _main.Home.RefreshStatus();
                 _main.SettingsPage.Reload();
+                if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Профиль — ошибка", msg)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Профиль — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsBusy = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -217,6 +307,9 @@ namespace ZapretGui.ViewModels
                 RealTimePingEnabled = SelectedProfile.RealTimePingEnabled,
                 ProviderName = SelectedProfile.ProviderName,
                 ProviderAsn = SelectedProfile.ProviderAsn,
+                NetworkFingerprint = "",
+                NetworkDisplayName = "",
+                NetworkBoundAt = null,
                 CreatedAt = DateTime.UtcNow,
                 IsBuiltIn = false
             };
@@ -289,6 +382,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             StatusText = "Создаю полный архив конфигурации и списков…";
             StatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Создание бэкапа", StatusText, "Архивация настроек и списков…", 0, true, false)); } catch {}
 
             try
             {
@@ -298,10 +392,17 @@ namespace ZapretGui.ViewModels
                 StatusText = msg;
                 StatusKey = ok ? "Success" : "Danger";
                 RefreshBackupHistory();
+                if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Бэкап — ошибка", msg)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Бэкап — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsBusy = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -317,6 +418,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             StatusText = $"Восстанавливаю конфигурацию из «{SelectedBackup.FileName}»…";
             StatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Восстановление бэкапа", StatusText, SelectedBackup.FilePath, 0, true, false)); } catch {}
 
             try
             {
@@ -328,10 +430,17 @@ namespace ZapretGui.ViewModels
                 Reload();
                 _main.Home.ReloadFromEngine();
                 _main.SettingsPage.Reload();
+                if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Восстановление — ошибка", msg)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Восстановление — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsBusy = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -360,6 +469,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             StatusText = "Выполняю системную очистку служб и настроек…";
             StatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Очистка системы", StatusText, "Удаление служб и драйвера…", 0, true, false)); } catch {}
 
             try
             {
@@ -367,11 +477,95 @@ namespace ZapretGui.ViewModels
                 StatusText = msg;
                 StatusKey = ok ? "Success" : "Danger";
                 _main.Home.RefreshStatus();
+                if (!ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Очистка — ошибка", msg)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Очистка — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsBusy = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
+        }
+
+        public void RefreshNetwork()
+        {
+            try
+            {
+                var id = NetworkDetector.GetCurrentIdentity();
+                CurrentNetworkDisplay = id.DisplayName;
+                CurrentNetworkFingerprint = id.Fingerprint;
+                AutoSwitchStatus = _main.ProfileAutoSwitch?.LastReason ?? "Готов к отслеживанию сети";
+                Raise(nameof(CurrentNetworkDisplay));
+                Raise(nameof(CurrentNetworkFingerprint));
+                Raise(nameof(AutoSwitchStatus));
+                Raise(nameof(AutoSwitchStatusKey));
+                Raise(nameof(AutoSwitchStatusVisible));
+                (CopyNetworkFingerprintCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+            catch (Exception ex)
+            {
+                CurrentNetworkDisplay = "Ошибка: " + ex.Message;
+            }
+        }
+
+        private void CopyNetworkFingerprint()
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(CurrentNetworkFingerprint)) return;
+                System.Windows.Clipboard.SetText(CurrentNetworkFingerprint);
+                StatusText = "Отпечаток сети скопирован в буфер обмена";
+                StatusKey = "Success";
+            }
+            catch (Exception ex)
+            {
+                StatusText = "Не удалось скопировать: " + ex.Message;
+                StatusKey = "Danger";
+            }
+        }
+
+        private void BindSelectedToCurrentNetwork()
+        {
+            if (SelectedProfile == null) return;
+            var id = NetworkDetector.GetCurrentIdentity();
+            if (!id.IsValid)
+            {
+                StatusText = "Не удалось определить текущую сеть для привязки";
+                StatusKey = "Danger";
+                return;
+            }
+            SelectedProfile.NetworkFingerprint = id.Fingerprint;
+            SelectedProfile.NetworkDisplayName = id.DisplayName;
+            SelectedProfile.NetworkBoundAt = DateTime.UtcNow;
+            ProfileManager.SaveProfiles(Profiles);
+            RefreshNetwork();
+            Raise(nameof(SelectedProfile));
+            (UnbindNetworkCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            StatusText = $"Профиль «{SelectedProfile.Name}» привязан к сети «{id.DisplayName}»";
+            StatusKey = "Success";
+            // Обновляем отображение в списке
+            var idx = Profiles.IndexOf(SelectedProfile);
+            if (idx >= 0) { Profiles[idx] = SelectedProfile; }
+            Reload();
+            SelectedProfile = Profiles.FirstOrDefault(p => p.Id == SelectedProfile.Id);
+        }
+
+        private void UnbindSelectedNetwork()
+        {
+            if (SelectedProfile == null || !SelectedProfile.IsNetworkBound) return;
+            SelectedProfile.NetworkFingerprint = "";
+            SelectedProfile.NetworkDisplayName = "";
+            SelectedProfile.NetworkBoundAt = null;
+            ProfileManager.SaveProfiles(Profiles);
+            Raise(nameof(SelectedProfile));
+            (UnbindNetworkCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            StatusText = $"Привязка профиля «{SelectedProfile.Name}» к сети снята";
+            StatusKey = "Info";
+            Reload();
         }
     }
 }

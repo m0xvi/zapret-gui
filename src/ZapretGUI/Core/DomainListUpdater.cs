@@ -61,10 +61,32 @@ namespace ZapretGui.Core
                         AppLog.Info($"[ListUpdater] Файл {fileName} автоматически наполнен эталонным набором ({fallback.Length} доменов)");
                     }
                 }
+
+                // Миграция для превью YouTube за рубежом ( issue: не грузятся превью с любой стратегией в другой стране)
+                // Добавляем критичные хосты превью, если их нет в существующих списках — иначе у пользователя из другой точки мира превью ytimg/lh3/ggpht не попадут под --hostlist
+                try { EnsureCriticalPreviewDomains(listsDir); } catch (Exception ex) { AppLog.Warn("[ListUpdater] Миграция превью: " + ex.Message); }
             }
             catch (Exception ex)
             {
                 AppLog.Warn("[ListUpdater] Ошибка начального наполнения списков: " + ex.Message);
+            }
+        }
+
+        private static void EnsureCriticalPreviewDomains(string listsDir)
+        {
+            var critical = new[] { "lh3.googleusercontent.com", "lh4.googleusercontent.com", "lh5.googleusercontent.com", "i9.ytimg.com", "ytimg.l.google.com", "yt3.ggpht.com", "yt4.ggpht.com", "i.ytimg.com", "googlevideo.com" };
+            var targets = new[] { "list-youtube.txt", "list-general.txt" };
+            foreach (var fileName in targets)
+            {
+                var path = Path.Combine(listsDir, fileName);
+                if (!File.Exists(path)) continue;
+                var lines = File.ReadAllLines(path).Select(l => l.Trim()).Where(l => !string.IsNullOrWhiteSpace(l)).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var missing = critical.Where(d => !lines.Contains(d)).ToArray();
+                if (missing.Length > 0)
+                {
+                    File.AppendAllLines(path, missing, Encoding.UTF8);
+                    AppLog.Info($"[ListUpdater] Миграция превью: добавлено {missing.Length} доменов в {fileName}: {string.Join(", ", missing)}");
+                }
             }
         }
 

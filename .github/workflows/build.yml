@@ -30,8 +30,18 @@ jobs:
           dotnet restore src/ZapretGUI/ZapretGUI.csproj
           dotnet restore tools/WindowsIntegrationHarness/WindowsIntegrationHarness.csproj
 
+      - name: Определение версии (для сборки)
+        shell: pwsh
+        run: |
+          [xml]$csproj = Get-Content src/ZapretGUI/ZapretGUI.csproj
+          $version = $csproj.Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1
+          if (-not $version) { $version = "1.0.0" }
+          if ($env:GITHUB_REF -like "refs/tags/v*") { $version = $env:GITHUB_REF -replace "refs/tags/v", "" }
+          "APP_VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          Write-Host "Версия сборки: $version"
+
       - name: Сборка (Release)
-        run: dotnet build src/ZapretGUI/ZapretGUI.csproj -c Release --no-restore
+        run: dotnet build src/ZapretGUI/ZapretGUI.csproj -c Release --no-restore -p:Version=${{ env.APP_VERSION }} -p:AssemblyVersion=${{ env.APP_VERSION }}.0 -p:FileVersion=${{ env.APP_VERSION }}.0 -p:InformationalVersion=${{ env.APP_VERSION }}
 
       - name: Статический анализ и предупреждения компилятора
         run: >
@@ -56,7 +66,7 @@ jobs:
       - name: Публикация — портативный EXE (всё в одном файле)
         run: >
           dotnet publish src/ZapretGUI/ZapretGUI.csproj
-          -c Release -r win-x64 --self-contained true
+          -c Release -r win-x64 --self-contained true -p:Version=${{ env.APP_VERSION }} -p:AssemblyVersion=${{ env.APP_VERSION }}.0 -p:FileVersion=${{ env.APP_VERSION }}.0 -p:InformationalVersion=${{ env.APP_VERSION }}
           -p:PublishSingleFile=true
           -p:IncludeNativeLibrariesForSelfExtract=true
           -p:EnableCompressionInSingleFile=true
@@ -66,7 +76,7 @@ jobs:
       - name: Публикация — версия для .NET 8 Desktop Runtime
         run: >
           dotnet publish src/ZapretGUI/ZapretGUI.csproj
-          -c Release -r win-x64 --self-contained false
+          -c Release -r win-x64 --self-contained false -p:Version=${{ env.APP_VERSION }} -p:AssemblyVersion=${{ env.APP_VERSION }}.0 -p:FileVersion=${{ env.APP_VERSION }}.0 -p:InformationalVersion=${{ env.APP_VERSION }}
           -p:DebugType=none
           -o publish/framework-dependent
 

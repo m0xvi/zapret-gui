@@ -54,6 +54,15 @@ namespace ZapretGui.Core
         public bool IsBuiltIn { get; set; }
         public bool IsGame { get; set; }
 
+        private string _lastStatusText = "";
+        public string LastStatusText { get => _lastStatusText; set { if (_lastStatusText != value) { _lastStatusText = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastStatusText))); } } }
+
+        private string _lastStatusKey = "Info";
+        public string LastStatusKey { get => _lastStatusKey; set { if (_lastStatusKey != value) { _lastStatusKey = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastStatusKey))); } } }
+
+        private string _lastDetails = "";
+        public string LastDetails { get => _lastDetails; set { if (_lastDetails != value) { _lastDetails = value; PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(LastDetails))); } } }
+
         public event PropertyChangedEventHandler? PropertyChanged;
 
         public static bool TryCreate(string input, string? name, out MonitorTarget? target, out string error)
@@ -326,10 +335,29 @@ namespace ZapretGui.Core
     {
         public static void EnsureDefaults(AppSettings settings)
         {
-            if (settings.MonitorTargets.Count > 0) return;
-            settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"));
-            settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"));
-            settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt"));
+            // v1.32.5: миграция — добавляем недостающие базовые цели даже если список уже не пуст
+            void Ensure(string name, string url)
+            {
+                var host = new Uri(url).Host;
+                if (!settings.MonitorTargets.Any(x => x.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
+                    settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn(name, url));
+            }
+            if (settings.MonitorTargets.Count == 0)
+            {
+                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"));
+                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"));
+                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt"));
+                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("ChatGPT", "https://chatgpt.com"));
+                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("OpenAI", "https://openai.com"));
+                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("PUBG", "https://front.pubg.com"));
+                return;
+            }
+            Ensure("YouTube", "https://www.youtube.com/generate_204");
+            Ensure("Discord", "https://discord.com/api/v9/gateway");
+            Ensure("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt");
+            Ensure("ChatGPT", "https://chatgpt.com");
+            Ensure("OpenAI", "https://openai.com");
+            Ensure("PUBG", "https://front.pubg.com");
         }
 
         public static (bool Ok, string Message) AddToGeneralList(AppSettings settings, MonitorTarget target)
@@ -348,6 +376,84 @@ namespace ZapretGui.Core
             catch (Exception ex)
             {
                 return (false, "Не удалось добавить ресурс в список: " + ex.Message);
+            }
+        }
+
+        /// <summary>v1.32.5: быстрый пресет для ChatGPT — добавляет все домены OpenAI в обход и мониторинг.</summary>
+        public static (bool Ok, string Message) AddChatGptPreset(AppSettings settings)
+        {
+            var domains = new[]
+            {
+                "chatgpt.com", "chat.openai.com", "openai.com", "api.openai.com", "auth.openai.com", "auth0.openai.com", "cdn.openai.com", "oaistatic.com", "cdn.oaistatic.com", "oaiusercontent.com"
+            };
+            var added = 0;
+            var skipped = 0;
+            try
+            {
+                var path = System.IO.Path.Combine(settings.EnginePath, "lists", "list-general-user.txt");
+                StrategyParser.EnsureUserLists(settings.EnginePath);
+                var lines = System.IO.File.ReadAllLines(path).Select(l => l.Trim().ToLowerInvariant()).ToHashSet();
+                using var writer = System.IO.File.AppendText(path);
+                foreach (var d in domains)
+                {
+                    if (lines.Contains(d.ToLowerInvariant())) { skipped++; continue; }
+                    writer.WriteLine(d);
+                    added++;
+                }
+                // также добавляем в мониторинг если нет
+                foreach (var d in new[] { "chatgpt.com", "openai.com" })
+                {
+                    var url = "https://" + d;
+                    var host = d;
+                    if (!settings.MonitorTargets.Any(x => x.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
+                    {
+                        var name = d == "chatgpt.com" ? "ChatGPT" : "OpenAI";
+                        settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn(name, url));
+                    }
+                }
+                SettingsStore.Save(settings);
+                var msg = added > 0 ? $"ChatGPT пресет: добавлено {added} доменов в обход, пропущено {skipped}. Перезапустите обход." : $"Все домены ChatGPT уже в списке (пропущено {skipped}). Мониторинг обновлён.";
+                return (true, msg);
+            }
+            catch (Exception ex)
+            {
+                return (false, "Не удалось применить ChatGPT пресет: " + ex.Message);
+            }
+        }
+
+        /// <summary>v1.32.6: пресет для PUBG — фикс ошибки 2610.1.1.</summary>
+        public static (bool Ok, string Message) AddPubgPreset(AppSettings settings)
+        {
+            var domains = new[]
+            {
+                "pubg.com", "krafton.com", "playbattlegrounds.com", "prozone.pubg.com", "front.pubg.com", "pubg.ru"
+            };
+            var added = 0;
+            var skipped = 0;
+            try
+            {
+                var path = System.IO.Path.Combine(settings.EnginePath, "lists", "list-general-user.txt");
+                StrategyParser.EnsureUserLists(settings.EnginePath);
+                var lines = System.IO.File.ReadAllLines(path).Select(l => l.Trim().ToLowerInvariant()).ToHashSet();
+                using var writer = System.IO.File.AppendText(path);
+                foreach (var d in domains)
+                {
+                    if (lines.Contains(d.ToLowerInvariant())) { skipped++; continue; }
+                    writer.WriteLine(d);
+                    added++;
+                }
+                if (!settings.MonitorTargets.Any(x => x.Host.Equals("front.pubg.com", StringComparison.OrdinalIgnoreCase)))
+                    settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("PUBG", "https://front.pubg.com"));
+                settings.GameFilterProfileId = "pubg";
+                settings.GameModeActive = false;
+                EngineService.SetGameFilterMode(settings.EnginePath, GameFilterMode.TcpAndUdp);
+                SettingsStore.Save(settings);
+                var msg = added > 0 ? $"PUBG пресет: добавлено {added} доменов, профиль PUBG включён (UDP 7086-7995,10000-10100,17300-17999). Перезапустите обход." : $"PUBG домены уже в списке (пропущено {skipped}), профиль PUBG включён.";
+                return (true, msg);
+            }
+            catch (Exception ex)
+            {
+                return (false, "Не удалось применить PUBG пресет: " + ex.Message);
             }
         }
     }

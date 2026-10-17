@@ -4,8 +4,10 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -30,6 +32,29 @@ namespace ZapretGui.Core
         public long Milliseconds { get; init; }
         public string ResolvedIp { get; init; } = "";
         public string Message { get; init; } = "";
+    }
+
+    public sealed class DnsHijackEntry
+    {
+        public string Domain { get; init; } = "";
+        public string[] SystemIps { get; init; } = Array.Empty<string>();
+        public string[] DohIps { get; init; } = Array.Empty<string>();
+        public bool IsHijacked { get; init; }
+        public string Details { get; init; } = "";
+        public string StatusKey => IsHijacked ? "Danger" : "Success";
+        public string StatusText => IsHijacked ? "Подмена" : "OK";
+        public string SystemIpsText => SystemIps.Length == 0 ? "—" : string.Join(", ", SystemIps);
+        public string DohIpsText => DohIps.Length == 0 ? "—" : string.Join(", ", DohIps);
+    }
+
+    public sealed class DnsHijackReport
+    {
+        public List<DnsHijackEntry> Entries { get; init; } = new();
+        public bool HasHijack => Entries.Any(e => e.IsHijacked);
+        public string Summary => HasHijack
+            ? $"Обнаружена подмена DNS у провайдера ({Entries.Count(e=>e.IsHijacked)} из {Entries.Count} доменов)"
+            : $"Подмены DNS не обнаружено ({Entries.Count} доменов проверено)";
+        public string StatusKey => HasHijack ? "Danger" : "Success";
     }
 
     /// <summary>
@@ -220,6 +245,144 @@ namespace ZapretGui.Core
                     Message = "Таймаут или недоступен: " + ex.Message
                 };
             }
+        }
+
+        public static List<string> GetSystemDnsServers()
+        {
+            try
+            {
+                var nic = GetActiveInterface();
+                if (nic == null) return new List<string>();
+                return nic.GetIPProperties().DnsAddresses
+                    .Where(a => a.AddressFamily == AddressFamily.InterNetwork)
+                    .Select(a => a.ToString())
+                    .ToList();
+            }
+            catch { return new List<string>(); }
+        }
+
+        public static async Task<DnsHijackReport> CheckHijackAsync(IProgress<string>? progress = null, CancellationToken ct = default)
+        {
+            var domains = new[] { "www.youtube.com", "discord.com", "github.com", "www.google.com" };
+            var entries = new List<DnsHijackEntry>();
+
+            using var http = new HttpClient(new HttpClientHandler { UseProxy = false })
+            {
+                Timeout = TimeSpan.FromSeconds(6)
+            };
+            http.DefaultRequestHeaders.TryAddWithoutValidation("Accept", "application/dns-json");
+
+            foreach (var domain in domains)
+            {
+                ct.ThrowIfCancellationRequested();
+                progress?.Report($"Проверяю {domain}…");
+                string[] systemIps = Array.Empty<string>();
+                string[] dohIps = Array.Empty<string>();
+                var hijacked = false;
+                var details = "";
+
+                try
+                {
+                    // Системный резолв (через текущий DNS)
+                    try
+                    {
+                        var sys = await Dns.GetHostAddressesAsync(domain, ct).ConfigureAwait(false);
+                        systemIps = sys.Where(a => a.AddressFamily == AddressFamily.InterNetwork).Select(a => a.ToString()).ToArray();
+                    }
+                    catch (Exception ex)
+                    {
+                        details = "системный DNS: " + ex.Message + "; ";
+                    }
+
+                    // DoH резолв через Cloudflare (эталон)
+                    try
+                    {
+                        var url = $"https://cloudflare-dns.com/dns-query?name={Uri.EscapeDataString(domain)}&type=A";
+                        using var resp = await http.GetAsync(url, ct).ConfigureAwait(false);
+                        if (resp.IsSuccessStatusCode)
+                        {
+                            var json = await resp.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+                            using var doc = JsonDocument.Parse(json);
+                            if (doc.RootElement.TryGetProperty("Answer", out var ans) && ans.ValueKind == JsonValueKind.Array)
+                            {
+                                var list = new List<string>();
+                                foreach (var el in ans.EnumerateArray())
+                                {
+                                    if (el.TryGetProperty("data", out var d) && d.ValueKind == JsonValueKind.String)
+                                    {
+                                        var ip = d.GetString();
+                                        if (!string.IsNullOrWhiteSpace(ip) && IPAddress.TryParse(ip, out var parsed) && parsed.AddressFamily == AddressFamily.InterNetwork)
+                                            list.Add(ip);
+                                    }
+                                }
+                                dohIps = list.ToArray();
+                            }
+                        }
+                        else
+                        {
+                            details += $"DoH HTTP {(int)resp.StatusCode}; ";
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        details += "DoH: " + ex.Message + "; ";
+                    }
+
+                    // Анализ
+                    if (systemIps.Length == 0 && dohIps.Length > 0)
+                    {
+                        hijacked = true;
+                        details += "системный DNS не вернул адреса, а DoH вернул";
+                    }
+                    else if (systemIps.Length > 0 && dohIps.Length > 0)
+                    {
+                        var sysSet = new HashSet<string>(systemIps);
+                        var dohSet = new HashSet<string>(dohIps);
+                        if (!sysSet.Overlaps(dohSet))
+                        {
+                            // Проверяем характерные признаки подмены: приватные IP или один и тот же блок
+                            var privateSys = systemIps.Any(ip => ip.StartsWith("10.") || ip.StartsWith("192.168.") || ip.StartsWith("127.") || ip == "0.0.0.0");
+                            if (privateSys || systemIps.Length == 1)
+                            {
+                                hijacked = true;
+                                details += "адреса не совпадают и системный похож на заглушку";
+                            }
+                            else
+                            {
+                                // Разные легитимные CDN — не считаем hijack, но отметим расхождение
+                                details += "адреса различаются (возможно CDN/Geo), подмена не подтверждена";
+                            }
+                        }
+                        else
+                        {
+                            details += "адреса совпадают";
+                        }
+                    }
+                    else if (systemIps.Length == 0 && dohIps.Length == 0)
+                    {
+                        details += "оба резолва не вернули адресов";
+                    }
+                    else
+                    {
+                        details += "частичный результат";
+                    }
+                }
+                catch (Exception ex)
+                {
+                    details += "ошибка: " + ex.Message;
+                }
+
+                entries.Add(new DnsHijackEntry
+                {
+                    Domain = domain,
+                    SystemIps = systemIps,
+                    DohIps = dohIps,
+                    IsHijacked = hijacked,
+                    Details = details.Trim()
+                });
+            }
+
+            return new DnsHijackReport { Entries = entries };
         }
     }
 }
