@@ -421,7 +421,7 @@ namespace ZapretGui.Core
             }
         }
 
-        /// <summary>v1.32.6: пресет для PUBG — Воронеж-фикс ошибки 2610.1.1.</summary>
+        /// <summary>v1.32.6: пресет для PUBG — фикс ошибки 2610.1.1.</summary>
         public static (bool Ok, string Message) AddPubgPreset(AppSettings settings)
         {
             var domains = new[]

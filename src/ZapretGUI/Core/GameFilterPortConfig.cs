@@ -80,7 +80,7 @@ namespace ZapretGui.Core
             new()
             {
                 Id = "pubg",
-                Name = "🥘 PUBG: BATTLEGROUNDS (Воронеж-фикс)",
+                Name = "🥘 PUBG: BATTLEGROUNDS",
                 Description = "Фикс ошибки 2610.1.1 (Connection timeout). Включает UDP 7086-7995, 10000-10100, 17300-17999 для матчмейкинга и лобби PUBG, не трогает Discord Voice.",
                 TcpPorts = "1024-65535",
                 UdpPorts = "7086-7995,10000-10100,17300-17999,27000-27100,50000-65535",

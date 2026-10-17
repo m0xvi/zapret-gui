@@ -406,7 +406,7 @@ namespace ZapretGui.Views
                                 var res = status.ServiceState == ServiceState.Running
                                     ? await _vm.Bypass.InstallServiceAsync(strat, mode)
                                     : await _vm.Bypass.SwitchToStrategyAsync(strat, mode, _vm.Settings.ShowWinwsConsole);
-                                _tray?.ShowBalloon("PUBG", res.Ok ? "Обход перезапущен с профилем PUBG (Воронеж-фикс)" : res.Message);
+                                _tray?.ShowBalloon("PUBG", res.Ok ? "Обход перезапущен с профилем PUBG" : res.Message);
                                 _vm.Home.RefreshStatus();
                                 UpdateTrayStatus();
                             });

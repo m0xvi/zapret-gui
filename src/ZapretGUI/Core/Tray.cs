@@ -59,7 +59,7 @@ namespace ZapretGui.Core
             _miniOverlayItem = new ToolStripMenuItem("Компактный мини-виджет (HUD)", null, (_, __) => ToggleMiniOverlayRequested?.Invoke());
             _addResourceItem = new ToolStripMenuItem("➕ Добавить ресурс в список", null, (_, __) => AddResourceRequested?.Invoke());
             _chatGptItem = new ToolStripMenuItem("🤖 ChatGPT — включить обход", null, (_, __) => EnableChatGptRequested?.Invoke());
-            _pubgItem = new ToolStripMenuItem("🥘 PUBG — Воронеж-фикс 2610", null, (_, __) => EnablePubgRequested?.Invoke());
+            _pubgItem = new ToolStripMenuItem("🥘 PUBG — фикс 2610", null, (_, __) => EnablePubgRequested?.Invoke());
             _logsItem = new ToolStripMenuItem("Журнал логов", null, (_, __) => OpenLogsRequested?.Invoke());
             var exitItem = new ToolStripMenuItem("Выход", null, (_, __) => ExitRequested?.Invoke());
 
