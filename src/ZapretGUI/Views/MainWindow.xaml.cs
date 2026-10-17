@@ -265,6 +265,7 @@ namespace ZapretGui.Views
                 });
                 _tray.AddResourceRequested += () => Dispatcher.Invoke(ShowAddResourceDialog);
                 _tray.EnableChatGptRequested += () => Dispatcher.Invoke(EnableChatGptPreset);
+                _tray.EnablePubgRequested += () => Dispatcher.Invoke(EnablePubgPreset);
                 _tray.OpenLogsRequested += () => Dispatcher.Invoke(() =>
                 {
                     ShowFromTray();
@@ -380,6 +381,45 @@ namespace ZapretGui.Views
             {
                 AppLog.Error("Ошибка ChatGPT пресета: " + ex.Message);
                 _tray?.ShowBalloon("ChatGPT", "Ошибка: " + ex.Message);
+            }
+        }
+
+        private void EnablePubgPreset()
+        {
+            try
+            {
+                var (ok, msg) = MonitorTargetStore.AddPubgPreset(_vm.Settings);
+                _tray?.ShowBalloon("PUBG", msg);
+                if (ok)
+                {
+                    _vm.Monitoring.Reload();
+                    UpdateTrayStatus();
+                    var status = _vm.Bypass.GetStatus();
+                    if (status.IsRunning)
+                    {
+                        var strat = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
+                        if (strat != null)
+                        {
+                            var _ = Dispatcher.InvokeAsync(async () =>
+                            {
+                                var mode = EngineService.GetGameFilterMode(_vm.Settings.EnginePath);
+                                var res = status.ServiceState == ServiceState.Running
+                                    ? await _vm.Bypass.InstallServiceAsync(strat, mode)
+                                    : await _vm.Bypass.SwitchToStrategyAsync(strat, mode, _vm.Settings.ShowWinwsConsole);
+                                _tray?.ShowBalloon("PUBG", res.Ok ? "Обход перезапущен с профилем PUBG (Воронеж-фикс)" : res.Message);
+                                _vm.Home.RefreshStatus();
+                                UpdateTrayStatus();
+                            });
+                        }
+                    }
+                    ShowFromTray();
+                    _vm.Navigate("monitoring");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Ошибка PUBG пресета: " + ex.Message);
+                _tray?.ShowBalloon("PUBG", "Ошибка: " + ex.Message);
             }
         }
 

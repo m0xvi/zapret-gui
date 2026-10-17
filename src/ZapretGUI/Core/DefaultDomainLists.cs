@@ -160,7 +160,12 @@ namespace ZapretGui.Core
             "proton.me",
             "protonmail.com",
             "hdrezka.ag",
-            "rezka.ag"
+            "rezka.ag",
+            "pubg.com",
+            "krafton.com",
+            "playbattlegrounds.com",
+            "prozone.pubg.com",
+            "front.pubg.com"
         };
     }
 }

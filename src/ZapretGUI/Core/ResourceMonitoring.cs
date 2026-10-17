@@ -349,6 +349,7 @@ namespace ZapretGui.Core
                 settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt"));
                 settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("ChatGPT", "https://chatgpt.com"));
                 settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("OpenAI", "https://openai.com"));
+                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("PUBG", "https://front.pubg.com"));
                 return;
             }
             Ensure("YouTube", "https://www.youtube.com/generate_204");
@@ -356,6 +357,7 @@ namespace ZapretGui.Core
             Ensure("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt");
             Ensure("ChatGPT", "https://chatgpt.com");
             Ensure("OpenAI", "https://openai.com");
+            Ensure("PUBG", "https://front.pubg.com");
         }
 
         public static (bool Ok, string Message) AddToGeneralList(AppSettings settings, MonitorTarget target)
@@ -416,6 +418,42 @@ namespace ZapretGui.Core
             catch (Exception ex)
             {
                 return (false, "Не удалось применить ChatGPT пресет: " + ex.Message);
+            }
+        }
+
+        /// <summary>v1.32.6: пресет для PUBG — Воронеж-фикс ошибки 2610.1.1.</summary>
+        public static (bool Ok, string Message) AddPubgPreset(AppSettings settings)
+        {
+            var domains = new[]
+            {
+                "pubg.com", "krafton.com", "playbattlegrounds.com", "prozone.pubg.com", "front.pubg.com", "pubg.ru"
+            };
+            var added = 0;
+            var skipped = 0;
+            try
+            {
+                var path = System.IO.Path.Combine(settings.EnginePath, "lists", "list-general-user.txt");
+                StrategyParser.EnsureUserLists(settings.EnginePath);
+                var lines = System.IO.File.ReadAllLines(path).Select(l => l.Trim().ToLowerInvariant()).ToHashSet();
+                using var writer = System.IO.File.AppendText(path);
+                foreach (var d in domains)
+                {
+                    if (lines.Contains(d.ToLowerInvariant())) { skipped++; continue; }
+                    writer.WriteLine(d);
+                    added++;
+                }
+                if (!settings.MonitorTargets.Any(x => x.Host.Equals("front.pubg.com", StringComparison.OrdinalIgnoreCase)))
+                    settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("PUBG", "https://front.pubg.com"));
+                settings.GameFilterProfileId = "pubg";
+                settings.GameModeActive = false;
+                EngineService.SetGameFilterMode(settings.EnginePath, GameFilterMode.TcpAndUdp);
+                SettingsStore.Save(settings);
+                var msg = added > 0 ? $"PUBG пресет: добавлено {added} доменов, профиль PUBG включён (UDP 7086-7995,10000-10100,17300-17999). Перезапустите обход." : $"PUBG домены уже в списке (пропущено {skipped}), профиль PUBG включён.";
+                return (true, msg);
+            }
+            catch (Exception ex)
+            {
+                return (false, "Не удалось применить PUBG пресет: " + ex.Message);
             }
         }
     }
