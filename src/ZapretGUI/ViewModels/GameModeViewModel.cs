@@ -66,7 +66,7 @@ namespace ZapretGui.ViewModels
             RefreshProfiles();
             RefreshGamingStatus();
             RefreshDetectionStatus();
-            _main.GameDetector.GameStatusChanged += (_, __) => RefreshDetectionStatus();
+            if (_main.GameDetector != null) _main.GameDetector.GameStatusChanged += (_, __) => RefreshDetectionStatus();
         }
 
         private static IEnumerable<GameBypassOption> CreateOptions()
@@ -118,7 +118,7 @@ namespace ZapretGui.ViewModels
             get => Settings.AutoGameModeOnLaunch;
             set { Settings.AutoGameModeOnLaunch = value; SettingsStore.Save(Settings); Raise(nameof(AutoGameModeOnLaunch)); }
         }
-        public string DetectionStatusText => _main.IsGameRunning ? $"🎮 Запущена: {_main.ActiveGameName} — режим {(Settings.GameModeActive ? "ВКЛ" : "ВЫКЛ")}" : "🎮 Игры не обнаружены — всё спокойно";
+        public string DetectionStatusText => _main.GameDetector != null && _main.IsGameRunning ? $"🎮 Запущена: {_main.ActiveGameName} — режим {(Settings.GameModeActive ? "ВКЛ" : "ВЫКЛ")}" : "🎮 Игры не обнаружены — всё спокойно";
         public string DetectionStatusKey => _main.IsGameRunning ? "Success" : "Muted";
 
         // ---- Фильтр ----

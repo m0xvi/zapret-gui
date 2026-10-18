@@ -58,7 +58,6 @@ namespace ZapretGui.ViewModels
 
             Home = new HomeViewModel(this);
             BypassCenter = new BypassCenterViewModel(this);
-            GameMode = new GameModeViewModel(this);
             StrategiesPage = new StrategiesViewModel(this);
             Updates = new UpdatesViewModel(this);
             GlobalOverlay = new GlobalOverlayViewModel();
@@ -100,6 +99,8 @@ namespace ZapretGui.ViewModels
             {
                 GameDetector.Start();
             }
+
+            GameMode = new GameModeViewModel(this);
 
             Hotkeys.ToggleBypassRequested += () => Application.Current?.Dispatcher?.Invoke(async () =>
             {
