@@ -103,7 +103,7 @@ namespace ZapretGui.ViewModels
         public bool GameModeActive
         {
             get => Settings.GameModeActive;
-            set { Settings.GameModeActive = value; SettingsStore.Save(Settings); _main.ApplyGameFilterState(); Raise(nameof(GameModeActive)); Raise(nameof(GameModeStatusText)); Raise(nameof(GameModeBadge)); }
+            set { Settings.GameModeActive = value; SettingsStore.Save(Settings); _main.ApplyGameFilterState(); Raise(nameof(GameModeActive)); Raise(nameof(GameModeStatusText)); Raise(nameof(GameModeBadge)); Raise(nameof(DetectionStatusText)); Raise(nameof(DetectionStatusKey)); }
         }
         public string GameModeStatusText => Settings.GameModeActive ? "Игровой режим ВКЛ — UDP пропускается для минимального пинга" : "Игровой режим ВЫКЛ — обычный обход (может мешать лобби)";
         public string GameModeBadge => Settings.GameModeActive ? "ВКЛ" : "ВЫКЛ";

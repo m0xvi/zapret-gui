@@ -478,7 +478,7 @@ namespace ZapretGui.Core
         {
             var domains = new[]
             {
-                "kineticgames.co.uk", "api.kineticgames.co.uk", "phasmophobia.com", "photonengine.io", "exitgames.com", "photonengine.com", "steamcommunity.com", "steampowered.com", "unity3d.com", "unity.com"
+                "kineticgames.co.uk", "api.kineticgames.co.uk", "phasmophobia.com", "photonengine.io", "exitgames.com", "photonengine.com", "euw1.exitgamescloud.com", "eu.exitgamescloud.com", "ns.exitgames.com", "steamcommunity.com", "steampowered.com", "unity3d.com", "unity.com"
             };
             var added = 0;
             var skipped = 0;

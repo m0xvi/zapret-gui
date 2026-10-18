@@ -172,7 +172,10 @@ namespace ZapretGui.Core
             "photonengine.io",
             "exitgames.com",
             "steamcommunity.com",
-            "steampowered.com"
+            "steampowered.com",
+            "euw1.exitgamescloud.com",
+            "eu.exitgamescloud.com",
+            "ns.exitgames.com"
         };
     }
 }
