@@ -34,6 +34,7 @@ namespace ZapretGui.ViewModels
         public event Action? RequestToggleOverlay;
 
         public BypassCenterViewModel BypassCenter { get; }
+        public GameModeViewModel GameMode { get; }
 
         public WatchdogService Watchdog { get; }
         public SeamlessFailoverService SeamlessFailover { get; }
@@ -57,6 +58,7 @@ namespace ZapretGui.ViewModels
 
             Home = new HomeViewModel(this);
             BypassCenter = new BypassCenterViewModel(this);
+            GameMode = new GameModeViewModel(this);
             StrategiesPage = new StrategiesViewModel(this);
             Updates = new UpdatesViewModel(this);
             GlobalOverlay = new GlobalOverlayViewModel();
@@ -192,6 +194,7 @@ namespace ZapretGui.ViewModels
                 new() { Key = "home", Title = "Обзор", Icon = "\uE80F", Hint = "Состояние обхода" },
                 new() { Key = "bypass-center", Title = "Центр обхода", Icon = "\uE8D2", Hint = "Всё в одном — стратегии, DNS, hosts, ipset и тяжёлый YouTube" },
                 new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
+                new() { Key = "game-mode", Title = "Игровой режим", Icon = "\uE7FC", Hint = "Всё для игр — фильтр, галочки игр, Phasmophobia/PUBG фикс" },
                 new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
                 new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check и результаты" },
                 new() { Key = "group-data", Title = "СПИСКИ И ФИЛЬТРЫ", IsSectionHeader = true },

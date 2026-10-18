@@ -24,6 +24,7 @@ namespace ZapretGui.Core
         private readonly ToolStripMenuItem _addResourceItem;
         private readonly ToolStripMenuItem _chatGptItem;
         private readonly ToolStripMenuItem _pubgItem;
+        private readonly ToolStripMenuItem _phasmophobiaItem;
         private readonly ToolStripMenuItem _openItem;
         private readonly ToolStripMenuItem _logsItem;
 
@@ -37,6 +38,7 @@ namespace ZapretGui.Core
         public event Action? AddResourceRequested;
         public event Action? EnableChatGptRequested;
         public event Action? EnablePubgRequested;
+        public event Action? EnablePhasmophobiaRequested;
         public event Action? OpenLogsRequested;
         public event Action? ExitRequested;
 
@@ -60,6 +62,7 @@ namespace ZapretGui.Core
             _addResourceItem = new ToolStripMenuItem("➕ Добавить ресурс в список", null, (_, __) => AddResourceRequested?.Invoke());
             _chatGptItem = new ToolStripMenuItem("🤖 ChatGPT — включить обход", null, (_, __) => EnableChatGptRequested?.Invoke());
             _pubgItem = new ToolStripMenuItem("🥘 PUBG — фикс 2610", null, (_, __) => EnablePubgRequested?.Invoke());
+            _phasmophobiaItem = new ToolStripMenuItem("👻 Phasmophobia — фикс лобби", null, (_, __) => EnablePhasmophobiaRequested?.Invoke());
             _logsItem = new ToolStripMenuItem("Журнал логов", null, (_, __) => OpenLogsRequested?.Invoke());
             var exitItem = new ToolStripMenuItem("Выход", null, (_, __) => ExitRequested?.Invoke());
 
@@ -75,6 +78,7 @@ namespace ZapretGui.Core
             _menu.Items.Add(_addResourceItem);
             _menu.Items.Add(_chatGptItem);
             _menu.Items.Add(_pubgItem);
+            _menu.Items.Add(_phasmophobiaItem);
             _menu.Items.Add(_miniOverlayItem);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_logsItem);

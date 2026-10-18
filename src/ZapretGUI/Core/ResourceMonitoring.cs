@@ -472,5 +472,47 @@ namespace ZapretGui.Core
                 return (false, "Не удалось применить PUBG пресет: " + ex.Message);
             }
         }
+
+        /// <summary>v1.34.0: пресет для Phasmophobia — фикс лобби (Steam P2P + Photon).</summary>
+        public static (bool Ok, string Message) AddPhasmophobiaPreset(AppSettings settings)
+        {
+            var domains = new[]
+            {
+                "kineticgames.co.uk", "api.kineticgames.co.uk", "phasmophobia.com", "photonengine.io", "exitgames.com", "photonengine.com", "steamcommunity.com", "steampowered.com", "unity3d.com", "unity.com"
+            };
+            var added = 0;
+            var skipped = 0;
+            try
+            {
+                var path = System.IO.Path.Combine(settings.EnginePath, "lists", "list-general-user.txt");
+                StrategyParser.EnsureUserLists(settings.EnginePath);
+                var lines = System.IO.File.ReadAllLines(path).Select(l => l.Trim().ToLowerInvariant()).ToHashSet();
+                using var writer = System.IO.File.AppendText(path);
+                foreach (var d in domains)
+                {
+                    if (lines.Contains(d.ToLowerInvariant())) { skipped++; continue; }
+                    writer.WriteLine(d);
+                    added++;
+                }
+                // Phasmophobia лобби — Steam P2P, поэтому профиль исключает Steam-порты, не мешает DISCORD voice
+                settings.GameFilterProfileId = "phasmophobia";
+                settings.GameModeActive = false;
+                EngineService.SetGameFilterMode(settings.EnginePath, GameFilterMode.TcpAndUdp);
+                // добавляем мониторинг для проверки лобби (не спамит — по умолчанию выкл, но можно вкл)
+                if (!settings.MonitorTargets.Any(x => x.Host.Equals("api.kineticgames.co.uk", StringComparison.OrdinalIgnoreCase)))
+                {
+                    var t = MonitorTarget.CreateBuiltIn("Phasmophobia", "https://api.kineticgames.co.uk");
+                    t.Enabled = false;
+                    settings.MonitorTargets.Add(t);
+                }
+                SettingsStore.Save(settings);
+                var msg = added > 0 ? $"Phasmophobia пресет: добавлено {added} доменов, профиль Phasmophobia включён (исключены Steam P2P 27000-27200). Перезапустите обход." : $"Phasmophobia домены уже в списке (пропущено {skipped}), профиль Phasmophobia включён.";
+                return (true, msg);
+            }
+            catch (Exception ex)
+            {
+                return (false, "Не удалось применить Phasmophobia пресет: " + ex.Message);
+            }
+        }
     }
 }

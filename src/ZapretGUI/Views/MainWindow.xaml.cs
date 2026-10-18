@@ -33,6 +33,7 @@ namespace ZapretGui.Views
             _pages["bypass-center"] = new BypassCenterPage { DataContext = _vm.BypassCenter };
             _pages["first-run"] = new FirstLaunchPage(_vm.FirstLaunch);
             _pages["strategies"] = new StrategiesPage(_vm.StrategiesPage);
+            _pages["game-mode"] = new GameModePage(_vm.GameMode);
             _pages["monitoring"] = new MonitoringPage(_vm.Monitoring);
             _pages["updates"] = new UpdatesPage(_vm.Updates);
             _pages["diagnostics"] = new DiagnosticsPage(_vm.Diagnostics);
@@ -266,6 +267,7 @@ namespace ZapretGui.Views
                 _tray.AddResourceRequested += () => Dispatcher.Invoke(ShowAddResourceDialog);
                 _tray.EnableChatGptRequested += () => Dispatcher.Invoke(EnableChatGptPreset);
                 _tray.EnablePubgRequested += () => Dispatcher.Invoke(EnablePubgPreset);
+                _tray.EnablePhasmophobiaRequested += () => Dispatcher.Invoke(EnablePhasmophobiaPreset);
                 _tray.OpenLogsRequested += () => Dispatcher.Invoke(() =>
                 {
                     ShowFromTray();
@@ -420,6 +422,46 @@ namespace ZapretGui.Views
             {
                 AppLog.Error("Ошибка PUBG пресета: " + ex.Message);
                 _tray?.ShowBalloon("PUBG", "Ошибка: " + ex.Message);
+            }
+        }
+
+        private void EnablePhasmophobiaPreset()
+        {
+            try
+            {
+                var (ok, msg) = MonitorTargetStore.AddPhasmophobiaPreset(_vm.Settings);
+                _tray?.ShowBalloon("Phasmophobia", msg);
+                if (ok)
+                {
+                    _vm.Monitoring.Reload();
+                    _vm.GameMode.Refresh();
+                    UpdateTrayStatus();
+                    var status = _vm.Bypass.GetStatus();
+                    if (status.IsRunning)
+                    {
+                        var strat = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
+                        if (strat != null)
+                        {
+                            var _ = Dispatcher.InvokeAsync(async () =>
+                            {
+                                var mode = EngineService.GetGameFilterMode(_vm.Settings.EnginePath);
+                                var res = status.ServiceState == ServiceState.Running
+                                    ? await _vm.Bypass.InstallServiceAsync(strat, mode)
+                                    : await _vm.Bypass.SwitchToStrategyAsync(strat, mode, _vm.Settings.ShowWinwsConsole);
+                                _tray?.ShowBalloon("Phasmophobia", res.Ok ? "Обход перезапущен с профилем Phasmophobia" : res.Message);
+                                _vm.Home.RefreshStatus();
+                                UpdateTrayStatus();
+                            });
+                        }
+                    }
+                    ShowFromTray();
+                    _vm.Navigate("game-mode");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Ошибка Phasmophobia пресета: " + ex.Message);
+                _tray?.ShowBalloon("Phasmophobia", "Ошибка: " + ex.Message);
             }
         }
 

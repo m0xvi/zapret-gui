@@ -84,6 +84,9 @@ namespace ZapretGui.Core
         /// <summary>Пользовательские исключения портов.</summary>
         public string CustomExcludedPorts { get; set; } = "";
 
+        /// <summary>v1.34.0: какие игры отмечены галочками «обходить» в Игровом режиме (например phasmophobia, pubg, steam_cs2).</summary>
+        public List<string> EnabledGameBypassIds { get; set; } = new();
+
         /// <summary>Выбранный TLS SNI домен для desync-fake-tls (например, gosuslugi.ru, cloudflare.com).</summary>
         public string SelectedFakeSni { get; set; } = "gosuslugi.ru";
 

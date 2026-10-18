@@ -88,6 +88,15 @@ namespace ZapretGui.Core
             },
             new()
             {
+                Id = "phasmophobia",
+                Name = "👻 Phasmophobia — фикс лобби",
+                Description = "Фикс лобби Phasmophobia (Steam P2P). Исключает порты Steam 27015-27200, 3478-3480, 4379-4380 из обработки, сохраняет голос Discord (50000-65535). Если лобби всё равно не коннектит — попробуй профиль «Только Discord Voice».",
+                TcpPorts = "1024-65535",
+                UdpPorts = "1024-26999,27201-3477,3481-4378,4381-65535",
+                ExcludedPorts = "27000-27200,3478-3480,4379-4380"
+            },
+            new()
+            {
                 Id = "custom",
                 Name = "⚙️ Пользовательский диапазон портов",
                 Description = "Ручной ввод диапазонов TCP и UDP портов.",

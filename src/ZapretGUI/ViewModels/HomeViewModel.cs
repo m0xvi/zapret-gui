@@ -74,6 +74,7 @@ namespace ZapretGui.ViewModels
             OpenFirstLaunchCommand = new RelayCommand(() => _main.Navigate("first-run"));
             OpenStrategiesCommand = new RelayCommand(() => _main.Navigate("strategies"));
             OpenBypassCenterCommand = new RelayCommand(() => _main.Navigate("bypass-center"));
+            OpenGameModeCommand = new RelayCommand(() => _main.Navigate("game-mode"));
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RestartAsAdminCommand = new RelayCommand(() => _main.RestartAsAdminCommand.Execute(null));
             ClearMessageCommand = new RelayCommand(() => Message = "");
@@ -562,6 +563,7 @@ namespace ZapretGui.ViewModels
         public ICommand OpenFirstLaunchCommand { get; }
         public ICommand OpenStrategiesCommand { get; }
         public ICommand OpenBypassCenterCommand { get; }
+        public ICommand OpenGameModeCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
         public ICommand ClearMessageCommand { get; }

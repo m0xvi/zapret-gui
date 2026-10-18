@@ -166,7 +166,13 @@ namespace ZapretGui.Core
             "playbattlegrounds.com",
             "prozone.pubg.com",
             "front.pubg.com",
-            "prod-live-front.playbattlegrounds.com"
+            "prod-live-front.playbattlegrounds.com",
+            "kineticgames.co.uk",
+            "api.kineticgames.co.uk",
+            "photonengine.io",
+            "exitgames.com",
+            "steamcommunity.com",
+            "steampowered.com"
         };
     }
 }
