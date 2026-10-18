@@ -42,6 +42,7 @@ namespace ZapretGui.ViewModels
         private string _matrixPercent = "0%";
         private string _matrixSummary = "Готов к проверке — нажми «Проверить всё»";
         private string _matrixBestText = "—";
+        private string _matrixLastRunText = "";
         private DnsStrategyMatrixEntry? _selectedMatrixEntry;
 
         public BypassCenterViewModel(MainViewModel main)
@@ -64,8 +65,11 @@ namespace ZapretGui.ViewModels
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             ApplyStrategyCommand = new AsyncRelayCommand(ApplySelectedStrategyAsync, () => SelectedStrategy != null && !IsMatrixRunning);
             DismissMessageCommand = new RelayCommand(() => { Message = ""; MessageKey = "Info"; });
+            ClearMatrixHistoryCommand = new RelayCommand(ClearMatrixHistory, () => !IsMatrixRunning && MatrixHasHistory);
+            OpenMatrixHistoryFolderCommand = new RelayCommand(() => Shell.OpenFolder(AppPaths.AppData));
 
             RefreshAll();
+            LoadLastMatrixHistory();
             _main.Bypass.GetStatus(); // warm
             try { _main.Strategies.PropertyChanged += (_, __) => RefreshStrategies(); } catch { }
         }
@@ -118,6 +122,10 @@ namespace ZapretGui.ViewModels
         public string MatrixPercent { get => _matrixPercent; private set => Set(ref _matrixPercent, value); }
         public string MatrixSummary { get => _matrixSummary; private set => Set(ref _matrixSummary, value); }
         public string MatrixBestText { get => _matrixBestText; private set => Set(ref _matrixBestText, value); }
+        public string MatrixLastRunText { get => _matrixLastRunText; private set { if (Set(ref _matrixLastRunText, value)) Raise(nameof(MatrixLastRunVisible)); } }
+        public bool MatrixLastRunVisible => !string.IsNullOrWhiteSpace(MatrixLastRunText);
+        public bool MatrixHasHistory => !string.IsNullOrWhiteSpace(MatrixLastRunText) || MatrixResults.Count > 0;
+        public string MatrixHistorySummary => MatrixHasHistory ? $"Сохранено: {MatrixResults.Count} комбинаций · {MatrixLastRunText}" : "История пуста — нажми «Проверить всё»";
         public DnsStrategyMatrixEntry? SelectedMatrixEntry { get => _selectedMatrixEntry; set => Set(ref _selectedMatrixEntry, value); }
 
         public ICommand RefreshCommand { get; }
@@ -130,6 +138,8 @@ namespace ZapretGui.ViewModels
         public ICommand RunMatrixCommand { get; }
         public ICommand CancelMatrixCommand { get; }
         public ICommand ApplyBestCommand { get; }
+        public ICommand ClearMatrixHistoryCommand { get; }
+        public ICommand OpenMatrixHistoryFolderCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand ApplyStrategyCommand { get; }
 
@@ -160,6 +170,88 @@ namespace ZapretGui.ViewModels
                 SelectedStrategy = Strategies.Items.FirstOrDefault(s => s.Name == Settings.SelectedStrategy) ?? Strategies.Items.FirstOrDefault();
             Raise(nameof(EngineStatusText));
             (RunMatrixCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+        }
+
+        private void LoadLastMatrixHistory()
+        {
+            try
+            {
+                var rec = MatrixHistoryStore.LoadLast();
+                if (rec == null || rec.Entries.Count == 0) return;
+                MatrixResults.Clear();
+                foreach (var e in rec.Entries)
+                {
+                    var entry = new DnsStrategyMatrixEntry(e.Strategy, e.Dns, e.DnsIp)
+                    {
+                        Passed = e.Passed,
+                        Total = e.Total,
+                        AvgMs = e.AvgMs,
+                        IsBest = e.IsBest,
+                        Status = e.Status,
+                        StatusKey = e.StatusKey
+                    };
+                    MatrixResults.Add(entry);
+                }
+                MatrixSummary = rec.Summary;
+                MatrixBestText = string.IsNullOrWhiteSpace(rec.BestText) ? "—" : rec.BestText;
+                MatrixLastRunText = $"Последняя проверка: {rec.CreatedAt:dd.MM.yyyy HH:mm} · {rec.Entries.Count} тестов";
+                Raise(nameof(MatrixHasHistory));
+                Raise(nameof(MatrixHistorySummary));
+                Raise(nameof(MatrixLastRunVisible));
+                (ApplyBestCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                (ClearMatrixHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                AppLog.Info($"[Матрица] загружена история {rec.CreatedAtText}: {rec.Summary}");
+            }
+            catch (Exception ex) { AppLog.Warn("[Матрица] не удалось загрузить историю: " + ex.Message); }
+        }
+
+        private void SaveCurrentMatrixHistory()
+        {
+            try
+            {
+                if (MatrixResults.Count == 0) return;
+                var rec = new MatrixHistoryRecord
+                {
+                    CreatedAt = DateTime.Now,
+                    Summary = MatrixSummary,
+                    BestText = MatrixBestText,
+                    TotalTests = MatrixResults.Count,
+                    Entries = MatrixResults.Select(r => new MatrixHistoryEntry
+                    {
+                        Strategy = r.Strategy,
+                        Dns = r.Dns,
+                        DnsIp = r.DnsIp,
+                        Passed = r.Passed,
+                        Total = r.Total,
+                        AvgMs = r.AvgMs,
+                        IsBest = r.IsBest,
+                        Status = r.Status,
+                        StatusKey = r.StatusKey
+                    }).ToList()
+                };
+                MatrixHistoryStore.Save(rec);
+                MatrixLastRunText = $"Последняя проверка: {rec.CreatedAt:dd.MM.yyyy HH:mm} · {rec.Entries.Count} тестов";
+                Raise(nameof(MatrixHasHistory));
+                Raise(nameof(MatrixHistorySummary));
+                Raise(nameof(MatrixLastRunVisible));
+                (ClearMatrixHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+            catch (Exception ex) { AppLog.Warn("[Матрица] не удалось сохранить: " + ex.Message); }
+        }
+
+        private void ClearMatrixHistory()
+        {
+            MatrixHistoryStore.Clear();
+            MatrixResults.Clear();
+            MatrixSummary = "Готов к проверке — нажми «Проверить всё»";
+            MatrixBestText = "—";
+            MatrixLastRunText = "";
+            Raise(nameof(MatrixHasHistory));
+            Raise(nameof(MatrixHistorySummary));
+            Raise(nameof(MatrixLastRunVisible));
+            (ApplyBestCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            (ClearMatrixHistoryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            Message = "История матрицы очищена"; MessageKey = "Info";
         }
 
         private string GetHostsStatus()
@@ -358,6 +450,8 @@ namespace ZapretGui.ViewModels
                     : "Готово — рабочих комбинаций не нашлось, проверь сеть";
                 MatrixText = bestEntry != null ? $"Победитель: {bestEntry.Strategy} с {bestEntry.Dns}" : "Матрица завершена";
                 Message = MatrixSummary; MessageKey = bestEntry != null ? "Success" : "Warning";
+                // сохраняем результат для показа после перезапуска — видно явно, не теряется
+                SaveCurrentMatrixHistory();
             }
             catch (OperationCanceledException) { MatrixSummary = "Матрица отменена"; Message = MatrixSummary; MessageKey = "Warning"; }
             catch (Exception ex) { MatrixSummary = "Ошибка матрицы: " + ex.Message; MessageKey = "Danger"; AppLog.Error("[Матрица] " + ex.Message); }
