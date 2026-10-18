@@ -165,7 +165,8 @@ namespace ZapretGui.Core
             "krafton.com",
             "playbattlegrounds.com",
             "prozone.pubg.com",
-            "front.pubg.com"
+            "front.pubg.com",
+            "prod-live-front.playbattlegrounds.com"
         };
     }
 }

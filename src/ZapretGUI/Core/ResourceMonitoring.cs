@@ -340,7 +340,11 @@ namespace ZapretGui.Core
             {
                 var host = new Uri(url).Host;
                 if (!settings.MonitorTargets.Any(x => x.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
-                    settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn(name, url));
+                {
+                    var tgt = MonitorTarget.CreateBuiltIn(name, url);
+                    if (name == "PUBG") tgt.Enabled = false;
+                    settings.MonitorTargets.Add(tgt);
+                }
             }
             if (settings.MonitorTargets.Count == 0)
             {
@@ -349,7 +353,9 @@ namespace ZapretGui.Core
                 settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt"));
                 settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("ChatGPT", "https://chatgpt.com"));
                 settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("OpenAI", "https://openai.com"));
-                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("PUBG", "https://front.pubg.com"));
+                var pubg = MonitorTarget.CreateBuiltIn("PUBG", "https://www.pubg.com");
+                pubg.Enabled = false; // выключен по умолчанию чтобы не спамить, включается пресетом
+                settings.MonitorTargets.Add(pubg);
                 return;
             }
             Ensure("YouTube", "https://www.youtube.com/generate_204");
@@ -357,7 +363,17 @@ namespace ZapretGui.Core
             Ensure("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt");
             Ensure("ChatGPT", "https://chatgpt.com");
             Ensure("OpenAI", "https://openai.com");
-            Ensure("PUBG", "https://front.pubg.com");
+            Ensure("PUBG", "https://www.pubg.com");
+            // миграция старого невалидного front.pubg.com -> www.pubg.com
+            var oldPubg = settings.MonitorTargets.FirstOrDefault(x => x.Host.Equals("front.pubg.com", StringComparison.OrdinalIgnoreCase));
+            if (oldPubg != null)
+            {
+                oldPubg.Url = "https://www.pubg.com";
+                oldPubg.Host = "www.pubg.com";
+                oldPubg.Name = "PUBG";
+                oldPubg.LastStatusText = "";
+                oldPubg.LastDetails = "";
+            }
         }
 
         public static (bool Ok, string Message) AddToGeneralList(AppSettings settings, MonitorTarget target)
@@ -426,7 +442,7 @@ namespace ZapretGui.Core
         {
             var domains = new[]
             {
-                "pubg.com", "krafton.com", "playbattlegrounds.com", "prozone.pubg.com", "front.pubg.com", "pubg.ru"
+                "pubg.com", "krafton.com", "playbattlegrounds.com", "prozone.pubg.com", "prod-live-front.playbattlegrounds.com", "pubg.ru"
             };
             var added = 0;
             var skipped = 0;
@@ -442,8 +458,8 @@ namespace ZapretGui.Core
                     writer.WriteLine(d);
                     added++;
                 }
-                if (!settings.MonitorTargets.Any(x => x.Host.Equals("front.pubg.com", StringComparison.OrdinalIgnoreCase)))
-                    settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("PUBG", "https://front.pubg.com"));
+                if (!settings.MonitorTargets.Any(x => x.Host.Equals("www.pubg.com", StringComparison.OrdinalIgnoreCase)))
+                    settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("PUBG", "https://www.pubg.com"));
                 settings.GameFilterProfileId = "pubg";
                 settings.GameModeActive = false;
                 EngineService.SetGameFilterMode(settings.EnginePath, GameFilterMode.TcpAndUdp);
