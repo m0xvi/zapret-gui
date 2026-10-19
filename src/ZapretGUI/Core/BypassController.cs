@@ -192,46 +192,16 @@ namespace ZapretGui.Core
                     // если удалили всё, добавляем заглушку
                 }
             }
-            // EU Phasmophobia: если игровой режим включён — исключаем Photon wss из DPI (иначе ClientTimeout на Hetzner)
-            if (_settings.GameModeActive)
+            // Phasmophobia EU: wss через Hetzner ломается от fake с sni=gosuslugi — меняем SNI на photonengine.io когда включён игровой режим и Phasmophobia
+            if (_settings.GameModeActive && _settings.EnabledGameBypassIds.Contains("phasmophobia"))
             {
-                var excludePath = Path.Combine(ListsDir, "list-exclude-user.txt");
-                // гарантируем что Photon хосты в exclude (даже если пользователь не нажимал Phasmophobia)
-                try
+                for (int i = 0; i < args.Count; i++)
                 {
-                    StrategyParser.EnsureUserLists(EngineRoot);
-                    var photonHosts = new[] { "photonengine.io", "ns.photonengine.io", "ns-eu.photonengine.io", "exitgamescloud.com", "app.exitgamescloud.com", "app-eu.exitgamescloud.com", "euw1.exitgamescloud.com", "eu.exitgamescloud.com" };
-                    var exLines = File.Exists(excludePath) ? File.ReadAllLines(excludePath).Select(l => l.Trim().ToLowerInvariant()).ToHashSet() : new HashSet<string>();
-                    bool needAppend = false;
-                    foreach (var h in photonHosts) if (!exLines.Contains(h.ToLowerInvariant())) needAppend = true;
-                    if (needAppend)
+                    if (args[i].StartsWith("--dpi-desync-fake-tls-mod=") && args[i].Contains("sni="))
                     {
-                        using var exWriter = File.AppendText(excludePath);
-                        foreach (var h in photonHosts) if (!exLines.Contains(h.ToLowerInvariant())) exWriter.WriteLine(h);
-                    }
-                }
-                catch { }
-                if (File.Exists(excludePath))
-                {
-                    var excludeArg = $"--hostlist-exclude={excludePath}";
-                    if (!args.Any(a => a.StartsWith("--hostlist-exclude", StringComparison.OrdinalIgnoreCase)))
-                    {
-                        // вставляем после последнего hostlist в первом блоке (до первого --new)
-                        int firstNew = args.FindIndex(a => a == "--new");
-                        int insertAt = -1;
-                        if (firstNew > 0)
-                        {
-                            for (int i = firstNew - 1; i >= 0; i--)
-                                if (args[i].StartsWith("--hostlist", StringComparison.OrdinalIgnoreCase)) { insertAt = i + 1; break; }
-                            if (insertAt < 0) insertAt = firstNew;
-                        }
-                        else
-                        {
-                            for (int i = args.Count - 1; i >= 0; i--)
-                                if (args[i].StartsWith("--hostlist", StringComparison.OrdinalIgnoreCase)) { insertAt = i + 1; break; }
-                            if (insertAt < 0) insertAt = args.Count;
-                        }
-                        args.Insert(insertAt, excludeArg);
+                        // первый блок (hostlist) — меняем SNI на photon для Hetzner, не трогаем QUIC-блок
+                        args[i] = System.Text.RegularExpressions.Regex.Replace(args[i], @"sni=[^,\s]+", "sni=photonengine.io");
+                        break;
                     }
                 }
             }
