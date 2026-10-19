@@ -170,12 +170,18 @@ namespace ZapretGui.Core
             "kineticgames.co.uk",
             "api.kineticgames.co.uk",
             "photonengine.io",
+            "ns.photonengine.io",
+            "ns-eu.photonengine.io",
+            "ns-us.photonengine.io",
             "exitgames.com",
-            "steamcommunity.com",
-            "steampowered.com",
+            "exitgamescloud.com",
+            "app.exitgamescloud.com",
+            "app-eu.exitgamescloud.com",
             "euw1.exitgamescloud.com",
             "eu.exitgamescloud.com",
-            "ns.exitgames.com"
+            "ns.exitgames.com",
+            "steamcommunity.com",
+            "steampowered.com"
         };
     }
 }

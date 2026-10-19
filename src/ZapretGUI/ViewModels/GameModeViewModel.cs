@@ -72,14 +72,14 @@ namespace ZapretGui.ViewModels
         private static IEnumerable<GameBypassOption> CreateOptions()
         {
             yield return new GameBypassOption(
-                "discord_voice", "🎙️ Discord Voice", "Голосовые каналы Discord (UDP 50000-65535). Рекомендуется для всех — не мешает играм.",
+                "discord_voice", "🎙️ Discord Voice", "Discord 50000-65535 — безопасно, не трогает игры. Рекомендуется всем.",
                 new[] { "discord.com", "discordapp.com", "discord.gg" }, "discord_voice", "🎙️");
             yield return new GameBypassOption(
                 "steam_cs2", "🎯 Steam / CS2 / Dota 2", "Valve Source Engine (27000-27100) — исключает из обхода, убирает loss/choke.",
                 new[] { "steampowered.com", "steamcommunity.com", "steamserver.net" }, "steam_cs2", "🎯");
             yield return new GameBypassOption(
-                "phasmophobia", "👻 Phasmophobia", "Фикс лобби Phasmophobia (Steam P2P 27015-27200 + Photon). Если не коннектит в лобби — включи эту галочку и нажми «Починить».",
-                new[] { "kineticgames.co.uk", "photonengine.io", "exitgames.com", "steamcommunity.com" }, "phasmophobia", "👻");
+                "phasmophobia", "👻 Phasmophobia", "Steam P2P 27015-27200 + Photon (4530,5055). EU требует исключения — включи галочку и профиль «Phasmophobia».",
+                new[] { "kineticgames.co.uk", "photonengine.io", "ns.photonengine.io", "exitgames.com", "exitgamescloud.com", "steamcommunity.com" }, "phasmophobia", "👻");
             yield return new GameBypassOption(
                 "pubg", "🥘 PUBG: BATTLEGROUNDS", "Фикс ошибки 2610.1.1 — лобби и матчмейкинг PUBG (7086-7995, 10000-10100, 17300-17999).",
                 new[] { "pubg.com", "krafton.com", "playbattlegrounds.com", "prod-live-front.playbattlegrounds.com" }, "pubg", "🥘");
