@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Net;
@@ -495,6 +496,19 @@ namespace ZapretGui.Core
                     added++;
                 }
                 // Phasmophobia лобби — Steam P2P, поэтому профиль исключает Steam-порты, не мешает DISCORD voice
+                // EU fix: Photon-хосты в exclude (wss ломается от fake), чтобы лобби не таймаутило
+                try
+                {
+                    var excludePath = System.IO.Path.Combine(settings.EnginePath, "lists", "list-exclude-user.txt");
+                    StrategyParser.EnsureUserLists(settings.EnginePath);
+                    var exLines = System.IO.File.Exists(excludePath) ? System.IO.File.ReadAllLines(excludePath).Select(l => l.Trim().ToLowerInvariant()).ToHashSet() : new HashSet<string>();
+                    var photonHosts = new[] { "photonengine.io", "ns.photonengine.io", "ns-eu.photonengine.io", "exitgamescloud.com", "app.exitgamescloud.com", "app-eu.exitgamescloud.com", "euw1.exitgamescloud.com", "eu.exitgamescloud.com" };
+                    using var exWriter = System.IO.File.AppendText(excludePath);
+                    foreach (var h in photonHosts)
+                        if (!exLines.Contains(h.ToLowerInvariant())) exWriter.WriteLine(h);
+                    exWriter.Flush();
+                }
+                catch { }
                 settings.GameFilterProfileId = "phasmophobia";
                 settings.GameModeActive = false;
                 EngineService.SetGameFilterMode(settings.EnginePath, GameFilterMode.TcpAndUdp);

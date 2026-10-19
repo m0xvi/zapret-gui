@@ -263,6 +263,22 @@ namespace ZapretGui.ViewModels
                         writer.WriteLine(d); added++;
                     }
                     writer.Flush();
+                    // для Phasmophobia EU: Photon-хосты должны исключаться из DPI (иначе wss ломается), добавляем их в exclude
+                    if (opt.Id == "phasmophobia")
+                    {
+                        try
+                        {
+                            var excludePath = Path.Combine(Settings.EnginePath, "lists", "list-exclude-user.txt");
+                            StrategyParser.EnsureUserLists(Settings.EnginePath);
+                            var exLines = File.Exists(excludePath) ? File.ReadAllLines(excludePath).Select(l => l.Trim().ToLowerInvariant()).ToHashSet() : new HashSet<string>();
+                            var photonHosts = new[] { "photonengine.io", "ns.photonengine.io", "ns-eu.photonengine.io", "exitgamescloud.com", "app.exitgamescloud.com", "app-eu.exitgamescloud.com", "euw1.exitgamescloud.com", "eu.exitgamescloud.com" };
+                            using var exWriter = File.AppendText(excludePath);
+                            foreach (var h in photonHosts)
+                                if (!exLines.Contains(h.ToLowerInvariant())) exWriter.WriteLine(h);
+                            exWriter.Flush();
+                        }
+                        catch { }
+                    }
                     opt.Status = added > 0 ? $"✅ +{added} доменов" : "уже в списке";
                     // если есть профиль — предлагаем переключить
                     if (!string.IsNullOrWhiteSpace(opt.ProfileId) && Settings.GameFilterProfileId != opt.ProfileId)

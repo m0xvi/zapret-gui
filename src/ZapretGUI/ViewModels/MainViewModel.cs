@@ -211,6 +211,7 @@ namespace ZapretGui.ViewModels
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
             RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
+            RefreshAllCommand = new RelayCommand(RefreshAll);
             NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
             NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 3; Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
@@ -530,6 +531,7 @@ namespace ZapretGui.ViewModels
         public ICommand ToggleThemeCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
+        public ICommand RefreshAllCommand { get; }
         public ICommand NavigateHomeCommand { get; }
         public ICommand NavigateDiagnosticsCommand { get; }
         public ICommand NavigateStrategiesCommand { get; }
@@ -673,10 +675,26 @@ namespace ZapretGui.ViewModels
                 ThemeMode.Dark => ThemeMode.Light,
                 _ => ThemeMode.System
             };
+
             ThemeService.Apply(Settings.Theme);
             SettingsStore.Save(Settings);
             Raise(nameof(ThemeText));
             SettingsPage.Reload();
+        }
+
+        private void RefreshAll()
+        {
+            try
+            {
+                Home.RefreshStatus();
+                Home.RefreshGamingStatus();
+                StrategiesPage.Refresh();
+                GameMode.Refresh();
+                Profiles.RefreshNetwork();
+                RefreshReadiness();
+                MiniOverlay.Refresh();
+            }
+            catch { }
         }
 
         private void RestartAsAdmin()

@@ -129,6 +129,9 @@
                 <Button Style="{StaticResource IconButton}" Content="&#xE946;"
                         Command="{Binding OpenEngineFolderCommand}" ToolTip="Открыть папку движка"
                         AutomationProperties.Name="Открыть папку движка" />
+                <Button Style="{StaticResource IconButton}" Content="&#xE72C;"
+                        Command="{Binding RefreshAllCommand}" ToolTip="Обновить состояние (проверить обход, стратегию, пинг, игры)"
+                        AutomationProperties.Name="Обновить" />
                 <Button Style="{StaticResource TitleBarButton}" Content="&#xE921;" Click="Minimize_Click"
                         ToolTip="Свернуть" AutomationProperties.Name="Свернуть окно" />
                 <Button x:Name="MaximizeButton" Style="{StaticResource TitleBarButton}" Content="&#xE922;"
