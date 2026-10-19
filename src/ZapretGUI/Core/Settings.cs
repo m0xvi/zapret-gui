@@ -284,6 +284,9 @@ namespace ZapretGui.Core
 
         /// <summary>Пользователь вручную выключил запрет — не включать принудительно (фикс v1.32.1: «несмотря на выключение сам включается»).</summary>
         public bool BypassManuallyStopped { get; set; } = false;
+
+        /// <summary>Сводный лист справа — развёрнут.</summary>
+        public bool IsSummarySheetExpanded { get; set; } = true;
     }
 
     /// <summary>Загрузка/сохранение settings.json.</summary>

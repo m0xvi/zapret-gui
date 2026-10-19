@@ -212,6 +212,7 @@ namespace ZapretGui.ViewModels
             RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RefreshAllCommand = new RelayCommand(RefreshAll);
+            ToggleSummarySheetCommand = new RelayCommand(ToggleSummarySheet);
             NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
             NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 3; Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
@@ -532,6 +533,7 @@ namespace ZapretGui.ViewModels
         public ICommand RestartAsAdminCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand RefreshAllCommand { get; }
+        public ICommand ToggleSummarySheetCommand { get; }
         public ICommand NavigateHomeCommand { get; }
         public ICommand NavigateDiagnosticsCommand { get; }
         public ICommand NavigateStrategiesCommand { get; }
@@ -695,6 +697,19 @@ namespace ZapretGui.ViewModels
                 MiniOverlay.Refresh();
             }
             catch { }
+        }
+
+        public bool IsSummarySheetExpanded
+        {
+            get => Settings.IsSummarySheetExpanded;
+            set { if (Settings.IsSummarySheetExpanded != value) { Settings.IsSummarySheetExpanded = value; SettingsStore.Save(Settings); Raise(nameof(IsSummarySheetExpanded)); Raise(nameof(SummarySheetToggleIcon)); Raise(nameof(SummarySheetToggleTooltip)); } }
+        }
+        public string SummarySheetToggleIcon => IsSummarySheetExpanded ? "\uE8A0" : "\uE89F"; // chevron right/left
+        public string SummarySheetToggleTooltip => IsSummarySheetExpanded ? "Свернуть сводку" : "Развернуть сводку";
+
+        private void ToggleSummarySheet()
+        {
+            IsSummarySheetExpanded = !IsSummarySheetExpanded;
         }
 
         private void RestartAsAdmin()
