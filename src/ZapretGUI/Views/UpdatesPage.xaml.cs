@@ -5,6 +5,11 @@ namespace ZapretGui.Views
 {
     public partial class UpdatesPage : UserControl
     {
+        public UpdatesPage()
+        {
+            InitializeComponent();
+        }
+
         public UpdatesPage(UpdatesViewModel viewModel)
         {
             InitializeComponent();
