@@ -70,16 +70,6 @@ namespace ZapretGui.Core
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_openItem);
             _menu.Items.Add(_toggleBypassItem);
-            _menu.Items.Add(_gameModeItem);
-            _menu.Items.Add(new ToolStripSeparator());
-            _menu.Items.Add(_profilesSubMenu);
-            _menu.Items.Add(_strategiesSubMenu);
-            _menu.Items.Add(_dnsSubMenu);
-            _menu.Items.Add(_addResourceItem);
-            _menu.Items.Add(_chatGptItem);
-            _menu.Items.Add(_pubgItem);
-            _menu.Items.Add(_phasmophobiaItem);
-            _menu.Items.Add(_miniOverlayItem);
             _menu.Items.Add(new ToolStripSeparator());
             _menu.Items.Add(_logsItem);
             _menu.Items.Add(exitItem);

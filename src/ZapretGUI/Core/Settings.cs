@@ -31,7 +31,7 @@ namespace ZapretGui.Core
         public bool StartMinimized { get; set; }
 
         /// <summary>Запускать обход сразу при старте приложения (если выбрана стратегия).</summary>
-        public bool AutoStartBypass { get; set; }
+        public bool AutoStartBypass { get; set; } = true;
 
         /// <summary>Останавливать обход при выходе из приложения.</summary>
         public bool StopBypassOnExit { get; set; }

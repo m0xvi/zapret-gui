@@ -155,6 +155,31 @@ namespace ZapretGui
                     if (installed)
                     {
                         StrategyParser.EnsureUserLists(settings.EnginePath);
+                        // Автозапуск обхода и службы вместе с программой (по просьбе пользователя)
+                        if (settings.AutoStartBypass && !settings.SafeMode && !viewModel.Bypass.GetStatus().IsRunning)
+                        {
+                            try
+                            {
+                                await window.Dispatcher.InvokeAsync(async () =>
+                                {
+                                    try
+                                    {
+                                        if (!Shell.IsAdmin()) { AppLog.Warn("Автозапуск обхода пропущен — нет прав администратора"); return; }
+                                        var strat = viewModel.Strategies.Find(settings.SelectedStrategy) ?? viewModel.Strategies.Recommended;
+                                        if (strat == null) { AppLog.Warn("Автозапуск обхода пропущен — стратегия не выбрана"); return; }
+                                        AppLog.Info($"Автозапуск обхода: {strat.Name}");
+                                        var mode = EngineService.GetGameFilterMode(settings.EnginePath);
+                                        // Если служба уже установлена — запускаем через службу, иначе обычный обход
+                                        var status = viewModel.Bypass.GetStatus();
+                                        var res = status.ServiceInstalled
+                                            ? await viewModel.Bypass.InstallServiceAsync(strat, mode)
+                                            : await viewModel.Bypass.StartAsync(strat, mode);
+                                        if (!res.IsSuccess) AppLog.Warn("Автозапуск обхода: " + res.Error);
+                                        else AppLog.Info("Автозапуск обхода — успешно");
+                                    } catch (System.Exception ex) { AppLog.Error("Ошибка автозапуска обхода: " + ex.Message); }
+                                });
+                            } catch (System.Exception ex) { AppLog.Error("Ошибка автозапуска обхода (outer): " + ex.Message); }
+                        }
                     }
 
                     if (installed && settings.AutoCheckEngineUpdates && !settings.SafeMode)

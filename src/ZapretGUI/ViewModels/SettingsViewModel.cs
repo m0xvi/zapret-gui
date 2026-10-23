@@ -25,7 +25,7 @@ namespace ZapretGui.ViewModels
         private bool _isProviderLookupBusy;
         private int _selectedTabIndex;
 
-        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления", "📄 Журнал", "ℹ️ О программе" };
+        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "📄 Журнал", "ℹ️ О программе" };
 
         public int SelectedTabIndex
         {
@@ -39,7 +39,6 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsNetworkTabSelected));
                     Raise(nameof(IsAppearanceTabSelected));
                     Raise(nameof(IsGamingTabSelected));
-                    Raise(nameof(IsUpdatesTabSelected));
                     Raise(nameof(IsLogsTabSelected));
                     Raise(nameof(IsAboutTabSelected));
                     Raise(nameof(SelectedTabHint));
@@ -77,22 +76,23 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedTabIndex = 4; }
         }
 
+        // Совместимость: ранее был таб Обновления (5), теперь раздел вынесен отдельно — всегда false
         public bool IsUpdatesTabSelected
         {
-            get => _selectedTabIndex == 5;
+            get => false;
             set { if (value) SelectedTabIndex = 5; }
         }
 
         public bool IsLogsTabSelected
         {
-            get => _selectedTabIndex == 6;
-            set { if (value) SelectedTabIndex = 6; }
+            get => _selectedTabIndex == 5;
+            set { if (value) SelectedTabIndex = 5; }
         }
 
         public bool IsAboutTabSelected
         {
-            get => _selectedTabIndex == 7;
-            set { if (value) SelectedTabIndex = 7; }
+            get => _selectedTabIndex == 6;
+            set { if (value) SelectedTabIndex = 6; }
         }
 
         public bool SeamlessFailoverEnabled
