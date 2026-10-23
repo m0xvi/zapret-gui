@@ -314,6 +314,9 @@ namespace ZapretGui.Core
                         loaded.MonitorTargets ??= new List<MonitorTarget>();
                         loaded.ProviderContext ??= new ProviderContext();
                         loaded.CustomDnsProfiles ??= new List<DnsProfile>();
+                        // Миграция автозапуска: ранее по умолчанию выкл, теперь вкл — включаем для существующих профилей
+                        if (!loaded.AutoStartBypass && loaded.FirstLaunchWizardCompleted && !loaded.SafeMode)
+                            loaded.AutoStartBypass = true;
                         return loaded;
                     }
                 }

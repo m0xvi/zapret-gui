@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,10" CanContentScroll="False">
-        <StackPanel Margin="20,14,20,16" MaxWidth="840" HorizontalAlignment="Center">
+        <StackPanel Margin="18,14,18,16" MaxWidth="900" HorizontalAlignment="Center">
 
             <Button Style="{StaticResource GhostButton}" Content="← Назад" Padding="7,2" FontSize="10.5" HorizontalAlignment="Left" Margin="0,0,0,6"
                     Click="BackToSettings_Click" ToolTip="Назад в Настройки" />
@@ -75,12 +75,12 @@
                     <Button Grid.Row="0" Grid.Column="1" Style="{StaticResource GhostButton}" Content="Копировать отчёт" FontSize="10" Padding="8,3" VerticalAlignment="Center" Command="{Binding CopyNetworkReportCommand}" ToolTip="Скопировать сводку в буфер для ИИ"/>
                     <Border Grid.Row="1" Grid.ColumnSpan="2" Margin="0,7,0,0" CornerRadius="6" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Padding="8,6">
                         <StackPanel>
-                            <TextBlock FontSize="10" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" LineHeight="14">
+                            <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" LineHeight="15">
                                 <Run Text="Стратегия:" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{Binding Main.ActiveStrategySummaryText, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Main.ReadinessText, Mode=OneWay}"/>
                                 <LineBreak/><Run Text="Мониторинг:" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{Binding Main.MonitoringSummaryText, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Main.RealTimePingSummaryText, Mode=OneWay}"/>
                                 <LineBreak/><Run Text="Движок:" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{Binding EngineVersion, Mode=OneWay}"/><Run Text=" · hosts:"/><Run Text=" "/><Run Text="{Binding HostsStatus, Mode=OneWay}"/>
                             </TextBlock>
-                            <TextBlock Margin="0,4,0,0" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.6" Text="Нажми «Копировать» и вставь мне — проанализирую обход и предложу улучшение." TextWrapping="Wrap"/>
+                            <TextBlock Margin="0,4,0,0" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.6" Text="Нажми «Копировать» и вставь мне — проанализирую обход и предложу улучшение." TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
                 </Grid>
@@ -99,21 +99,21 @@
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                         <TextBlock Text="&#xE8B7;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
                         <TextBlock Text="ВЕРСИИ" Margin="5,0,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                        <TextBlock Margin="6,0,0,0" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.6" Text="{Binding LastCheckText}" VerticalAlignment="Center"/>
+                        <TextBlock Margin="6,0,0,0" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.6" Text="{Binding LastCheckText}" VerticalAlignment="Center"/>
                     </StackPanel>
                     <!-- GUI строка -->
                     <Grid Margin="0,7,0,0">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE771;" FontFamily="{DynamicResource IconFont}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="&#xE771;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="GUI" Margin="4,0,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding GuiCurrentVersion}" Margin="6,0,0,0" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding GuiCurrentVersion}" Margin="6,0,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="→" Margin="4,0,4,0" Foreground="{DynamicResource TextMutedBrush}" FontSize="10" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding GuiLatestVersion}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding GuiLatestVersion}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                             <Border Margin="5,0,0,0" Padding="3,0" CornerRadius="4" Background="{DynamicResource SuccessSoftBrush}" Visibility="{Binding GuiUpdateAvailable, Converter={StaticResource BoolToVis}}" VerticalAlignment="Center"><TextBlock Text="•" FontSize="8" Foreground="{DynamicResource SuccessBrush}"/></Border>
                         </StackPanel>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,6,0">
-                            <TextBlock FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding GuiUpdateBadgeText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
+                            <TextBlock FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding GuiUpdateBadgeText}" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                             <Button Style="{StaticResource GhostButton}" Content="Проверить" FontSize="9.5" Padding="6,2" Command="{Binding CheckGuiUpdateCommand}"/>
@@ -127,15 +127,15 @@
                     <Grid Margin="0,7,0,0">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                         <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock Text="&#xE9D2;" FontFamily="{DynamicResource IconFont}" FontSize="9" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="&#xE9D2;" FontFamily="{DynamicResource IconFont}" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="Движок" Margin="4,0,0,0" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding EngineVersion}" Margin="6,0,0,0" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding EngineVersion}" Margin="6,0,0,0" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
                             <TextBlock Text="→" Margin="4,0,4,0" Foreground="{DynamicResource TextMutedBrush}" FontSize="10" VerticalAlignment="Center"/>
-                            <TextBlock Text="{Binding LatestVersion}" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
+                            <TextBlock Text="{Binding LatestVersion}" FontSize="14" FontWeight="SemiBold" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
                             <Border Margin="5,0,0,0" Padding="3,0" CornerRadius="4" Background="{DynamicResource WarningSoftBrush}" Visibility="{Binding UpdateAvailable, Converter={StaticResource BoolToVis}}" VerticalAlignment="Center"><TextBlock Text="•" FontSize="8" Foreground="{DynamicResource WarningBrush}"/></Border>
                         </StackPanel>
                         <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,6,0">
-                            <TextBlock FontSize="9" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding UpdateBadgeText}" TextTrimming="CharacterEllipsis"/>
+                            <TextBlock FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Text="{Binding UpdateBadgeText}" TextTrimming="CharacterEllipsis"/>
                             <TextBlock FontSize="8.5" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.6" Text="{Binding ReleaseDate}" Visibility="{Binding HasRelease, Converter={StaticResource BoolToVis}}" Margin="0,1,0,0"/>
                         </StackPanel>
                         <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
