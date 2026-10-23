@@ -174,7 +174,7 @@ namespace ZapretGui
                                         var res = isSvc
                                             ? await viewModel.Bypass.InstallServiceAsync(strat, mode)
                                             : await viewModel.Bypass.StartAsync(strat, mode, false);
-                                        if (!res.IsSuccess) AppLog.Warn("Автозапуск обхода: " + res.Error);
+                                        if (!res.Ok) AppLog.Warn("Автозапуск обхода: " + res.Message);
                                         else AppLog.Info("Автозапуск обхода — успешно");
                                     } catch (System.Exception ex) { AppLog.Error("Ошибка автозапуска обхода: " + ex.Message); }
                                 });
