@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,10" CanContentScroll="False">
-        <StackPanel Margin="18,14,18,16" MaxWidth="900" HorizontalAlignment="Center">
+        <StackPanel Margin="12,10,12,12" MaxWidth="1100" HorizontalAlignment="Stretch">
 
             <Button Style="{StaticResource GhostButton}" Content="← Назад" Padding="7,2" FontSize="10.5" HorizontalAlignment="Left" Margin="0,0,0,6"
                     Click="BackToSettings_Click" ToolTip="Назад в Настройки"

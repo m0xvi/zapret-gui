@@ -5,7 +5,7 @@
              xmlns:views="clr-namespace:ZapretGui.Views"
              Background="Transparent">
     <ScrollViewer x:Name="RootScrollViewer" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,12" CanContentScroll="False" ScrollChanged="OnScrollChanged">
-        <StackPanel Margin="24,20,20,32" MaxWidth="980">
+        <StackPanel Margin="12,12,12,16" MaxWidth="1100" HorizontalAlignment="Stretch">
 
             <!-- Заголовок -->
             <Grid>
@@ -909,7 +909,7 @@
             </StackPanel>
 
             <!-- ===================== ВКЛАДКА 5: ОБНОВЛЕНИЯ — полный раздел Обновлений внутри Настроек ===================== -->
-            <StackPanel Margin="0,8,0,0" Visibility="{Binding IsUpdatesTabSelected, Converter={StaticResource BoolToVis}}">
+            <StackPanel Margin="0,4,0,0" Visibility="{Binding IsUpdatesTabSelected, Converter={StaticResource BoolToVis}}">
                 <views:UpdatesPage DataContext="{Binding Updates}" ShowHeader="False" />
             </StackPanel>
 
