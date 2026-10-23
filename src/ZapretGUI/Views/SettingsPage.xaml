@@ -909,8 +909,8 @@
             </StackPanel>
 
             <!-- ===================== ВКЛАДКА 5: ОБНОВЛЕНИЯ — полный раздел Обновлений внутри Настроек ===================== -->
-            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsUpdatesTabSelected, Converter={StaticResource BoolToVis}}">
-                <views:UpdatesPage DataContext="{Binding Updates}" />
+            <StackPanel Margin="0,8,0,0" Visibility="{Binding IsUpdatesTabSelected, Converter={StaticResource BoolToVis}}">
+                <views:UpdatesPage DataContext="{Binding Updates}" ShowHeader="False" />
             </StackPanel>
 
             <!-- ===================== ВКЛАДКА 6: ЖУРНАЛ ===================== -->

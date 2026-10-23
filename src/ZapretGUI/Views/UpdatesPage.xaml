@@ -6,9 +6,10 @@
         <StackPanel Margin="18,14,18,16" MaxWidth="900" HorizontalAlignment="Center">
 
             <Button Style="{StaticResource GhostButton}" Content="← Назад" Padding="7,2" FontSize="10.5" HorizontalAlignment="Left" Margin="0,0,0,6"
-                    Click="BackToSettings_Click" ToolTip="Назад в Настройки" />
+                    Click="BackToSettings_Click" ToolTip="Назад в Настройки"
+                    Visibility="{Binding ShowHeader, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}" />
             <!-- Шапка — максимально минималистично, без блока «в раздел обновления» -->
-            <Grid>
+            <Grid Visibility="{Binding ShowHeader, RelativeSource={RelativeSource AncestorType=UserControl}, Converter={StaticResource BoolToVis}}">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" VerticalAlignment="Center" Margin="0,0,8,0">
                     <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
