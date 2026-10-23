@@ -132,6 +132,16 @@
                 <Button Style="{StaticResource IconButton}" Content="{Binding SummarySheetToggleIcon}"
                         Command="{Binding ToggleSummarySheetCommand}" ToolTip="{Binding SummarySheetToggleTooltip}"
                         AutomationProperties.Name="Сводка" FontFamily="{DynamicResource IconFont}" />
+                <!-- Обновления — с красным бейджем когда доступен апдейт GUI или движка -->
+                <Grid Margin="1,0" VerticalAlignment="Center" ToolTip="Открыть страницу Обновлений — проверить GUI и движок">
+                    <Button Style="{StaticResource IconButton}" Content="&#xE895;"
+                            Command="{Binding NavigateUpdatesCommand}"
+                            ToolTip="Обновления: проверить и установить GUI и движок"
+                            AutomationProperties.Name="Обновления" />
+                    <Ellipse Width="8" Height="8" Fill="#E53935" Stroke="{DynamicResource TitleBarBrush}" StrokeThickness="1.2"
+                             HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,5,4,0" IsHitTestVisible="False"
+                             Visibility="{Binding HasUpdateBadge, Converter={StaticResource BoolToVis}}" />
+                </Grid>
                 <Button Style="{StaticResource IconButton}" Content="&#xE72C;"
                         Command="{Binding RefreshAllCommand}" ToolTip="Обновить состояние (проверить обход, стратегию, пинг, игры)"
                         AutomationProperties.Name="Обновить" />

@@ -213,6 +213,7 @@ namespace ZapretGui.ViewModels
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RefreshAllCommand = new RelayCommand(RefreshAll);
             ToggleSummarySheetCommand = new RelayCommand(ToggleSummarySheet);
+            NavigateUpdatesCommand = new RelayCommand(() => Navigate("updates"));
             NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
             NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 3; Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
@@ -222,6 +223,13 @@ namespace ZapretGui.ViewModels
             Strategies.Refresh();
             Home.ReloadFromEngine();
             ThemeService.Changed += RefreshThemeBindings;
+
+            // Подписка на бейдж обновлений для TitleBar
+            Updates.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(UpdatesViewModel.HasAnyUpdate) || e.PropertyName == nameof(UpdatesViewModel.GuiUpdateAvailable) || e.PropertyName == nameof(UpdatesViewModel.UpdateAvailable))
+                    System.Windows.Application.Current?.Dispatcher?.Invoke(() => Raise(nameof(HasUpdateBadge)));
+            };
 
             _timer = new DispatcherTimer(TimeSpan.FromSeconds(3), DispatcherPriority.Background, OnTick, Application.Current.Dispatcher);
             _timer.Start();
@@ -534,7 +542,10 @@ namespace ZapretGui.ViewModels
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand RefreshAllCommand { get; }
         public ICommand ToggleSummarySheetCommand { get; }
+        public ICommand NavigateUpdatesCommand { get; }
         public ICommand NavigateHomeCommand { get; }
+
+        public bool HasUpdateBadge => Updates?.HasAnyUpdate == true;
         public ICommand NavigateDiagnosticsCommand { get; }
         public ICommand NavigateStrategiesCommand { get; }
         public ICommand NavigateMonitoringCommand { get; }
