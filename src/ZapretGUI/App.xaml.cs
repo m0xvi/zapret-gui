@@ -170,10 +170,10 @@ namespace ZapretGui
                                         AppLog.Info($"Автозапуск обхода: {strat.Name}");
                                         var mode = EngineService.GetGameFilterMode(settings.EnginePath);
                                         // Если служба уже установлена — запускаем через службу, иначе обычный обход
-                                        var status = viewModel.Bypass.GetStatus();
-                                        var res = status.ServiceInstalled
+                                        var isSvc = viewModel.Bypass.IsServiceInstalled();
+                                        var res = isSvc
                                             ? await viewModel.Bypass.InstallServiceAsync(strat, mode)
-                                            : await viewModel.Bypass.StartAsync(strat, mode);
+                                            : await viewModel.Bypass.StartAsync(strat, mode, false);
                                         if (!res.IsSuccess) AppLog.Warn("Автозапуск обхода: " + res.Error);
                                         else AppLog.Info("Автозапуск обхода — успешно");
                                     } catch (System.Exception ex) { AppLog.Error("Ошибка автозапуска обхода: " + ex.Message); }
