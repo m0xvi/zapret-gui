@@ -38,9 +38,10 @@ namespace ZapretGui.Core
                 : Path.Combine(engineRoot, "WinDivert.dll");
             var driverVersion = ReadFileVersion(divertDriver);
             var dllVersion = ReadFileVersion(divertDll);
+            // Если DLL без встроенной версии (пусто) — это штатно для некоторых релизов, достаточно наличия драйвера
+            var isDllVersionMissing = string.IsNullOrWhiteSpace(dllVersion);
             var versionsMatch = !string.IsNullOrWhiteSpace(driverVersion) &&
-                                !string.IsNullOrWhiteSpace(dllVersion) &&
-                                EngineService.CompareVersions(driverVersion, dllVersion) == 0;
+                                (isDllVersionMissing || EngineService.CompareVersions(driverVersion, dllVersion) == 0);
             var hasVersionMarker = !string.IsNullOrWhiteSpace(versionMarker);
             var checks = new List<EngineConsistencyItem>
             {
@@ -71,7 +72,9 @@ namespace ZapretGui.Core
                         ? "Маркер версии движка отсутствует"
                         : !versionsMatch
                             ? $"Версии WinDivert не подтверждены: драйвер {DisplayVersion(driverVersion)}, DLL {DisplayVersion(dllVersion)}"
-                            : $"Движок {versionMarker}; WinDivert {driverVersion} согласован с DLL"
+                            : isDllVersionMissing
+                                ? $"Движок {versionMarker}; драйвер WinDivert {driverVersion} (DLL без встроенной версии — штатно)"
+                                : $"Движок {versionMarker}; WinDivert {driverVersion} согласован с DLL"
                 },
                 new()
                 {

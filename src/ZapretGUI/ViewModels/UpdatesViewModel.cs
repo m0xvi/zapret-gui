@@ -24,6 +24,9 @@ namespace ZapretGui.ViewModels
         private string _releaseUrl = "";
         private bool _updateAvailable;
         private bool _isBusy;
+        private bool _isGuiUpdating;
+        private bool _guiUpdateHasError;
+        private string _guiUpdateErrorText = "";
         private double _progress;
         private bool _indeterminate;
         private string _status = "Нажмите «Проверить обновления»";
@@ -57,15 +60,22 @@ namespace ZapretGui.ViewModels
             UpdateHostsCommand = new AsyncRelayCommand(UpdateHostsAsync, () => !IsBusy);
             OpenReleasePageCommand = new RelayCommand(() => Shell.OpenUrl(string.IsNullOrEmpty(_releaseUrl) ? EngineService.RepoUrl + "/releases/latest" : _releaseUrl));
             OpenRepoCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl));
+            OpenGuiRepoCommand = new RelayCommand(() => Shell.OpenUrl(Settings.GuiRepo));
+            CopyNetworkReportCommand = new RelayCommand(CopyNetworkReport);
             OpenDownloadsPageCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl + "/releases/latest"));
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             CancelCommand = new RelayCommand(() => _cts?.Cancel(), () => IsBusy);
+            RetryGuiUpdateCommand = new AsyncRelayCommand(RetryGuiUpdateAsync, () => !IsBusy || GuiUpdateHasError);
+            OpenManualGuiDownloadCommand = new RelayCommand(() => Shell.OpenUrl(GuiUpdateManualUrl));
+            DismissGuiUpdateErrorCommand = new RelayCommand(() => { IsGuiUpdating = false; GuiUpdateHasError = false; GuiUpdateErrorText = ""; }, () => GuiUpdateHasError);
             OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
+            BackToSettingsCommand = new RelayCommand(() => _main.Navigate("settings"));
             RefreshEngineBackups();
             RefreshConsistency();
         }
 
         public AppSettings Settings => _main.Settings;
+        public MainViewModel Main => _main;
 
         public string EngineVersion
         {
@@ -96,6 +106,8 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(GuiUpdateBadgeText));
                     Raise(nameof(GuiUpdateButtonText));
+                    Raise(nameof(HasAnyUpdate));
+                    Raise(nameof(NetworkReport));
                     (UpdateGuiCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
@@ -162,12 +174,39 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(UpdateBadgeText));
                     Raise(nameof(UpdateEngineButtonText));
+                    Raise(nameof(HasAnyUpdate));
+                    Raise(nameof(NetworkReport));
                     (UpdateEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
 
         public bool HasEnginePackage => _assets.Count > 0;
+
+        public bool HasAnyUpdate => GuiUpdateAvailable || UpdateAvailable;
+
+        public string NetworkReport => BuildNetworkReport();
+        private string BuildNetworkReport()
+        {
+            try
+            {
+                var m = _main;
+                var lines = new System.Collections.Generic.List<string>
+                {
+                    $"GUI: {GuiCurrentVersion} → {GuiLatestVersion} {(GuiUpdateAvailable ? "(обновление)" : "актуально")}",
+                    $"Движок: {EngineVersion} → {LatestVersion} {(UpdateAvailable ? "(обновление)" : "актуально")}",
+                    $"Стратегия: {m.ActiveStrategySummaryText} ({m.ActiveStrategyKey})",
+                    $"Готовность: {m.ReadinessText} ({m.ReadinessKey}) — {m.ReadinessDetails}",
+                    $"Мониторинг: {m.MonitoringSummaryText} ({m.MonitoringSummaryKey})",
+                    $"RTT: {(m.RealTimePingVisible ? m.RealTimePingSummaryText : "выкл")}",
+                    $"Согласованность: {ConsistencyText} ({ConsistencyKey})",
+                    $"Hosts: {HostsStatus} ({HostsStatusKey})",
+                    $"EnginePath: {Settings.EnginePath}",
+                    $"Последняя проверка: {LastCheckText}"
+                };
+                return string.Join("\n", lines);
+            } catch { return "Отчёт недоступен"; }
+        }
 
         public string UpdateBadgeText => UpdateAvailable ? "Доступно обновление " + LatestVersion : "Установлена актуальная версия";
         public string UpdateEngineButtonText => UpdateAvailable ? "Скачать и установить" : "Установлена актуальная версия";
@@ -193,6 +232,58 @@ namespace ZapretGui.ViewModels
                 }
             }
         }
+
+        /// <summary>Затемнение всего окна при скачивании/установке нового GUI (прогресс в процентах).</summary>
+        public bool IsGuiUpdating
+        {
+            get => _isGuiUpdating;
+            private set
+            {
+                if (Set(ref _isGuiUpdating, value))
+                {
+                    Raise(nameof(IsGuiUpdating));
+                    Raise(nameof(GuiUpdateOverlayVisible));
+                    Raise(nameof(GuiUpdateErrorVisible));
+                    Raise(nameof(GuiUpdateProgressVisible));
+                }
+            }
+        }
+
+        public bool GuiUpdateOverlayVisible => IsGuiUpdating;
+
+        public bool GuiUpdateHasError
+        {
+            get => _guiUpdateHasError;
+            private set
+            {
+                if (Set(ref _guiUpdateHasError, value))
+                {
+                    Raise(nameof(GuiUpdateHasError));
+                    Raise(nameof(GuiUpdateErrorVisible));
+                    Raise(nameof(GuiUpdateProgressVisible));
+                    (DismissGuiUpdateErrorCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (RetryGuiUpdateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string GuiUpdateErrorText
+        {
+            get => _guiUpdateErrorText;
+            private set
+            {
+                if (Set(ref _guiUpdateErrorText, value))
+                {
+                    Raise(nameof(GuiUpdateErrorText));
+                    Raise(nameof(GuiUpdateErrorVisible));
+                }
+            }
+        }
+
+        public bool GuiUpdateErrorVisible => IsGuiUpdating && GuiUpdateHasError;
+        public bool GuiUpdateProgressVisible => IsGuiUpdating && !GuiUpdateHasError;
+
+        public string GuiUpdateManualUrl => _guiRelease?.HtmlUrl ?? EngineService.RepoUrl + "/releases/latest";
 
         public double Progress
         {
@@ -318,10 +409,16 @@ namespace ZapretGui.ViewModels
         public ICommand UpdateHostsCommand { get; }
         public ICommand OpenReleasePageCommand { get; }
         public ICommand OpenRepoCommand { get; }
+        public ICommand OpenGuiRepoCommand { get; }
+        public ICommand CopyNetworkReportCommand { get; }
         public ICommand OpenDownloadsPageCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand CancelCommand { get; }
+        public ICommand RetryGuiUpdateCommand { get; }
+        public ICommand OpenManualGuiDownloadCommand { get; }
+        public ICommand DismissGuiUpdateErrorCommand { get; }
         public ICommand OpenLogsCommand { get; }
+        public ICommand BackToSettingsCommand { get; }
 
         private readonly ObservableCollection<ReleaseAsset> _assets = new();
 
@@ -404,46 +501,107 @@ namespace ZapretGui.ViewModels
 
         private async Task UpdateGuiAsync()
         {
+            AppLog.Info("[GuiUpdate] Пользователь инициировал обновление GUI");
             if (_guiRelease == null || !GuiUpdateAvailable)
             {
+                Status = "Проверяю доступное обновление GUI перед скачиванием…";
                 await CheckGuiUpdateAsync();
-                if (_guiRelease == null || !GuiUpdateAvailable) return;
+                if (_guiRelease == null)
+                {
+                    var msg = "Не удалось получить информацию о релизе GUI. Проверьте соединение и попробуйте ещё раз или скачайте вручную.";
+                    GuiUpdateStatus = msg;
+                    SetMessage(msg, "Warning");
+                    System.Windows.MessageBox.Show(msg + "\n\nОткроется страница релизов.", "Обновление GUI", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    Shell.OpenUrl(EngineService.RepoUrl + "/releases/latest");
+                    return;
+                }
+                if (!GuiUpdateAvailable)
+                {
+                    var msg = _guiRelease.PortableAsset == null
+                        ? "В последнем релизе нет проверяемого portable EXE с SHA-256. Попробуйте скачать вручную."
+                        : $"Установлена актуальная версия {GuiUpdateService.CurrentVersion} (последняя { _guiRelease.Tag}).";
+                    GuiUpdateStatus = msg;
+                    SetMessage(msg, _guiRelease.PortableAsset == null ? "Warning" : "Success");
+                    if (_guiRelease.PortableAsset == null)
+                        System.Windows.MessageBox.Show(msg, "Обновление GUI", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Information);
+                    return;
+                }
             }
 
             var confirmation = System.Windows.MessageBox.Show(
                 $"Скачать Zapret GUI {_guiRelease.Tag} и перезапустить приложение?\n\n" +
-                "Файл будет проверен по SHA-256 из GitHub API. Текущий exe сохранится в резервной копии.",
+                "Файл будет проверен по SHA-256 из GitHub API. Текущий exe сохранится в резервной копии.\n" +
+                "После загрузки появится UAC — нажмите «Да» для применения обновления.",
                 "Обновление Zapret GUI", System.Windows.MessageBoxButton.YesNo,
                 System.Windows.MessageBoxImage.Information);
             if (confirmation != System.Windows.MessageBoxResult.Yes) return;
 
+            // Сбрасываем предыдущую ошибку и показываем оверлей сразу
+            GuiUpdateHasError = false;
+            GuiUpdateErrorText = "";
+            IsGuiUpdating = true;
             IsBusy = true;
             Progress = 0;
             Indeterminate = true;
-            Status = "Скачиваю безопасное обновление GUI…";
+            Status = "Подготавливаю безопасное обновление GUI…";
+            GuiUpdateStatus = $"Начинаю загрузку {_guiRelease.Tag}…";
+            AppLog.Info($"[GuiUpdate] Начинаю DownloadAndSchedule для {_guiRelease.Tag} из {_guiRelease.PortableAsset?.DownloadUrl}");
             _cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
             try
             {
                 var result = await GuiUpdateService.DownloadAndScheduleAsync(
                     _guiRelease, new Progress<ProgressInfo>(ApplyProgress), _cts.Token);
                 GuiUpdateStatus = result.Message;
+                // Сообщение в ленте Обновлений
                 SetMessage(result.Message, result.Ok ? "Success" : "Danger");
+                AppLog.Info("[GuiUpdate] DownloadAndSchedule результат: " + result.Message + " Ok=" + result.Ok);
                 if (result.Ok)
                 {
-                    Status = "Обновление подготовлено. Закрываю приложение…";
-                    await Task.Delay(300);
+                    Status = "Обновление подготовлено. Перезапускаю приложение…";
+                    GuiUpdateStatus = result.Message;
+                    Progress = 100;
+                    Indeterminate = false;
+                    // Даём пользователю увидеть 100% и затем закрываем
+                    await Task.Delay(1500);
+                    AppLog.Info("[GuiUpdate] Перезапускаю приложение после успешного планирования");
                     if (System.Windows.Application.Current is App app) app.ShutdownApp();
+                    else System.Windows.Application.Current?.Shutdown();
+                    // IsGuiUpdating остаётся true до завершения процесса, чтобы оверлей не моргнул
+                }
+                else
+                {
+                    // Оставляем оверлей с ошибкой, чтобы пользователь видел что произошло
+                    GuiUpdateHasError = true;
+                    GuiUpdateErrorText = result.Message;
+                    Status = "Не удалось подготовить обновление";
+                    // Также показываем MessageBox для явности, если оверлей не заметен
+                    System.Windows.MessageBox.Show(result.Message + "\n\nПопробуйте ещё раз или скачайте вручную со страницы релиза.", "Обновление GUI — ошибка", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
                 }
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException ex)
             {
-                GuiUpdateStatus = "Загрузка обновления GUI отменена.";
-                SetMessage(GuiUpdateStatus, "Warning");
+                var msg = ex.Message.Contains("UAC") || ex.Message.Contains("администратора")
+                    ? ex.Message
+                    : "Загрузка обновления GUI отменена.";
+                GuiUpdateStatus = msg;
+                GuiUpdateHasError = true;
+                GuiUpdateErrorText = msg;
+                Status = "Обновление отменено";
+                SetMessage(msg, "Warning");
+                AppLog.Warn("[GuiUpdate] Отменено: " + msg);
+                if (msg.Contains("UAC") || msg.Contains("администратора"))
+                    System.Windows.MessageBox.Show(msg, "Обновление GUI — требуются права", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
-                GuiUpdateStatus = "Ошибка обновления GUI: " + ex.Message;
-                SetMessage(GuiUpdateStatus, "Danger");
+                var msg = "Ошибка обновления GUI: " + ex.Message;
+                GuiUpdateStatus = msg;
+                GuiUpdateHasError = true;
+                GuiUpdateErrorText = msg + "\n" + (ex.InnerException?.Message ?? "");
+                Status = "Ошибка обновления";
+                SetMessage(msg, "Danger");
+                AppLog.Error("[GuiUpdate] Ошибка: " + ex.ToString());
+                System.Windows.MessageBox.Show(msg + "\n\nПопробуйте ещё раз или скачайте вручную.", "Обновление GUI — ошибка", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Error);
             }
             finally
             {
@@ -451,19 +609,37 @@ namespace ZapretGui.ViewModels
                 _cts = null;
                 IsBusy = false;
                 Indeterminate = false;
+                // При ошибке оставляем IsGuiUpdating=true чтобы оверлей с ошибкой оставался видимым
+                // Скрытие — только по кнопке Отмена/Закрыть или при успехе после Shutdown
+                if (GuiUpdateHasError)
+                {
+                    // Обновляем CanExecute для Retry
+                    (RetryGuiUpdateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
             }
+        }
+
+        private async Task RetryGuiUpdateAsync()
+        {
+            // Сброс ошибки и повтор
+            GuiUpdateHasError = false;
+            GuiUpdateErrorText = "";
+            IsGuiUpdating = false;
+            await Task.Delay(200);
+            await UpdateGuiAsync();
         }
 
         public async Task CheckAsync()
         {
             IsBusy = true;
             Indeterminate = true;
-            Status = "Проверяю обновления на GitHub…";
+            Status = "Проверяю обновления движка и оболочки…";
             Message = "";
             _assets.Clear();
             UpdateAvailable = false;
             Raise(nameof(HasEnginePackage));
             _cts = new CancellationTokenSource(TimeSpan.FromSeconds(60));
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка обновлений", Status, "Запрос к GitHub…", 0, true, true, () => _cts?.Cancel())); } catch {}
 
             try
             {
@@ -476,35 +652,51 @@ namespace ZapretGui.ViewModels
                     Status = "Не удалось получить информацию о релизах";
                     SetMessage("GitHub недоступен. Проверьте соединение (кнопка «Диагностика»). " +
                                "Обновление можно установить вручную со страницы релизов.", "Danger");
-                    return;
                 }
+                else
+                {
+                    _assets.Clear();
+                    foreach (var asset in release.Assets) _assets.Add(asset);
 
-                _assets.Clear();
-                foreach (var asset in release.Assets) _assets.Add(asset);
+                    LastKnownLatest = release.Tag;
+                    ReleaseTitle = string.IsNullOrEmpty(release.Title) ? release.Tag : $"{release.Title} ({release.Tag})";
+                    ReleaseDate = "Опубликован: " + release.PublishedText + (release.Prerelease ? " · pre-release" : "");
+                    ReleaseNotes = string.IsNullOrWhiteSpace(release.Body)
+                        ? "Описание изменений отсутствует в релизе."
+                        : Trim(release.Body, 4000);
+                    _releaseUrl = release.HtmlUrl;
 
-                LastKnownLatest = release.Tag;
-                ReleaseTitle = string.IsNullOrEmpty(release.Title) ? release.Tag : $"{release.Title} ({release.Tag})";
-                ReleaseDate = "Опубликован: " + release.PublishedText + (release.Prerelease ? " · pre-release" : "");
-                ReleaseNotes = string.IsNullOrWhiteSpace(release.Body)
-                    ? "Описание изменений отсутствует в релизе."
-                    : Trim(release.Body, 4000);
-                _releaseUrl = release.HtmlUrl;
+                    var current = EngineService.ReadVersion(Settings.EnginePath);
+                    var compare = EngineService.CompareVersions(release.Tag, current);
+                    UpdateAvailable = compare > 0 || !EngineService.IsEngineReady(Settings.EnginePath);
 
-                var current = EngineService.ReadVersion(Settings.EnginePath);
-                var compare = EngineService.CompareVersions(release.Tag, current);
-                UpdateAvailable = compare > 0 || !EngineService.IsEngineReady(Settings.EnginePath);
+                    Raise(nameof(HasRelease));
+                    Raise(nameof(HasEnginePackage));
+                    Raise(nameof(ReleasesText));
+                    (UpdateEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+                // Проверяем также обновления GUI (тихо, без отдельного оверлея)
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update("Проверяю обновления оболочки…", "Запрос к m0xvi/zapret-gui")); } catch {}
+                await CheckGuiUpdateAsync(silent: true);
 
-                Raise(nameof(HasRelease));
-                Raise(nameof(HasEnginePackage));
-                Raise(nameof(ReleasesText));
-                (UpdateEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-
-                Status = UpdateAvailable
-                    ? $"Доступна версия {release.Tag} (установлена {current})"
-                    : $"Установлена последняя версия {current}";
-
-                if (UpdateAvailable)
-                    SetMessage($"Доступна версия движка {release.Tag}. Файлы релиза: {release.AssetsText}", "Info");
+                // Итоговый статус
+                if (UpdateAvailable || GuiUpdateAvailable)
+                {
+                    var parts = new System.Collections.Generic.List<string>();
+                    if (GuiUpdateAvailable) parts.Add($"GUI {GuiLatestVersion}");
+                    if (UpdateAvailable) parts.Add($"движок {LastKnownLatest}");
+                    Status = "Доступны обновления: " + string.Join(", ", parts);
+                    var msgParts = new System.Collections.Generic.List<string>();
+                    if (GuiUpdateAvailable) msgParts.Add($"оболочка {GuiLatestVersion}");
+                    if (UpdateAvailable) msgParts.Add($"движок {LastKnownLatest}");
+                    SetMessage("Доступны обновления: " + string.Join(" и ", msgParts) + ". Нажмите «Обновить» в соответствующем разделе.", "Info");
+                }
+                else if (release != null)
+                {
+                    var cur = EngineService.ReadVersion(Settings.EnginePath);
+                    Status = $"У вас установлены последние версии: GUI {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version} и движок {cur}";
+                    SetMessage("Обновлений не найдено. Всё актуально.", "Success");
+                }
             }
             catch (OperationCanceledException)
             {
@@ -514,11 +706,14 @@ namespace ZapretGui.ViewModels
             {
                 Status = "Ошибка проверки обновлений";
                 SetMessage(ex.Message, "Danger");
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Проверка обновлений — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsBusy = false;
                 Indeterminate = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -659,6 +854,7 @@ namespace ZapretGui.ViewModels
             Indeterminate = true;
             Status = "Подготовка обновления…";
             _cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Обновление движка", Status, "Подготовка — проверка SHA-256…", 0, false, true, () => _cts?.Cancel())); } catch {}
 
             try
             {
@@ -687,7 +883,11 @@ namespace ZapretGui.ViewModels
                 // обход, завершаем winws.exe и выгружаем драйвер WinDivert из ядра —
                 // иначе замена WinDivert64.sys «на лету» заканчивается синим экраном (BSOD).
                 Status = "Останавливаю обход и выгружаю драйвер WinDivert…";
-                var wasRunning = await _main.Bypass.PrepareForEngineUpdateAsync(_cts.Token);
+                var beforeStatus = _main.Bypass.GetStatus();
+                var wasRunning = beforeStatus.IsRunning;
+                var wasService = beforeStatus.State == BypassState.RunningService
+                    || beforeStatus.ServiceState == ServiceState.Running;
+                await _main.Bypass.PrepareForEngineUpdateAsync(_cts.Token);
 
                 var progress = new Progress<ProgressInfo>(ApplyProgress);
                 var result = await EngineService.DownloadAndInstallAsync(
@@ -711,14 +911,17 @@ namespace ZapretGui.ViewModels
                 RefreshConsistency();
                 Raise(nameof(EngineVersion));
 
-                // Если обход работал — возвращаем его к жизни с обновлённым движком
+                // Если обход работал — возвращаем его в прежнем режиме (служба vs процесс)
                 if (result.Ok && wasRunning)
                 {
                     var strategy = _main.Strategies.Find(Settings.SelectedStrategy) ?? _main.Strategies.Recommended;
                     if (strategy != null)
                     {
                         Status = "Перезапускаю обход с обновлённым движком…";
-                        var restart = await _main.Bypass.StartAsync(strategy,
+                        var restart = wasService
+                            ? await _main.Bypass.InstallServiceAsync(strategy,
+                                EngineService.GetGameFilterMode(Settings.EnginePath))
+                            : await _main.Bypass.SwitchToStrategyAsync(strategy,
                             EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
                         SetMessage(restart.Message, restart.Ok ? "Success" : "Warning");
                     }
@@ -732,12 +935,26 @@ namespace ZapretGui.ViewModels
             {
                 Status = "Ошибка обновления движка";
                 SetMessage(ex.Message, "Danger");
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Обновление движка — ошибка", ex.Message)); } catch {}
+                return;
             }
             finally
             {
                 IsBusy = false;
                 Indeterminate = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
+        }
+
+        private void CopyNetworkReport()
+        {
+            try
+            {
+                var text = NetworkReport;
+                System.Windows.Clipboard.SetText(text);
+                SetMessage("Сетевой отчёт скопирован в буфер — вставьте в чат для анализа.", "Success");
+                Raise(nameof(NetworkReport));
+            } catch (System.Exception ex) { SetMessage(ex.Message, "Danger"); }
         }
 
         public void RefreshConsistency()
@@ -776,6 +993,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             Indeterminate = true;
             Status = "Останавливаю обход перед откатом движка…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Откат движка", Status, backup.DisplayText, 0, true, false)); } catch {}
             var before = _main.Bypass.GetStatus();
             _cts = new CancellationTokenSource(TimeSpan.FromMinutes(3));
             try
@@ -836,6 +1054,7 @@ namespace ZapretGui.ViewModels
                 _cts = null;
                 IsBusy = false;
                 Indeterminate = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -844,6 +1063,7 @@ namespace ZapretGui.ViewModels
             Indeterminate = info.IsIndeterminate;
             if (!info.IsIndeterminate) Progress = info.Percent;
             Status = info.Status;
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(info.Status, "", info.IsIndeterminate ? (double?)null : info.Percent, info.IsIndeterminate)); } catch {}
         }
 
         private async Task UpdateIpsetAsync()
@@ -851,6 +1071,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             Indeterminate = true;
             Status = "Обновляю список ipset-all.txt…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Обновление списка", Status, "Загрузка ipset-all.txt…", 0, true, false)); } catch {}
             try
             {
                 var ok = await EngineService.UpdateIpsetAsync(Settings.EnginePath);
@@ -864,6 +1085,7 @@ namespace ZapretGui.ViewModels
             {
                 IsBusy = false;
                 Indeterminate = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -872,6 +1094,7 @@ namespace ZapretGui.ViewModels
             IsBusy = true;
             Indeterminate = true;
             Status = "Проверяю файл hosts…";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка hosts", Status, "Чтение hosts…", 0, true, false)); } catch {}
             try
             {
                 var result = await EngineService.CheckHostsAsync();

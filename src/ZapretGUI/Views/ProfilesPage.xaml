@@ -4,7 +4,7 @@
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
-        <StackPanel Margin="24,20,20,26">
+        <StackPanel Margin="24,20,20,32">
 
             <!-- Заголовок страницы -->
             <Grid>
@@ -46,6 +46,18 @@
                 </Grid>
             </Border>
 
+            <!-- Подсказка для новичка: Профили -->
+            <Border Margin="0,16,0,0" Padding="10,8" CornerRadius="8" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="&#xE946;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource InfoBrush}" VerticalAlignment="Top" Margin="0,1,0,0" />
+                    <TextBlock Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Профили — сохранения ваших настроек (стратегия, списки, фильтры). Сохраните рабочий набор — при сбое восстановите за клик. Автопереключение по сети — в Настройках → Сеть. Двойной клик по профилю — применить." />
+                </Grid>
+            </Border>
+
             <!-- Вкладки управления -->
             <controls:SegmentedControl Margin="0,16,0,0"
                                        ItemsSource="{Binding SubTabs}"
@@ -54,39 +66,155 @@
             <!-- ===================== ВКЛАДКА 0: ПРОФИЛИ ===================== -->
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsProfilesTabVisible, Converter={StaticResource BoolToVis}}">
 
+                <!-- Автопереключение по сети — P0 1.7.0 -->
+                <Border Style="{StaticResource Card}" Margin="0,0,0,16" Padding="16">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                <TextBlock Text="&#xE8AF;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SectionText}" Text="АВТОПЕРЕКЛЮЧЕНИЕ ПО СЕТИ" Margin="0,0,0,1"/>
+                                <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="Автоматический выбор профиля при смене Wi-Fi / сети или при сбое стратегии"/>
+                            </StackPanel>
+                            <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="↻ Обновить" Padding="10,6" FontSize="11"
+                                    Command="{Binding RefreshNetworkCommand}" ToolTip="Перечитать текущую сеть (SSID, шлюз, интерфейс)" VerticalAlignment="Center"/>
+                        </Grid>
+
+                        <Border Style="{StaticResource InnerCard}" Margin="0,12,0,10">
+                            <StackPanel>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Текущая сеть:" Margin="0,2,0,2" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding CurrentNetworkDisplay}" TextWrapping="Wrap" Margin="0,2,0,2"/>
+                                </Grid>
+                                <Grid Margin="0,6,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="150"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Отпечаток:" Margin="0,2,0,2" VerticalAlignment="Center"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" FontSize="11" Text="{Binding CurrentNetworkFingerprint}" TextWrapping="Wrap" Opacity="0.8" Margin="0,2,0,2"/>
+                                    <Button Grid.Column="2" Style="{StaticResource GhostButton}" Content="⎘" Padding="6,2" FontSize="11" Margin="6,0,0,0" VerticalAlignment="Center"
+                                            Command="{Binding CopyNetworkFingerprintCommand}" ToolTip="Скопировать отпечаток в буфер обмена" />
+                                </Grid>
+                                <Border Style="{StaticResource Divider}" Margin="0,10,0,10"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox Grid.Column="0" Style="{StaticResource SwitchCheckBox}" Content="При смене сети" IsChecked="{Binding AutoSwitchOnNetworkChange, Mode=TwoWay}" ToolTip="Автоматически применять привязанный профиль при смене Wi-Fi / проводной сети" Margin="0,0,8,0"/>
+                                    <CheckBox Grid.Column="1" Style="{StaticResource SwitchCheckBox}" Content="При сбое стратегии" IsChecked="{Binding AutoSwitchOnFailure, Mode=TwoWay}" ToolTip="При диагностированном сбое стратегии попробовать привязанный к сети профиль" Margin="8,0,0,0"/>
+                                </Grid>
+                                <Border Margin="0,8,0,0" Padding="10,8" CornerRadius="8" Background="{Binding AutoSwitchStatusKey, Converter={StaticResource SoftSeverityBrush}}" Visibility="{Binding AutoSwitchStatusVisible, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Style="{StaticResource BodyText}" FontSize="11" FontWeight="SemiBold" Text="{Binding AutoSwitchStatus}" TextWrapping="Wrap" Foreground="{Binding AutoSwitchStatusKey, Converter={StaticResource SeverityBrush}}"/>
+                                </Border>
+                            </StackPanel>
+                        </Border>
+
+                        <WrapPanel>
+                            <Button Style="{StaticResource SecondaryButton}" Content="📌 Привязать выбранный к текущей сети" Padding="12,6" FontSize="11.5"
+                                    Command="{Binding BindToCurrentNetworkCommand}" ToolTip="Сохранить текущую сеть (SSID/шлюз) в выбранный профиль — он будет включаться автоматически"/>
+                            <Button Style="{StaticResource GhostButton}" Content="✕ Отвязать" Margin="8,0,0,0" Padding="12,6" FontSize="11.5"
+                                    Command="{Binding UnbindNetworkCommand}" ToolTip="Снять привязку профиля к сети"/>
+                        </WrapPanel>
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,6,0,0" TextWrapping="Wrap"
+                                   Text="Подсказка: создайте отдельные профили для «Домашний Wi-Fi» и «Мобильный», привяжите каждый к своей сети — переключение в фоне через ~30с (cooldown 60с). Enter в списке стратегий — быстрое применение."/>
+                    </StackPanel>
+                </Border>
+
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="320" />
                         <ColumnDefinition Width="*" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- Список профилей слева -->
-                    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,16,0" Padding="12">
+                    <!-- Список профилей слева — ПЕРЕДЕЛАНО 1.6.6: карточки с акцентным выбором -->
+                    <Border Grid.Column="0" Style="{StaticResource Card}" Margin="0,0,16,0" Padding="0">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="СПИСОК ПРОФИЛЕЙ" />
+                            <Grid Margin="16,14,16,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                    <TextBlock Text="&#xE8D2;" FontFamily="{DynamicResource IconFont}" FontSize="13" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="СПИСОК ПРОФИЛЕЙ" Margin="0,0,0,1" />
+                                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding Profiles.Count, StringFormat='{}{0} профилей'}" />
+                                </StackPanel>
+                                <Border Grid.Column="2" Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" VerticalAlignment="Center">
+                                    <TextBlock Text="БАЗОВЫЕ + СВОИ" FontSize="9" FontWeight="Bold" Foreground="{DynamicResource TextMutedBrush}" />
+                                </Border>
+                            </Grid>
+
                             <ListBox ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}"
-                                     Style="{StaticResource PlainListBox}" MinHeight="260" MaxHeight="450"
-                                     ItemContainerStyle="{StaticResource NavItemStyle}">
+                                     Style="{StaticResource PlainListBox}" Margin="8,10,8,0" MinHeight="260" MaxHeight="450"
+                                     Background="Transparent" BorderThickness="0"
+                                     ItemContainerStyle="{StaticResource CompactRowItemStyle}" ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                     ToolTip="Двойной клик — применить профиль; Enter — тоже">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
-                                        <StackPanel Margin="2,4,2,4">
-                                            <WrapPanel Orientation="Horizontal">
-                                                <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" FontWeight="SemiBold" />
-                                                <Border Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}" Margin="6,0,0,0"
-                                                        Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}}">
-                                                    <TextBlock Text="Базовый" FontSize="10" Foreground="{DynamicResource AccentBrush}" />
+                                        <Border CornerRadius="9" Padding="12,10" Margin="0,4,0,4" BorderThickness="1">
+                                            <Border.Style>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="Background" Value="{DynamicResource CardBrush}" />
+                                                    <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}}" Value="True">
+                                                            <Setter Property="Background" Value="{DynamicResource ElevatedBrush}" />
+                                                            <Setter Property="BorderBrush" Value="{DynamicResource BorderBrush}" />
+                                                            <Setter Property="Effect">
+                                                                <Setter.Value>
+                                                                    <DropShadowEffect BlurRadius="6" ShadowDepth="1" Opacity="0.10" Color="Black" />
+                                                                </Setter.Value>
+                                                            </Setter>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Border.Style>
+                                            <Grid>
+                                                <Grid.RowDefinitions>
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                    <RowDefinition Height="Auto" />
+                                                </Grid.RowDefinitions>
+                                                <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                                    <Border Width="7" Height="7" CornerRadius="3.5" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                            Background="{DynamicResource AccentBrush}" Opacity="0.85" Visibility="{Binding IsSelected, RelativeSource={RelativeSource AncestorType=ListBoxItem}, Converter={StaticResource BoolToVis}}" />
+                                                    <TextBlock Text="{Binding Name}" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="13" TextTrimming="CharacterEllipsis" MaxWidth="165" />
+                                                    <Border Style="{StaticResource Badge}" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="8,0,0,0" Padding="6,2"
+                                                            Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}}">
+                                                        <TextBlock Text="Базовый" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" />
+                                                    </Border>
+                                                </WrapPanel>
+                                                <TextBlock Grid.Row="1" Text="{Binding SummaryText}" Style="{StaticResource DimText}" FontSize="11" Margin="15,4,0,0" Opacity="0.85" TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                <Border Grid.Row="2" Style="{StaticResource Badge}" Margin="15,5,0,0" Padding="6,2" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Visibility="{Binding IsNetworkBound, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Left">
+                                                    <TextBlock Text="{Binding NetworkBadgeText}" FontSize="9" FontWeight="SemiBold" Foreground="{DynamicResource TextMutedBrush}" TextTrimming="CharacterEllipsis" MaxWidth="165" />
                                                 </Border>
-                                            </WrapPanel>
-                                            <TextBlock Text="{Binding SummaryText}" Style="{StaticResource DimText}" FontSize="11" Margin="0,2,0,0" TextTrimming="CharacterEllipsis" />
-                                        </StackPanel>
+                                            </Grid>
+                                        </Border>
                                     </DataTemplate>
                                 </ListBox.ItemTemplate>
                             </ListBox>
 
-                            <WrapPanel Margin="0,12,0,0">
-                                <Button Style="{StaticResource GhostButton}" Content="Импорт JSON"
+                            <Border Style="{StaticResource Divider}" Margin="16,12,16,0" />
+                            <WrapPanel Margin="16,12,16,14">
+                                <Button Style="{StaticResource GhostButton}" Content="Импорт JSON" Padding="12,6" FontSize="11.5"
                                         Command="{Binding ImportProfileCommand}" ToolTip="Загрузить профиль из JSON файла" />
-                                <Button Style="{StaticResource GhostButton}" Content="Создать" Margin="8,0,0,0"
+                                <Button Style="{StaticResource PrimaryButton}" Content="+ Создать" Margin="8,0,0,0" Padding="14,6" FontSize="11.5" MinWidth="110"
                                         Command="{Binding CreateProfileFromCurrentCommand}" ToolTip="Создать из текущих параметров" />
                             </WrapPanel>
                         </StackPanel>
@@ -102,6 +230,8 @@
                             <Border Style="{StaticResource InnerCard}" Margin="0,0,0,12">
                                 <Grid>
                                     <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
                                         <RowDefinition Height="Auto" />
@@ -127,7 +257,14 @@
                                     <!-- Режим игры -->
                                     <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource DimText}" Text="Игровой режим:" Margin="0,3,0,3" />
                                     <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource BodyText}"
-                                               Text="{Binding GameModeActive, Converter={StaticResource BoolToAccentBrush}}" Margin="0,3,0,3" />
+                                               Text="{Binding GameModeActive}" Margin="0,3,0,3" />
+
+                                    <!-- Привязка к сети -->
+                                    <TextBlock Grid.Row="4" Grid.Column="0" Style="{StaticResource DimText}" Text="Привязка к сети:" Margin="0,3,0,3" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding NetworkBadgeText}" Margin="0,3,0,3" />
+
+                                    <TextBlock Grid.Row="5" Grid.Column="0" Style="{StaticResource DimText}" Text="Сеть:" Margin="0,3,0,3" Visibility="{Binding IsNetworkBound, Converter={StaticResource BoolToVis}}"/>
+                                    <TextBlock Grid.Row="5" Grid.Column="1" Style="{StaticResource DimText}" FontSize="11" Text="{Binding NetworkDisplayName}" TextWrapping="Wrap" Margin="0,3,0,3" Visibility="{Binding IsNetworkBound, Converter={StaticResource BoolToVis}}"/>
                                 </Grid>
                             </Border>
 

@@ -79,6 +79,24 @@ namespace ZapretGui.Core
             },
             new()
             {
+                Id = "pubg",
+                Name = "🥘 PUBG: BATTLEGROUNDS",
+                Description = "Фикс ошибки 2610.1.1 (Connection timeout). Включает UDP 7086-7995, 10000-10100, 17300-17999 для матчмейкинга и лобби PUBG, не трогает Discord Voice.",
+                TcpPorts = "1024-65535",
+                UdpPorts = "7086-7995,10000-10100,17300-17999,27000-27100,50000-65535",
+                ExcludedPorts = ""
+            },
+            new()
+            {
+                Id = "phasmophobia",
+                Name = "👻 Phasmophobia — фикс лобби",
+                Description = "Исключает Steam P2P (27015-27200), STUN (3478-3480, 4379-4380) и Photon (4530-4533, 5055-5058). Оставляет Discord Voice (50000-65535). Если EU не заходит — включи «Только Discord Voice».",
+                TcpPorts = "1024-65535",
+                UdpPorts = "1024-3477,3481-4378,4381-4529,4534-5054,5059-26999,27201-65535",
+                ExcludedPorts = "27015-27200,3478-3480,4379-4380,4530-4533,5055-5058"
+            },
+            new()
+            {
                 Id = "custom",
                 Name = "⚙️ Пользовательский диапазон портов",
                 Description = "Ручной ввод диапазонов TCP и UDP портов.",

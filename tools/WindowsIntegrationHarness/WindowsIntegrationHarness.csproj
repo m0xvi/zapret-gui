@@ -21,6 +21,7 @@
     <Compile Include="..\..\src\ZapretGUI\Core\BypassArgumentBuilder.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\BypassController.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\ConnectionTester.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\TargetsTxtLoader.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticModels.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticsExportReport.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticsHistory.cs" />
