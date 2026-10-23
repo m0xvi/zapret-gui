@@ -61,6 +61,7 @@ namespace ZapretGui.ViewModels
             OpenReleasePageCommand = new RelayCommand(() => Shell.OpenUrl(string.IsNullOrEmpty(_releaseUrl) ? EngineService.RepoUrl + "/releases/latest" : _releaseUrl));
             OpenRepoCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl));
             OpenGuiRepoCommand = new RelayCommand(() => Shell.OpenUrl(Settings.GuiRepo));
+            CopyNetworkReportCommand = new RelayCommand(CopyNetworkReport);
             OpenDownloadsPageCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl + "/releases/latest"));
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             CancelCommand = new RelayCommand(() => _cts?.Cancel(), () => IsBusy);
@@ -74,6 +75,7 @@ namespace ZapretGui.ViewModels
         }
 
         public AppSettings Settings => _main.Settings;
+        public MainViewModel Main => _main;
 
         public string EngineVersion
         {
@@ -105,6 +107,7 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(GuiUpdateBadgeText));
                     Raise(nameof(GuiUpdateButtonText));
                     Raise(nameof(HasAnyUpdate));
+                    Raise(nameof(NetworkReport));
                     (UpdateGuiCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
@@ -172,6 +175,7 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(UpdateBadgeText));
                     Raise(nameof(UpdateEngineButtonText));
                     Raise(nameof(HasAnyUpdate));
+                    Raise(nameof(NetworkReport));
                     (UpdateEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
@@ -180,6 +184,29 @@ namespace ZapretGui.ViewModels
         public bool HasEnginePackage => _assets.Count > 0;
 
         public bool HasAnyUpdate => GuiUpdateAvailable || UpdateAvailable;
+
+        public string NetworkReport => BuildNetworkReport();
+        private string BuildNetworkReport()
+        {
+            try
+            {
+                var m = _main;
+                var lines = new System.Collections.Generic.List<string>
+                {
+                    $"GUI: {GuiCurrentVersion} → {GuiLatestVersion} {(GuiUpdateAvailable ? "(обновление)" : "актуально")}",
+                    $"Движок: {EngineVersion} → {LatestVersion} {(UpdateAvailable ? "(обновление)" : "актуально")}",
+                    $"Стратегия: {m.ActiveStrategySummaryText} ({m.ActiveStrategyKey})",
+                    $"Готовность: {m.ReadinessText} ({m.ReadinessKey}) — {m.ReadinessDetails}",
+                    $"Мониторинг: {m.MonitoringSummaryText} ({m.MonitoringSummaryKey})",
+                    $"RTT: {(m.RealTimePingVisible ? m.RealTimePingSummaryText : "выкл")}",
+                    $"Согласованность: {ConsistencyText} ({ConsistencyKey})",
+                    $"Hosts: {HostsStatus} ({HostsStatusKey})",
+                    $"EnginePath: {Settings.EnginePath}",
+                    $"Последняя проверка: {LastCheckText}"
+                };
+                return string.Join("\n", lines);
+            } catch { return "Отчёт недоступен"; }
+        }
 
         public string UpdateBadgeText => UpdateAvailable ? "Доступно обновление " + LatestVersion : "Установлена актуальная версия";
         public string UpdateEngineButtonText => UpdateAvailable ? "Скачать и установить" : "Установлена актуальная версия";
@@ -383,6 +410,7 @@ namespace ZapretGui.ViewModels
         public ICommand OpenReleasePageCommand { get; }
         public ICommand OpenRepoCommand { get; }
         public ICommand OpenGuiRepoCommand { get; }
+        public ICommand CopyNetworkReportCommand { get; }
         public ICommand OpenDownloadsPageCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand CancelCommand { get; }
@@ -916,6 +944,17 @@ namespace ZapretGui.ViewModels
                 Indeterminate = false;
                 try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
+        }
+
+        private void CopyNetworkReport()
+        {
+            try
+            {
+                var text = NetworkReport;
+                System.Windows.Clipboard.SetText(text);
+                SetMessage("Сетевой отчёт скопирован в буфер — вставьте в чат для анализа.", "Success");
+                Raise(nameof(NetworkReport));
+            } catch (System.Exception ex) { SetMessage(ex.Message, "Danger"); }
         }
 
         public void RefreshConsistency()
