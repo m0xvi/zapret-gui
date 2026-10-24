@@ -193,14 +193,12 @@ namespace ZapretGui.ViewModels
             {
                 new() { Key = "group-main", Title = "ОСНОВНОЕ", IsSectionHeader = true },
                 new() { Key = "home", Title = "Обзор", Icon = "\uE80F", Hint = "Состояние обхода" },
-                new() { Key = "bypass-center", Title = "Центр обхода", Icon = "\uE8D2", Hint = "Всё в одном — стратегии, DNS, hosts, ipset и тяжёлый YouTube" },
                 new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
                 new() { Key = "game-mode", Title = "Игровой режим", Icon = "\uE7FC", Hint = "Всё для игр — фильтр, галочки игр, Phasmophobia/PUBG фикс" },
                 new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
                 new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check и результаты" },
                 new() { Key = "group-data", Title = "СПИСКИ И ФИЛЬТРЫ", IsSectionHeader = true },
                 new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
-                new() { Key = "profiles", Title = "Профили", Icon = "\uE753", Hint = "Пресеты настроек и полные бэкапы" },
                 new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
                 new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация, журнал и о программе" },
             };

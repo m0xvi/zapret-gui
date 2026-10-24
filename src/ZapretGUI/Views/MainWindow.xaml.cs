@@ -30,7 +30,6 @@ namespace ZapretGui.Views
             DataContext = _vm;
 
             _pages["home"] = new HomePage(_vm.Home);
-            _pages["bypass-center"] = new BypassCenterPage { DataContext = _vm.BypassCenter };
             _pages["first-run"] = new FirstLaunchPage(_vm.FirstLaunch);
             _pages["strategies"] = new StrategiesPage(_vm.StrategiesPage);
             _pages["game-mode"] = new GameModePage(_vm.GameMode);
@@ -41,7 +40,6 @@ namespace ZapretGui.Views
             _pages["dpi"] = new DpiPage(_vm.Diagnostics);
             _pages["logs"] = new LogsPage(_vm.Logs);
             _pages["user-lists"] = new UserListsPage(_vm.UserLists);
-            _pages["profiles"] = new ProfilesPage(_vm.Profiles);
             _pages["settings"] = new SettingsPage(_vm.SettingsPage);
             _pages["about"] = new AboutPage(_vm);
 

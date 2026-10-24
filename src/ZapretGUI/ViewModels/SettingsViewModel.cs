@@ -25,7 +25,7 @@ namespace ZapretGui.ViewModels
         private bool _isProviderLookupBusy;
         private int _selectedTabIndex;
 
-        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления", "📄 Журнал", "ℹ️ О программе" };
+        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления", "📄 Журнал", "⭐ Дополнительно" };
 
         public int SelectedTabIndex
         {
@@ -41,7 +41,7 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsGamingTabSelected));
                     Raise(nameof(IsUpdatesTabSelected));
                     Raise(nameof(IsLogsTabSelected));
-                    Raise(nameof(IsAboutTabSelected));
+                    Raise(nameof(IsAdvancedTabSelected));
                     Raise(nameof(SelectedTabHint));
                 }
             }
@@ -91,7 +91,7 @@ namespace ZapretGui.ViewModels
 
         public UpdatesViewModel Updates => _main.Updates;
 
-        public bool IsAboutTabSelected
+        public bool IsAdvancedTabSelected
         {
             get => _selectedTabIndex == 7;
             set { if (value) SelectedTabIndex = 7; }
@@ -136,6 +136,9 @@ namespace ZapretGui.ViewModels
             2 => "Провайдер, телеметрия и фоновый мониторинг — диагностика вашей сети.",
             3 => "Тема, масштаб, трей, горячие клавиши и мини-виджет HUD.",
             4 => "Детектор игр, игровой режим и твики сети для минимальных задержек.",
+            5 => "Обновления движка и приложения — проверка версий и установка.",
+            6 => "Журнал событий приложения и службы.",
+            7 => "Дополнительно: поведение обхода, мастер первого запуска, файлы и о программе.",
             _ => ""
         };
 

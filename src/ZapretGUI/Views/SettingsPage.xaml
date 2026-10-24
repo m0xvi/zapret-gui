@@ -128,110 +128,13 @@
                     </StackPanel>
                 </Border>
 
-                <!-- Мастер -->
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Center">
-                                <TextBlock Text="&#xE9CE;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource BodyText}" Text="Мастер первого запуска" FontWeight="SemiBold" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Пошаговая проверка прав, движка, диагностики и выбор первой стратегии. Можно запустить заново в любой момент." TextWrapping="Wrap" />
-                            </StackPanel>
-                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Запустить мастер" VerticalAlignment="Center"
-                                    Command="{Binding RerunFirstLaunchWizardCommand}" ToolTip="Открыть пошаговый мастер настройки" />
-                        </Grid>
-                    </StackPanel>
-                </Border>
+                
 
-                <!-- О путях — свёрнуто, для продвинутых -->
-                <Expander Margin="0,14,0,0" IsExpanded="False" Background="Transparent" BorderThickness="0">
-                    <Expander.Header>
-                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                            <Border Width="26" Height="26" CornerRadius="7" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" Margin="0,0,10,0">
-                                <TextBlock Text="&#xE8B7;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel VerticalAlignment="Center">
-                                <TextBlock Text="Где хранятся файлы" Style="{StaticResource BodyText}" FontWeight="SemiBold" FontSize="12.5" />
-                                <TextBlock Text="Пути к настройкам, логам и бэкапам — можно не открывать" Style="{StaticResource DimText}" FontSize="11" />
-                            </StackPanel>
-                        </StackPanel>
-                    </Expander.Header>
-                    <Border Style="{StaticResource Card}" Margin="0,8,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ГДЕ ХРАНЯТСЯ ФАЙЛЫ" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding SettingsFilePath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SettingsFilePath}" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LogsPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LogsPath}" Margin="0,4,0,0" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding BackupPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding BackupPath}" Margin="0,4,0,0" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastBackupText}" Margin="0,10,0,0" />
-                        </StackPanel>
-                    </Border>
-                </Expander>
+                
             </StackPanel>
 
             <!-- ===================== ВКЛАДКА 1: ОБХОД ===================== -->
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsBypassTabSelected, Converter={StaticResource BoolToVis}}">
-
-                <Border Style="{StaticResource Card}">
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}">
-                                <TextBlock Text="&#xE81B;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ПОВЕДЕНИЕ ОБХОДА" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Что делает обход при запуске и выходе — без скрытых действий." TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Grid>
-
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать обход вместе с приложением" Margin="0,14,0,0"
-                                  IsChecked="{Binding AutoStartBypass, Mode=TwoWay}"
-                                  ToolTip="Запускать обход с выбранной стратегией сразу при старте" />
-
-                        <Grid Margin="0,12,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Margin="0,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource DimText}" Text="Отложенный старт при включении (секунды)" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Полезно для Wi-Fi/DHCP — даёт сети время подняться" FontSize="11" />
-                            </StackPanel>
-                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                                <Slider Minimum="0" Maximum="30" Width="120" TickFrequency="5" IsSnapToTickEnabled="True"
-                                        Value="{Binding StartupDelaySeconds, Mode=TwoWay}" ToolTip="0-30 сек" VerticalAlignment="Center" />
-                                <Border Style="{StaticResource Badge}" Margin="10,0,0,0" Background="{DynamicResource ElevatedBrush}">
-                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding StartupDelaySeconds, StringFormat={}{0} сек}" />
-                                </Border>
-                            </StackPanel>
-                        </Grid>
-
-                        <Border Style="{StaticResource Divider}" />
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="🔒 Безопасный режим" FontWeight="SemiBold"
-                                  IsChecked="{Binding SafeMode, Mode=TwoWay}"
-                                  ToolTip="Не запускать обход автоматически и не менять службу/сеть без подтверждения. Диагностика остаётся доступной." />
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="В безопасном режиме служба, hosts, proxy и WinDivert меняются только вручную после вашего подтверждения." TextWrapping="Wrap" />
-
-                        <Border Style="{StaticResource Divider}" />
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Останавливать обход при выходе"
-                                  IsChecked="{Binding StopBypassOnExit, Mode=TwoWay}" ToolTip="Останавливать обход при выходе из приложения" />
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Спрашивать подтверждение при остановке" Margin="0,10,0,0"
-                                  IsChecked="{Binding ConfirmOnStop, Mode=TwoWay}" ToolTip="Показывать подтверждение при остановке круглой кнопкой" />
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать консоль winws.exe" Margin="0,10,0,0"
-                                  IsChecked="{Binding ShowWinwsConsole, Mode=TwoWay}" ToolTip="Чёрное окно консоли winws.exe" />
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="По умолчанию консоль скрыта — обход работает в фоне, вывод пишется в «Журнал»." TextWrapping="Wrap" />
-                    </StackPanel>
-                </Border>
 
                 <Border Style="{StaticResource Card}" Margin="0,14,0,0">
                     <StackPanel>
@@ -944,9 +847,121 @@
                 </Border>
             </StackPanel>
 
-            <!-- ===================== ВКЛАДКА 7: О ПРОГРАММЕ ===================== -->
-            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsAboutTabSelected, Converter={StaticResource BoolToVis}}">
+            
+
+        
+            <!-- ===================== ВКЛАДКА 7: ДОПОЛНИТЕЛЬНО ===================== -->
+            <StackPanel Margin="0,16,0,0" Visibility="{Binding IsAdvancedTabSelected, Converter={StaticResource BoolToVis}}">
+
+                <!-- Поведение обхода — перенесено из вкладки Обход -->
                 <Border Style="{StaticResource Card}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource AccentSoftBrush}">
+                                <TextBlock Text="&#xE81B;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ПОВЕДЕНИЕ ОБХОДА" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Что делает обход при запуске и выходе — без скрытых действий." TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать обход вместе с приложением" Margin="0,14,0,0"
+                                  IsChecked="{Binding AutoStartBypass, Mode=TwoWay}"
+                                  ToolTip="Запускать обход с выбранной стратегией сразу при старте" />
+
+                        <Grid Margin="0,12,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Margin="0,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource DimText}" Text="Отложенный старт при включении (секунды)" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Полезно для Wi-Fi/DHCP — даёт сети время подняться" FontSize="11" />
+                            </StackPanel>
+                            <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                <Slider Minimum="0" Maximum="30" Width="120" TickFrequency="5" IsSnapToTickEnabled="True"
+                                        Value="{Binding StartupDelaySeconds, Mode=TwoWay}" ToolTip="0-30 сек" VerticalAlignment="Center" />
+                                <Border Style="{StaticResource Badge}" Margin="10,0,0,0" Background="{DynamicResource ElevatedBrush}">
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding StartupDelaySeconds, StringFormat={}{0} сек}" />
+                                </Border>
+                            </StackPanel>
+                        </Grid>
+
+                        <Border Style="{StaticResource Divider}" />
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="🔒 Безопасный режим" FontWeight="SemiBold"
+                                  IsChecked="{Binding SafeMode, Mode=TwoWay}"
+                                  ToolTip="Не запускать обход автоматически и не менять службу/сеть без подтверждения. Диагностика остаётся доступной." />
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="В безопасном режиме служба, hosts, proxy и WinDivert меняются только вручную после вашего подтверждения." TextWrapping="Wrap" />
+
+                        <Border Style="{StaticResource Divider}" />
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Останавливать обход при выходе"
+                                  IsChecked="{Binding StopBypassOnExit, Mode=TwoWay}" ToolTip="Останавливать обход при выходе из приложения" />
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Спрашивать подтверждение при остановке" Margin="0,10,0,0"
+                                  IsChecked="{Binding ConfirmOnStop, Mode=TwoWay}" ToolTip="Показывать подтверждение при остановке круглой кнопкой" />
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Показывать консоль winws.exe" Margin="0,10,0,0"
+                                  IsChecked="{Binding ShowWinwsConsole, Mode=TwoWay}" ToolTip="Чёрное окно консоли winws.exe" />
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="По умолчанию консоль скрыта — обход работает в фоне, вывод пишется в «Журнал»." TextWrapping="Wrap" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Мастер первого запуска — перенесено из Общие -->
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Center">
+                                <TextBlock Text="&#xE9CE;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource BodyText}" Text="Мастер первого запуска" FontWeight="SemiBold" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Пошаговая проверка прав, движка, диагностики и выбор первой стратегии. Можно запустить заново в любой момент." TextWrapping="Wrap" />
+                            </StackPanel>
+                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Запустить мастер" VerticalAlignment="Center"
+                                    Command="{Binding RerunFirstLaunchWizardCommand}" ToolTip="Открыть пошаговый мастер настройки" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <!-- Где хранятся файлы — перенесено из Общие -->
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Top">
+                                <TextBlock Text="&#xE8B7;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ГДЕ ХРАНЯТСЯ ФАЙЛЫ" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Настройки, логи и бэкапы — пути для продвинутых" TextWrapping="Wrap" />
+                            </StackPanel>
+                        </Grid>
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding SettingsFilePath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding SettingsFilePath}" Margin="0,12,0,0" />
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding LogsPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding LogsPath}" Margin="0,4,0,0" />
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding BackupPath}" TextTrimming="CharacterEllipsis" ToolTip="{Binding BackupPath}" Margin="0,4,0,0" />
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding LastBackupText}" Margin="0,10,0,0" />
+                        <WrapPanel Margin="0,10,0,0">
+                            <Button Style="{StaticResource GhostButton}" Content="settings.json" Command="{Binding OpenSettingsFileCommand}" />
+                            <Button Style="{StaticResource GhostButton}" Content="Папка логов" Command="{Binding OpenLogsFolderCommand}" Margin="8,0,0,0" />
+                            <Button Style="{StaticResource GhostButton}" Content="Резервные копии" Command="{Binding OpenBackupFolderCommand}" Margin="8,0,0,0" />
+                            <Button Style="{StaticResource GhostButton}" Content="Файл hosts" Command="{Binding OpenHostsCommand}" Margin="8,0,0,0" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
+                <!-- О программе — перенесено из отдельной вкладки -->
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -958,12 +973,12 @@
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                                 <TextBlock Style="{StaticResource SectionText}" Text="О ПРОГРАММЕ" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Версия, лицензия и ссылки — без отдельного пункта в меню." FontSize="11" TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Версия, лицензия и ссылки" FontSize="11" TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
                         <StackPanel Margin="0,14,0,0">
-                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Zapret GUI v1.15.0" />
-                            <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="Графический интерфейс для zapret-discord-youtube. Портативный EXE, автообновление движка и GUI, профили и автопереключение." TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Zapret GUI — графический интерфейс для zapret-discord-youtube" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="Портативный EXE, автообновление движка и GUI, профили и автопереключение. Лицензия MIT." TextWrapping="Wrap" />
                             <WrapPanel Margin="0,12,0,0">
                                 <Button Style="{StaticResource SecondaryButton}" Content="Открыть о программе" Padding="14,7" Command="{Binding OpenAboutCommand}" ToolTip="Перейти на страницу О программе" />
                                 <Button Style="{StaticResource GhostButton}" Content="Репозиторий GUI" Margin="8,0,0,0" Padding="12,7" Command="{Binding OpenRepoCommand}" ToolTip="Открыть m0xvi/zapret-gui" />
@@ -971,6 +986,7 @@
                         </StackPanel>
                     </StackPanel>
                 </Border>
+
             </StackPanel>
 
         </StackPanel>
