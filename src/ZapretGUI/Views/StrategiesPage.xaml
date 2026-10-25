@@ -86,7 +86,7 @@
                         </Border>
                         <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" MaxWidth="640" Text="Двойной клик по строке — применить (спросит «Служба или процесс?»). «Применить» — разовый запуск, «Как службу» — автозапуск." />
                     </WrapPanel>
-                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap" Text="Вкладки: «Конструктор» — собрать winws-параметры вручную; «Пул SNI» — IP/домены для игр и Discord; «Контрольные адреса» — свои сайты для проверки; «Умный автоподбор» — сам переберёт и найдёт лучшее." />
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" TextWrapping="Wrap" Text="Вкладки: «Конструктор» — собрать winws-параметры вручную; «Пул SNI» — IP/домены для игр и Discord; «Контрольные адреса» — свои сайты; «Сеть» — hosts/ipset и тонкая настройка YouTube; «Матрица 92» — каждая стратегия × каждый DNS; «Умный автоподбор» — сам переберёт и найдёт лучшее." />
                 </StackPanel>
             </Border>
         </Expander>
@@ -100,7 +100,7 @@
 
             <controls:SegmentedControl ItemsSource="{Binding SubTabs}"
                                        SelectedIndex="{Binding SelectedSubTabIndex, Mode=TwoWay}"
-                                       MinWidth="580" />
+                                       MinWidth="820" />
         </Grid>
 
         <!-- ============================== ВКЛАДКА 1: КАТАЛОГ СТРАТЕГИЙ ============================== -->
@@ -856,5 +856,190 @@
                 </Grid>
             </Border>
         </Grid>
+    
+        <!-- ============================== ВКЛАДКА 6: СЕТЬ — HOSTS & IPSET + YOUTUBE (из Центра) ============================== -->
+        <Grid Grid.Row="4" Visibility="{Binding IsNetworkTabVisible, Converter={StaticResource BoolToVis}}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,6,12">
+                <StackPanel>
+                    <!-- HOSTS & IPSET -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource WarningSoftBrush}">
+                                    <TextBlock Text="&#xE7C5;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="HOSTS &amp; IPSET"/>
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding BypassCenter.HostsStatusText, Mode=OneWay}" FontSize="11" TextWrapping="Wrap"/>
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding BypassCenter.IpsetStatusText, Mode=OneWay}" FontSize="11" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Grid>
+                            <WrapPanel Margin="0,10,0,0">
+                                <Button Style="{StaticResource SecondaryButton}" Content="Обновить hosts" Command="{Binding BypassCenter.UpdateHostsCommand}"/>
+                                <Button Style="{StaticResource GhostButton}" Content="Обновить ipset" Margin="8,0,0,0" Command="{Binding BypassCenter.UpdateIpsetCommand}"/>
+                                <Button Style="{StaticResource GhostButton}" Content="Списки OK" Margin="8,0,0,0" Command="{Binding BypassCenter.EnsureListsCommand}"/>
+                            </WrapPanel>
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" Text="{Binding BypassCenter.ListsStatusText, Mode=OneWay}" TextWrapping="Wrap" FontSize="11" Opacity="0.85"/>
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" FontSize="11" Opacity="0.7" TextWrapping="Wrap" Text="Списки лежат рядом с winws.exe (lists/*). Кнопки тянут свежие hosts/ipset с репозитория и чинят пустые файлы."/>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- YouTube (тяжёлый) — вынесено сюда из глубины настроек -->
+                    <Border Style="{StaticResource Card}" Margin="0,14,0,0" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource WarningSoftBrush}">
+                                    <TextBlock Text="&#xE7C5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource WarningBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,0,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource SectionText}" Text="YouTube (тяжёлый) — тонкая настройка"/>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Влияет на обход YouTube, превью и Shorts. Попробуй после «Проверить всё» или матрицы — если Discord ок, а YouTube режется." TextWrapping="Wrap" FontSize="11"/>
+                                </StackPanel>
+                            </Grid>
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Отключить QUIC fake (помогает когда YouTube режется, но Discord ок)" Margin="0,12,0,0" IsChecked="{Binding BypassCenter.DisableQuicFake, Mode=TwoWay}"/>
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="180"/>
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Style="{StaticResource DimText}" Text="SNI для YouTube QUIC-блока" VerticalAlignment="Center"/>
+                                <ComboBox Grid.Column="1" Style="{StaticResource AppComboBox}" ItemsSource="{Binding BypassCenter.YoutubeSniOptions}" SelectedItem="{Binding BypassCenter.YoutubeSniOverride, Mode=TwoWay}"/>
+                            </Grid>
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Приоритет IPv4 (помогает при fec0:: DNS)" Margin="0,10,0,0" IsChecked="{Binding BypassCenter.PreferIPv4, Mode=TwoWay}"/>
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="DoH для заблокированных (1.1.1.1)" Margin="0,10,0,0" IsChecked="{Binding BypassCenter.UseDohForBlocked, Mode=TwoWay}"/>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Подсказка: если после обновления hosts YouTube всё ещё режется — попробуй вверху «Обновить hosts», затем матрицу на вкладке «Матрица 92» (подберёт связку стратегия×DNS)."/>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
+        <!-- ============================== ВКЛАДКА 7: МАТРИЦА СТРАТЕГИЯ×DNS — 92 ТЕСТА (из Центра) ============================== -->
+        <Grid Grid.Row="4" Visibility="{Binding IsMatrixTabVisible, Converter={StaticResource BoolToVis}}">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,6,12">
+                <StackPanel>
+                    <Border Style="{StaticResource Card}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="36" Height="36" CornerRadius="9" Background="{DynamicResource AccentBrush}" VerticalAlignment="Center">
+                                    <TextBlock Text="&#xE8D2;" FontFamily="{DynamicResource IconFont}" FontSize="18" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Исчерпывающая проверка: каждая стратегия × каждый DNS"/>
+                                    <TextBlock Style="{StaticResource DimText}" Text="23 стратегии × 4 DNS (Cloudflare/Quad9/Google/DHCP) — все DNS-пробы + 16 эндпоинтов. Находит тот самый вариант за один клик, без беготни по разделам." TextWrapping="Wrap" FontSize="11"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                    <Button Style="{StaticResource PrimaryButton}" Content="▶ Проверить всё" Command="{Binding BypassCenter.RunMatrixCommand}" Padding="16,8"/>
+                                    <Button Style="{StaticResource GhostButton}" Content="■ Стоп" Margin="0,6,0,0" Command="{Binding BypassCenter.CancelMatrixCommand}" HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ДЛЯ НОВИЧКА — 3 ШАГА" Foreground="{DynamicResource InfoBrush}"/>
+                                    <WrapPanel Margin="0,6,0,0">
+                                        <Border CornerRadius="12" Padding="8,4" Margin="0,0,6,6" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                                            <TextBlock Style="{StaticResource BodyText}" FontSize="11" FontWeight="SemiBold" Text="1️⃣ Нажми «Проверить всё»"/>
+                                        </Border>
+                                        <Border CornerRadius="12" Padding="8,4" Margin="0,0,6,6" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
+                                            <TextBlock Style="{StaticResource BodyText}" FontSize="11" Text="2️⃣ Подожди 1–2 мин (92 теста)"/>
+                                        </Border>
+                                        <Border CornerRadius="12" Padding="8,4" Margin="0,0,6,6" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1">
+                                            <TextBlock Style="{StaticResource BodyText}" FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" Text="3️⃣ Нажми «Применить лучшее»"/>
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Ничего не трогай во время проверки — DNS и обход вернутся сами. Результаты сохранятся и будут видны после перезапуска."/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Visibility="{Binding BypassCenter.MatrixLastRunVisible, Converter={StaticResource BoolToVis}}" Background="{DynamicResource ElevatedBrush}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding BypassCenter.MatrixLastRunText}" FontWeight="SemiBold" VerticalAlignment="Center" TextWrapping="Wrap"/>
+                                    <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
+                                        <Button Style="{StaticResource GhostButton}" Content="Очистить" Padding="10,4" Command="{Binding BypassCenter.ClearMatrixHistoryCommand}" ToolTip="Удалить сохранённые результаты матрицы"/>
+                                    </WrapPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Visibility="{Binding BypassCenter.IsMatrixRunning, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding BypassCenter.MatrixText, Mode=OneWay}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding BypassCenter.MatrixPercent, Mode=OneWay}" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                                    </Grid>
+                                    <ProgressBar Height="6" Margin="0,8,0,0" Minimum="0" Maximum="{Binding BypassCenter.MatrixMax, Mode=OneWay}" Value="{Binding BypassCenter.MatrixProgress, Mode=OneWay}"/>
+                                    <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="{Binding BypassCenter.MatrixSummary, Mode=OneWay}" TextWrapping="Wrap"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Visibility="{Binding BypassCenter.IsMatrixRunning, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding BypassCenter.MatrixSummary, Mode=OneWay}" TextWrapping="Wrap"/>
+                                    <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="{Binding BypassCenter.MatrixBestText, Mode=OneWay}" TextWrapping="Wrap" Foreground="{DynamicResource SuccessBrush}" FontWeight="SemiBold"/>
+                                    <Button Style="{StaticResource PrimaryButton}" Content="✅ Применить лучшее (стратегия + DNS)" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding BypassCenter.ApplyBestCommand}" ToolTip="Применит стратегию и DNS победителя матрицы бесшовно"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Visibility="{Binding BypassCenter.MatrixResults.Count, Converter={StaticResource CountToVis}}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ МАТРИЦЫ (СТРАТЕГИЯ × DNS)"/>
+                                    <TextBlock Style="{StaticResource DimText}" Text="Зелёные — работают, жёлтые — частично, красные — блок. Лучшая помечена ⭐" FontSize="11"/>
+                                    <ListView Margin="0,8,0,0" MaxHeight="420" ItemsSource="{Binding BypassCenter.MatrixResults}" SelectedItem="{Binding BypassCenter.SelectedMatrixEntry, Mode=TwoWay}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                        <ListView.View>
+                                            <GridView>
+                                                <GridViewColumn Header="Стратегия" Width="170" DisplayMemberBinding="{Binding Strategy}"/>
+                                                <GridViewColumn Header="DNS" Width="110" DisplayMemberBinding="{Binding Dns}"/>
+                                                <GridViewColumn Header="Результат" Width="90">
+                                                    <GridViewColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="{Binding Status}" Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" FontWeight="SemiBold"/>
+                                                        </DataTemplate>
+                                                    </GridViewColumn.CellTemplate>
+                                                </GridViewColumn>
+                                                <GridViewColumn Header="Успех" Width="85" DisplayMemberBinding="{Binding Summary}"/>
+                                                <GridViewColumn Header="⭐" Width="30">
+                                                    <GridViewColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="⭐" Visibility="{Binding IsBest, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Center"/>
+                                                        </DataTemplate>
+                                                    </GridViewColumn.CellTemplate>
+                                                </GridViewColumn>
+                                            </GridView>
+                                        </ListView.View>
+                                    </ListView>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.75" Margin="0,8,0,0" TextWrapping="Wrap" Text="Подсказка: матрица сохраняет и возвращает твой исходный DNS и обход. Для скорости сначала делает быстрые пробы, потом уточняет лучший. Если YouTube 15/16 а Discord 0/16 — попробуй ALT11/EXP с Cloudflare."/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </Grid>
+
     </Grid>
 </UserControl>

@@ -102,7 +102,7 @@ namespace ZapretGui.ViewModels
             _evaluationHistory = StrategyEvaluationHistoryStore.Load();
 
             Categories = new[] { "Все категории", "FAKE TLS AUTO", "ALT", "SIMPLE FAKE", "БАЗОВАЯ", "EXP", "АВТОКОНСТРУКТОР" };
-            SubTabs = new[] { "Каталог стратегий", "Конструктор параметров", "Умный автоподбор", "Пул TLS SNI", "Контрольные адреса" };
+            SubTabs = new[] { "Каталог стратегий", "Конструктор параметров", "Умный автоподбор", "Пул TLS SNI", "Контрольные адреса", "🌐 Сеть", "🧩 Матрица 92" };
 
             // Инициализация контрольных адресов
             TargetEndpoints = new ObservableCollection<MonitorTarget>(main.Settings.MonitorTargets);
@@ -199,6 +199,8 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsAutoTunerTabVisible));
                     Raise(nameof(IsSniPoolTabVisible));
                     Raise(nameof(IsTargetsTabVisible));
+                    Raise(nameof(IsNetworkTabVisible));
+                    Raise(nameof(IsMatrixTabVisible));
                 }
             }
         }
@@ -208,9 +210,12 @@ namespace ZapretGui.ViewModels
         public bool IsAutoTunerTabVisible => SelectedSubTabIndex == 2;
         public bool IsSniPoolTabVisible => SelectedSubTabIndex == 3;
         public bool IsTargetsTabVisible => SelectedSubTabIndex == 4;
+        public bool IsNetworkTabVisible => SelectedSubTabIndex == 5;
+        public bool IsMatrixTabVisible => SelectedSubTabIndex == 6;
 
         public AppSettings Settings => _main.Settings;
         public BypassController Bypass => _main.Bypass;
+        public BypassCenterViewModel BypassCenter => _main.BypassCenter;
 
         // ------------------------------------------------------------------ Умный глубокий автоподбор
         private bool _isAutoTuningRunning;
