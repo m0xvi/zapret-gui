@@ -98,7 +98,7 @@ namespace ZapretGui.ViewModels
             OpenDiscordVoiceFixCommand = new RelayCommand(() =>
             {
                 _main.Navigate("diagnostics");
-                _main.Diagnostics.SelectedSubTab = 5;
+                _main.Diagnostics.SelectedSubTab = 1;
             });
             CleanDiscordAndNetworkCommand = new AsyncRelayCommand(async () =>
             {

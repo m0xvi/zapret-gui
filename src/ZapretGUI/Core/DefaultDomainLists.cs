@@ -106,13 +106,16 @@ namespace ZapretGui.Core
 
         public static readonly string[] GeneralDomains = new[]
         {
+            // Только то, что реально нужно для базового обхода: YouTube/Discord + популярные
+            // заблокированные сервисы. Игровые домены (PUBG, Photon, Steam) сюда не входят —
+            // их добавляет игровой профиль на странице «Игровой режим», иначе они ломают обход.
             "youtube.com",
             "www.youtube.com",
+            "m.youtube.com",
             "youtu.be",
             "ytimg.com",
             "i.ytimg.com",
             "i9.ytimg.com",
-            "ytimg.l.google.com",
             "googlevideo.com",
             "yt3.ggpht.com",
             "yt4.ggpht.com",
@@ -144,15 +147,11 @@ namespace ZapretGui.Core
             "chat.openai.com",
             "api.openai.com",
             "auth.openai.com",
-            "auth0.openai.com",
             "cdn.openai.com",
             "oaistatic.com",
-            "cdn.oaistatic.com",
             "oaiusercontent.com",
             "anthropic.com",
             "claude.ai",
-            "arena.ai",
-            "lmarena.ai",
             "rutracker.org",
             "nnmclub.to",
             "flibusta.is",
@@ -160,28 +159,7 @@ namespace ZapretGui.Core
             "proton.me",
             "protonmail.com",
             "hdrezka.ag",
-            "rezka.ag",
-            "pubg.com",
-            "krafton.com",
-            "playbattlegrounds.com",
-            "prozone.pubg.com",
-            "front.pubg.com",
-            "prod-live-front.playbattlegrounds.com",
-            "kineticgames.co.uk",
-            "api.kineticgames.co.uk",
-            "photonengine.io",
-            "ns.photonengine.io",
-            "ns-eu.photonengine.io",
-            "ns-us.photonengine.io",
-            "exitgames.com",
-            "exitgamescloud.com",
-            "app.exitgamescloud.com",
-            "app-eu.exitgamescloud.com",
-            "euw1.exitgamescloud.com",
-            "eu.exitgamescloud.com",
-            "ns.exitgames.com",
-            "steamcommunity.com",
-            "steampowered.com"
+            "rezka.ag"
         };
     }
 }

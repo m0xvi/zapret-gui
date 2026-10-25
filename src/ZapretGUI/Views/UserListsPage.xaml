@@ -17,9 +17,9 @@
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                <TextBlock Style="{StaticResource DisplayText}" Text="Списки доменов и DNS" />
+                <TextBlock Style="{StaticResource DisplayText}" Text="Списки и DNS" />
                 <TextBlock Style="{StaticResource MutedText}"
-                           Text="Визуальный редактор доменов, авто-обновление списков Flowseal, безопасный DNS (DoH) и игровые фильтры" />
+                           Text="Домены обхода и безопасный DNS (DoH)." />
             </StackPanel>
             <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
                 <Button Style="{StaticResource PrimaryButton}" Content="Применить и перезапустить"
@@ -30,7 +30,7 @@
             </WrapPanel>
         </Grid>
 
-        <!-- Переключатель подвкладок (Редактор списков / Безопасный DNS / Режимы фильтрации) -->
+        <!-- Переключатель подвкладок (Домены / Безопасный DNS) -->
         <Grid Grid.Row="1" Margin="0,14,0,12">
             <controls:SegmentedControl ItemsSource="{Binding SubTabs}"
                                        SelectedIndex="{Binding SelectedSubTabIndex, Mode=TwoWay}"
@@ -75,6 +75,21 @@
                     </Grid>
 
                     <TextBlock Style="{StaticResource MutedText}" Text="{Binding SelectedList.Description}" Margin="0,8,0,0" TextWrapping="Wrap" />
+
+                    <!-- Режим ipset переехал сюда из удалённой вкладки «Режимы фильтрации» -->
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ФИЛЬТРАЦИЯ IP (IPSET)" />
+                            <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap"
+                                       Text="Какие адреса перехватывает обход. Меняется редко — оставьте «по списку»." />
+                        </StackPanel>
+                        <ComboBox Grid.Column="1" Width="330" Style="{StaticResource AppComboBox}" VerticalAlignment="Center"
+                                  ItemsSource="{Binding IpsetOptions}" SelectedIndex="{Binding IpsetModeIndex, Mode=TwoWay}" />
+                    </Grid>
 
                     <!-- Статус обновления с GitHub -->
                     <Border Margin="0,8,0,0" Padding="10,6" CornerRadius="6"
@@ -478,85 +493,6 @@
             </ScrollViewer>
         </Grid>
 
-        <!-- ============================== ВКЛАДКА 3: РЕЖИМЫ ФИЛЬТРАЦИИ ============================== -->
-        <Grid Grid.Row="2" Visibility="{Binding IsFiltersTabVisible, Converter={StaticResource BoolToVis}}">
-            <Border Style="{StaticResource Card}" Padding="18,16">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource SectionText}" Text="РЕЖИМЫ ФИЛЬТРАЦИИ IP И ПОРТОВ (IPSET / GAMES)" />
-                    <TextBlock Style="{StaticResource MutedText}"
-                               Text="Тонкая настройка перехвата сетевого трафика драйвером WinDivert" Margin="0,2,0,14" />
 
-                    <Grid Margin="0,6,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <Border Grid.Column="0" Style="{StaticResource InnerCard}" Margin="0,0,8,0" Padding="14,12">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="ФИЛЬТРАЦИЯ IP (IPSET)" />
-                                <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
-                                          ItemsSource="{Binding IpsetOptions}"
-                                          SelectedIndex="{Binding IpsetModeIndex, Mode=TwoWay}"
-                                          ToolTip="Режим фильтрации IP: по файлу ipset-all.txt, все адреса (Any) или отключено (None)" />
-                                <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
-                                           Text="• По списку ipset-all.txt (рекомендуется) — обрабатывает только IP заблокированных сервисов, снижая нагрузку на процессор.&#x0a;• Все IP / Any — максимальный охват без ограничений по IP.&#x0a;• Без фильтрации / None — отключение ipset фильтрации." TextWrapping="Wrap" />
-                            </StackPanel>
-                        </Border>
-
-                        <Border Grid.Column="1" Style="{StaticResource InnerCard}" Margin="8,0,0,0" Padding="14,12">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="ИГРОВОЙ ФИЛЬТР (ПОРТЫ ВЫШЕ 1023)" />
-                                <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
-                                          ItemsSource="{Binding GameFilterOptions}"
-                                          SelectedIndex="{Binding GameFilterIndex, Mode=TwoWay}"
-                                          ToolTip="Игровой фильтр: обрабатывать ли трафик игр, Discord голосовых каналов и сторонних сервисов" />
-                                <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
-                                           Text="• TCP + UDP — оптимально для голосовых серверов Discord (UDP 50000-65535) и онлайн-игр.&#x0a;• Только TCP / Только UDP — выборочный перехват протоколов.&#x0a;• Выключен — обрабатываются только стандартные порты 80 и 443." TextWrapping="Wrap" />
-
-                                <TextBlock Style="{StaticResource SectionText}" Text="ПРОФИЛЬ ПОРТОВ И ИСКЛЮЧЕНИЙ ДЛЯ ИГР" Margin="0,12,0,0" />
-                                <ComboBox Style="{StaticResource AppComboBox}" Margin="0,6,0,0"
-                                          ItemsSource="{Binding GameFilterProfiles}"
-                                          DisplayMemberPath="Name"
-                                          SelectedItem="{Binding SelectedGameFilterProfile, Mode=TwoWay}"
-                                          ToolTip="Выберите профиль портов для исключения античитов и оптимизации задержки" />
-                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0"
-                                           Text="{Binding SelectedGameFilterProfile.Description}" TextWrapping="Wrap" />
-
-                                <!-- Кастомные порты -->
-                                <StackPanel Margin="0,8,0,0" Visibility="{Binding IsCustomGameFilterSelected, Converter={StaticResource BoolToVis}}">
-                                    <Grid Margin="0,4,0,0">
-                                        <Grid.ColumnDefinitions>
-                                            <ColumnDefinition Width="*" />
-                                            <ColumnDefinition Width="*" />
-                                        </Grid.ColumnDefinitions>
-                                        <StackPanel Grid.Column="0" Margin="0,0,4,0">
-                                            <TextBlock Style="{StaticResource SectionText}" Text="TCP ПОРТЫ" />
-                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterTcpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                        <StackPanel Grid.Column="1" Margin="4,0,0,0">
-                                            <TextBlock Style="{StaticResource SectionText}" Text="UDP ПОРТЫ" />
-                                            <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomGameFilterUdpPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                        </StackPanel>
-                                    </Grid>
-                                    <TextBlock Style="{StaticResource SectionText}" Text="ИСКЛЮЧЁННЫЕ ПОРТЫ" Margin="0,6,0,0" />
-                                    <TextBox Style="{StaticResource InputBox}" Text="{Binding CustomExcludedPorts, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
-                                </StackPanel>
-
-                                <Button Style="{StaticResource SecondaryButton}" Content="Применить настройки портов" Margin="0,10,0,0"
-                                        Command="{Binding ApplyGameFilterPortsCommand}" HorizontalAlignment="Left"
-                                        ToolTip="Сохранить выбранные диапазоны портов и перезапустить winws" />
-                            </StackPanel>
-                        </Border>
-                    </Grid>
-
-                    <WrapPanel Margin="0,16,0,0">
-                        <Button Style="{StaticResource PrimaryButton}" Content="Применить и перезапустить обход"
-                                Command="{Binding RestartBypassCommand}"
-                                ToolTip="Перезапустить winws с обновлёнными параметрами фильтрации" />
-                    </WrapPanel>
-                </StackPanel>
-            </Border>
-        </Grid>
     </Grid>
 </UserControl>

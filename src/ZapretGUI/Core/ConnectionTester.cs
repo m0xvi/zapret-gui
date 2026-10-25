@@ -27,21 +27,15 @@ namespace ZapretGui.Core
         {
             var list = new List<MonitorTarget>
             {
-                // Набор шире прежних трёх ресурсов и ближе к standard mode
-                // из Flowseal test zapret.ps1: несколько независимых CDN/доменов.
-                MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"),
-                MonitorTarget.CreateBuiltIn("Discord CDN", "https://cdn.discordapp.com/favicon.ico"),
-                MonitorTarget.CreateBuiltIn("Discord Gateway", "https://gateway.discord.gg/"),
+                // v2.0: 8 базовых целей вместо 14. Этого достаточно, чтобы отличить
+                // блокировку DPI от сбоя сети, и проверка проходит заметно быстрее.
                 MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"),
                 MonitorTarget.CreateBuiltIn("YouTube image", "https://i.ytimg.com/generate_204"),
-                MonitorTarget.CreateBuiltIn("YouTube превью", "https://i.ytimg.com/vi/dQw4w9WgXcQ/hqdefault.jpg"),
-                MonitorTarget.CreateBuiltIn("YouTube ggpht", "https://yt3.ggpht.com/generate_204"),
-                MonitorTarget.CreateBuiltIn("YouTube lh3", "https://lh3.googleusercontent.com/generate_204"),
+                MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"),
+                MonitorTarget.CreateBuiltIn("Discord CDN", "https://cdn.discordapp.com/favicon.ico"),
                 MonitorTarget.CreateBuiltIn("Google", "https://www.google.com/generate_204"),
                 MonitorTarget.CreateBuiltIn("Cloudflare", "https://www.cloudflare.com"),
                 MonitorTarget.CreateBuiltIn("ChatGPT", "https://chatgpt.com"),
-                MonitorTarget.CreateBuiltIn("OpenAI", "https://openai.com"),
-                MonitorTarget.CreateBuiltIn("PUBG", "https://www.pubg.com"),
                 MonitorTarget.CreateBuiltIn("GitHub (обновления)", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
             };
 

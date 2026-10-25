@@ -60,29 +60,6 @@
                                    Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
                     </WrapPanel>
                 </Button>
-                <!-- Метрики хостов — кликабельно: ведёт к настройке списка хостов (Экспресс-проверка) -->
-                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
-                        Command="{Binding NavigateMonitoringCommand}"
-                        ToolTip="{Binding MonitoringSummaryTooltip}">
-                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Style="{StaticResource Dot}"
-                                Background="{Binding MonitoringSummaryKey, Converter={StaticResource SeverityBrush}}" />
-                        <TextBlock Text="{Binding MonitoringSummaryText}" Margin="6,0,0,0" FontSize="11"
-                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="160" />
-                    </WrapPanel>
-                </Button>
-                <!-- Живой RTT пинг — кликабельно: настройка интервала RTT -->
-                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
-                        Command="{Binding NavigateMonitoringCommand}"
-                        Visibility="{Binding RealTimePingVisible, Converter={StaticResource BoolToVis}}"
-                        ToolTip="{Binding RealTimePingTooltip}">
-                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Style="{StaticResource Dot}"
-                                Background="{Binding RealTimePingStatusKey, Converter={StaticResource SeverityBrush}}" />
-                        <TextBlock Text="{Binding RealTimePingSummaryText}" Margin="6,0,0,0" FontSize="11"
-                                   Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="190" />
-                    </WrapPanel>
-                </Button>
 
                 <!-- Бейдж активной игры -->
                 <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
@@ -105,33 +82,13 @@
                                    Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" />
                     </WrapPanel>
                 </Button>
-                <Button Style="{StaticResource GhostButton}" Padding="7,3" Margin="6,0,0,0"
-                        Background="{Binding ReadinessKey, Converter={StaticResource SoftSeverityBrush}}"
-                        Command="{Binding NavigateDiagnosticsCommand}"
-                        ToolTip="{Binding ReadinessDetails, StringFormat='{}{0} — нажмите, чтобы открыть аудит системы и исправить проблемы'}">
-                    <WrapPanel Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Style="{StaticResource Dot}"
-                                Background="{Binding ReadinessKey, Converter={StaticResource SeverityBrush}}" />
-                        <TextBlock Text="{Binding ReadinessText}" Margin="7,0,0,0" FontSize="11"
-                                   Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center" />
-                    </WrapPanel>
-                </Button>
             </WrapPanel>
 
             <WrapPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
-                <Button Style="{StaticResource IconButton}" Content="&#xE737;"
-                        Command="{Binding Home.OpenOverlayCommand}" ToolTip="Открыть компактный мини-виджет (HUD)"
-                        AutomationProperties.Name="Открыть HUD" />
                 <Button Style="{StaticResource IconButton}" Content="&#xE793;"
                         Command="{Binding ToggleThemeCommand}" ToolTip="Переключить тему (системная → тёмная → светлая)"
                         AutomationProperties.Name="Переключить тему" />
-                <Button Style="{StaticResource IconButton}" Content="&#xE946;"
-                        Command="{Binding OpenEngineFolderCommand}" ToolTip="Открыть папку движка"
-                        AutomationProperties.Name="Открыть папку движка" />
-                <Button Style="{StaticResource IconButton}" Content="{Binding SummarySheetToggleIcon}"
-                        Command="{Binding ToggleSummarySheetCommand}" ToolTip="{Binding SummarySheetToggleTooltip}"
-                        AutomationProperties.Name="Сводка" FontFamily="{DynamicResource IconFont}" />
                 <!-- Обновления — с красным бейджем когда доступен апдейт GUI или движка -->
                 <Grid Margin="1,0" VerticalAlignment="Center" ToolTip="Открыть страницу Обновлений — проверить GUI и движок">
                     <Button Style="{StaticResource IconButton}" Content="&#xE895;"
@@ -159,9 +116,8 @@
              закреплённой слева, поэтому она не может уйти за горизонтальный край. -->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="210" MinWidth="190" />
+                <ColumnDefinition Width="200" MinWidth="180" />
                 <ColumnDefinition Width="*" />
-                <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
 
             <Border Background="{DynamicResource SidebarBrush}" BorderBrush="{DynamicResource BorderBrush}"
@@ -197,19 +153,13 @@
                         </ListBox.ItemTemplate>
                     </ListBox>
 
-                    <StackPanel Grid.Row="1" Margin="14,0,14,14">
-                        <Border Style="{StaticResource InnerCard}" Margin="0,0,0,10">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource DimText}" Text="ВЕРСИЯ ДВИЖКА" />
-                                <TextBlock Text="{Binding EngineVersionText}" FontSize="14" FontWeight="SemiBold"
-                                           Foreground="{DynamicResource TextBrush}" Margin="0,3,0,3" />
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Home.EnginePathText}"
-                                           TextTrimming="CharacterEllipsis" ToolTip="{Binding Home.EnginePathText}" />
-                            </StackPanel>
-                        </Border>
-                        <TextBlock Style="{StaticResource DimText}"
-                                   Text="{Binding AppVersion, StringFormat=Zapret GUI {0} · лицензия MIT}"
-                                   HorizontalAlignment="Center" />
+                    <!-- Одна строка вместо карточки с версией и путём: подробности — на «Обзоре» и в «Настройках». -->
+                    <StackPanel Grid.Row="1" Margin="14,0,14,12">
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11"
+                                   Text="{Binding EngineVersionText, StringFormat=Движок: {0}}"
+                                   ToolTip="{Binding Home.EnginePathText}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,2,0,0"
+                                   Text="{Binding AppVersion, StringFormat=Zapret GUI {0}}" />
                     </StackPanel>
                 </Grid>
             </Border>
@@ -237,143 +187,6 @@
                 </Grid>
             </ScrollViewer>
 
-            <!-- ======================= СВОДНЫЙ ЛИСТ СПРАВА ======================= -->
-            <Border Grid.Column="2" Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1,0,0,0" ClipToBounds="True">
-                <Border.Style>
-                    <Style TargetType="Border">
-                        <Setter Property="Width" Value="340"/>
-                        <Style.Triggers>
-                            <DataTrigger Binding="{Binding IsSummarySheetExpanded}" Value="False">
-                                <DataTrigger.EnterActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetProperty="Width" To="42" Duration="0:0:0.25">
-                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction>
-                                            </DoubleAnimation>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </DataTrigger.EnterActions>
-                                <DataTrigger.ExitActions>
-                                    <BeginStoryboard>
-                                        <Storyboard>
-                                            <DoubleAnimation Storyboard.TargetProperty="Width" To="340" Duration="0:0:0.25">
-                                                <DoubleAnimation.EasingFunction><CubicEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction>
-                                            </DoubleAnimation>
-                                        </Storyboard>
-                                    </BeginStoryboard>
-                                </DataTrigger.ExitActions>
-                            </DataTrigger>
-                        </Style.Triggers>
-                    </Style>
-                </Border.Style>
-                <Grid>
-                    <Grid.RowDefinitions>
-                        <RowDefinition Height="Auto"/>
-                        <RowDefinition Height="*"/>
-                    </Grid.RowDefinitions>
-                    <Border Background="{DynamicResource TitleBarBrush}" Height="46" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="0,0,0,1">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*"/>
-                                <ColumnDefinition Width="Auto"/>
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0" Visibility="{Binding IsSummarySheetExpanded, Converter={StaticResource BoolToVis}}">
-                                <TextBlock Text="&#xE9D9;" FontFamily="{DynamicResource IconFont}" FontSize="14" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                                <TextBlock Text="Сводка" Margin="8,0,0,0" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" VerticalAlignment="Center"/>
-                            </StackPanel>
-                            <Button Grid.Column="1" Style="{StaticResource IconButton}" Content="{Binding SummarySheetToggleIcon}" Command="{Binding ToggleSummarySheetCommand}" ToolTip="{Binding SummarySheetToggleTooltip}" Margin="0,0,4,0" FontFamily="{DynamicResource IconFont}" VerticalAlignment="Center"/>
-                        </Grid>
-                    </Border>
-                    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Padding="0,0,0,12" Visibility="{Binding IsSummarySheetExpanded, Converter={StaticResource BoolToVis}}">
-                        <StackPanel Margin="12,12,12,0">
-                            <Border Style="{StaticResource Card}" Margin="0,0,0,10" Padding="12,10">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                        <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource AccentSoftBrush}" VerticalAlignment="Center">
-                                            <TextBlock Text="&#xE72E;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource AccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <TextBlock Text="ЗАПРЕТ" Style="{StaticResource SectionText}" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                    <Grid Margin="0,0,0,4">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Ellipse Width="8" Height="8" Fill="{Binding Home.BypassStateKey, Converter={StaticResource SeverityBrush}}" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding Home.StatusText}" Margin="8,0,0,0" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}"/>
-                                    </Grid>
-                                    <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                        <TextBlock Text="⚡" FontSize="10" Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center"/>
-                                        <TextBlock Text="{Binding ActiveStrategySummaryText}" Margin="4,0,0,0" FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource TextBrush}" TextTrimming="CharacterEllipsis" MaxWidth="200"/>
-                                    </StackPanel>
-                                    <TextBlock Text="{Binding Home.EngineVersionText, StringFormat='Движок: {0}'}" Margin="0,6,0,0" Style="{StaticResource DimText}" FontSize="11"/>
-                                    <TextBlock Text="{Binding Home.EnginePathText}" Style="{StaticResource DimText}" FontSize="10" TextTrimming="CharacterEllipsis" ToolTip="{Binding Home.EnginePathText}" Opacity="0.7"/>
-                                    <WrapPanel Margin="0,8,0,0">
-                                        <Button Style="{StaticResource GhostButton}" Content="Обход" Padding="8,4" FontSize="11" Command="{Binding NavigateHomeCommand}" ToolTip="Перейти к управлению обходом"/>
-                                        <Button Style="{StaticResource GhostButton}" Content="Стратегии" Padding="8,4" FontSize="11" Margin="6,0,0,0" Command="{Binding NavigateStrategiesCommand}"/>
-                                    </WrapPanel>
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource Card}" Margin="0,0,0,10" Padding="12,10">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                        <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource InfoSoftBrush}" VerticalAlignment="Center">
-                                            <TextBlock Text="&#xE774;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <TextBlock Text="СЕТЬ" Style="{StaticResource SectionText}" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                                    </StackPanel>
-                                    <Grid Margin="0,0,0,4">
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                        <Ellipse Width="8" Height="8" Fill="{Binding MonitoringSummaryKey, Converter={StaticResource SeverityBrush}}" VerticalAlignment="Center"/>
-                                        <TextBlock Grid.Column="1" Text="{Binding MonitoringSummaryText}" Margin="8,0,0,0" FontSize="12" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}"/>
-                                    </Grid>
-                                    <TextBlock Text="{Binding RealTimePingSummaryText}" Margin="0,4,0,0" Style="{StaticResource DimText}" FontSize="11" Visibility="{Binding RealTimePingVisible, Converter={StaticResource BoolToVis}}" TextWrapping="Wrap"/>
-                                    <TextBlock Text="{Binding MonitoringSummaryTooltip}" Margin="0,4,0,0" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Opacity="0.85"/>
-                                    <Button Style="{StaticResource GhostButton}" Content="Мониторинг →" Padding="8,4" FontSize="11" Margin="0,8,0,0" HorizontalAlignment="Left" Command="{Binding NavigateMonitoringCommand}"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource Card}" Margin="0,0,0,10" Padding="12,10" BorderBrush="{Binding GameMode.GameModeActive, Converter={StaticResource BoolToAccentBrush}}" BorderThickness="1">
-                                <StackPanel>
-                                    <StackPanel Orientation="Horizontal" Margin="0,0,0,8">
-                                        <Border Width="28" Height="28" CornerRadius="7" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Center">
-                                            <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="12" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                        </Border>
-                                        <TextBlock Text="ИГРЫ" Style="{StaticResource SectionText}" Margin="8,0,0,0" VerticalAlignment="Center"/>
-                                        <Border Margin="8,0,0,0" Padding="6,2" CornerRadius="8" Background="{DynamicResource SuccessSoftBrush}" Visibility="{Binding IsGameRunning, Converter={StaticResource BoolToVis}}">
-                                            <TextBlock Text="{Binding GameStatusBadgeText}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}"/>
-                                        </Border>
-                                    </StackPanel>
-                                    <Grid>
-                                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                                        <TextBlock Text="{Binding GameMode.GameModeStatusText}" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" VerticalAlignment="Center"/>
-                                        <CheckBox Grid.Column="1" Style="{StaticResource SwitchCheckBox}" IsChecked="{Binding GameMode.GameModeActive, Mode=TwoWay}" Content="{Binding GameMode.GameModeBadge}" VerticalAlignment="Center" Margin="8,0,0,0"/>
-                                    </Grid>
-                                    <TextBlock Text="{Binding GameMode.DetectionStatusText}" Margin="0,6,0,0" Style="{StaticResource DimText}" FontSize="11" Foreground="{Binding GameMode.DetectionStatusKey, Converter={StaticResource SeverityBrush}}" FontWeight="SemiBold" TextWrapping="Wrap"/>
-                                    <TextBlock Text="{Binding GameMode.SelectedProfile.DisplayTitle}" Margin="0,6,0,0" Style="{StaticResource DimText}" FontSize="10" TextWrapping="Wrap" Opacity="0.7"/>
-                                    <WrapPanel Margin="0,8,0,0">
-                                        <Button Style="{StaticResource SecondaryButton}" Content="Игровой режим" Padding="10,4" FontSize="11" Command="{Binding Home.OpenGameModeCommand}"/>
-                                        <Button Style="{StaticResource GhostButton}" Content="Применить профиль" Padding="8,4" FontSize="11" Margin="6,0,0,0" Command="{Binding GameMode.ApplyProfileCommand}" ToolTip="Применить профиль портов"/>
-                                    </WrapPanel>
-                                    <TextBlock Text="EU не заходит? → Профиль «Только Discord Voice» + Сохранить" Margin="0,6,0,0" Style="{StaticResource DimText}" FontSize="10" FontStyle="Italic" TextWrapping="Wrap" Opacity="0.7"/>
-                                </StackPanel>
-                            </Border>
-                            <Border Style="{StaticResource Card}" Margin="0,0,0,10" Padding="12,10" Background="{DynamicResource ElevatedBrush}">
-                                <StackPanel>
-                                    <TextBlock Text="БЫСТРО" Style="{StaticResource SectionText}" Margin="0,0,0,8"/>
-                                    <WrapPanel>
-                                        <Button Style="{StaticResource GhostButton}" Content="⟳ Обновить" Padding="8,4" FontSize="11" Command="{Binding RefreshAllCommand}"/>
-                                        <Button Style="{StaticResource GhostButton}" Content="Папка движка" Padding="8,4" FontSize="11" Margin="6,0,0,0" Command="{Binding OpenEngineFolderCommand}"/>
-                                        <Button Style="{StaticResource GhostButton}" Content="Диагностика" Padding="8,4" FontSize="11" Margin="6,0,0,0" Command="{Binding NavigateDiagnosticsCommand}"/>
-                                    </WrapPanel>
-                                </StackPanel>
-                            </Border>
-                        </StackPanel>
-                    </ScrollViewer>
-                    <StackPanel Grid.Row="1" VerticalAlignment="Top" HorizontalAlignment="Center" Margin="0,12,0,0" Visibility="{Binding IsSummarySheetExpanded, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
-                        <Button Style="{StaticResource IconButton}" Content="&#xE9D9;" FontFamily="{DynamicResource IconFont}" ToolTip="Сводка" Command="{Binding ToggleSummarySheetCommand}"/>
-                        <Border Width="8" Height="8" CornerRadius="4" Margin="0,8,0,0" Background="{Binding Home.BypassStateKey, Converter={StaticResource SeverityBrush}}" HorizontalAlignment="Center" ToolTip="{Binding Home.StatusText}"/>
-                        <Border Width="8" Height="8" CornerRadius="4" Margin="0,6,0,0" Background="{Binding MonitoringSummaryKey, Converter={StaticResource SeverityBrush}}" HorizontalAlignment="Center" ToolTip="{Binding MonitoringSummaryText}"/>
-                        <Border Width="8" Height="8" CornerRadius="4" Margin="0,6,0,0" Background="{Binding GameMode.DetectionStatusKey, Converter={StaticResource SeverityBrush}}" HorizontalAlignment="Center" ToolTip="{Binding GameMode.DetectionStatusText}"/>
-                    </StackPanel>
-                </Grid>
-            </Border>
         </Grid>
 
         <!-- ======================= ПРЕДУПРЕЖДЕНИЕ О ПРАВАХ ======================= -->

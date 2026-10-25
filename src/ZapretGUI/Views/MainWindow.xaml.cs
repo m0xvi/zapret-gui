@@ -33,11 +33,8 @@ namespace ZapretGui.Views
             _pages["first-run"] = new FirstLaunchPage(_vm.FirstLaunch);
             _pages["strategies"] = new StrategiesPage(_vm.StrategiesPage);
             _pages["game-mode"] = new GameModePage(_vm.GameMode);
-            _pages["monitoring"] = new MonitoringPage(_vm.Monitoring);
             _pages["updates"] = new UpdatesPage(_vm.Updates);
             _pages["diagnostics"] = new DiagnosticsPage(_vm.Diagnostics);
-            _pages["deep-check"] = new DeepCheckPage(_vm.DeepCheck);
-            _pages["dpi"] = new DpiPage(_vm.Diagnostics);
             _pages["logs"] = new LogsPage(_vm.Logs);
             _pages["user-lists"] = new UserListsPage(_vm.UserLists);
             _pages["settings"] = new SettingsPage(_vm.SettingsPage);

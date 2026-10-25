@@ -132,8 +132,8 @@ namespace ZapretGui.Core
         /// <summary>Уведомлять о восстановлении обхода через системный трей.</summary>
         public bool WatchdogNotifyUser { get; set; } = true;
 
-        /// <summary>Отображать живой RTT пинг ключевых ресурсов (YouTube, Discord, GitHub) в шапке.</summary>
-        public bool RealTimePingEnabled { get; set; } = true;
+        /// <summary>Живой RTT-пинг в шапке. В v2.0 по умолчанию выключен (шапка упрощена).</summary>
+        public bool RealTimePingEnabled { get; set; } = false;
 
         /// <summary>Интервал живого пинга в секундах.</summary>
         public int RealTimePingIntervalSeconds { get; set; } = 10;
@@ -174,8 +174,8 @@ namespace ZapretGui.Core
         /// <summary>Ресурсы пользователя для фонового контроля.</summary>
         public List<MonitorTarget> MonitorTargets { get; set; } = new();
 
-        /// <summary>Показывать метрики ресурсов в тулбаре рядом с иконкой (как в MSI Afterburner), обновление каждую минуту.</summary>
-        public bool ToolbarMetricsEnabled { get; set; } = true;
+        /// <summary>Метрики в отдельном окне над панелью задач. В v2.0 выключено по умолчанию — интерфейс упрощён.</summary>
+        public bool ToolbarMetricsEnabled { get; set; } = false;
 
         /// <summary>Интервал обновления метрик тулбара в секундах (15-300, по умолчанию 60).</summary>
         public int ToolbarMetricsIntervalSeconds { get; set; } = 60;
@@ -291,8 +291,11 @@ namespace ZapretGui.Core
         /// <summary>Пользователь вручную выключил запрет — не включать принудительно (фикс v1.32.1: «несмотря на выключение сам включается»).</summary>
         public bool BypassManuallyStopped { get; set; } = false;
 
-        /// <summary>Сводный лист справа — развёрнут.</summary>
-        public bool IsSummarySheetExpanded { get; set; } = true;
+        /// <summary>Сводный лист справа — развёрнут. Панель удалена в v2.0, поле нужно только для чтения старых settings.json.</summary>
+        public bool IsSummarySheetExpanded { get; set; }
+
+        /// <summary>Версия схемы интерфейса для одноразовых миграций (v2.0 — упрощённый интерфейс).</summary>
+        public int UiSchemaVersion { get; set; }
     }
 
     /// <summary>Загрузка/сохранение settings.json.</summary>
@@ -323,6 +326,16 @@ namespace ZapretGui.Core
                         // Миграция автозапуска: ранее по умолчанию выкл, теперь вкл — включаем для существующих профилей
                         if (!loaded.AutoStartBypass && loaded.FirstLaunchWizardCompleted && !loaded.SafeMode)
                             loaded.AutoStartBypass = true;
+
+                        // v2.0 «тонкий» интерфейс: выключаем то, что раньше было включено по умолчанию
+                        // и создавало визуальный шум (пинг в шапке, окно метрик над панелью задач, правая сводка).
+                        if (loaded.UiSchemaVersion < 2)
+                        {
+                            loaded.RealTimePingEnabled = false;
+                            loaded.ToolbarMetricsEnabled = false;
+                            loaded.IsSummarySheetExpanded = false;
+                            loaded.UiSchemaVersion = 2;
+                        }
                         return loaded;
                     }
                 }
