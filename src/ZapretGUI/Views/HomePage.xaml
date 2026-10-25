@@ -116,6 +116,158 @@
                         </Grid>
                     </Border>
 
+                    
+                    <!-- ============== Единая проверка — охват всех функций, баллы 0..10 ================= -->
+                    <Border Style="{StaticResource Card}" Margin="0,16,0,0" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2">
+                        <StackPanel>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="Auto"/>
+                                </Grid.ColumnDefinitions>
+                                <Border Width="36" Height="36" CornerRadius="9" Background="{DynamicResource AccentBrush}" VerticalAlignment="Center">
+                                    <TextBlock Text="&#xE8D2;" FontFamily="{DynamicResource IconFont}" FontSize="18" Foreground="{DynamicResource OnAccentBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                </Border>
+                                <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Единая проверка — охват всех функций"/>
+                                    <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Одна кнопка проверяет обход, службу, движок, стратегии, DNS, hosts/ipset, прокси/VPN, BFE и сеть — и выставляет баллы 0..10 каждому варианту."/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                    <Button Style="{StaticResource PrimaryButton}" Content="▶ Проверить всё" Command="{Binding RunUnifiedCheckCommand}" Padding="16,8"/>
+                                    <Button Style="{StaticResource GhostButton}" Content="■ Стоп" Margin="0,6,0,0" Command="{Binding CancelUnifiedCheckCommand}" HorizontalAlignment="Stretch"/>
+                                </StackPanel>
+                            </Grid>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Background="{DynamicResource InfoSoftBrush}" BorderBrush="{DynamicResource InfoBrush}" BorderThickness="1">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="КАК ЧИТАТЬ БАЛЛЫ" Foreground="{DynamicResource InfoBrush}"/>
+                                    <WrapPanel Margin="0,6,0,0">
+                                        <Border Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="12" Padding="8,4" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource SuccessBrush}" Text="8–10 🟢 отлично"/>
+                                        </Border>
+                                        <Border Background="{DynamicResource WarningSoftBrush}" BorderBrush="{DynamicResource WarningBrush}" BorderThickness="1" CornerRadius="12" Padding="8,4" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" Text="5–7 🟡 средне"/>
+                                        </Border>
+                                        <Border Background="{DynamicResource DangerSoftBrush}" BorderBrush="{DynamicResource DangerBrush}" BorderThickness="1" CornerRadius="12" Padding="8,4" Margin="0,0,6,6">
+                                            <TextBlock FontSize="11" FontWeight="SemiBold" Foreground="{DynamicResource DangerBrush}" Text="0–4 🔴 плохо"/>
+                                        </Border>
+                                    </WrapPanel>
+                                    <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Text="Балл варианта = доля успешных проб (YouTube/Discord/GitHub…) + бонус за скорость. Система = сумма 10-балльных оценок по всем функциям."/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Visibility="{Binding UnifiedLastRunVisible, Converter={StaticResource BoolToVis}}" Background="{DynamicResource ElevatedBrush}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding UnifiedLastRunText}" VerticalAlignment="Center" FontWeight="SemiBold" TextWrapping="Wrap"/>
+                                    <WrapPanel Grid.Column="1" VerticalAlignment="Center" Margin="8,0,0,0">
+                                        <Button Style="{StaticResource GhostButton}" Content="Очистить" Padding="10,4" Command="{Binding ClearUnifiedCheckCommand}"/>
+                                    </WrapPanel>
+                                </Grid>
+                            </Border>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Visibility="{Binding IsUnifiedRunning, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding UnifiedStatusText}" TextTrimming="CharacterEllipsis"/>
+                                        <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding UnifiedProgressPercentText}" FontWeight="SemiBold" Margin="8,0,0,0"/>
+                                    </Grid>
+                                    <ProgressBar Height="6" Margin="0,8,0,0" Minimum="0" Maximum="{Binding UnifiedProgressMaximum, Mode=OneWay}" Value="{Binding UnifiedProgressValue, Mode=OneWay}"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Visibility="{Binding IsUnifiedRunning, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding UnifiedSummaryText}" TextWrapping="Wrap" Visibility="{Binding UnifiedResultVisible, Converter={StaticResource BoolToVis}}"/>
+                                    <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" Text="{Binding UnifiedAdviceText}" TextWrapping="Wrap" Foreground="{DynamicResource SuccessBrush}" FontWeight="SemiBold" Visibility="{Binding UnifiedResultVisible, Converter={StaticResource BoolToVis}}"/>
+                                    <StackPanel Orientation="Horizontal" Margin="0,10,0,0" Visibility="{Binding HasUnifiedVariants, Converter={StaticResource BoolToVis}}">
+                                        <Button Style="{StaticResource PrimaryButton}" Content="✅ Применить лучший вариант" Command="{Binding ApplyBestUnifiedVariantCommand}"/>
+                                        <TextBlock Style="{StaticResource DimText}" Margin="10,0,0,0" VerticalAlignment="Center" Text="{Binding BestUnifiedVariantName, StringFormat=Лидер: {0}}" FontWeight="SemiBold"/>
+                                    </StackPanel>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Visibility="{Binding HasUnifiedResults, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМНЫЕ ФУНКЦИИ — БАЛЛЫ"/>
+                                        <Border Grid.Column="1" Style="{StaticResource Badge}" Background="{DynamicResource AccentSoftBrush}" Padding="7,3">
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding UnifiedSystemScoreText}" FontWeight="Bold" Foreground="{DynamicResource AccentBrush}"/>
+                                        </Border>
+                                    </Grid>
+                                    <ItemsControl Margin="0,8,0,0" ItemsSource="{Binding UnifiedSystemScores}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}" Padding="0,6">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                            <ColumnDefinition Width="54"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel VerticalAlignment="Center">
+                                                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontSize="12.5" FontWeight="SemiBold"/>
+                                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding Details}" FontSize="11" TextWrapping="Wrap" Opacity="0.85"/>
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Text="{Binding FixHint}" FontSize="11" Margin="8,0,8,0" VerticalAlignment="Center" TextWrapping="Wrap" MaxWidth="220" Opacity="0.7" Visibility="{Binding FixHint, Converter={StaticResource StringToVis}}"/>
+                                                        <Border Grid.Column="2" CornerRadius="8" Padding="6,3" Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}" BorderBrush="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" BorderThickness="1" VerticalAlignment="Center" HorizontalAlignment="Right">
+                                                            <TextBlock Text="{Binding ScoreText}" FontWeight="Bold" FontSize="12" Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" HorizontalAlignment="Center"/>
+                                                        </Border>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource InnerCard}" Margin="0,10,0,0" Visibility="{Binding HasUnifiedVariants, Converter={StaticResource BoolToVis}}">
+                                <StackPanel>
+                                    <TextBlock Style="{StaticResource SectionText}" Text="ВАРИАНТЫ СТРАТЕГИЙ — ОЦЕНКА 0..10"/>
+                                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="Зелёные 8–10 работают, 5–7 частично, 0–4 блок. ⭐ — лучший."/>
+                                    <ListView Margin="0,8,0,0" MaxHeight="360" ItemsSource="{Binding UnifiedVariantScores}" SelectedItem="{Binding BestUnifiedVariant, Mode=OneWay}" ScrollViewer.VerticalScrollBarVisibility="Auto">
+                                        <ListView.View>
+                                            <GridView>
+                                                <GridViewColumn Header="Вариант" Width="190" DisplayMemberBinding="{Binding StrategyName}"/>
+                                                <GridViewColumn Header="Балл" Width="65">
+                                                    <GridViewColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <Border CornerRadius="7" Padding="6,2" Background="{Binding StatusKey, Converter={StaticResource SoftSeverityBrush}}" BorderBrush="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" BorderThickness="1">
+                                                                <TextBlock Text="{Binding ScoreText}" FontWeight="Bold" Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" HorizontalAlignment="Center"/>
+                                                            </Border>
+                                                        </DataTemplate>
+                                                    </GridViewColumn.CellTemplate>
+                                                </GridViewColumn>
+                                                <GridViewColumn Header="Успех" Width="110" DisplayMemberBinding="{Binding Summary}"/>
+                                                <GridViewColumn Header="⭐" Width="30">
+                                                    <GridViewColumn.CellTemplate>
+                                                        <DataTemplate>
+                                                            <TextBlock Text="⭐" Visibility="{Binding IsBest, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Center"/>
+                                                        </DataTemplate>
+                                                    </GridViewColumn.CellTemplate>
+                                                </GridViewColumn>
+                                            </GridView>
+                                        </ListView.View>
+                                    </ListView>
+                                </StackPanel>
+                            </Border>
+
+                            <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.75" Margin="0,8,0,0" TextWrapping="Wrap" Text="Подсказка: если лидер 7/10 а остальные 0–3 — провайдер режет жёстко, пробуй ALT11/EXP с Cloudflare. Если система 60/100 — исправь красные пункты в Проверке."/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Конфликт со старым запретом -->
                     <Border Margin="0,16,0,0" CornerRadius="10" Padding="14,11"
                             Background="{DynamicResource WarningSoftBrush}"

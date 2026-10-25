@@ -47,7 +47,7 @@ PAGE_VM = {
 # Типы элементов, на которые указывают {Binding} внутри DataTemplate
 ITEM_TYPES = {
     "UpdatesPage": ["EngineConsistencyItem", "EngineBackupInfo"],
-    "HomePage": ["ConnectionCheck", "MonitorTarget"],
+    "HomePage": ["ConnectionCheck", "MonitorTarget", "UnifiedSystemScore", "UnifiedVariantScore"],
     "StrategiesPage": ["StrategyInfo", "StrategyCandidate", "StrategyCandidateEvaluation", "SavedStrategyCandidate", "StrategyEvaluationHistoryRecord", "StrategySwitchRecord", "MonitorTarget", "AutoTunerStepResult", "SniTestResult", "SniCandidate", "DnsStrategyMatrixEntry"],
     "ProfilesPage": ["UserProfile", "BackupArchiveInfo"],
     "DiagnosticsPage": ["DiagnosticItem", "DpiTargetResult", "DpiProbeResult", "MonitorTarget", "ResourceProbeResult", "DeepCheckFinding", "DeepCheckMetric", "DeepCheckRecommendation", "DiscordVoiceServerCheck"],
