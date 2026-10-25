@@ -5,7 +5,7 @@
              xmlns:views="clr-namespace:ZapretGui.Views"
              Background="Transparent">
     <ScrollViewer x:Name="RootScrollViewer" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,12" CanContentScroll="False" ScrollChanged="OnScrollChanged">
-        <StackPanel Margin="12,12,12,16" MaxWidth="1100" HorizontalAlignment="Stretch">
+        <StackPanel Margin="24,20,20,32" MaxWidth="1100" HorizontalAlignment="Stretch">
 
             <!-- Заголовок -->
             <Grid>
@@ -15,7 +15,7 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
                     <TextBlock Style="{StaticResource DisplayText}" Text="Настройки" />
-                    <TextBlock Style="{StaticResource MutedText}" Text="Всё по полочкам — выберите раздел слева направо. Изменения сохраняются автоматически." TextWrapping="Wrap" />
+                    <TextBlock Style="{StaticResource MutedText}" Text="Изменения сохраняются автоматически." TextWrapping="Wrap" />
                 </StackPanel>
                 <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
                     <Button Style="{StaticResource GhostButton}" Content="↺ Сбросить"
@@ -111,7 +111,6 @@
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Запускать при входе в систему (от администратора)" Margin="0,14,0,0"
                                   IsChecked="{Binding RunAtStartup, Mode=TwoWay}"
                                   ToolTip="Автозапуск через планировщик задач с правами администратора" />
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" Text="{Binding Status}" TextWrapping="Wrap" />
                         <Border Style="{StaticResource Divider}" />
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Сворачивать в трей при закрытии окна"
                                   IsChecked="{Binding CloseToTray, Mode=TwoWay}"

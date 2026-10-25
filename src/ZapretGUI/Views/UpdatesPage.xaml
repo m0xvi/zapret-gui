@@ -78,7 +78,7 @@
                         <StackPanel>
                             <TextBlock FontSize="11" Foreground="{DynamicResource TextMutedBrush}" TextWrapping="Wrap" LineHeight="15">
                                 <Run Text="Стратегия:" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{Binding Main.ActiveStrategySummaryText, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Main.ReadinessText, Mode=OneWay}"/>
-                                <LineBreak/><Run Text="Мониторинг:" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{Binding Main.MonitoringSummaryText, Mode=OneWay}"/><Run Text=" · "/><Run Text="{Binding Main.RealTimePingSummaryText, Mode=OneWay}"/>
+                                <LineBreak/><Run Text="Ресурсы:" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{Binding Main.MonitoringSummaryText, Mode=OneWay}"/>
                                 <LineBreak/><Run Text="Движок:" FontWeight="SemiBold"/><Run Text=" "/><Run Text="{Binding EngineVersion, Mode=OneWay}"/><Run Text=" · hosts:"/><Run Text=" "/><Run Text="{Binding HostsStatus, Mode=OneWay}"/>
                             </TextBlock>
                             <TextBlock Margin="0,4,0,0" FontSize="10" Foreground="{DynamicResource TextMutedBrush}" Opacity="0.6" Text="Нажми «Копировать» и вставь мне — проанализирую обход и предложу улучшение." TextWrapping="Wrap"/>

@@ -131,7 +131,7 @@
                                                 <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
                                                         Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                         CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
-                                                        ToolTip="Убрать пользовательский ресурс из мониторинга" VerticalAlignment="Center" />
+                                                        ToolTip="Убрать пользовательский ресурс из списка" VerticalAlignment="Center" />
                                             </StackPanel>
                                         </Grid>
                                     </DataTemplate>
@@ -294,9 +294,9 @@
                 <StackPanel Visibility="{Binding IsResultsTabSelected, Converter={StaticResource BoolToVis}}">
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="СВОДНЫЙ ОТЧЁТ И СОХРАНЁННЫЕ ДАННЫЕ" />
+                            <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ И ЭКСПОРТ" />
                             <TextBlock Style="{StaticResource MutedText}"
-                                       Text="Единый обзор текущего состояния системы, истории проверок и экспорт диагностических пакетов." TextWrapping="Wrap" />
+                                       Text="Сохранённые результаты проверок и выгрузка отчёта." TextWrapping="Wrap" />
                         </StackPanel>
                     </Border>
 
@@ -310,9 +310,9 @@
                         <!-- Экспресс / Мониторинг статус -->
                         <Border Style="{StaticResource Card}" Grid.Column="0" Margin="0,0,6,0">
                             <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПРЕСС-ПРОВЕРКА" />
+                                <TextBlock Style="{StaticResource SectionText}" Text="РЕСУРСЫ" />
                                 <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.LastCheckText}" FontWeight="SemiBold" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к мониторингу" Margin="0,10,0,0"
+                                <Button Style="{StaticResource SecondaryButton}" Content="Открыть ресурсы" Margin="0,10,0,0"
                                         Command="{Binding SelectExpressTabCommand}" />
                             </StackPanel>
                         </Border>
