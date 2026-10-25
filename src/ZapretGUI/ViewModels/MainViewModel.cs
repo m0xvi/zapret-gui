@@ -210,7 +210,7 @@ namespace ZapretGui.ViewModels
             ToggleSummarySheetCommand = new RelayCommand(ToggleSummarySheet);
             NavigateUpdatesCommand = new RelayCommand(() => Navigate("updates"));
             NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
-            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 1; Navigate("diagnostics"); });
+            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 0; Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
             NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
             NavigateActiveCheckCommand = new RelayCommand(NavigateToActiveCheck);
@@ -614,17 +614,10 @@ namespace ZapretGui.ViewModels
 
         public void Navigate(string key)
         {
+            // v2.1: «История» удалена — все старые алиасы ведут на первую вкладку «Проверки».
             if (key is "monitoring" or "dpi" or "deep-check" or "results")
             {
-                var tab = key switch
-                {
-                    "monitoring" => 0,
-                    "dpi" => 0,
-                    "deep-check" => 0,
-                    "results" => 2,
-                    _ => 0
-                };
-                Diagnostics.SelectedSubTab = tab;
+                Diagnostics.SelectedSubTab = 0;
                 key = "diagnostics";
             }
 

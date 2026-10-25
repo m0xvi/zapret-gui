@@ -1207,3 +1207,55 @@ CI и что требует Windows runtime.
 
 **Не проверено в рантайме:** WPF-приложение нельзя запустить в Linux-песочнице агента; проверены
 `python3 tools/check_bindings.py` и сборка на `windows-latest` в GitHub Actions.
+
+---
+
+## Единый шаблон страниц и возврат матрицы (v2.1, 2026-10-25)
+
+Задача от владельца: «все окна разделов разные, хотелось бы привести все к единому отшлифованному шаблону»,
+«убери пункт историю из проверки», «верни матричную проверку днс и стратегий которая была». Договорённости:
+ширина контента **1180 px по центру** на всех страницах (без «резиновых» страниц), матрица — **2-я подвкладка
+раздела «Стратегии»**.
+
+**Шаблон страницы (`Themes/Controls.xaml`, блок `Page*`)**
+
+Единственный источник правды по раскладке разделов:
+
+- `PageRoot` — корневой `Grid` страницы (Margin 24,20,20,20).
+- `PageHeader` — шапка (`MaxWidth 1180`): `DisplayText` + одна строка `MutedText` слева,
+  `PageActions` справа.
+- `PageActions` / `PageAction` / `PageActionPrimary` / `PageActionGhost` — выравнивание и единый размер
+  кнопок шапки (высота 34, `PageActionPrimary` первым).
+- `PageTabs` — `StackPanel` с `SegmentedControl` (без `MinWidth`) и `PageTabHint` (одна строка подсказки).
+- `PageScroll` → `PageContent` (`MaxWidth 1180`, центрируется автоматически) — прокручиваемая часть.
+- `PageCard` / `PageCardFirst` — карточки (`Card` + отступ 12 / 16 сверху).
+
+**Страницы, переведённые на шаблон**
+
+- `HomePage`, `StrategiesPage`, `DiagnosticsPage`, `GameModePage`, `UserListsPage`, `SettingsPage`,
+  `UpdatesPage`, `LogsPage`, `AboutPage`, `FirstLaunchPage`. Убраны локальные отступы (`Margin="24,20,20,32"`),
+  ширины `980`/`1100` и мелкие шрифты 8.5–10 px в `UpdatesPage` (теперь 11–13 px, стили `SectionText`/`BodyText`).
+- `UpdatesPage` сохраняет режим `ShowHeader="False"` для встраивания во вкладку «Обновления» в «Настройках».
+- `SettingsPage`: шапка, строка статуса и переключатель вкладок больше не скроллятся — прокручивается только
+  содержимое активной вкладки (`x:Name="RootScrollViewer"` переехал в строку 3).
+
+**Проверка: 2 вкладки**
+
+- `DiagnosticsViewModel.DiagnosticsTabs` = `⚡ Ресурсы`, `🛠 Аудит`. Вкладка «История» и
+  `IsResultsTabSelected` / `SelectResultsTabCommand` удалены, `SelectedSubTab` зажимается в 0..1.
+- Экспорт отчёта и ZIP остались в шапке страницы (кнопки «Экспорт», «ZIP»).
+- `MainViewModel.Navigate`: старые алиасы (`monitoring`, `dpi`, `deep-check`, `results`) ведут на вкладку 0.
+
+**Матрица «стратегия × DNS»**
+
+- `StrategiesViewModel.SubTabs` = `Каталог`, `Матрица DNS×стратегии`; `IsMatrixTabVisible => SelectedSubTabIndex == 1`,
+  `SubTabHint` — одна строка описания на вкладку. Старый инструктаж «ДЛЯ НОВИЧКА — 3 ШАГА» не возвращён.
+- UI матрицы восстановлен из истории (`f57bd78`) и переверстан на шаблон: карточка запуска с прогрессом,
+  сводка + «Применить лучшее», строка последнего прогона и `ListView/GridView` результатов.
+  Привязки — к `BypassCenter.*` (`RunMatrixCommand`, `CancelMatrixCommand`, `MatrixResults`, `ApplyBestCommand`, …).
+- «Стратегии» без подвкладок-пустышек: каталог остался первой вкладкой со своей раскладкой
+  (`Grid` с `MaxWidth="1180"`, чтобы не схлопнуться в ноль внутри `ScrollViewer`).
+
+**Версия:** `ZapretGUI.csproj` → 2.1.0. Ничего в контрактах обхода (`BypassController`, `StrategyParser`,
+`EngineService`, `WinServices`) не менялось; проверки — `tools/check_bindings.py` (18 XAML / 105 ключей) и
+сборка на `windows-latest`.

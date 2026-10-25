@@ -3,351 +3,294 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
-        <Grid Margin="24,20,20,32">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
+    <Grid Style="{StaticResource PageRoot}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-            <!-- Верхний заголовок и глобальный экспорт -->
-            <Grid Grid.Row="0">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*" />
-                    <ColumnDefinition Width="Auto" />
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                    <TextBlock Style="{StaticResource DisplayText}" Text="Проверка" />
-                    <TextBlock Style="{StaticResource MutedText}"
-                               Text="Доступность ресурсов, аудит системы и история проверок." TextWrapping="Wrap" />
-                </StackPanel>
-                <WrapPanel Grid.Column="1" MaxWidth="440" HorizontalAlignment="Right" VerticalAlignment="Top">
-                    <Button Style="{StaticResource GhostButton}" Content="Экспорт"
-                            Command="{Binding ExportReportCommand}"
-                            ToolTip="Сохранить полный диагностический отчёт без секретов и без сетевых запросов" />
-                    <Button Style="{StaticResource GhostButton}" Content="ZIP" Margin="8,0,0,0"
-                            Command="{Binding ExportArchiveCommand}"
-                            ToolTip="Сохранить ZIP с отдельными файлами diagnostics.json, application.log и памяткой" />
-                </WrapPanel>
-            </Grid>
-
-            <!-- Сегментированный переключатель вкладок — sticky, единый стиль с Каталогом стратегий -->
-            <StackPanel Grid.Row="1" Margin="0,14,0,0">
-                <controls:SegmentedControl ItemsSource="{Binding DiagnosticsTabs}" SelectedIndex="{Binding SelectedSubTab, Mode=TwoWay}" MinWidth="620" />
-                <TextBlock Style="{StaticResource DimText}" Text="{Binding DiagnosticsTabHintText}" Margin="0,6,0,12" FontSize="11" TextWrapping="Wrap" Opacity="0.85" />
+        <!-- Шапка раздела -->
+        <Grid Grid.Row="0" Style="{StaticResource PageHeader}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                <TextBlock Style="{StaticResource DisplayText}" Text="Проверка" />
+                <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                           Text="Доступность ресурсов и аудит системы." />
             </StackPanel>
+            <WrapPanel Grid.Column="1" Style="{StaticResource PageActions}">
+                <Button Style="{StaticResource PageActionGhost}" Content="Экспорт"
+                        Command="{Binding ExportReportCommand}"
+                        ToolTip="Сохранить полный диагностический отчёт без секретов и без сетевых запросов" />
+                <Button Style="{StaticResource PageActionGhost}" Content="ZIP" Margin="8,0,0,0"
+                        Command="{Binding ExportArchiveCommand}"
+                        ToolTip="Сохранить ZIP с отчётом, журналом и памяткой" />
+            </WrapPanel>
+        </Grid>
 
-            <!-- Содержимое активной вкладки — скроллится, табы остаются на месте -->
-            <ScrollViewer Grid.Row="2" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly" Padding="0,0,4,0">
-                <StackPanel>
+        <!-- Вкладки раздела -->
+        <StackPanel Grid.Row="1" Style="{StaticResource PageTabs}">
+            <controls:SegmentedControl ItemsSource="{Binding DiagnosticsTabs}" SelectedIndex="{Binding SelectedSubTab, Mode=TwoWay}" />
+            <TextBlock Style="{StaticResource PageTabHint}" Text="{Binding DiagnosticsTabHintText}" />
+        </StackPanel>
 
-                <!-- ==================== ВКЛАДКА 0: ЭКСПРЕСС / МОНИТОРИНГ ==================== -->
-                <StackPanel Visibility="{Binding IsExpressTabSelected, Converter={StaticResource BoolToVis}}">
-                    <Border Style="{StaticResource Card}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <StackPanel Margin="0,0,12,0">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПРЕСС-ПРОВЕРКА РЕСУРСОВ" />
-                                <TextBlock Style="{StaticResource MutedText}"
-                                           Text="Проверяет ключевые сервисы (YouTube, Discord и др.) и выявляет источник проблемы: блокировка провайдера или недоступность сервера." TextWrapping="Wrap" />
-                            </StackPanel>
-                            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
-                                <Button Style="{StaticResource PrimaryButton}" Content="Проверить сейчас"
-                                        Command="{Binding Monitoring.CheckAllCommand}"
-                                        ToolTip="Проверить все включённые ресурсы без остановки обхода" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Определить причину" Margin="8,0,0,0"
-                                        Command="{Binding Monitoring.DiagnoseCommand}"
-                                        ToolTip="Сравнить ресурс без обхода и с текущей стратегией" />
-                            </WrapPanel>
-                        </Grid>
-                    </Border>
+        <!-- Содержимое активной вкладки — скроллится, вкладки остаются на месте -->
+        <ScrollViewer Grid.Row="2" Style="{StaticResource PageScroll}" Margin="0,14,0,0">
+            <StackPanel Style="{StaticResource PageContent}">
 
-                    <!-- Статус и прогресс экспресс-проверки -->
-                    <Border CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
-                            Background="{Binding Monitoring.MessageKey, Converter={StaticResource SoftSeverityBrush}}"
-                            Visibility="{Binding Monitoring.MessageVisible, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.Message}" TextWrapping="Wrap" />
-                    </Border>
-
-                    <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
-                            Background="{DynamicResource ElevatedBrush}"
-                            Visibility="{Binding Monitoring.ProgressVisible, Converter={StaticResource BoolToVis}}">
-                        <StackPanel>
-                            <Grid>
-                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.ProgressText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
-                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.ProgressPercentText}" HorizontalAlignment="Right"
-                                           Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
-                            </Grid>
-                            <ProgressBar Style="{StaticResource ThinProgress}"
-                                         Value="{Binding Monitoring.ProgressValue, Mode=OneWay}"
-                                         Maximum="{Binding Monitoring.ProgressMaximum, Mode=OneWay}"
-                                         IsIndeterminate="False" Margin="0,8,0,0" />
+            <!-- ==================== ВКЛАДКА 0: ЭКСПРЕСС / МОНИТОРИНГ ==================== -->
+            <StackPanel Visibility="{Binding IsExpressTabSelected, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}" Margin="0,0,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource SectionText}" Text="РЕСУРСЫ" />
+                            <TextBlock Style="{StaticResource MutedText}"
+                                       Text="Проверяет YouTube, Discord и ваши адреса, показывает причину: блокировка провайдера или сбой сервера." TextWrapping="Wrap" />
                         </StackPanel>
-                    </Border>
+                        <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
+                            <Button Style="{StaticResource PageActionPrimary}" Content="Проверить сейчас"
+                                    Command="{Binding Monitoring.CheckAllCommand}"
+                                    ToolTip="Проверить все включённые ресурсы без остановки обхода" />
+                            <Button Style="{StaticResource PageAction}" Content="Определить причину" Margin="8,0,0,0"
+                                    Command="{Binding Monitoring.DiagnoseCommand}"
+                                    ToolTip="Сравнить ресурс без обхода и с текущей стратегией" />
+                        </WrapPanel>
+                    </Grid>
+                </Border>
 
-                    <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
-                            Background="{Binding Monitoring.DiagnosisKey, Converter={StaticResource SoftSeverityBrush}}"
-                            Visibility="{Binding Monitoring.DiagnosisVisible, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.DiagnosisText}" TextWrapping="Wrap" />
-                    </Border>
+                <!-- Статус и прогресс экспресс-проверки -->
+                <Border CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
+                        Background="{Binding Monitoring.MessageKey, Converter={StaticResource SoftSeverityBrush}}"
+                        Visibility="{Binding Monitoring.MessageVisible, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.Message}" TextWrapping="Wrap" />
+                </Border>
 
-                    <!-- Список ресурсов экспресс-мониторинга -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
+                <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
+                        Background="{DynamicResource ElevatedBrush}"
+                        Visibility="{Binding Monitoring.ProgressVisible, Converter={StaticResource BoolToVis}}">
+                    <StackPanel>
                         <Grid>
-                            <Grid.RowDefinitions>
-                                <RowDefinition Height="Auto" />
-                                <RowDefinition Height="*" />
-                                <RowDefinition Height="Auto" />
-                            </Grid.RowDefinitions>
-                            <WrapPanel Orientation="Horizontal" Margin="8,4,8,12">
-                                <TextBlock Style="{StaticResource SectionText}" Text="ОТСЛЕЖИВАЕМЫЕ РЕСУРСЫ" VerticalAlignment="Center" />
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Monitoring.LastCheckText}" Margin="14,0,0,0" VerticalAlignment="Center" />
-                            </WrapPanel>
-                            <ListBox Grid.Row="1" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Monitoring.Targets}"
-                                     SelectedItem="{Binding Monitoring.SelectedTarget, Mode=TwoWay}" Background="Transparent"
-                                     ItemContainerStyle="{StaticResource CompactRowItemStyle}"
-                                     ScrollViewer.VerticalScrollBarVisibility="Auto">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Grid Margin="4,2">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="Auto" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}" VerticalAlignment="Center"
-                                                      ToolTip="Включить ресурс в фоновую проверку" />
-                                            <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
-                                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Name}" FontWeight="SemiBold" />
-                                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}" />
-                                            </StackPanel>
-                                            <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                                                <TextBlock Text="{Binding LastStatusText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
-                                                           Foreground="{Binding LastStatusKey, Converter={StaticResource SeverityBrush}}"
-                                                           Visibility="{Binding LastStatusText, Converter={StaticResource StringToVis}}" ToolTip="{Binding LastDetails}" />
-                                                <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
-                                                        Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                        CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
-                                                        ToolTip="Убрать пользовательский ресурс из списка" VerticalAlignment="Center" />
-                                            </StackPanel>
-                                        </Grid>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-
-                            <!-- Добавление своего ресурса: раньше этой строки не было, и добавить адрес было нельзя -->
-                            <Grid Grid.Row="2" Margin="8,10,8,4">
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <Grid>
-                                    <TextBox Style="{StaticResource SearchBox}"
-                                             Text="{Binding Monitoring.NewResourceUrl, UpdateSourceTrigger=PropertyChanged}"
-                                             ToolTip="URL или домен, например twitch.tv" />
-                                    <TextBlock Style="{StaticResource DimText}" Margin="13,0,0,0" VerticalAlignment="Center"
-                                               IsHitTestVisible="False" Text="Добавить свой ресурс: домен или URL…"
-                                               Visibility="{Binding Monitoring.NewResourceUrl, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
-                                </Grid>
-                                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Добавить" Margin="8,0,0,0"
-                                        Command="{Binding Monitoring.AddResourceCommand}" ToolTip="Добавить ресурс в список проверки" />
-                            </Grid>
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.ProgressText}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.ProgressPercentText}" HorizontalAlignment="Right"
+                                       Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold" />
                         </Grid>
-                    </Border>
+                        <ProgressBar Style="{StaticResource ThinProgress}"
+                                     Value="{Binding Monitoring.ProgressValue, Mode=OneWay}"
+                                     Maximum="{Binding Monitoring.ProgressMaximum, Mode=OneWay}"
+                                     IsIndeterminate="False" Margin="0,8,0,0" />
+                    </StackPanel>
+                </Border>
 
-                </StackPanel>
+                <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
+                        Background="{Binding Monitoring.DiagnosisKey, Converter={StaticResource SoftSeverityBrush}}"
+                        Visibility="{Binding Monitoring.DiagnosisVisible, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.DiagnosisText}" TextWrapping="Wrap" />
+                </Border>
 
-                <!-- ==================== ВКЛАДКА 3: АУДИТ СИСТЕМЫ ==================== -->
-                <StackPanel Visibility="{Binding IsSystemTabSelected, Converter={StaticResource BoolToVis}}">
-                    <Border Style="{StaticResource Card}">
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
-                                <TextBlock Text="&#xE81B;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="АУДИТ СИСТЕМЫ И ПРАВ" />
-                                <TextBlock Style="{StaticResource DimText}" FontSize="11"
-                                           Text="Права, файлы движка, службы, драйвер WinDivert и сеть — одним кликом." TextWrapping="Wrap" />
-                            </StackPanel>
-                            <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Запустить аудит" Padding="14,7" MinHeight="34"
-                                    Command="{Binding RunCommand}" VerticalAlignment="Center"
-                                    ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
-                        </Grid>
-                    </Border>
-
-                    <!-- Статус аудита системы -->
-                    <Border CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
-                            Background="{Binding SummaryKey, Converter={StaticResource SoftSeverityBrush}}">
-                        <StackPanel>
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*" />
-                                    <ColumnDefinition Width="Auto" />
-                                </Grid.ColumnDefinitions>
-                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Summary}" FontWeight="SemiBold" />
-                                <TextBlock Grid.Column="1" Style="{StaticResource BodyText}" Text="{Binding ProgressPercentText}"
-                                           Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
-                                           Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
-                            </Grid>
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding LastSavedText}" Margin="0,4,0,0" />
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding ProgressText}"
-                                       Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
-                            <ProgressBar Style="{StaticResource ThinProgress}"
-                                         Value="{Binding ProgressValue, Mode=OneWay}"
-                                         Maximum="{Binding ProgressMaximum, Mode=OneWay}"
-                                         IsIndeterminate="{Binding ProgressIndeterminate, Mode=OneWay}"
-                                         Height="7" Margin="0,8,0,0"
-                                         Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
-                        </StackPanel>
-                    </Border>
-
-                    <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
-                            Background="{Binding MessageKey, Converter={StaticResource SoftSeverityBrush}}"
-                            Visibility="{Binding MessageVisible, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message}" />
-                    </Border>
-
-                    <!-- Список проверок аудита -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
-                        <ListBox Style="{StaticResource PlainListBox}" ItemsSource="{Binding Items}"
-                                 ScrollViewer.VerticalScrollBarVisibility="Auto" Background="Transparent">
+                <!-- Список ресурсов экспресс-мониторинга -->
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <WrapPanel Orientation="Horizontal" Margin="8,4,8,12">
+                            <TextBlock Style="{StaticResource SectionText}" Text="ОТСЛЕЖИВАЕМЫЕ РЕСУРСЫ" VerticalAlignment="Center" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding Monitoring.LastCheckText}" Margin="14,0,0,0" VerticalAlignment="Center" />
+                        </WrapPanel>
+                        <ListBox Grid.Row="1" Style="{StaticResource PlainListBox}" ItemsSource="{Binding Monitoring.Targets}"
+                                 SelectedItem="{Binding Monitoring.SelectedTarget, Mode=TwoWay}" Background="Transparent"
+                                 ItemContainerStyle="{StaticResource CompactRowItemStyle}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto">
                             <ListBox.ItemTemplate>
                                 <DataTemplate>
-                                    <Grid Margin="8,8,8,8">
+                                    <Grid Margin="4,2">
                                         <Grid.ColumnDefinitions>
                                             <ColumnDefinition Width="Auto" />
                                             <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
                                         </Grid.ColumnDefinitions>
-                                        <Border Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"
-                                                Background="{Binding SeverityKey, Converter={StaticResource SoftSeverityBrush}}">
-                                            <TextBlock Text="{Binding Icon}" FontSize="12" FontWeight="Bold"
-                                                       Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}"
-                                                       HorizontalAlignment="Center" VerticalAlignment="Center" />
-                                        </Border>
-                                        <StackPanel Grid.Column="1" Margin="12,0,0,0">
-                                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontWeight="SemiBold" />
-                                            <TextBlock Style="{StaticResource MutedText}" Text="{Binding Details}" />
-                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding FixHint}" Margin="0,4,0,0"
-                                                       Foreground="{DynamicResource WarningBrush}"
-                                                       Visibility="{Binding FixHint, Converter={StaticResource StringToVis}}" />
-                                            <Button Style="{StaticResource SecondaryButton}" Content="{Binding FixLabel}"
-                                                    HorizontalAlignment="Left" Margin="0,8,0,0" Padding="14,6"
-                                                    Visibility="{Binding HasAutoFix, Converter={StaticResource BoolToVis}}"
-                                                    Command="{Binding DataContext.FixItemCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
-                                                    CommandParameter="{Binding}"
-                                                    ToolTip="Приложение выполнит исправление само, без ручных команд" />
+                                        <CheckBox IsChecked="{Binding Enabled, Mode=TwoWay}" VerticalAlignment="Center"
+                                                  ToolTip="Включить ресурс в фоновую проверку" />
+                                        <StackPanel Grid.Column="1" Margin="10,0,8,0" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding Name}" FontWeight="SemiBold" />
+                                            <TextBlock Style="{StaticResource DimText}" Text="{Binding Url}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Url}" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding LastStatusText}" FontSize="11" FontWeight="SemiBold" VerticalAlignment="Center" Margin="0,0,8,0"
+                                                       Foreground="{Binding LastStatusKey, Converter={StaticResource SeverityBrush}}"
+                                                       Visibility="{Binding LastStatusText, Converter={StaticResource StringToVis}}" ToolTip="{Binding LastDetails}" />
+                                            <Button Style="{StaticResource SmallIconButton}" Content="&#xE74D;"
+                                                    Command="{Binding DataContext.Monitoring.RemoveResourceCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}" Visibility="{Binding IsBuiltIn, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
+                                                    ToolTip="Убрать пользовательский ресурс из списка" VerticalAlignment="Center" />
                                         </StackPanel>
                                     </Grid>
                                 </DataTemplate>
                             </ListBox.ItemTemplate>
                         </ListBox>
-                    </Border>
 
-                    <!-- Исправления в один клик -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ИСПРАВЛЕНИЯ В ОДИН КЛИК" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="Восстановить обход"
-                                    Command="{Binding RecoverBypassCommand}" HorizontalAlignment="Stretch"
-                                    ToolTip="Остановить зависший обход, проверить timestamps и повторно запустить диагностику" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="Полностью удалить службы" Margin="0,8,0,0"
-                                    Command="{Binding RemoveServicesCommand}" HorizontalAlignment="Stretch"
-                                    ToolTip="Удаляет службу zapret, останавливает winws.exe и убирает службы WinDivert" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="Включить TCP timestamps" Margin="0,8,0,0"
-                                    Command="{Binding FixTimestampsCommand}"
-                                    ToolTip="Выполнить netsh interface tcp set global timestamps=enabled" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="⚡ Очистить кэш Discord и сбросить сеть (1 клик)" Margin="0,8,0,0"
-                                    Command="{Binding CleanDiscordAndNetworkCommand}"
-                                    ToolTip="Закрыть Discord, удалить кэш всех версий, сбросить DNS/ARP и включить TCP Timestamps" />
-                            <Button Style="{StaticResource DangerButton}" Content="🧹 Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
-                                    Command="{Binding ResetNetworkCommand}"
-                                    ToolTip="netsh winsock reset, netsh int ip reset all, netsh winhttp reset proxy, ipconfig /flushdns" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Быстрый доступ к системным инструментам -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМНЫЕ ФАЙЛЫ И ПАРАМЕТРЫ" />
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть hosts в блокноте"
-                                    HorizontalAlignment="Left" Command="{Binding OpenHostsCommand}"
-                                    ToolTip="Открыть системный файл hosts в блокноте" />
-                            <Button Style="{StaticResource GhostButton}" Content="Открыть папку движка"
-                                    HorizontalAlignment="Left" Command="{Binding OpenEngineFolderCommand}"
-                                    ToolTip="Открыть папку движка в проводнике" />
-                            <Button Style="{StaticResource GhostButton}" Content="Параметры сети Windows"
-                                    HorizontalAlignment="Left" Command="{Binding OpenSystemNetworkCommand}"
-                                    ToolTip="Открыть параметры сети Windows" />
-                        </StackPanel>
-                    </Border>
-                </StackPanel>
-
-                <!-- ==================== ВКЛАДКА 4: СВОДНЫЕ РЕЗУЛЬТАТЫ ==================== -->
-                <StackPanel Visibility="{Binding IsResultsTabSelected, Converter={StaticResource BoolToVis}}">
-                    <Border Style="{StaticResource Card}">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ И ЭКСПОРТ" />
-                            <TextBlock Style="{StaticResource MutedText}"
-                                       Text="Сохранённые результаты проверок и выгрузка отчёта." TextWrapping="Wrap" />
-                        </StackPanel>
-                    </Border>
-
-                    <!-- Карточки состояния модулей -->
-                    <Grid Margin="0,12,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-
-                        <!-- Экспресс / Мониторинг статус -->
-                        <Border Style="{StaticResource Card}" Grid.Column="0" Margin="0,0,6,0">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="РЕСУРСЫ" />
-                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding Monitoring.LastCheckText}" FontWeight="SemiBold" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Открыть ресурсы" Margin="0,10,0,0"
-                                        Command="{Binding SelectExpressTabCommand}" />
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Аудит системы статус -->
-                        <Border Style="{StaticResource Card}" Grid.Column="1" Margin="6,0,0,0">
-                            <StackPanel>
-                                <TextBlock Style="{StaticResource SectionText}" Text="АУДИТ СИСТЕМЫ" />
-                                <TextBlock Style="{StaticResource BodyText}" Text="{Binding LastSavedText}" FontWeight="SemiBold" />
-                                <TextBlock Style="{StaticResource DimText}" Text="{Binding Summary}" TextTrimming="CharacterEllipsis" Margin="0,4,0,0" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Перейти к аудиту" Margin="0,10,0,0"
-                                        Command="{Binding SelectSystemTabCommand}" />
-                            </StackPanel>
-                        </Border>
+                        <!-- Добавление своего ресурса: раньше этой строки не было, и добавить адрес было нельзя -->
+                        <Grid Grid.Row="2" Margin="8,10,8,4">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Grid>
+                                <TextBox Style="{StaticResource SearchBox}"
+                                         Text="{Binding Monitoring.NewResourceUrl, UpdateSourceTrigger=PropertyChanged}"
+                                         ToolTip="URL или домен, например twitch.tv" />
+                                <TextBlock Style="{StaticResource DimText}" Margin="13,0,0,0" VerticalAlignment="Center"
+                                           IsHitTestVisible="False" Text="Добавить свой ресурс: домен или URL…"
+                                           Visibility="{Binding Monitoring.NewResourceUrl, Converter={StaticResource StringToVis}, ConverterParameter=invert}" />
+                            </Grid>
+                            <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Добавить" Margin="8,0,0,0"
+                                    Command="{Binding Monitoring.AddResourceCommand}" ToolTip="Добавить ресурс в список проверки" />
+                        </Grid>
                     </Grid>
+                </Border>
 
-                    <!-- Экспорт пакетов -->
-                    <Border Style="{StaticResource Card}" Margin="0,12,0,0">
-                        <StackPanel>
-                            <TextBlock Style="{StaticResource SectionText}" Text="ЭКСПОРТ ДИАГНОСТИЧЕСКИХ ДАННЫХ" />
-                            <TextBlock Style="{StaticResource MutedText}"
-                                       Text="Все диагностические отчёты формируются локально без сетевых запросов и не содержат персональных данных или паролей." TextWrapping="Wrap" />
-                            <WrapPanel Margin="0,12,0,0">
-                                <Button Style="{StaticResource PrimaryButton}" Content="Экспортировать diagnostics.json"
-                                        Command="{Binding ExportReportCommand}"
-                                        ToolTip="Полный структурированный отчёт о системе, DPI и проверках" />
-                                <Button Style="{StaticResource SecondaryButton}" Content="Экспортировать ZIP-архив" Margin="10,0,0,0"
-                                        Command="{Binding ExportArchiveCommand}"
-                                        ToolTip="Архив с отчётом, журналами приложения и инструкцией" />
-                            </WrapPanel>
+            </StackPanel>
+
+            <!-- ==================== ВКЛАДКА 3: АУДИТ СИСТЕМЫ ==================== -->
+            <StackPanel Visibility="{Binding IsSystemTabSelected, Converter={StaticResource BoolToVis}}">
+                <Border Style="{StaticResource Card}" Margin="0,0,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE81B;" FontFamily="{DynamicResource IconFont}" FontSize="15" Foreground="{DynamicResource TextMutedBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SectionText}" Text="АУДИТ СИСТЕМЫ И ПРАВ" />
+                            <TextBlock Style="{StaticResource DimText}" FontSize="11"
+                                       Text="Права, файлы движка, службы, драйвер WinDivert и сеть — одним кликом." TextWrapping="Wrap" />
                         </StackPanel>
-                    </Border>
-                </StackPanel>
+                        <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="Запустить аудит" Padding="14,7" MinHeight="34"
+                                Command="{Binding RunCommand}" VerticalAlignment="Center"
+                                ToolTip="Проверить права, файлы, службы, сеть и конфликты" />
+                    </Grid>
+                </Border>
 
-                </StackPanel>
-            </ScrollViewer>
-        </Grid>
+                <!-- Статус аудита системы -->
+                <Border CornerRadius="10" Padding="14,11" Margin="0,12,0,0"
+                        Background="{Binding SummaryKey, Converter={StaticResource SoftSeverityBrush}}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource BodyText}" Text="{Binding Summary}" FontWeight="SemiBold" />
+                            <TextBlock Grid.Column="1" Style="{StaticResource BodyText}" Text="{Binding ProgressPercentText}"
+                                       Foreground="{DynamicResource AccentBrush}" FontWeight="SemiBold"
+                                       Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
+                        </Grid>
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding LastSavedText}" Margin="0,4,0,0" />
+                        <TextBlock Style="{StaticResource DimText}" Text="{Binding ProgressText}"
+                                   Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
+                        <ProgressBar Style="{StaticResource ThinProgress}"
+                                     Value="{Binding ProgressValue, Mode=OneWay}"
+                                     Maximum="{Binding ProgressMaximum, Mode=OneWay}"
+                                     IsIndeterminate="{Binding ProgressIndeterminate, Mode=OneWay}"
+                                     Height="7" Margin="0,8,0,0"
+                                     Visibility="{Binding ProgressVisible, Converter={StaticResource BoolToVis}}" />
+                    </StackPanel>
+                </Border>
+
+                <Border CornerRadius="10" Padding="14,11" Margin="0,8,0,0"
+                        Background="{Binding MessageKey, Converter={StaticResource SoftSeverityBrush}}"
+                        Visibility="{Binding MessageVisible, Converter={StaticResource BoolToVis}}">
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message}" />
+                </Border>
+
+                <!-- Список проверок аудита -->
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0" Padding="8">
+                    <ListBox Style="{StaticResource PlainListBox}" ItemsSource="{Binding Items}"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto" Background="Transparent">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="8,8,8,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Width="24" Height="24" CornerRadius="12" VerticalAlignment="Top"
+                                            Background="{Binding SeverityKey, Converter={StaticResource SoftSeverityBrush}}">
+                                        <TextBlock Text="{Binding Icon}" FontSize="12" FontWeight="Bold"
+                                                   Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}"
+                                                   HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                    </Border>
+                                    <StackPanel Grid.Column="1" Margin="12,0,0,0">
+                                        <TextBlock Style="{StaticResource BodyText}" Text="{Binding Title}" FontWeight="SemiBold" />
+                                        <TextBlock Style="{StaticResource MutedText}" Text="{Binding Details}" />
+                                        <TextBlock Style="{StaticResource DimText}" Text="{Binding FixHint}" Margin="0,4,0,0"
+                                                   Foreground="{DynamicResource WarningBrush}"
+                                                   Visibility="{Binding FixHint, Converter={StaticResource StringToVis}}" />
+                                        <Button Style="{StaticResource SecondaryButton}" Content="{Binding FixLabel}"
+                                                HorizontalAlignment="Left" Margin="0,8,0,0" Padding="14,6"
+                                                Visibility="{Binding HasAutoFix, Converter={StaticResource BoolToVis}}"
+                                                Command="{Binding DataContext.FixItemCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                CommandParameter="{Binding}"
+                                                ToolTip="Приложение выполнит исправление само, без ручных команд" />
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+                </Border>
+
+                <!-- Исправления в один клик -->
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="ИСПРАВЛЕНИЯ В ОДИН КЛИК" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Восстановить обход"
+                                Command="{Binding RecoverBypassCommand}" HorizontalAlignment="Stretch"
+                                ToolTip="Остановить зависший обход, проверить timestamps и повторно запустить диагностику" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Полностью удалить службы" Margin="0,8,0,0"
+                                Command="{Binding RemoveServicesCommand}" HorizontalAlignment="Stretch"
+                                ToolTip="Удаляет службу zapret, останавливает winws.exe и убирает службы WinDivert" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="Включить TCP timestamps" Margin="0,8,0,0"
+                                Command="{Binding FixTimestampsCommand}"
+                                ToolTip="Выполнить netsh interface tcp set global timestamps=enabled" />
+                        <Button Style="{StaticResource SecondaryButton}" Content="⚡ Очистить кэш Discord и сбросить сеть (1 клик)" Margin="0,8,0,0"
+                                Command="{Binding CleanDiscordAndNetworkCommand}"
+                                ToolTip="Закрыть Discord, удалить кэш всех версий, сбросить DNS/ARP и включить TCP Timestamps" />
+                        <Button Style="{StaticResource DangerButton}" Content="🧹 Сбросить сеть (winsock + ip)" Margin="0,8,0,0"
+                                Command="{Binding ResetNetworkCommand}"
+                                ToolTip="netsh winsock reset, netsh int ip reset all, netsh winhttp reset proxy, ipconfig /flushdns" />
+                    </StackPanel>
+                </Border>
+
+                <!-- Быстрый доступ к системным инструментам -->
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="СИСТЕМНЫЕ ФАЙЛЫ И ПАРАМЕТРЫ" />
+                        <Button Style="{StaticResource GhostButton}" Content="Открыть hosts в блокноте"
+                                HorizontalAlignment="Left" Command="{Binding OpenHostsCommand}"
+                                ToolTip="Открыть системный файл hosts в блокноте" />
+                        <Button Style="{StaticResource GhostButton}" Content="Открыть папку движка"
+                                HorizontalAlignment="Left" Command="{Binding OpenEngineFolderCommand}"
+                                ToolTip="Открыть папку движка в проводнике" />
+                        <Button Style="{StaticResource GhostButton}" Content="Параметры сети Windows"
+                                HorizontalAlignment="Left" Command="{Binding OpenSystemNetworkCommand}"
+                                ToolTip="Открыть параметры сети Windows" />
+                    </StackPanel>
+                </Border>
+            </StackPanel>
+
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </UserControl>

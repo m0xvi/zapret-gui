@@ -65,7 +65,6 @@ namespace ZapretGui.ViewModels
             OpenDpiCommand = new RelayCommand(() => _main.Navigate("dpi"));
             SelectExpressTabCommand = new RelayCommand(() => SelectedSubTab = 0);
             SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 1);
-            SelectResultsTabCommand = new RelayCommand(() => SelectedSubTab = 2);
             RunVoiceRtcAuditCommand = new AsyncRelayCommand(RunVoiceRtcAuditAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
             OptimizeDiscordVoiceCommand = new AsyncRelayCommand(OptimizeDiscordVoiceAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
             CleanDiscordAndNetworkCommand = new AsyncRelayCommand(() => CleanDiscordAndNetworkAsync(false), () => !IsCleaningDiscord && !IsRunning);
@@ -117,14 +116,13 @@ namespace ZapretGui.ViewModels
 
         private int _selectedSubTab;
 
-        /// <summary>v2.0: три вкладки вместо шести — ресурсы, аудит системы и история/экспорт.</summary>
-        public string[] DiagnosticsTabs { get; } = new[] { "⚡ Ресурсы", "🛠 Аудит", "📊 История" };
+        /// <summary>v2.1: две вкладки — ресурсы и аудит. «История» убрана, экспорт живёт в шапке страницы.</summary>
+        public string[] DiagnosticsTabs { get; } = new[] { "⚡ Ресурсы", "🛠 Аудит" };
 
         public string DiagnosticsTabHintText => SelectedSubTab switch
         {
-            0 => "Проверка доступности ресурсов — ~10 сек, без остановки обхода",
-            1 => "Аудит системы — службы, драйвер WinDivert, hosts",
-            2 => "Сохранённые результаты и экспорт отчёта",
+            0 => "Проверка доступности ресурсов — ~10 сек, без остановки обхода.",
+            1 => "Аудит системы — права, службы, драйвер WinDivert, hosts.",
             _ => ""
         };
 
@@ -138,7 +136,6 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(DiagnosticsTabHintText));
                     Raise(nameof(IsExpressTabSelected));
                     Raise(nameof(IsSystemTabSelected));
-                    Raise(nameof(IsResultsTabSelected));
 
                     if (_selectedSubTab == 1)
                     {
@@ -158,12 +155,6 @@ namespace ZapretGui.ViewModels
         {
             get => _selectedSubTab == 1;
             set { if (value) SelectedSubTab = 1; }
-        }
-
-        public bool IsResultsTabSelected
-        {
-            get => _selectedSubTab == 2;
-            set { if (value) SelectedSubTab = 2; }
         }
 
         public ObservableCollection<DiscordVoiceServerCheck> VoiceServers { get; } = new();
@@ -495,7 +486,6 @@ namespace ZapretGui.ViewModels
         public ICommand OpenDpiCommand { get; }
         public ICommand SelectExpressTabCommand { get; }
         public ICommand SelectSystemTabCommand { get; }
-        public ICommand SelectResultsTabCommand { get; }
         public ICommand RunVoiceRtcAuditCommand { get; }
         public ICommand OptimizeDiscordVoiceCommand { get; }
         public ICommand CleanDiscordAndNetworkCommand { get; }

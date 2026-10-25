@@ -3,7 +3,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
-    <Grid Margin="24,20,20,32">
+    <Grid Style="{StaticResource PageRoot}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -11,7 +11,7 @@
         </Grid.RowDefinitions>
 
         <!-- Заголовок страницы и общие действия -->
-        <Grid Grid.Row="0">
+        <Grid Grid.Row="0" Style="{StaticResource PageHeader}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -21,24 +21,24 @@
                 <TextBlock Style="{StaticResource MutedText}"
                            Text="Домены обхода и безопасный DNS (DoH)." />
             </StackPanel>
-            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Button Style="{StaticResource PrimaryButton}" Content="Применить и перезапустить"
+            <WrapPanel Grid.Column="1" Style="{StaticResource PageActions}">
+                <Button Style="{StaticResource PageActionPrimary}" Content="Применить и перезапустить"
                         Command="{Binding RestartBypassCommand}"
                         ToolTip="Перезапустить активный обход для применения новых списков и настроек фильтрации" />
-                <Button Style="{StaticResource GhostButton}" Content="Папка lists" Margin="8,0,0,0"
+                <Button Style="{StaticResource PageActionGhost}" Content="Папка lists" Margin="8,0,0,0"
                         Command="{Binding OpenFolderCommand}" ToolTip="Открыть папку со списками в проводнике" />
             </WrapPanel>
         </Grid>
 
         <!-- Переключатель подвкладок (Домены / Безопасный DNS) -->
-        <Grid Grid.Row="1" Margin="0,14,0,12">
+        <StackPanel Grid.Row="1" Style="{StaticResource PageTabs}">
             <controls:SegmentedControl ItemsSource="{Binding SubTabs}"
-                                       SelectedIndex="{Binding SelectedSubTabIndex, Mode=TwoWay}"
-                                       MinWidth="460" />
-        </Grid>
+                                       SelectedIndex="{Binding SelectedSubTabIndex, Mode=TwoWay}" />
+            <TextBlock Style="{StaticResource PageTabHint}" Text="{Binding SubTabHint}" />
+        </StackPanel>
 
         <!-- ============================== ВКЛАДКА 1: РЕДАКТОР СПИСКОВ ============================== -->
-        <Grid Grid.Row="2" Visibility="{Binding IsEditorTabVisible, Converter={StaticResource BoolToVis}}">
+        <Grid Grid.Row="2" MaxWidth="1180" Margin="0,14,0,0" Visibility="{Binding IsEditorTabVisible, Converter={StaticResource BoolToVis}}">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="*" />
@@ -310,7 +310,7 @@
         </Grid>
 
         <!-- ============================== ВКЛАДКА 2: БЕЗОПАСНЫЙ DNS (DOH) ============================== -->
-        <Grid Grid.Row="2" Visibility="{Binding IsDnsTabVisible, Converter={StaticResource BoolToVis}}">
+        <Grid Grid.Row="2" MaxWidth="1180" Margin="0,14,0,0" Visibility="{Binding IsDnsTabVisible, Converter={StaticResource BoolToVis}}">
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                 <StackPanel>
                 <Grid Margin="0,0,0,12">

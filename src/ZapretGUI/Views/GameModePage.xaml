@@ -3,21 +3,31 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
-    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,12" CanContentScroll="False">
-        <StackPanel Margin="24,20,20,32" MaxWidth="980">
+    <Grid Style="{StaticResource PageRoot}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-            <!-- Заголовок -->
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                <StackPanel Grid.Column="0" Margin="0,0,12,0">
-                    <TextBlock Style="{StaticResource DisplayText}" Text="Игровой режим"/>
-                    <TextBlock Style="{StaticResource MutedText}" Text="Отметьте игры, для которых обход не должен трогать UDP." TextWrapping="Wrap"/>
-                </StackPanel>
-                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Обновить" Command="{Binding RefreshCommand}" VerticalAlignment="Top"/>
-            </Grid>
+        <!-- Шапка раздела -->
+        <Grid Grid.Row="0" Style="{StaticResource PageHeader}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                <TextBlock Style="{StaticResource DisplayText}" Text="Игровой режим" />
+                <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                           Text="Профиль портов и игры, для которых обход не трогает UDP." />
+            </StackPanel>
+            <WrapPanel Grid.Column="1" Style="{StaticResource PageActions}">
+                <Button Style="{StaticResource PageActionGhost}" Content="Обновить" Command="{Binding RefreshCommand}"
+                        ToolTip="Перечитать профили и состояние игрового фильтра" />
+            </WrapPanel>
+        </Grid>
+
+        <ScrollViewer Grid.Row="1" Style="{StaticResource PageScroll}" Margin="0,4,0,0">
+            <StackPanel Style="{StaticResource PageContent}">
 
             <Border Margin="0,12,0,0" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="10" Padding="12,10" Visibility="{Binding MessageVisible, Converter={StaticResource BoolToVis}}">
                 <Grid>
@@ -31,7 +41,7 @@
             </Border>
 
             <!-- Вкл/выкл -->
-            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+            <Border Style="{StaticResource PageCard}">
                 <StackPanel>
                     <Grid>
                         <Grid.ColumnDefinitions>
@@ -57,10 +67,10 @@
             </Border>
 
             <!-- Фильтр -->
-            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+            <Border Style="{StaticResource PageCard}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ПРОФИЛЬ ПОРТОВ"/>
-                    <TextBlock Style="{StaticResource DimText}" Text="Выбери что исключать. «Только Discord Voice» — безопаснее всего, лобби не ломает." TextWrapping="Wrap" FontSize="11" Opacity="0.85" Margin="0,2,0,0"/>
+                    <TextBlock Style="{StaticResource DimText}" Text="Какой UDP-трафик пропускать без обхода." TextWrapping="Wrap" FontSize="11" Opacity="0.85" Margin="0,2,0,0"/>
                     <ComboBox Style="{StaticResource AppComboBox}" Margin="0,10,0,0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
                         <ComboBox.ItemTemplate>
                             <DataTemplate>
@@ -69,15 +79,15 @@
                         </ComboBox.ItemTemplate>
                     </ComboBox>
                     <TextBlock Style="{StaticResource DimText}" Text="{Binding SelectedProfileDescription}" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="11" Opacity="0.85"/>
-                    <Button Style="{StaticResource SecondaryButton}" Content="Применить профиль" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding ApplyProfileCommand}"/>
+                    <Button Style="{StaticResource PageAction}" Content="Применить профиль" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding ApplyProfileCommand}"/>
                 </StackPanel>
             </Border>
 
             <!-- Игры -->
-            <Border Style="{StaticResource Card}" Margin="0,14,0,0" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+            <Border Style="{StaticResource PageCard}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="КАКИЕ ИГРЫ НЕ ТРОГАТЬ"/>
-                    <TextBlock Style="{StaticResource DimText}" Text="Галочка = добавим домены игры в список и подскажем профиль. Сохрани — перезапустим обход." TextWrapping="Wrap" FontSize="11" Opacity="0.85" Margin="0,2,0,0"/>
+                    <TextBlock Style="{StaticResource DimText}" Text="Галочка — добавить домены игры в список обхода и перезапустить его." TextWrapping="Wrap" FontSize="11" Opacity="0.85" Margin="0,2,0,0"/>
                     <ItemsControl ItemsSource="{Binding GameOptions}" Margin="0,12,0,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -98,11 +108,11 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
-                    <Button Style="{StaticResource PrimaryButton}" Content="Сохранить и перезапустить обход" Margin="0,8,0,0" HorizontalAlignment="Left" Padding="18,8" Command="{Binding FixSelectedGamesCommand}"/>
-                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" Text="Если EU лобби Phasmophobia всё равно ClientTimeout → выбери профиль «Только Discord Voice» выше и нажми «Применить профиль». Азию трогать не нужно — она и так заходит."/>
+                    <Button Style="{StaticResource PageActionPrimary}" Content="Сохранить и перезапустить обход" Margin="0,8,0,0" HorizontalAlignment="Left" Command="{Binding FixSelectedGamesCommand}"/>
                 </StackPanel>
             </Border>
 
-        </StackPanel>
-    </ScrollViewer>
+            </StackPanel>
+        </ScrollViewer>
+    </Grid>
 </UserControl>
