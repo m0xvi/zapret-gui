@@ -78,6 +78,11 @@ namespace ZapretGui.Core
         public int Total { get; set; }
         public long AvgMs { get; set; }
 
+        /// <summary>Детализация пинга по каждому ресурсу: "YouTube 42мс · Discord 60мс · GitHub 110мс …"</summary>
+        public string ChecksDetails { get; set; } = "";
+
+        public string DnsAndStrategy => string.IsNullOrWhiteSpace(DnsLabel) ? StrategyName : $"{StrategyName} × {DnsLabel}";
+
         /// <summary>0..10</summary>
         public int Score10
         {
@@ -110,6 +115,7 @@ namespace ZapretGui.Core
         }
 
         public string Summary => $"{Passed}/{Total} OK · {AvgMs} мс";
+        public string PingText => $"{AvgMs} мс";
         public string BallText => IsBest ? $"⭐ {ScoreText}" : ScoreText;
     }
 }
