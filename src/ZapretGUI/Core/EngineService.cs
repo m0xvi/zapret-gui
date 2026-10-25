@@ -115,6 +115,36 @@ namespace ZapretGui.Core
 
         private const string ApiReleases = "https://api.github.com/repos/" + Owner + "/" + Repository + "/releases";
         private const string RawBase = "https://raw.githubusercontent.com/" + Owner + "/" + Repository + "/main/.service/";
+        private static readonly string[] RawMirrorsBase = new[]
+        {
+            RawBase,
+            "https://cdn.jsdelivr.net/gh/Flowseal/zapret-discord-youtube@main/.service/",
+            "https://raw.fastgit.org/Flowseal/zapret-discord-youtube/main/.service/",
+            "https://ghproxy.com/https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/"
+        };
+        private static IEnumerable<string> GetMirrorsFor(string primaryUrl)
+        {
+            // primary already raw.githubusercontent — генерим зеркала для version/ipset/hosts и списков
+            if (primaryUrl.Contains("raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/"))
+            {
+                var tail = primaryUrl.Split("zapret-discord-youtube/main/")[1];
+                yield return primaryUrl;
+                yield return "https://cdn.jsdelivr.net/gh/Flowseal/zapret-discord-youtube@main/" + tail;
+                yield return "https://raw.fastgit.org/Flowseal/zapret-discord-youtube/main/" + tail;
+                yield return "https://ghproxy.com/" + primaryUrl;
+            }
+            else if (primaryUrl.Contains("github.com/Flowseal/zapret-discord-youtube/releases/download/"))
+            {
+                yield return primaryUrl;
+                yield return "https://ghproxy.com/" + primaryUrl;
+                yield return primaryUrl.Replace("https://github.com", "https://hub.fastgit.xyz");
+                yield return primaryUrl.Replace("https://github.com", "https://download.fastgit.org");
+            }
+            else
+            {
+                yield return primaryUrl;
+            }
+        }
 
         public static string VersionUrl => RawBase + "version.txt";
         public static string IpsetUrl => RawBase + "ipset-service.txt";
@@ -227,17 +257,22 @@ namespace ZapretGui.Core
 
         // ---------------------------------------------------------------- релизы
 
-        /// <summary>Список релизов с GitHub. При ошибке возвращает пустой список.</summary>
+        /// <summary>Список релизов с GitHub. При ошибке пробует ghproxy-зеркало и fallback на version.txt. При ошибке возвращает пустой список.</summary>
         public static async Task<List<ReleaseInfo>> GetReleasesAsync(CancellationToken ct = default)
         {
             var list = new List<ReleaseInfo>();
+            var apiUrls = new[] { ApiReleases + "?per_page=20", "https://ghproxy.com/" + ApiReleases + "?per_page=20" };
+            foreach (var apiUrl in apiUrls)
+            {
             try
             {
-                using var response = await Http.GetAsync(ApiReleases + "?per_page=20", ct).ConfigureAwait(false);
+                using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                cts.CancelAfter(TimeSpan.FromSeconds(15));
+                using var response = await Http.GetAsync(apiUrl, cts.Token).ConfigureAwait(false);
                 if (!response.IsSuccessStatusCode)
                 {
-                    AppLog.Warn($"GitHub API вернул {(int)response.StatusCode}. Использую резервный способ проверки версии.");
-                    return list;
+                    AppLog.Warn($"GitHub API {apiUrl} вернул {(int)response.StatusCode}. Пробую зеркало/резерв.");
+                    continue;
                 }
 
                 var json = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -278,8 +313,12 @@ namespace ZapretGui.Core
             }
             catch (Exception ex)
             {
-                AppLog.Warn("Не удалось получить список релизов: " + ex.Message);
+                AppLog.Warn($"Не удалось получить список релизов с {apiUrl}: " + ex.Message);
+                continue;
             }
+                if (list.Count > 0) return list;
+            }
+            if (list.Count == 0) AppLog.Warn("Не удалось получить список релизов ни с одного зеркала: " + string.Join(", ", apiUrls));
             return list;
         }
 
@@ -301,21 +340,27 @@ namespace ZapretGui.Core
             };
         }
 
-        /// <summary>Легкая проверка версии через .service/version.txt (как делает service.bat).</summary>
+        /// <summary>Легкая проверка версии через .service/version.txt — пробует зеркала (raw GH → jsDelivr → FastGit → ghproxy) для обхода медленного GitHub.</summary>
         public static async Task<string?> GetLatestVersionTextAsync(CancellationToken ct = default)
         {
-            try
+            foreach (var url in GetMirrorsFor(VersionUrl))
             {
-                using var response = await Http.GetAsync(VersionUrl, ct).ConfigureAwait(false);
-                if (!response.IsSuccessStatusCode) return null;
-                var text = (await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false)).Trim();
-                return text.Length == 0 ? null : text;
+                try
+                {
+                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    cts.CancelAfter(TimeSpan.FromSeconds(12));
+                    using var response = await Http.GetAsync(url, cts.Token).ConfigureAwait(false);
+                    if (!response.IsSuccessStatusCode) { AppLog.Warn($"Версия: {url} вернул {(int)response.StatusCode}"); continue; }
+                    var text = (await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false)).Trim();
+                    if (text.Length == 0) continue;
+                    if (!url.Equals(VersionUrl, StringComparison.OrdinalIgnoreCase)) AppLog.Info($"Версия получена через зеркало {url}");
+                    return text;
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested) { AppLog.Warn($"Таймаут версии с {url}, пробую зеркало"); continue; }
+                catch (Exception ex) { AppLog.Warn($"Не удалось получить версию с {url}: {ex.Message}"); continue; }
             }
-            catch (Exception ex)
-            {
-                AppLog.Warn("Не удалось получить версию с GitHub: " + ex.Message);
-                return null;
-            }
+            AppLog.Warn("Не удалось получить версию ни с одного зеркала");
+            return null;
         }
 
         /// <summary>Сравнение версий вида 1.10.2 и 1.9.9d (безопасно для любых форматов).</summary>
@@ -716,8 +761,16 @@ namespace ZapretGui.Core
         private static async Task DownloadFileAsync(string url, string destination, long expectedSize,
             IProgress<ProgressInfo>? progress, CancellationToken ct)
         {
-            using var response = await Http.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
+            Exception? lastEx = null;
+            foreach (var tryUrl in GetMirrorsFor(url))
+            {
+                try
+                {
+                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    // Даём больше времени на медленный GitHub — 10 мин уже у HttpClient, но на попытку зеркала меньше
+                    cts.CancelAfter(TimeSpan.FromMinutes(4));
+                    using var response = await Http.GetAsync(tryUrl, HttpCompletionOption.ResponseHeadersRead, cts.Token).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
 
             var total = response.Content.Headers.ContentLength ?? expectedSize;
             await using var source = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
@@ -744,7 +797,28 @@ namespace ZapretGui.Core
             }
 
             if (expectedSize > 0 && received != expectedSize)
-                throw new InvalidDataException($"Размер архива не совпадает: получено {received}, ожидалось {expectedSize} байт");
+                    throw new InvalidDataException($"Размер архива не совпадает: получено {received}, ожидалось {expectedSize} байт");
+                    // Успешная закачка — выходим из цикла зеркал
+                    return;
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    lastEx = new TimeoutException($"Таймаут закачки с {tryUrl}");
+                    AppLog.Warn($"Таймаут закачки {tryUrl}, пробую зеркало");
+                    TryDelete(destination);
+                    continue;
+                }
+                catch (Exception ex)
+                {
+                    lastEx = ex;
+                    AppLog.Warn($"Не удалось скачать с {tryUrl}: {ex.Message}");
+                    TryDelete(destination);
+                    // Небольшая пауза перед зеркалом, чтобы не ддосить
+                    try { await Task.Delay(600, ct); } catch {}
+                    continue;
+                }
+            }
+            throw lastEx ?? new InvalidDataException($"Не удалось скачать ни с одного зеркала: {url}");
         }
 
         public static void ExtractArchive(string archivePath, string targetDirectory)
@@ -867,10 +941,23 @@ namespace ZapretGui.Core
 
         public static async Task<bool> UpdateIpsetAsync(string engineRoot, IProgress<ProgressInfo>? progress = null, CancellationToken ct = default)
         {
+            string? text = null;
+            foreach (var u in GetMirrorsFor(IpsetUrl))
+            {
+                try
+                {
+                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    cts.CancelAfter(TimeSpan.FromSeconds(15));
+                    progress?.Report(new ProgressInfo { Percent = -1, Status = $"Загрузка ipset-all.txt ({new Uri(u).Host})…" });
+                    text = await Http.GetStringAsync(u, cts.Token).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(text)) { if (!u.Equals(IpsetUrl, StringComparison.OrdinalIgnoreCase)) AppLog.Info($"ipset получен через зеркало {u}"); break; }
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested) { AppLog.Warn($"Таймаут ipset {u}"); continue; }
+                catch (Exception ex) { AppLog.Warn($"ipset {u}: {ex.Message}"); continue; }
+            }
             try
             {
-                progress?.Report(new ProgressInfo { Percent = -1, Status = "Загрузка ipset-all.txt" });
-                var text = await Http.GetStringAsync(IpsetUrl, ct).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("Пустой ответ от всех зеркал");
                 if (string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("Пустой ответ сервера");
 
                 var lists = Path.Combine(engineRoot, "lists");
@@ -903,12 +990,27 @@ namespace ZapretGui.Core
             }
         }
 
-        /// <summary>Проверяет, актуален ли hosts (сравнивает первую и последнюю строку с системным файлом).</summary>
+        /// <summary>Проверяет, актуален ли hosts — пробует зеркала для медленного GitHub.</summary>
         public static async Task<HostsCheckResult> CheckHostsAsync(CancellationToken ct = default)
         {
+            string? text = null;
+            string? usedUrl = null;
+            foreach (var baseUrl in GetMirrorsFor(HostsUrl))
+            {
+                var url = baseUrl + "?t=" + DateTime.Now.Ticks;
+                try
+                {
+                    using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    cts.CancelAfter(TimeSpan.FromSeconds(15));
+                    text = await Http.GetStringAsync(url, cts.Token).ConfigureAwait(false);
+                    if (!string.IsNullOrWhiteSpace(text)) { usedUrl = url; if (!baseUrl.Equals(HostsUrl, StringComparison.OrdinalIgnoreCase)) AppLog.Info($"hosts получен через зеркало {baseUrl}"); break; }
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested) { AppLog.Warn($"Таймаут hosts {url}"); continue; }
+                catch (Exception ex) { AppLog.Warn($"hosts {url}: {ex.Message}"); continue; }
+            }
             try
             {
-                var text = await Http.GetStringAsync(HostsUrl + "?t=" + DateTime.Now.Ticks, ct).ConfigureAwait(false);
+                if (string.IsNullOrWhiteSpace(text)) throw new InvalidOperationException("Пустой ответ от зеркал hosts");
                 var lines = text.Split('\n').Select(l => l.TrimEnd('\r')).Where(l => l.Trim().Length > 0).ToList();
                 if (lines.Count == 0) return new HostsCheckResult { Ok = false, Message = "Пустой файл hosts из репозитория" };
 

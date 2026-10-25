@@ -60,6 +60,8 @@ namespace ZapretGui.ViewModels
             UpdateHostsCommand = new AsyncRelayCommand(UpdateHostsAsync, () => !IsBusy);
             OpenReleasePageCommand = new RelayCommand(() => Shell.OpenUrl(string.IsNullOrEmpty(_releaseUrl) ? EngineService.RepoUrl + "/releases/latest" : _releaseUrl));
             OpenRepoCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl));
+            OpenGuiRepoCommand = new RelayCommand(() => Shell.OpenUrl(Settings.GuiRepo));
+            CopyNetworkReportCommand = new RelayCommand(CopyNetworkReport);
             OpenDownloadsPageCommand = new RelayCommand(() => Shell.OpenUrl(EngineService.RepoUrl + "/releases/latest"));
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             CancelCommand = new RelayCommand(() => _cts?.Cancel(), () => IsBusy);
@@ -73,6 +75,7 @@ namespace ZapretGui.ViewModels
         }
 
         public AppSettings Settings => _main.Settings;
+        public MainViewModel Main => _main;
 
         public string EngineVersion
         {
@@ -103,6 +106,8 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(GuiUpdateBadgeText));
                     Raise(nameof(GuiUpdateButtonText));
+                    Raise(nameof(HasAnyUpdate));
+                    Raise(nameof(NetworkReport));
                     (UpdateGuiCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
@@ -169,12 +174,39 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(UpdateBadgeText));
                     Raise(nameof(UpdateEngineButtonText));
+                    Raise(nameof(HasAnyUpdate));
+                    Raise(nameof(NetworkReport));
                     (UpdateEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
 
         public bool HasEnginePackage => _assets.Count > 0;
+
+        public bool HasAnyUpdate => GuiUpdateAvailable || UpdateAvailable;
+
+        public string NetworkReport => BuildNetworkReport();
+        private string BuildNetworkReport()
+        {
+            try
+            {
+                var m = _main;
+                var lines = new System.Collections.Generic.List<string>
+                {
+                    $"GUI: {GuiCurrentVersion} → {GuiLatestVersion} {(GuiUpdateAvailable ? "(обновление)" : "актуально")}",
+                    $"Движок: {EngineVersion} → {LatestVersion} {(UpdateAvailable ? "(обновление)" : "актуально")}",
+                    $"Стратегия: {m.ActiveStrategySummaryText} ({m.ActiveStrategyKey})",
+                    $"Готовность: {m.ReadinessText} ({m.ReadinessKey}) — {m.ReadinessDetails}",
+                    $"Мониторинг: {m.MonitoringSummaryText} ({m.MonitoringSummaryKey})",
+                    $"RTT: {(m.RealTimePingVisible ? m.RealTimePingSummaryText : "выкл")}",
+                    $"Согласованность: {ConsistencyText} ({ConsistencyKey})",
+                    $"Hosts: {HostsStatus} ({HostsStatusKey})",
+                    $"EnginePath: {Settings.EnginePath}",
+                    $"Последняя проверка: {LastCheckText}"
+                };
+                return string.Join("\n", lines);
+            } catch { return "Отчёт недоступен"; }
+        }
 
         public string UpdateBadgeText => UpdateAvailable ? "Доступно обновление " + LatestVersion : "Установлена актуальная версия";
         public string UpdateEngineButtonText => UpdateAvailable ? "Скачать и установить" : "Установлена актуальная версия";
@@ -377,6 +409,8 @@ namespace ZapretGui.ViewModels
         public ICommand UpdateHostsCommand { get; }
         public ICommand OpenReleasePageCommand { get; }
         public ICommand OpenRepoCommand { get; }
+        public ICommand OpenGuiRepoCommand { get; }
+        public ICommand CopyNetworkReportCommand { get; }
         public ICommand OpenDownloadsPageCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand CancelCommand { get; }
@@ -666,7 +700,7 @@ namespace ZapretGui.ViewModels
         {
             IsBusy = true;
             Indeterminate = true;
-            Status = "Проверяю обновления на GitHub…";
+            Status = "Проверяю обновления движка и оболочки…";
             Message = "";
             _assets.Clear();
             UpdateAvailable = false;
@@ -685,35 +719,51 @@ namespace ZapretGui.ViewModels
                     Status = "Не удалось получить информацию о релизах";
                     SetMessage("GitHub недоступен. Проверьте соединение (раздел «Проверки»). " +
                                "Обновление можно установить вручную со страницы релизов.", "Danger");
-                    return;
                 }
+                else
+                {
+                    _assets.Clear();
+                    foreach (var asset in release.Assets) _assets.Add(asset);
 
-                _assets.Clear();
-                foreach (var asset in release.Assets) _assets.Add(asset);
+                    LastKnownLatest = release.Tag;
+                    ReleaseTitle = string.IsNullOrEmpty(release.Title) ? release.Tag : $"{release.Title} ({release.Tag})";
+                    ReleaseDate = "Опубликован: " + release.PublishedText + (release.Prerelease ? " · pre-release" : "");
+                    ReleaseNotes = string.IsNullOrWhiteSpace(release.Body)
+                        ? "Описание изменений отсутствует в релизе."
+                        : Trim(release.Body, 4000);
+                    _releaseUrl = release.HtmlUrl;
 
-                LastKnownLatest = release.Tag;
-                ReleaseTitle = string.IsNullOrEmpty(release.Title) ? release.Tag : $"{release.Title} ({release.Tag})";
-                ReleaseDate = "Опубликован: " + release.PublishedText + (release.Prerelease ? " · pre-release" : "");
-                ReleaseNotes = string.IsNullOrWhiteSpace(release.Body)
-                    ? "Описание изменений отсутствует в релизе."
-                    : Trim(release.Body, 4000);
-                _releaseUrl = release.HtmlUrl;
+                    var current = EngineService.ReadVersion(Settings.EnginePath);
+                    var compare = EngineService.CompareVersions(release.Tag, current);
+                    UpdateAvailable = compare > 0 || !EngineService.IsEngineReady(Settings.EnginePath);
 
-                var current = EngineService.ReadVersion(Settings.EnginePath);
-                var compare = EngineService.CompareVersions(release.Tag, current);
-                UpdateAvailable = compare > 0 || !EngineService.IsEngineReady(Settings.EnginePath);
+                    Raise(nameof(HasRelease));
+                    Raise(nameof(HasEnginePackage));
+                    Raise(nameof(ReleasesText));
+                    (UpdateEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+                // Проверяем также обновления GUI (тихо, без отдельного оверлея)
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update("Проверяю обновления оболочки…", "Запрос к m0xvi/zapret-gui")); } catch {}
+                await CheckGuiUpdateAsync(silent: true);
 
-                Raise(nameof(HasRelease));
-                Raise(nameof(HasEnginePackage));
-                Raise(nameof(ReleasesText));
-                (UpdateEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-
-                Status = UpdateAvailable
-                    ? $"Доступна версия {release.Tag} (установлена {current})"
-                    : $"Установлена последняя версия {current}";
-
-                if (UpdateAvailable)
-                    SetMessage($"Доступна версия движка {release.Tag}. Файлы релиза: {release.AssetsText}", "Info");
+                // Итоговый статус
+                if (UpdateAvailable || GuiUpdateAvailable)
+                {
+                    var parts = new System.Collections.Generic.List<string>();
+                    if (GuiUpdateAvailable) parts.Add($"GUI {GuiLatestVersion}");
+                    if (UpdateAvailable) parts.Add($"движок {LastKnownLatest}");
+                    Status = "Доступны обновления: " + string.Join(", ", parts);
+                    var msgParts = new System.Collections.Generic.List<string>();
+                    if (GuiUpdateAvailable) msgParts.Add($"оболочка {GuiLatestVersion}");
+                    if (UpdateAvailable) msgParts.Add($"движок {LastKnownLatest}");
+                    SetMessage("Доступны обновления: " + string.Join(" и ", msgParts) + ". Нажмите «Обновить» в соответствующем разделе.", "Info");
+                }
+                else if (release != null)
+                {
+                    var cur = EngineService.ReadVersion(Settings.EnginePath);
+                    Status = $"У вас установлены последние версии: GUI {System.Reflection.Assembly.GetExecutingAssembly().GetName().Version} и движок {cur}";
+                    SetMessage("Обновлений не найдено. Всё актуально.", "Success");
+                }
             }
             catch (OperationCanceledException)
             {
@@ -961,6 +1011,17 @@ namespace ZapretGui.ViewModels
                 Indeterminate = false;
                 try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
+        }
+
+        private void CopyNetworkReport()
+        {
+            try
+            {
+                var text = NetworkReport;
+                System.Windows.Clipboard.SetText(text);
+                SetMessage("Сетевой отчёт скопирован в буфер — вставьте в чат для анализа.", "Success");
+                Raise(nameof(NetworkReport));
+            } catch (System.Exception ex) { SetMessage(ex.Message, "Danger"); }
         }
 
         public void RefreshConsistency()

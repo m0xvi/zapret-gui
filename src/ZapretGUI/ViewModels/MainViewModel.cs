@@ -34,6 +34,7 @@ namespace ZapretGui.ViewModels
         public event Action? RequestToggleOverlay;
 
         public BypassCenterViewModel BypassCenter { get; }
+        public GameModeViewModel GameMode { get; }
 
         public WatchdogService Watchdog { get; }
         public SeamlessFailoverService SeamlessFailover { get; }
@@ -99,6 +100,8 @@ namespace ZapretGui.ViewModels
                 GameDetector.Start();
             }
 
+            GameMode = new GameModeViewModel(this);
+
             Hotkeys.ToggleBypassRequested += () => Application.Current?.Dispatcher?.Invoke(async () =>
             {
                 await Home.ToggleBypassAsync();
@@ -121,7 +124,8 @@ namespace ZapretGui.ViewModels
             Watchdog = new WatchdogService(settings, Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended, () => Strategies.Items.ToList());
             Watchdog.EventLogged += msg =>
             {
-                if (Settings.WatchdogNotifyUser)
+                // v1.32.3: уведомление о смене стратегии всегда, даже если пользователь выключил общие уведомления
+                if (msg.Contains("переключил") || msg.Contains("Переключил") || Settings.WatchdogNotifyUser)
                     WatchdogNotificationRequested?.Invoke(msg);
             };
             Watchdog.AlertRaised += alert =>
@@ -146,14 +150,14 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(ActiveStrategySummaryText));
                 Raise(nameof(SeamlessStatusText));
                 Raise(nameof(SeamlessStatusKey));
-                if (Settings.MonitorNotificationsEnabled || Settings.WatchdogNotifyUser)
-                    WatchdogNotificationRequested?.Invoke(msg);
+                // v1.32.3: смена стратегии — уведомляем всегда
+                WatchdogNotificationRequested?.Invoke(msg);
             });
             SeamlessFailover.FailoverFailed += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
             {
                 Raise(nameof(SeamlessStatusText));
-                if (Settings.MonitorNotificationsEnabled)
-                    WatchdogNotificationRequested?.Invoke(msg);
+                // v1.32.3: даже неудачу показываем если влияет на стратегию
+                WatchdogNotificationRequested?.Invoke(msg);
             });
             if (settings.SeamlessFailoverEnabled && !settings.SafeMode)
                 SeamlessFailover.Start();
@@ -189,13 +193,12 @@ namespace ZapretGui.ViewModels
             {
                 new() { Key = "group-main", Title = "ОСНОВНОЕ", IsSectionHeader = true },
                 new() { Key = "home", Title = "Обзор", Icon = "\uE80F", Hint = "Состояние обхода" },
-                new() { Key = "bypass-center", Title = "Центр обхода", Icon = "\uE8D2", Hint = "Всё в одном — стратегии, DNS, hosts, ipset и тяжёлый YouTube" },
                 new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
+                new() { Key = "game-mode", Title = "Игровой режим", Icon = "\uE7FC", Hint = "Всё для игр — фильтр, галочки игр, Phasmophobia/PUBG фикс" },
                 new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
                 new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check и результаты" },
                 new() { Key = "group-data", Title = "СПИСКИ И ФИЛЬТРЫ", IsSectionHeader = true },
                 new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
-                new() { Key = "profiles", Title = "Профили", Icon = "\uE753", Hint = "Пресеты настроек и полные бэкапы" },
                 new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
                 new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация, журнал и о программе" },
             };
@@ -206,6 +209,9 @@ namespace ZapretGui.ViewModels
             ToggleThemeCommand = new RelayCommand(ToggleTheme);
             RestartAsAdminCommand = new RelayCommand(RestartAsAdmin);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
+            RefreshAllCommand = new RelayCommand(RefreshAll);
+            ToggleSummarySheetCommand = new RelayCommand(ToggleSummarySheet);
+            NavigateUpdatesCommand = new RelayCommand(() => Navigate("updates"));
             NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
             NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 3; Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
@@ -215,6 +221,13 @@ namespace ZapretGui.ViewModels
             Strategies.Refresh();
             Home.ReloadFromEngine();
             ThemeService.Changed += RefreshThemeBindings;
+
+            // Подписка на бейдж обновлений для TitleBar
+            Updates.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(UpdatesViewModel.HasAnyUpdate) || e.PropertyName == nameof(UpdatesViewModel.GuiUpdateAvailable) || e.PropertyName == nameof(UpdatesViewModel.UpdateAvailable))
+                    System.Windows.Application.Current?.Dispatcher?.Invoke(() => Raise(nameof(HasUpdateBadge)));
+            };
 
             _timer = new DispatcherTimer(TimeSpan.FromSeconds(3), DispatcherPriority.Background, OnTick, Application.Current.Dispatcher);
             _timer.Start();
@@ -525,7 +538,12 @@ namespace ZapretGui.ViewModels
         public ICommand ToggleThemeCommand { get; }
         public ICommand RestartAsAdminCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
+        public ICommand RefreshAllCommand { get; }
+        public ICommand ToggleSummarySheetCommand { get; }
+        public ICommand NavigateUpdatesCommand { get; }
         public ICommand NavigateHomeCommand { get; }
+
+        public bool HasUpdateBadge => Updates?.HasAnyUpdate == true;
         public ICommand NavigateDiagnosticsCommand { get; }
         public ICommand NavigateStrategiesCommand { get; }
         public ICommand NavigateMonitoringCommand { get; }
@@ -668,10 +686,39 @@ namespace ZapretGui.ViewModels
                 ThemeMode.Dark => ThemeMode.Light,
                 _ => ThemeMode.System
             };
+
             ThemeService.Apply(Settings.Theme);
             SettingsStore.Save(Settings);
             Raise(nameof(ThemeText));
             SettingsPage.Reload();
+        }
+
+        private void RefreshAll()
+        {
+            try
+            {
+                Home.RefreshStatus();
+                Home.RefreshGamingStatus();
+                StrategiesPage.Refresh();
+                GameMode.Refresh();
+                Profiles.RefreshNetwork();
+                RefreshReadiness();
+                MiniOverlay.Refresh();
+            }
+            catch { }
+        }
+
+        public bool IsSummarySheetExpanded
+        {
+            get => Settings.IsSummarySheetExpanded;
+            set { if (Settings.IsSummarySheetExpanded != value) { Settings.IsSummarySheetExpanded = value; SettingsStore.Save(Settings); Raise(nameof(IsSummarySheetExpanded)); Raise(nameof(SummarySheetToggleIcon)); Raise(nameof(SummarySheetToggleTooltip)); } }
+        }
+        public string SummarySheetToggleIcon => IsSummarySheetExpanded ? "\uE8A0" : "\uE89F"; // chevron right/left
+        public string SummarySheetToggleTooltip => IsSummarySheetExpanded ? "Свернуть сводку" : "Развернуть сводку";
+
+        private void ToggleSummarySheet()
+        {
+            IsSummarySheetExpanded = !IsSummarySheetExpanded;
         }
 
         private void RestartAsAdmin()
@@ -782,6 +829,12 @@ namespace ZapretGui.ViewModels
             Profiles?.RefreshNetwork();
             Raise(nameof(AutoSwitchNetworkStatus));
             Raise(nameof(AutoSwitchLastReason));
+        }
+
+        /// <summary>v1.32.3: централизованное уведомление о фоновой смене стратегии — всегда показывает баллон.</summary>
+        public void NotifyStrategyAutoSwitched(string message)
+        {
+            WatchdogNotificationRequested?.Invoke(message);
         }
 
         /// <summary>Вызывается при выходе: остановка обхода, если так настроено.</summary>

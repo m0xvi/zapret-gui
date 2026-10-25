@@ -31,7 +31,7 @@ namespace ZapretGui.Core
         public bool StartMinimized { get; set; }
 
         /// <summary>Запускать обход сразу при старте приложения (если выбрана стратегия).</summary>
-        public bool AutoStartBypass { get; set; }
+        public bool AutoStartBypass { get; set; } = true;
 
         /// <summary>Останавливать обход при выходе из приложения.</summary>
         public bool StopBypassOnExit { get; set; }
@@ -83,6 +83,9 @@ namespace ZapretGui.Core
 
         /// <summary>Пользовательские исключения портов.</summary>
         public string CustomExcludedPorts { get; set; } = "";
+
+        /// <summary>v1.34.0: какие игры отмечены галочками «обходить» в Игровом режиме (например phasmophobia, pubg, steam_cs2).</summary>
+        public List<string> EnabledGameBypassIds { get; set; } = new();
 
         /// <summary>Выбранный TLS SNI домен для desync-fake-tls (например, gosuslugi.ru, cloudflare.com).</summary>
         public string SelectedFakeSni { get; set; } = "gosuslugi.ru";
@@ -144,6 +147,10 @@ namespace ZapretGui.Core
 
         /// <summary>Бесшовное автопереключение без окон и подтверждений (новый движок failover).
         /// По умолчанию выключено (v1.32.0): смена стратегии — только по решению пользователя.</summary>
+        /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.</summary>
+        public bool AutoRecoverStrategy { get; set; } = false;
+
+        /// <summary>Бесшовное автопереключение без окон и подтверждений (новый движок failover).</summary>
         public bool SeamlessFailoverEnabled { get; set; } = false;
 
         /// <summary>Интервал бесшовной проверки в минутах (2-60).</summary>
@@ -280,6 +287,12 @@ namespace ZapretGui.Core
 
         /// <summary>При расписании: оставлять службу (true) или процесс.</summary>
         public bool ScheduleUseService { get; set; } = true;
+
+        /// <summary>Пользователь вручную выключил запрет — не включать принудительно (фикс v1.32.1: «несмотря на выключение сам включается»).</summary>
+        public bool BypassManuallyStopped { get; set; } = false;
+
+        /// <summary>Сводный лист справа — развёрнут.</summary>
+        public bool IsSummarySheetExpanded { get; set; } = true;
     }
 
     /// <summary>Загрузка/сохранение settings.json.</summary>
@@ -307,6 +320,9 @@ namespace ZapretGui.Core
                         loaded.MonitorTargets ??= new List<MonitorTarget>();
                         loaded.ProviderContext ??= new ProviderContext();
                         loaded.CustomDnsProfiles ??= new List<DnsProfile>();
+                        // Миграция автозапуска: ранее по умолчанию выкл, теперь вкл — включаем для существующих профилей
+                        if (!loaded.AutoStartBypass && loaded.FirstLaunchWizardCompleted && !loaded.SafeMode)
+                            loaded.AutoStartBypass = true;
                         return loaded;
                     }
                 }

@@ -247,22 +247,54 @@ namespace ZapretGui.Core
                     }
                 }
 
-                // Обычный путь: первый кандидат который чинит failing target
+                // v1.32.3: только рабочие — пропуск 0/xx и проверка YouTube если целевой не YouTube
                 StrategyInfo? best = null;
                 ResourceProbeResult? bestProbe = null;
                 foreach (var cand in candidates)
                 {
+                    // пропуск заведомо битых по последнему полному тесту
+                    if (cand.TestResult != null && cand.TestResult.PassedCount == 0 && cand.TestResult.Checks.Count > 0)
+                    {
+                        AppLog.Info($"[SeamlessFailover] Пропускаю «{cand.Name}» — последний тест 0/{cand.TestResult.Checks.Count}");
+                        continue;
+                    }
+                    // если известно что YouTube не пройден — пропускаем
+                    if (cand.TestResult != null && cand.TestResult.Started && cand.TestResult.Checks.Count >= 3)
+                    {
+                        var ytCheck = cand.TestResult.Checks.FirstOrDefault(c => c.Title == "YouTube");
+                        if (ytCheck != null && !ytCheck.Ok)
+                        {
+                            AppLog.Info($"[SeamlessFailover] Пропускаю «{cand.Name}» — YouTube не пройден в последнем тесте");
+                            continue;
+                        }
+                    }
                     try
                     {
                         var probe = await bypass.TestStrategyOnResourceAsync(cand, failed.Target).ConfigureAwait(false);
-                        if (probe.Ok)
+                        if (!probe.Ok)
                         {
-                            best = cand;
-                            bestProbe = probe;
-                            AppLog.Info($"[SeamlessFailover] Кандидат «{cand.Name}» починил «{failed.Target.Name}» за {probe.Milliseconds} мс");
-                            break; // первый OK — сразу переключаем для бесшовности (минимальный downtime)
+                            AppLog.Debug($"[SeamlessFailover] Кандидат «{cand.Name}» не помог: {probe.Details}");
+                            continue;
                         }
-                        else AppLog.Debug($"[SeamlessFailover] Кандидат «{cand.Name}» не помог: {probe.Details}");
+                        // если чинит целевой, но ломает YouTube — не берём
+                        if (!failed.Target.Name.Contains("YouTube", StringComparison.OrdinalIgnoreCase))
+                        {
+                            var ytTarget = MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204");
+                            try
+                            {
+                                var ytProbe = await bypass.TestStrategyOnResourceAsync(cand, ytTarget).ConfigureAwait(false);
+                                if (!ytProbe.Ok)
+                                {
+                                    AppLog.Info($"[SeamlessFailover] «{cand.Name}» чинит «{failed.Target.Name}» но ломает YouTube ({ytProbe.Details}) — пропускаю");
+                                    continue;
+                                }
+                            }
+                            catch (Exception ex2) { AppLog.Debug($"[SeamlessFailover] Ошибка YouTube-пробы «{cand.Name}»: {ex2.Message}"); continue; }
+                        }
+                        best = cand;
+                        bestProbe = probe;
+                        AppLog.Info($"[SeamlessFailover] Кандидат «{cand.Name}» починил «{failed.Target.Name}» за {probe.Milliseconds} мс");
+                        break; // первый OK и не ломающий YouTube — сразу переключаем для бесшовности
                     }
                     catch (Exception ex) { AppLog.Debug($"[SeamlessFailover] Ошибка теста «{cand.Name}»: {ex.Message}"); }
                 }

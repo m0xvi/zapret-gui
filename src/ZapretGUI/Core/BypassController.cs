@@ -192,6 +192,19 @@ namespace ZapretGui.Core
                     // если удалили всё, добавляем заглушку
                 }
             }
+            // Phasmophobia EU: wss через Hetzner ломается от fake с sni=gosuslugi — меняем SNI на photonengine.io когда включён игровой режим и Phasmophobia
+            if (_settings.GameModeActive && _settings.EnabledGameBypassIds.Contains("phasmophobia"))
+            {
+                for (int i = 0; i < args.Count; i++)
+                {
+                    if (args[i].StartsWith("--dpi-desync-fake-tls-mod=") && args[i].Contains("sni="))
+                    {
+                        // первый блок (hostlist) — меняем SNI на photon для Hetzner, не трогаем QUIC-блок
+                        args[i] = System.Text.RegularExpressions.Regex.Replace(args[i], @"sni=[^,\s]+", "sni=photonengine.io");
+                        break;
+                    }
+                }
+            }
             return args;
         }
 
@@ -257,6 +270,7 @@ namespace ZapretGui.Core
             if (!testMode)
             {
                 _settings.SelectedStrategy = strategy.Name;
+                _settings.BypassManuallyStopped = false;
                 SettingsStore.Save(_settings);
 
                 // Мягкая проверка обновлений — как это делает general.bat
@@ -972,6 +986,7 @@ namespace ZapretGui.Core
                 return OperationResult.Fail("Служба создана, но не запустилась: " + start.All);
 
             _settings.SelectedStrategy = strategy.Name;
+            _settings.BypassManuallyStopped = false;
             SettingsStore.Save(_settings);
             return OperationResult.Success($"Служба zapret установлена со стратегией «{strategy.Name}»");
         }

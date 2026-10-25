@@ -35,6 +35,18 @@ namespace ZapretGui.Core
             ("ipset-discord.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/ipset-discord.txt", Array.Empty<string>())
         };
 
+        private static IEnumerable<string> GetMirrors(string primaryUrl)
+        {
+            yield return primaryUrl;
+            if (primaryUrl.Contains("raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/"))
+            {
+                var tail = primaryUrl.Split("zapret-discord-youtube/main/")[1];
+                yield return "https://cdn.jsdelivr.net/gh/Flowseal/zapret-discord-youtube@main/" + tail;
+                yield return "https://raw.fastgit.org/Flowseal/zapret-discord-youtube/main/" + tail;
+                yield return "https://ghproxy.com/" + primaryUrl;
+            }
+        }
+
         /// <summary>
         /// Проверяет наличие и наполненность списков. Если какой-либо файл пуст или отсутствует,
         /// автоматически заполняет его эталонным набором доменов.
@@ -112,9 +124,14 @@ namespace ZapretGui.Core
                     ct.ThrowIfCancellationRequested();
                     progress?.Report($"Загружаю {fileName}…");
 
+                    bool downloaded = false;
+                    foreach (var mirror in GetMirrors(url))
+                    {
                     try
                     {
-                        var response = await http.GetAsync(url, ct).ConfigureAwait(false);
+                        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                        cts.CancelAfter(TimeSpan.FromSeconds(12));
+                        var response = await http.GetAsync(mirror, cts.Token).ConfigureAwait(false);
                         if (response.IsSuccessStatusCode)
                         {
                             var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
@@ -134,14 +151,20 @@ namespace ZapretGui.Core
 
                                 var linesCount = content.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
                                 totalDomains += linesCount;
-                                continue;
+                                if (!mirror.Equals(url, StringComparison.OrdinalIgnoreCase)) AppLog.Info($"[ListUpdater] {fileName} получен через зеркало {mirror}");
+                                downloaded = true;
+                                break;
                             }
                         }
+                        else { AppLog.Warn($"[ListUpdater] {mirror} вернул {(int)response.StatusCode}"); }
                     }
+                    catch (OperationCanceledException) when (!ct.IsCancellationRequested) { AppLog.Warn($"[ListUpdater] Таймаут {mirror} для {fileName}"); continue; }
                     catch (Exception ex)
                     {
-                        AppLog.Warn($"[ListUpdater] Сетевая ошибка при скачивании {fileName}: {ex.Message}");
+                        AppLog.Warn($"[ListUpdater] Сетевая ошибка {mirror} для {fileName}: {ex.Message}");
                     }
+                    }
+                    if (downloaded) continue;
 
                     // Если файл отсутствует или пуст, а сеть не ответила — используем fallback
                     var currentPath = Path.Combine(listsDir, fileName);

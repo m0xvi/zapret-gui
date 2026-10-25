@@ -6,6 +6,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Linq;
 using ZapretGui.Core;
 using ZapretGui.ViewModels;
 
@@ -29,9 +30,9 @@ namespace ZapretGui.Views
             DataContext = _vm;
 
             _pages["home"] = new HomePage(_vm.Home);
-            _pages["bypass-center"] = new BypassCenterPage { DataContext = _vm.BypassCenter };
             _pages["first-run"] = new FirstLaunchPage(_vm.FirstLaunch);
             _pages["strategies"] = new StrategiesPage(_vm.StrategiesPage);
+            _pages["game-mode"] = new GameModePage(_vm.GameMode);
             _pages["monitoring"] = new MonitoringPage(_vm.Monitoring);
             _pages["updates"] = new UpdatesPage(_vm.Updates);
             _pages["diagnostics"] = new DiagnosticsPage(_vm.Diagnostics);
@@ -39,7 +40,6 @@ namespace ZapretGui.Views
             _pages["dpi"] = new DpiPage(_vm.Diagnostics);
             _pages["logs"] = new LogsPage(_vm.Logs);
             _pages["user-lists"] = new UserListsPage(_vm.UserLists);
-            _pages["profiles"] = new ProfilesPage(_vm.Profiles);
             _pages["settings"] = new SettingsPage(_vm.SettingsPage);
             _pages["about"] = new AboutPage(_vm);
 
@@ -83,6 +83,13 @@ namespace ZapretGui.Views
             _vm.WatchdogNotificationRequested += text => Dispatcher.Invoke(() =>
                 _tray?.ShowBalloon("Zapret", text));
 
+            // 1.32.1: не включаем принудительно если пользователь вручную выключил (фикс «сам включается»)
+            if (_vm.Settings.BypassManuallyStopped)
+            {
+                AppLog.Info("[Startup] Пропускаю автозапуск — пользователь вручную выключил (BypassManuallyStopped)");
+            }
+            else
+            {
             // 1.17.24: автозапуск бесшовно без окон, корректно для службы (проблема «установлена, но остановлена»)
             var shouldAutoStartBypass = _vm.Settings.FirstLaunchWizardCompleted &&
                 !_vm.Settings.SafeMode &&
@@ -164,6 +171,7 @@ namespace ZapretGui.Views
                 }));
             }
 
+            } // end BypassManuallyStopped guard
             // Проверка конфликта со старым запретом — с задержкой, чтобы сначала
             // отработали автоустановка движка и автозапуск обхода
             _ = System.Threading.Tasks.Task.Run(async () =>
@@ -195,11 +203,13 @@ namespace ZapretGui.Views
                     var status = _vm.Bypass.GetStatus();
                     if (status.IsRunning)
                     {
+                        _vm.Settings.BypassManuallyStopped = true; SettingsStore.Save(_vm.Settings); _vm.Watchdog.NotifyManualStop();
                         var result = await _vm.Bypass.StopAsync();
                         _tray?.ShowBalloon("Zapret GUI", result.Message);
                     }
                     else
                     {
+                        _vm.Settings.BypassManuallyStopped = false; SettingsStore.Save(_vm.Settings); _vm.Watchdog.NotifyManualStart();
                         var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
                         if (strategy == null)
                         {
@@ -252,6 +262,10 @@ namespace ZapretGui.Views
                     var res = await DnsManagementService.ApplyDnsProfileAsync(profile);
                     _tray?.ShowBalloon("Безопасный DNS", res.Message);
                 });
+                _tray.AddResourceRequested += () => Dispatcher.Invoke(ShowAddResourceDialog);
+                _tray.EnableChatGptRequested += () => Dispatcher.Invoke(EnableChatGptPreset);
+                _tray.EnablePubgRequested += () => Dispatcher.Invoke(EnablePubgPreset);
+                _tray.EnablePhasmophobiaRequested += () => Dispatcher.Invoke(EnablePhasmophobiaPreset);
                 _tray.OpenLogsRequested += () => Dispatcher.Invoke(() =>
                 {
                     ShowFromTray();
@@ -268,6 +282,184 @@ namespace ZapretGui.Views
             catch (Exception ex)
             {
                 AppLog.Warn("Не удалось создать иконку в трее: " + ex.Message);
+            }
+        }
+
+        /// <summary>v1.32.4: быстрый пункт трея — добавить ресурс в мониторинг и в список обхода.</summary>
+        private void ShowAddResourceDialog()
+        {
+            try
+            {
+                var dlg = new InputDialog(
+                    "Добавить ресурс в список",
+                    "Введите URL или домен ресурса (например, https://example.com или example.com):",
+                    "Название ресурса (необязательно):",
+                    "Добавить в список обхода (General) + мониторинг")
+                { Owner = this };
+                if (dlg.ShowDialog() != true) return;
+                var url = dlg.Value?.Trim() ?? "";
+                var name = dlg.SecondaryValue?.Trim() ?? "";
+                var addToBypass = dlg.IsChecked;
+                if (string.IsNullOrWhiteSpace(url))
+                {
+                    _tray?.ShowBalloon("Добавить ресурс", "URL не указан");
+                    return;
+                }
+                if (!MonitorTarget.TryCreate(url, name, out var target, out var error) || target == null)
+                {
+                    _tray?.ShowBalloon("Добавить ресурс", error);
+                    System.Windows.MessageBox.Show(error, "Добавить ресурс", System.Windows.MessageBoxButton.OK, System.Windows.MessageBoxImage.Warning);
+                    return;
+                }
+                // дубликат?
+                if (_vm.Settings.MonitorTargets.Any(x => x.Host.Equals(target.Host, StringComparison.OrdinalIgnoreCase)))
+                {
+                    _tray?.ShowBalloon("Добавить ресурс", "Этот домен уже в списке мониторинга");
+                    return;
+                }
+                // добавляем в мониторинг
+                target.IsGame = false;
+                _vm.Settings.MonitorTargets.Add(target);
+                _vm.Monitoring.Targets.Add(target);
+                SettingsStore.Save(_vm.Settings);
+                var msg = $"Ресурс «{target.Name}» ({target.Host}) добавлен в мониторинг";
+                // и опционально в список обхода
+                if (addToBypass)
+                {
+                    var res = MonitorTargetStore.AddToGeneralList(_vm.Settings, target);
+                    msg += " и " + (res.Ok ? "в список обхода" : res.Message);
+                }
+                _tray?.ShowBalloon("Добавить ресурс", msg);
+                _vm.Monitoring.Reload();
+                UpdateTrayStatus();
+                ShowFromTray();
+                _vm.Navigate("monitoring");
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Ошибка добавления ресурса из трея: " + ex.Message);
+                _tray?.ShowBalloon("Добавить ресурс", "Ошибка: " + ex.Message);
+            }
+        }
+
+        private void EnableChatGptPreset()
+        {
+            try
+            {
+                var (ok, msg) = MonitorTargetStore.AddChatGptPreset(_vm.Settings);
+                _tray?.ShowBalloon("ChatGPT", msg);
+                if (ok)
+                {
+                    // обновляем мониторинг и перезапускаем обход если запущен
+                    _vm.Monitoring.Reload();
+                    UpdateTrayStatus();
+                    var status = _vm.Bypass.GetStatus();
+                    if (status.IsRunning)
+                    {
+                        var strat = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
+                        if (strat != null)
+                        {
+                            // бесшовный перезапуск с новым списком
+                            var _ = Dispatcher.InvokeAsync(async () =>
+                            {
+                                var mode = EngineService.GetGameFilterMode(_vm.Settings.EnginePath);
+                                var res = status.ServiceState == ServiceState.Running
+                                    ? await _vm.Bypass.InstallServiceAsync(strat, mode)
+                                    : await _vm.Bypass.SwitchToStrategyAsync(strat, mode, _vm.Settings.ShowWinwsConsole);
+                                _tray?.ShowBalloon("ChatGPT", res.Ok ? "Обход перезапущен с ChatGPT" : res.Message);
+                                _vm.Home.RefreshStatus();
+                                UpdateTrayStatus();
+                            });
+                        }
+                    }
+                    // открываем мониторинг чтобы видеть статус ChatGPT
+                    ShowFromTray();
+                    _vm.Navigate("monitoring");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Ошибка ChatGPT пресета: " + ex.Message);
+                _tray?.ShowBalloon("ChatGPT", "Ошибка: " + ex.Message);
+            }
+        }
+
+        private void EnablePubgPreset()
+        {
+            try
+            {
+                var (ok, msg) = MonitorTargetStore.AddPubgPreset(_vm.Settings);
+                _tray?.ShowBalloon("PUBG", msg);
+                if (ok)
+                {
+                    _vm.Monitoring.Reload();
+                    UpdateTrayStatus();
+                    var status = _vm.Bypass.GetStatus();
+                    if (status.IsRunning)
+                    {
+                        var strat = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
+                        if (strat != null)
+                        {
+                            var _ = Dispatcher.InvokeAsync(async () =>
+                            {
+                                var mode = EngineService.GetGameFilterMode(_vm.Settings.EnginePath);
+                                var res = status.ServiceState == ServiceState.Running
+                                    ? await _vm.Bypass.InstallServiceAsync(strat, mode)
+                                    : await _vm.Bypass.SwitchToStrategyAsync(strat, mode, _vm.Settings.ShowWinwsConsole);
+                                _tray?.ShowBalloon("PUBG", res.Ok ? "Обход перезапущен с профилем PUBG" : res.Message);
+                                _vm.Home.RefreshStatus();
+                                UpdateTrayStatus();
+                            });
+                        }
+                    }
+                    ShowFromTray();
+                    _vm.Navigate("monitoring");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Ошибка PUBG пресета: " + ex.Message);
+                _tray?.ShowBalloon("PUBG", "Ошибка: " + ex.Message);
+            }
+        }
+
+        private void EnablePhasmophobiaPreset()
+        {
+            try
+            {
+                var (ok, msg) = MonitorTargetStore.AddPhasmophobiaPreset(_vm.Settings);
+                _tray?.ShowBalloon("Phasmophobia", msg);
+                if (ok)
+                {
+                    _vm.Monitoring.Reload();
+                    _vm.GameMode.Refresh();
+                    UpdateTrayStatus();
+                    var status = _vm.Bypass.GetStatus();
+                    if (status.IsRunning)
+                    {
+                        var strat = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
+                        if (strat != null)
+                        {
+                            var _ = Dispatcher.InvokeAsync(async () =>
+                            {
+                                var mode = EngineService.GetGameFilterMode(_vm.Settings.EnginePath);
+                                var res = status.ServiceState == ServiceState.Running
+                                    ? await _vm.Bypass.InstallServiceAsync(strat, mode)
+                                    : await _vm.Bypass.SwitchToStrategyAsync(strat, mode, _vm.Settings.ShowWinwsConsole);
+                                _tray?.ShowBalloon("Phasmophobia", res.Ok ? "Обход перезапущен с профилем Phasmophobia" : res.Message);
+                                _vm.Home.RefreshStatus();
+                                UpdateTrayStatus();
+                            });
+                        }
+                    }
+                    ShowFromTray();
+                    _vm.Navigate("game-mode");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Error("Ошибка Phasmophobia пресета: " + ex.Message);
+                _tray?.ShowBalloon("Phasmophobia", "Ошибка: " + ex.Message);
             }
         }
 

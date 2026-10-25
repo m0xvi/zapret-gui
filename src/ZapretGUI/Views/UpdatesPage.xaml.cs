@@ -5,6 +5,20 @@ namespace ZapretGui.Views
 {
     public partial class UpdatesPage : UserControl
     {
+        public static readonly System.Windows.DependencyProperty ShowHeaderProperty =
+            System.Windows.DependencyProperty.Register(nameof(ShowHeader), typeof(bool), typeof(UpdatesPage), new System.Windows.PropertyMetadata(true));
+
+        public bool ShowHeader
+        {
+            get => (bool)GetValue(ShowHeaderProperty);
+            set => SetValue(ShowHeaderProperty, value);
+        }
+
+        public UpdatesPage()
+        {
+            InitializeComponent();
+        }
+
         public UpdatesPage(UpdatesViewModel viewModel)
         {
             InitializeComponent();
