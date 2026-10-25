@@ -25,7 +25,8 @@ namespace ZapretGui.ViewModels
         private bool _isProviderLookupBusy;
         private int _selectedTabIndex;
 
-        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Обход", "🌐 Сеть", "🎨 Интерфейс", "🎮 Игры", "🔄 Обновления", "📄 Журнал", "⭐ Дополнительно" };
+        /// <summary>v2.0: пять вкладок вместо восьми. Сеть и Игры настраиваются на своих страницах.</summary>
+        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Автоматика", "🎨 Интерфейс", "🔄 Обновления", "⭐ Система" };
 
         public int SelectedTabIndex
         {
@@ -36,11 +37,8 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(IsGeneralTabSelected));
                     Raise(nameof(IsBypassTabSelected));
-                    Raise(nameof(IsNetworkTabSelected));
                     Raise(nameof(IsAppearanceTabSelected));
-                    Raise(nameof(IsGamingTabSelected));
                     Raise(nameof(IsUpdatesTabSelected));
-                    Raise(nameof(IsLogsTabSelected));
                     Raise(nameof(IsAdvancedTabSelected));
                     Raise(nameof(SelectedTabHint));
                 }
@@ -59,42 +57,24 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedTabIndex = 1; }
         }
 
-        public bool IsNetworkTabSelected
+        public bool IsAppearanceTabSelected
         {
             get => _selectedTabIndex == 2;
             set { if (value) SelectedTabIndex = 2; }
         }
 
-        public bool IsAppearanceTabSelected
+        public bool IsUpdatesTabSelected
         {
             get => _selectedTabIndex == 3;
             set { if (value) SelectedTabIndex = 3; }
-        }
-
-        public bool IsGamingTabSelected
-        {
-            get => _selectedTabIndex == 4;
-            set { if (value) SelectedTabIndex = 4; }
-        }
-
-        public bool IsUpdatesTabSelected
-        {
-            get => _selectedTabIndex == 5;
-            set { if (value) SelectedTabIndex = 5; }
-        }
-
-        public bool IsLogsTabSelected
-        {
-            get => _selectedTabIndex == 6;
-            set { if (value) SelectedTabIndex = 6; }
         }
 
         public UpdatesViewModel Updates => _main.Updates;
 
         public bool IsAdvancedTabSelected
         {
-            get => _selectedTabIndex == 7;
-            set { if (value) SelectedTabIndex = 7; }
+            get => _selectedTabIndex == 4;
+            set { if (value) SelectedTabIndex = 4; }
         }
 
         public bool SeamlessFailoverEnabled
@@ -132,13 +112,10 @@ namespace ZapretGui.ViewModels
         public string SelectedTabHint => SelectedTabIndex switch
         {
             0 => "Движок, папки и системный автозапуск — всё, что нужно для первого старта.",
-            1 => "Как ведёт себя обход: автозапуск, безопасный режим, сторож и автоподбор.",
-            2 => "Провайдер, телеметрия и фоновый мониторинг — диагностика вашей сети.",
-            3 => "Тема, масштаб, трей, горячие клавиши и мини-виджет HUD.",
-            4 => "Детектор игр, игровой режим и твики сети для минимальных задержек.",
-            5 => "Обновления движка и приложения — проверка версий и установка.",
-            6 => "Журнал событий приложения и службы.",
-            7 => "Дополнительно: поведение обхода, мастер первого запуска, файлы и о программе.",
+            1 => "Сторож, бесшовное переключение, расписание и автоподбор стратегии.",
+            2 => "Тема, масштаб, трей и горячие клавиши.",
+            3 => "Обновления движка и приложения.",
+            4 => "Поведение обхода, мастер первого запуска, файлы и журнал.",
             _ => ""
         };
 

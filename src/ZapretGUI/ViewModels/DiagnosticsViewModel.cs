@@ -64,11 +64,8 @@ namespace ZapretGui.ViewModels
             CancelDpiCommand = new RelayCommand(CancelDpi, () => IsDpiRunning);
             OpenDpiCommand = new RelayCommand(() => _main.Navigate("dpi"));
             SelectExpressTabCommand = new RelayCommand(() => SelectedSubTab = 0);
-            SelectDpiTabCommand = new RelayCommand(() => SelectedSubTab = 1);
-            SelectDeepCheckTabCommand = new RelayCommand(() => SelectedSubTab = 2);
-            SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 3);
-            SelectResultsTabCommand = new RelayCommand(() => SelectedSubTab = 4);
-            SelectVoiceRtcTabCommand = new RelayCommand(() => SelectedSubTab = 5);
+            SelectSystemTabCommand = new RelayCommand(() => SelectedSubTab = 1);
+            SelectResultsTabCommand = new RelayCommand(() => SelectedSubTab = 2);
             RunVoiceRtcAuditCommand = new AsyncRelayCommand(RunVoiceRtcAuditAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
             OptimizeDiscordVoiceCommand = new AsyncRelayCommand(OptimizeDiscordVoiceAsync, () => !IsRunning && !IsDpiRunning && !IsVoiceRtcRunning);
             CleanDiscordAndNetworkCommand = new AsyncRelayCommand(() => CleanDiscordAndNetworkAsync(false), () => !IsCleaningDiscord && !IsRunning);
@@ -120,16 +117,14 @@ namespace ZapretGui.ViewModels
 
         private int _selectedSubTab;
 
-        public string[] DiagnosticsTabs { get; } = new[] { "⚡ Экспресс", "🌐 DPI 34 узла", "🔬 Deep Check", "🛠 Аудит", "📊 Результаты", "🎙️ Voice RTC" };
+        /// <summary>v2.0: три вкладки вместо шести — ресурсы, аудит системы и история/экспорт.</summary>
+        public string[] DiagnosticsTabs { get; } = new[] { "⚡ Ресурсы", "🛠 Аудит", "📊 История" };
 
         public string DiagnosticsTabHintText => SelectedSubTab switch
         {
-            0 => "Быстрая проверка ресурсов • ~10 сек • без остановки обхода",
-            1 => "34 узла DPI • ~2 мин • может временно перезапустить обход",
-            2 => "Матрица Deep Check • до 30 мин • под каждой стратегией",
-            3 => "Аудит системы • ~5 сек • службы, драйвер,hosts",
-            4 => "Сводные результаты и экспорт • история проверок",
-            5 => "Discord Voice • WebRTC/STUN • ~15 сек",
+            0 => "Проверка доступности ресурсов — ~10 сек, без остановки обхода",
+            1 => "Аудит системы — службы, драйвер WinDivert, hosts",
+            2 => "Сохранённые результаты и экспорт отчёта",
             _ => ""
         };
 
@@ -138,17 +133,14 @@ namespace ZapretGui.ViewModels
             get => _selectedSubTab;
             set
             {
-                if (Set(ref _selectedSubTab, Math.Clamp(value, 0, 5)))
+                if (Set(ref _selectedSubTab, Math.Clamp(value, 0, DiagnosticsTabs.Length - 1)))
                 {
                     Raise(nameof(DiagnosticsTabHintText));
                     Raise(nameof(IsExpressTabSelected));
-                    Raise(nameof(IsDpiTabSelected));
-                    Raise(nameof(IsDeepCheckTabSelected));
                     Raise(nameof(IsSystemTabSelected));
                     Raise(nameof(IsResultsTabSelected));
-                    Raise(nameof(IsVoiceRtcTabSelected));
 
-                    if (_selectedSubTab == 3 || _selectedSubTab == 5)
+                    if (_selectedSubTab == 1)
                     {
                         RefreshDiscordCacheStatus();
                     }
@@ -162,34 +154,16 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedSubTab = 0; }
         }
 
-        public bool IsDpiTabSelected
+        public bool IsSystemTabSelected
         {
             get => _selectedSubTab == 1;
             set { if (value) SelectedSubTab = 1; }
         }
 
-        public bool IsDeepCheckTabSelected
+        public bool IsResultsTabSelected
         {
             get => _selectedSubTab == 2;
             set { if (value) SelectedSubTab = 2; }
-        }
-
-        public bool IsSystemTabSelected
-        {
-            get => _selectedSubTab == 3;
-            set { if (value) SelectedSubTab = 3; }
-        }
-
-        public bool IsResultsTabSelected
-        {
-            get => _selectedSubTab == 4;
-            set { if (value) SelectedSubTab = 4; }
-        }
-
-        public bool IsVoiceRtcTabSelected
-        {
-            get => _selectedSubTab == 5;
-            set { if (value) SelectedSubTab = 5; }
         }
 
         public ObservableCollection<DiscordVoiceServerCheck> VoiceServers { get; } = new();
@@ -520,11 +494,8 @@ namespace ZapretGui.ViewModels
         public ICommand CancelDpiCommand { get; }
         public ICommand OpenDpiCommand { get; }
         public ICommand SelectExpressTabCommand { get; }
-        public ICommand SelectDpiTabCommand { get; }
-        public ICommand SelectDeepCheckTabCommand { get; }
         public ICommand SelectSystemTabCommand { get; }
         public ICommand SelectResultsTabCommand { get; }
-        public ICommand SelectVoiceRtcTabCommand { get; }
         public ICommand RunVoiceRtcAuditCommand { get; }
         public ICommand OptimizeDiscordVoiceCommand { get; }
         public ICommand CleanDiscordAndNetworkCommand { get; }

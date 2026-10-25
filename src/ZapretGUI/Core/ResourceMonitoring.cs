@@ -334,46 +334,44 @@ namespace ZapretGui.Core
 
     public static class MonitorTargetStore
     {
+        /// <summary>
+        /// Минимальный набор ресурсов «из коробки»: только то, что нужно проверять каждый день.
+        /// Всё остальное (ChatGPT, PUBG, Phasmophobia и т. п.) пользователь добавляет сам — иначе список
+        /// раздувается и в нём появляются заведомо недоступные хосты.
+        /// </summary>
+        private static readonly (string Name, string Url)[] DefaultTargets =
+        {
+            ("YouTube", "https://www.youtube.com/generate_204"),
+            ("Discord", "https://discord.com/api/v9/gateway"),
+            ("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt"),
+        };
+
+        /// <summary>Хосты, которые прошлые версии добавляли автоматически. Убираем их при старте.</summary>
+        private static readonly string[] RetiredBuiltInHosts =
+        {
+            "chatgpt.com", "openai.com", "www.pubg.com", "pubg.com", "front.pubg.com",
+            "prozone.pubg.com", "api.kineticgames.co.uk"
+        };
+
         public static void EnsureDefaults(AppSettings settings)
         {
-            // v1.32.5: миграция — добавляем недостающие базовые цели даже если список уже не пуст
-            void Ensure(string name, string url)
+            settings.MonitorTargets ??= new List<MonitorTarget>();
+
+            // 1. Убираем автоматически добавленные ранее «лишние» ресурсы и отключённые пользователем.
+            settings.MonitorTargets.RemoveAll(t =>
+                t.IsBuiltIn && RetiredBuiltInHosts.Any(h => t.Host.Equals(h, StringComparison.OrdinalIgnoreCase)));
+
+            // 2. Убираем дубли по хосту (в старых настройках бывало два PUBG с разными URL).
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            settings.MonitorTargets.RemoveAll(t => !seen.Add(t.Host.Trim()));
+
+            // 3. Возвращаем базовую тройку, если пользователь её удалил.
+            foreach (var (name, url) in DefaultTargets)
             {
                 var host = new Uri(url).Host;
-                if (!settings.MonitorTargets.Any(x => x.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
-                {
-                    var tgt = MonitorTarget.CreateBuiltIn(name, url);
-                    if (name == "PUBG") tgt.Enabled = false;
-                    settings.MonitorTargets.Add(tgt);
-                }
-            }
-            if (settings.MonitorTargets.Count == 0)
-            {
-                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"));
-                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"));
-                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt"));
-                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("ChatGPT", "https://chatgpt.com"));
-                settings.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("OpenAI", "https://openai.com"));
-                var pubg = MonitorTarget.CreateBuiltIn("PUBG", "https://www.pubg.com");
-                pubg.Enabled = false; // выключен по умолчанию чтобы не спамить, включается пресетом
-                settings.MonitorTargets.Add(pubg);
-                return;
-            }
-            Ensure("YouTube", "https://www.youtube.com/generate_204");
-            Ensure("Discord", "https://discord.com/api/v9/gateway");
-            Ensure("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt");
-            Ensure("ChatGPT", "https://chatgpt.com");
-            Ensure("OpenAI", "https://openai.com");
-            Ensure("PUBG", "https://www.pubg.com");
-            // миграция старого невалидного front.pubg.com -> www.pubg.com
-            var oldPubg = settings.MonitorTargets.FirstOrDefault(x => x.Host.Equals("front.pubg.com", StringComparison.OrdinalIgnoreCase));
-            if (oldPubg != null)
-            {
-                oldPubg.Url = "https://www.pubg.com";
-                oldPubg.Host = "www.pubg.com";
-                oldPubg.Name = "PUBG";
-                oldPubg.LastStatusText = "";
-                oldPubg.LastDetails = "";
+                if (settings.MonitorTargets.Any(x => x.Host.Equals(host, StringComparison.OrdinalIgnoreCase)))
+                    continue;
+                settings.MonitorTargets.Insert(0, MonitorTarget.CreateBuiltIn(name, url));
             }
         }
 

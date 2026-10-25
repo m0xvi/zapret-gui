@@ -57,7 +57,7 @@ namespace ZapretGui.ViewModels
         public UserListsViewModel(MainViewModel main)
         {
             _main = main;
-            SubTabs = new[] { "Редактор списков", "Безопасный DNS (DoH)", "Режимы фильтрации" };
+            SubTabs = new[] { "Домены", "Безопасный DNS" }; // v2.0: режимы фильтрации настраиваются на странице «Игровой режим»
             DnsProfiles = DnsManagementService.PredefinedProfiles;
             _selectedDnsProfile = DnsProfiles.FirstOrDefault() ?? DnsProfiles[0];
 

@@ -102,7 +102,7 @@ namespace ZapretGui.ViewModels
             _evaluationHistory = StrategyEvaluationHistoryStore.Load();
 
             Categories = new[] { "Все категории", "FAKE TLS AUTO", "ALT", "SIMPLE FAKE", "БАЗОВАЯ", "EXP", "АВТОКОНСТРУКТОР" };
-            SubTabs = new[] { "Каталог стратегий", "Конструктор параметров", "Умный автоподбор", "Пул TLS SNI", "Контрольные адреса", "🌐 Сеть", "🧩 Матрица 92" };
+            SubTabs = new[] { "Каталог" }; // v2.0: конструктор, автоподбор, SNI-пул, targets, сеть и матрица убраны из UI
 
             // Инициализация контрольных адресов
             TargetEndpoints = new ObservableCollection<MonitorTarget>(main.Settings.MonitorTargets);

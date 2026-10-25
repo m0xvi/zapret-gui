@@ -21,14 +21,11 @@
     <Description>Удобный графический интерфейс для zapret-discord-youtube</Description>
     <Company>Zapret GUI community</Company>
     <Copyright>MIT License</Copyright>
-    <Version>1.32.0</Version>
-    <AssemblyVersion>1.32.0.0</AssemblyVersion>
-    <FileVersion>1.32.0.0</FileVersion>
-    <InformationalVersion>1.32.0</InformationalVersion>
-    <Version>1.35.3</Version>
-    <AssemblyVersion>1.35.3.0</AssemblyVersion>
-    <FileVersion>1.35.3.0</FileVersion>
-    <InformationalVersion>1.35.3</InformationalVersion>
+    <!-- Единственный источник версии: CI берёт первое значение <Version> и публикует релиз с этим номером. -->
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <InformationalVersion>2.0.0</InformationalVersion>
 
     <!-- Позволяет собирать проект не только на Windows (например, в CI на Linux) -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>

@@ -189,20 +189,17 @@ namespace ZapretGui.ViewModels
                 ProfileAutoSwitch.Start();
             }
 
+            // v2.0: плоское меню из 6 разделов — без групп-заголовков и подсказок под пунктами.
             NavItems = new ObservableCollection<NavItem>
             {
-                new() { Key = "group-main", Title = "ОСНОВНОЕ", IsSectionHeader = true },
-                new() { Key = "home", Title = "Обзор", Icon = "\uE80F", Hint = "Состояние обхода" },
-                new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D", Hint = "Выбор и тестирование стратегий" },
-                new() { Key = "game-mode", Title = "Игровой режим", Icon = "\uE7FC", Hint = "Всё для игр — фильтр, галочки игр, Phasmophobia/PUBG фикс" },
-                new() { Key = "group-checks", Title = "ПРОВЕРКИ", IsSectionHeader = true },
-                new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F", Hint = "Экспресс, DPI, Deep Check и результаты" },
-                new() { Key = "group-data", Title = "СПИСКИ И ФИЛЬТРЫ", IsSectionHeader = true },
-                new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD", Hint = "Домены, ipset и игровой фильтр" },
-                new() { Key = "group-system", Title = "СИСТЕМА", IsSectionHeader = true },
-                new() { Key = "settings", Title = "Настройки", Icon = "\uE713", Hint = "Конфигурация, журнал и о программе" },
+                new() { Key = "home", Title = "Обзор", Icon = "\uE80F" },
+                new() { Key = "strategies", Title = "Стратегии", Icon = "\uE71D" },
+                new() { Key = "game-mode", Title = "Игровой режим", Icon = "\uE7FC" },
+                new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F" },
+                new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD" },
+                new() { Key = "settings", Title = "Настройки", Icon = "\uE713" },
             };
-            _selectedNav = NavItems[1];
+            _selectedNav = NavItems[0];
 
             _isAdmin = Shell.IsAdmin();
 
@@ -213,7 +210,7 @@ namespace ZapretGui.ViewModels
             ToggleSummarySheetCommand = new RelayCommand(ToggleSummarySheet);
             NavigateUpdatesCommand = new RelayCommand(() => Navigate("updates"));
             NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
-            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 3; Navigate("diagnostics"); });
+            NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 1; Navigate("diagnostics"); });
             NavigateStrategiesCommand = new RelayCommand(() => Navigate("strategies"));
             NavigateMonitoringCommand = new RelayCommand(() => Navigate("monitoring"));
             NavigateActiveCheckCommand = new RelayCommand(NavigateToActiveCheck);
@@ -235,20 +232,6 @@ namespace ZapretGui.ViewModels
             var toolbarInterval = Math.Clamp(Settings.ToolbarMetricsIntervalSeconds, 15, 300);
             _toolbarMetricsTimer = new DispatcherTimer(TimeSpan.FromSeconds(toolbarInterval), DispatcherPriority.Background, OnToolbarMetricsTick, Application.Current.Dispatcher);
             if (Settings.ToolbarMetricsEnabled) _toolbarMetricsTimer.Start();
-            // Создаём окно метрик на панели задач (как в MSI Afterburner) — рядом с трей-иконками
-            try
-            {
-                Application.Current.Dispatcher.InvokeAsync(() =>
-                {
-                    try
-                    {
-                        _taskbarMetricsWindow = new Views.TaskbarMetricsWindow { DataContext = this };
-                        if (Settings.ToolbarMetricsEnabled) { _taskbarMetricsWindow.Show(); _taskbarMetricsWindow.UpdatePosition(); }
-                    }
-                    catch {}
-                });
-            }
-            catch {}
         }
 
         public AppSettings Settings { get; }
@@ -579,14 +562,9 @@ namespace ZapretGui.ViewModels
 
         private void NavigateToActiveCheck()
         {
-            if (Diagnostics.IsDpiRunning)
+            if (Diagnostics.IsDpiRunning || DeepCheck.IsRunning)
             {
-                Diagnostics.SelectedSubTab = 1;
-                Navigate("diagnostics");
-            }
-            else if (DeepCheck.IsRunning)
-            {
-                Diagnostics.SelectedSubTab = 2;
+                Diagnostics.SelectedSubTab = 0;
                 Navigate("diagnostics");
             }
             else if (StrategiesPage.IsTestingAll || StrategiesPage.IsEvaluatingCandidates)
@@ -595,7 +573,7 @@ namespace ZapretGui.ViewModels
             }
             else if (Diagnostics.IsRunning)
             {
-                Diagnostics.SelectedSubTab = 3;
+                Diagnostics.SelectedSubTab = 1;
                 Navigate("diagnostics");
             }
             else if (Monitoring.IsBusy)
@@ -641,9 +619,9 @@ namespace ZapretGui.ViewModels
                 var tab = key switch
                 {
                     "monitoring" => 0,
-                    "dpi" => 1,
-                    "deep-check" => 2,
-                    "results" => 4,
+                    "dpi" => 0,
+                    "deep-check" => 0,
+                    "results" => 2,
                     _ => 0
                 };
                 Diagnostics.SelectedSubTab = tab;
@@ -653,7 +631,10 @@ namespace ZapretGui.ViewModels
             foreach (var item in NavItems)
             {
                 if (item.Key != key) continue;
-                SelectedNav = item;
+                // Если раздел уже выбран, событие изменения не сработает — а вернуться на страницу
+                // из «О программе»/«Обновлений» нужно. Поэтому показываем её принудительно.
+                if (ReferenceEquals(SelectedNav, item)) NavChanged?.Invoke(key);
+                else SelectedNav = item;
                 return;
             }
 
