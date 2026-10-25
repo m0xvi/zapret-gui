@@ -22,6 +22,7 @@
     <Compile Include="..\..\src\ZapretGUI\Core\SniFakePoolManager.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\BypassArgumentBuilder.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\ConnectionTester.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\TargetsTxtLoader.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticModels.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\EngineConsistency.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\EngineFileUpdater.cs" />

@@ -32,7 +32,13 @@ namespace ZapretGui.ViewModels
         private string? _selectedEntry;
         private string _searchText = "";
         private string _quickDomainInput = "";
+        private string _bulkPasteText = "";
         private int _selectedSubTabIndex;
+        private bool _hasUnsavedChanges;
+        private List<string> _originalEntries = new();
+        private string? _editingEntry;
+        private string _editingText = "";
+        private HashSet<string> _duplicateSet = new(StringComparer.OrdinalIgnoreCase);
         private bool _isUpdatingLists;
         private string _domainListUpdateResultText = "";
         private string _domainListUpdateResultKey = "Info";
@@ -43,6 +49,10 @@ namespace ZapretGui.ViewModels
         private string _dnsTestStatusText = "";
         private string _dnsTestStatusKey = "Info";
         private bool _isTestingDns;
+        private DnsHijackReport? _hijackReport;
+        private bool _isCheckingHijack;
+        private string _hijackSummary = "";
+        private string _hijackSummaryKey = "Info";
 
         public UserListsViewModel(MainViewModel main)
         {
@@ -113,18 +123,28 @@ namespace ZapretGui.ViewModels
 
             EntriesView = CollectionViewSource.GetDefaultView(Entries);
             EntriesView.Filter = FilterEntry;
+            if (Entries is System.Collections.Specialized.INotifyCollectionChanged incc)
+                incc.CollectionChanged += (_, _) => { Raise(nameof(IsFilteredEmpty)); Raise(nameof(IsListEmpty)); Raise(nameof(EmptyStateText)); Raise(nameof(FilteredCountText)); Raise(nameof(CountText)); };
 
-            AddEntryCommand = new RelayCommand(AddEntry);
-            QuickAddDomainCommand = new RelayCommand(QuickAddDomain, () => !string.IsNullOrWhiteSpace(QuickDomainInput));
-            EditEntryCommand = new RelayCommand(EditEntry);
-            RemoveEntryCommand = new RelayCommand(RemoveEntry, _ => SelectedEntry != null);
-            SortEntriesCommand = new RelayCommand(SortEntries, () => Entries.Count > 1);
-            DeduplicateEntriesCommand = new RelayCommand(DeduplicateEntries, () => Entries.Count > 0);
+            ClearSearchCommand = new RelayCommand(() => SearchText = "");
+            CopyFingerprintHintCommand = new RelayCommand(() => { try { System.Windows.Clipboard.SetText(ListPath); Status = $"Путь скопирован: {ListPath}"; } catch {} });
+            BulkAddCommand = new RelayCommand(BulkAdd, () => !string.IsNullOrWhiteSpace(BulkPasteText) && CanEditCurrentList);
+
+            AddEntryCommand = new RelayCommand(AddEntry, () => CanEditCurrentList);
+            QuickAddDomainCommand = new RelayCommand(QuickAddDomain, () => !string.IsNullOrWhiteSpace(QuickDomainInput) && CanEditCurrentList);
+            EditEntryCommand = new RelayCommand(EditEntry, _ => CanEditCurrentList);
+            RemoveEntryCommand = new RelayCommand(RemoveEntry, _ => SelectedEntry != null && CanEditCurrentList);
+            SortEntriesCommand = new RelayCommand(SortEntries, () => Entries.Count > 1 && CanEditCurrentList);
+            DeduplicateEntriesCommand = new RelayCommand(DeduplicateEntries, () => Entries.Count > 0 && CanEditCurrentList);
             OpenInNotepadCommand = new RelayCommand(() => Shell.OpenInNotepad(ListPath));
             ExportListCommand = new RelayCommand(ExportList, () => Entries.Count > 0);
-            ImportListCommand = new RelayCommand(ImportList);
-            SaveCommand = new RelayCommand(Save);
+            ImportListCommand = new RelayCommand(ImportList, () => CanEditCurrentList);
+            SaveCommand = new RelayCommand(Save, () => HasUnsavedChanges && CanEditCurrentList);
+            CancelChangesCommand = new RelayCommand(CancelChanges, () => HasUnsavedChanges);
             ReloadCommand = new RelayCommand(LoadEntries);
+            StartInlineEditCommand = new RelayCommand(StartInlineEdit, p => p is string && CanEditCurrentList);
+            CommitEditCommand = new RelayCommand(CommitInlineEdit, () => IsEditing && !string.IsNullOrWhiteSpace(EditingText));
+            CancelEditCommand = new RelayCommand(CancelInlineEdit, () => IsEditing);
             OpenFolderCommand = new RelayCommand(() => Shell.OpenFolder(ListsFolder));
             RestartBypassCommand = new AsyncRelayCommand(RestartBypassAsync);
             UpdateListsFromGithubCommand = new AsyncRelayCommand(UpdateListsFromGithubAsync, () => !IsUpdatingLists);
@@ -134,6 +154,8 @@ namespace ZapretGui.ViewModels
             ResetDnsToDhcpCommand = new AsyncRelayCommand(ResetDnsToDhcpAsync);
             TestDnsServerCommand = new AsyncRelayCommand(TestDnsServerAsync, () => !IsTestingDns);
             RefreshCurrentDnsCommand = new RelayCommand(RefreshCurrentDns);
+            CheckHijackCommand = new AsyncRelayCommand(CheckHijackAsync, () => !IsCheckingHijack);
+            ApplySecureDnsCommand = new AsyncRelayCommand(ApplySecureDnsAsync, () => HijackReport?.HasHijack == true);
             ApplyGameFilterPortsCommand = new AsyncRelayCommand(ApplyGameFilterPortsAsync);
 
             RefreshCurrentDns();
@@ -174,6 +196,10 @@ namespace ZapretGui.ViewModels
                 {
                     EntriesView.Refresh();
                     Raise(nameof(CountText));
+                    Raise(nameof(FilteredCountText));
+                    Raise(nameof(IsFilteredEmpty));
+                    Raise(nameof(IsListEmpty));
+                    Raise(nameof(EmptyStateText));
                 }
             }
         }
@@ -190,6 +216,74 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        public string BulkPasteText
+        {
+            get => _bulkPasteText;
+            set
+            {
+                if (Set(ref _bulkPasteText, value ?? ""))
+                {
+                    (BulkAddCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    Raise(nameof(BulkLineCountText));
+                    Raise(nameof(BulkDetailedCountText));
+                    Raise(nameof(BulkPreviewItems));
+                    Raise(nameof(BulkHasPreview));
+                }
+            }
+        }
+
+        public string BulkLineCountText
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(BulkPasteText)) return "Вставьте список доменов (по одному в строке)";
+                var lines = BulkPasteText.Split(new[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries).Length;
+                return $"{lines} строк готово к добавлению";
+            }
+        }
+
+        public string BulkDetailedCountText
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(BulkPasteText)) return "Поддерживаются https://, пробелы и пустые строки — дубликаты пропускаются";
+                var lines = BulkPasteText.Split(new[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
+                var added = 0; var skipped = 0; var invalid = 0;
+                foreach (var raw in lines)
+                {
+                    var clean = CleanDomain(raw);
+                    if (string.IsNullOrWhiteSpace(clean)) { skipped++; continue; }
+                    if (!IsValidListEntry(clean)) { invalid++; continue; }
+                    if (Entries.Any(e => e.Equals(clean, StringComparison.OrdinalIgnoreCase))) { skipped++; continue; }
+                    added++;
+                }
+                return $"{lines.Length} строк • Новых: {added} • Дубликатов: {skipped} • Невалидных: {invalid}";
+            }
+        }
+
+        public IEnumerable<string> BulkPreviewItems
+        {
+            get
+            {
+                if (string.IsNullOrWhiteSpace(BulkPasteText)) return Array.Empty<string>();
+                var lines = BulkPasteText.Split(new[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
+                var res = new List<string>();
+                foreach (var raw in lines)
+                {
+                    if (res.Count >= 8) break;
+                    var clean = CleanDomain(raw);
+                    if (string.IsNullOrWhiteSpace(clean)) continue;
+                    if (!IsValidListEntry(clean)) continue;
+                    if (Entries.Any(e => e.Equals(clean, StringComparison.OrdinalIgnoreCase))) continue;
+                    if (res.Contains(clean, StringComparer.OrdinalIgnoreCase)) continue;
+                    res.Add(clean);
+                }
+                return res;
+            }
+        }
+
+        public bool BulkHasPreview => BulkPreviewItems.Any();
+
         public string CountText
         {
             get
@@ -199,6 +293,77 @@ namespace ZapretGui.ViewModels
                 return filtered == total ? $"Всего: {total}" : $"Показано: {filtered} из {total}";
             }
         }
+
+        public string FilteredCountText => $"{EntriesView.Cast<object>().Count()} из {Entries.Count}";
+        public bool IsFilteredEmpty => Entries.Count > 0 && EntriesView.IsEmpty;
+        public bool IsListEmpty => Entries.Count == 0 && string.IsNullOrWhiteSpace(SearchText);
+        public string EmptyStateText => IsFilteredEmpty ? "Ничего не найдено — измените запрос или нажмите «Сбросить поиск»." : "Список пуст. Добавьте первый домен через поле ввода.";
+
+
+        public bool HasUnsavedChanges
+        {
+            get => _hasUnsavedChanges;
+            private set
+            {
+                if (Set(ref _hasUnsavedChanges, value))
+                {
+                    Raise(nameof(SaveVisible));
+                    (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public bool SaveVisible => HasUnsavedChanges;
+        public bool IsBuiltInList => SelectedListKey.StartsWith("built-in", StringComparison.OrdinalIgnoreCase);
+        public bool CanEditCurrentList => !IsBuiltInList;
+
+        public string? EditingEntry
+        {
+            get => _editingEntry;
+            set
+            {
+                if (Set(ref _editingEntry, value))
+                {
+                    Raise(nameof(IsEditing));
+                    (CommitEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (CancelEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public string EditingText
+        {
+            get => _editingText;
+            set
+            {
+                if (Set(ref _editingText, value ?? ""))
+                    (CommitEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        public bool IsEditing => !string.IsNullOrEmpty(EditingEntry);
+
+        public string FileInfoText
+        {
+            get
+            {
+                try
+                {
+                    if (!File.Exists(ListPath)) return "Файл ещё не создан";
+                    var info = new FileInfo(ListPath);
+                    return $"{info.Length} байт · изменён {info.LastWriteTime:dd.MM.yyyy HH:mm} · {Entries.Count} строк";
+                }
+                catch { return ""; }
+            }
+        }
+
+        public int DuplicateCount => _duplicateSet.Count;
+        public int InvalidCount => Entries.Count(e => !IsValidListEntry(e));
+
+        public bool HasDuplicates => DuplicateCount > 0;
+        public bool HasInvalid => InvalidCount > 0;
+
 
         public string[] GameFilterOptions { get; } = { "Выключен (только стандартные порты)", "TCP + UDP (игры и сервисы, порты > 1023)", "Только TCP", "Только UDP" };
         public string[] IpsetOptions { get; } = { "По списку ipset-all.txt (рекомендуется)", "Все IP / Any (максимальный охват)", "Без фильтрации IP / None (все адреса)" };
@@ -321,6 +486,18 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(SelectedList));
                 Raise(nameof(ListPath));
                 Raise(nameof(HasEntries));
+                Raise(nameof(IsBuiltInList));
+                Raise(nameof(CanEditCurrentList));
+                Raise(nameof(FileInfoText));
+                (AddEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (QuickAddDomainCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (EditEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (RemoveEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (SortEntriesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (DeduplicateEntriesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (ImportListCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                (StartInlineEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
             }
         }
 
@@ -412,6 +589,61 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        public DnsHijackReport? HijackReport
+        {
+            get => _hijackReport;
+            private set
+            {
+                if (Set(ref _hijackReport, value))
+                {
+                    Raise(nameof(HijackReportVisible));
+                    Raise(nameof(HijackSummary));
+                    Raise(nameof(HijackSummaryKey));
+                    (ApplySecureDnsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                }
+            }
+        }
+
+        public bool HijackReportVisible => HijackReport != null;
+
+        public string HijackSummary
+        {
+            get => _hijackSummary;
+            private set => Set(ref _hijackSummary, value);
+        }
+
+        public string HijackSummaryKey
+        {
+            get => _hijackSummaryKey;
+            private set => Set(ref _hijackSummaryKey, value);
+        }
+
+        public bool IsCheckingHijack
+        {
+            get => _isCheckingHijack;
+            private set
+            {
+                if (Set(ref _isCheckingHijack, value))
+                {
+                    (CheckHijackCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    Raise(nameof(IsCheckingHijack));
+                }
+            }
+        }
+
+        public string HijackCheckedAtText
+        {
+            get
+            {
+                if (Settings.LastDnsHijackCheckedAt == null) return "Ещё не проверялось";
+                return $"Последняя проверка: {Settings.LastDnsHijackCheckedAt:dd.MM.yyyy HH:mm} · {Settings.LastDnsHijackSummary}";
+            }
+        }
+
+
+        public ICommand ClearSearchCommand { get; }
+        public ICommand CopyFingerprintHintCommand { get; }
+        public ICommand BulkAddCommand { get; }
         public ICommand AddEntryCommand { get; }
         public ICommand QuickAddDomainCommand { get; }
         public ICommand EditEntryCommand { get; }
@@ -422,16 +654,22 @@ namespace ZapretGui.ViewModels
         public ICommand ExportListCommand { get; }
         public ICommand ImportListCommand { get; }
         public ICommand SaveCommand { get; }
+        public ICommand CancelChangesCommand { get; }
         public ICommand ReloadCommand { get; }
         public ICommand OpenFolderCommand { get; }
         public ICommand RestartBypassCommand { get; }
         public ICommand UpdateListsFromGithubCommand { get; }
         public ICommand ApplyGameFilterPortsCommand { get; }
+        public ICommand StartInlineEditCommand { get; }
+        public ICommand CommitEditCommand { get; }
+        public ICommand CancelEditCommand { get; }
 
         public ICommand ApplyDnsProfileCommand { get; }
         public ICommand ResetDnsToDhcpCommand { get; }
         public ICommand TestDnsServerCommand { get; }
         public ICommand RefreshCurrentDnsCommand { get; }
+        public ICommand CheckHijackCommand { get; }
+        public ICommand ApplySecureDnsCommand { get; }
 
         private bool FilterEntry(object item)
         {
@@ -440,10 +678,54 @@ namespace ZapretGui.ViewModels
             return str.IndexOf(SearchText.Trim(), StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
+        public bool IsValidListEntry(string entry)
+        {
+            if (string.IsNullOrWhiteSpace(entry)) return false;
+            var s = entry.Trim();
+            if (s.Length < 3 || s.Length > 253) return false;
+            if (s.Contains(' ') || s.Contains('\t')) return false;
+            // Разрешаем домены, IP, префиксы с * и / для сетей
+            if (s.StartsWith(".") || s.EndsWith(".") || s.Contains("..")) return false;
+            // Только допустимые символы
+            foreach (var ch in s)
+            {
+                if (char.IsLetterOrDigit(ch) || ch == '.' || ch == '-' || ch == '_' || ch == '*' || ch == '/' || ch == ':') continue;
+                return false;
+            }
+            return true;
+        }
+
+        public bool IsDuplicate(string entry)
+        {
+            return _duplicateSet.Contains(entry);
+        }
+
+        private void RebuildDuplicateSet()
+        {
+            _duplicateSet = Entries.GroupBy(e => e.Trim(), StringComparer.OrdinalIgnoreCase)
+                .Where(g => g.Count() > 1)
+                .Select(g => g.Key)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            Raise(nameof(DuplicateCount));
+            Raise(nameof(HasDuplicates));
+            Raise(nameof(InvalidCount));
+            Raise(nameof(HasInvalid));
+        }
+
+        private void MarkDirty()
+        {
+            var isDirty = !_originalEntries.SequenceEqual(Entries, StringComparer.OrdinalIgnoreCase);
+            HasUnsavedChanges = isDirty;
+            RebuildDuplicateSet();
+            Raise(nameof(FileInfoText));
+            Raise(nameof(HasUnsavedChanges));
+        }
+
         private void LoadEntries()
         {
             Entries.Clear();
             SelectedEntry = null;
+            EditingEntry = null;
             try
             {
                 if (File.Exists(ListPath))
@@ -453,9 +735,14 @@ namespace ZapretGui.ViewModels
                                  .Where(line => line.Length > 0))
                         Entries.Add(line);
                 }
-                Status = Entries.Count == 0
-                    ? "Список пуст. Добавьте первый домен через поле ввода."
-                    : $"Записей: {Entries.Count}. Файл: {SelectedList.FileName}";
+                _originalEntries = Entries.ToList();
+                HasUnsavedChanges = false;
+                Status = IsBuiltInList
+                    ? $"Встроенный список (только чтение): {Entries.Count} записей."
+                    : Entries.Count == 0
+                        ? "Список пуст. Добавьте первый домен через поле ввода."
+                        : $"Записей: {Entries.Count}. Файл: {SelectedList.FileName}";
+                RebuildDuplicateSet();
             }
             catch (Exception ex)
             {
@@ -463,14 +750,26 @@ namespace ZapretGui.ViewModels
             }
             Raise(nameof(HasEntries));
             Raise(nameof(CountText));
+            Raise(nameof(FilteredCountText));
+            Raise(nameof(IsFilteredEmpty));
+            Raise(nameof(IsListEmpty));
+            Raise(nameof(EmptyStateText));
+            Raise(nameof(FileInfoText));
             RaiseCommands();
         }
 
         private void QuickAddDomain()
         {
+            if (!CanEditCurrentList) return;
             if (string.IsNullOrWhiteSpace(QuickDomainInput)) return;
             var clean = CleanDomain(QuickDomainInput);
             if (string.IsNullOrWhiteSpace(clean)) return;
+
+            if (!IsValidListEntry(clean))
+            {
+                Status = $"«{clean}» имеет недопустимый формат (разрешены a-z, 0-9, . - _ * / :).";
+                return;
+            }
 
             if (Entries.Any(entry => entry.Equals(clean, StringComparison.OrdinalIgnoreCase)))
             {
@@ -481,11 +780,36 @@ namespace ZapretGui.ViewModels
             Entries.Insert(0, clean);
             SelectedEntry = clean;
             QuickDomainInput = "";
+            MarkDirty();
+            // Автосохранение для быстрого ввода остаётся, но помечаем как dirty → сразу сохраняем
             Save();
             Status = $"Домен «{clean}» успешно добавлен и сохранён в {SelectedList.FileName}!";
             Raise(nameof(HasEntries));
             Raise(nameof(CountText));
             RaiseCommands();
+        }
+
+        private void BulkAdd()
+        {
+            if (!CanEditCurrentList || string.IsNullOrWhiteSpace(BulkPasteText)) return;
+            var lines = BulkPasteText.Split(new[]{'\r','\n'}, StringSplitOptions.RemoveEmptyEntries);
+            var isLarge = lines.Length > 50;
+            if (isLarge) try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Массовое добавление", $"Обработка {lines.Length} строк — не закрывайте окно", "Проверка доменов…", 0, true, false)); } catch {}
+            var added = 0; var skipped = 0; var invalid = 0;
+            foreach (var raw in lines)
+            {
+                var clean = CleanDomain(raw);
+                if (string.IsNullOrWhiteSpace(clean)) { skipped++; continue; }
+                if (!IsValidListEntry(clean)) { invalid++; continue; }
+                if (Entries.Any(e => e.Equals(clean, StringComparison.OrdinalIgnoreCase))) { skipped++; continue; }
+                Entries.Add(clean);
+                added++;
+            }
+            if (added > 0) { MarkDirty(); Save(); }
+            BulkPasteText = "";
+            Status = $"Пачкой добавлено {added}, пропущено дубликатов {skipped}, невалидных {invalid} — {(added>0?"сохранено":"")}.";
+            Raise(nameof(HasEntries)); Raise(nameof(CountText)); RaiseCommands();
+            if (isLarge) try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private static string CleanDomain(string input)
@@ -502,6 +826,7 @@ namespace ZapretGui.ViewModels
 
         private void AddEntry()
         {
+            if (!CanEditCurrentList) return;
             var dialog = new InputDialog(
                 "Добавить запись в список",
                 "Введите домен или IP-адрес:")
@@ -512,6 +837,11 @@ namespace ZapretGui.ViewModels
 
             var value = CleanDomain(dialog.Value);
             if (string.IsNullOrWhiteSpace(value)) return;
+            if (!IsValidListEntry(value))
+            {
+                Status = $"«{value}» — недопустимый формат.";
+                return;
+            }
             if (Entries.Any(entry => entry.Equals(value, StringComparison.OrdinalIgnoreCase)))
             {
                 Status = "Такая запись уже есть в текущем списке.";
@@ -520,6 +850,7 @@ namespace ZapretGui.ViewModels
 
             Entries.Add(value);
             SelectedEntry = value;
+            MarkDirty();
             Status = "Запись добавлена в редактор. Нажмите «Сохранить список».";
             Raise(nameof(HasEntries));
             Raise(nameof(CountText));
@@ -528,8 +859,16 @@ namespace ZapretGui.ViewModels
 
         private void EditEntry(object? parameter)
         {
+            if (!CanEditCurrentList) return;
             var oldValue = parameter as string ?? SelectedEntry;
             if (string.IsNullOrWhiteSpace(oldValue)) return;
+
+            // Если уже редактируем inline — используем его, иначе диалог
+            if (IsEditing && EditingEntry == oldValue)
+            {
+                EditingText = oldValue;
+                return;
+            }
 
             var dialog = new InputDialog(
                 "Изменить запись",
@@ -542,6 +881,11 @@ namespace ZapretGui.ViewModels
 
             var newValue = CleanDomain(dialog.Value);
             if (string.IsNullOrWhiteSpace(newValue)) return;
+            if (!IsValidListEntry(newValue))
+            {
+                Status = $"«{newValue}» — недопустимый формат.";
+                return;
+            }
             if (Entries.Any(entry => !entry.Equals(oldValue, StringComparison.OrdinalIgnoreCase) &&
                                      entry.Equals(newValue, StringComparison.OrdinalIgnoreCase)))
             {
@@ -553,15 +897,19 @@ namespace ZapretGui.ViewModels
             if (index < 0) return;
             Entries[index] = newValue;
             SelectedEntry = newValue;
+            MarkDirty();
             Status = "Запись изменена в редакторе. Нажмите «Сохранить список».";
         }
 
         private void RemoveEntry(object? parameter)
         {
+            if (!CanEditCurrentList) return;
             var value = parameter as string ?? SelectedEntry;
             if (string.IsNullOrWhiteSpace(value)) return;
+            if (EditingEntry == value) CancelInlineEdit();
             Entries.Remove(value);
             SelectedEntry = null;
+            MarkDirty();
             Status = $"Запись «{value}» удалена из редактора. Нажмите «Сохранить список».";
             Raise(nameof(HasEntries));
             Raise(nameof(CountText));
@@ -570,14 +918,17 @@ namespace ZapretGui.ViewModels
 
         private void SortEntries()
         {
+            if (!CanEditCurrentList) return;
             var sorted = Entries.OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList();
             Entries.Clear();
             foreach (var s in sorted) Entries.Add(s);
+            MarkDirty();
             Status = "Список отсортирован по алфавиту (A-Z). Нажмите «Сохранить список».";
         }
 
         private void DeduplicateEntries()
         {
+            if (!CanEditCurrentList) return;
             var initial = Entries.Count;
             var distinct = Entries
                 .Where(s => !string.IsNullOrWhiteSpace(s))
@@ -588,6 +939,7 @@ namespace ZapretGui.ViewModels
             Entries.Clear();
             foreach (var s in distinct) Entries.Add(s);
             var removed = initial - distinct.Count;
+            MarkDirty();
             Status = removed > 0
                 ? $"Удалено дубликатов и пустых строк: {removed}. Нажмите «Сохранить список»."
                 : "Дубликатов не найдено.";
@@ -615,6 +967,7 @@ namespace ZapretGui.ViewModels
 
         private void ImportList()
         {
+            if (!CanEditCurrentList) return;
             try
             {
                 var dialog = new OpenFileDialog
@@ -624,8 +977,12 @@ namespace ZapretGui.ViewModels
                 if (dialog.ShowDialog() != true) return;
 
                 var added = 0;
-                foreach (var line in File.ReadLines(dialog.FileName).Select(CleanDomain).Where(s => s.Length > 0))
+                var skippedInvalid = 0;
+                foreach (var raw in File.ReadLines(dialog.FileName))
                 {
+                    var line = CleanDomain(raw);
+                    if (line.Length == 0) continue;
+                    if (!IsValidListEntry(line)) { skippedInvalid++; continue; }
                     if (!Entries.Any(e => e.Equals(line, StringComparison.OrdinalIgnoreCase)))
                     {
                         Entries.Add(line);
@@ -633,7 +990,8 @@ namespace ZapretGui.ViewModels
                     }
                 }
 
-                Status = $"Импортировано {added} новых записей. Нажмите «Сохранить список».";
+                if (added > 0) MarkDirty();
+                Status = $"Импортировано {added} новых записей{(skippedInvalid>0? $", пропущено невалидных: {skippedInvalid}":"")}. {(added>0?"Нажмите «Сохранить список».":"")}";
                 Raise(nameof(HasEntries));
                 Raise(nameof(CountText));
                 RaiseCommands();
@@ -646,16 +1004,81 @@ namespace ZapretGui.ViewModels
 
         private void Save()
         {
+            if (IsBuiltInList) return;
             try
             {
                 Directory.CreateDirectory(ListsFolder);
+                // Валидация перед сохранением: отфильтруем пустые, проверим формат
+                var invalid = Entries.Where(e => !IsValidListEntry(e)).ToList();
+                if (invalid.Count > 0)
+                {
+                    Status = $"Есть невалидные записи ({invalid.Count}): {string.Join(", ", invalid.Take(3))}{(invalid.Count>3?"…":"")} — исправьте перед сохранением.";
+                    return;
+                }
                 File.WriteAllLines(ListPath, Entries);
+                _originalEntries = Entries.ToList();
+                HasUnsavedChanges = false;
+                RebuildDuplicateSet();
                 Status = $"Список «{SelectedList.FileName}» успешно сохранён ({Entries.Count} записей). Перезапустите обход для применения.";
+                Raise(nameof(FileInfoText));
             }
             catch (Exception ex)
             {
                 Status = "Не удалось сохранить список: " + ex.Message;
             }
+        }
+
+        private void CancelChanges()
+        {
+            Entries.Clear();
+            foreach (var s in _originalEntries) Entries.Add(s);
+            HasUnsavedChanges = false;
+            EditingEntry = null;
+            RebuildDuplicateSet();
+            Status = "Несохранённые изменения отменены.";
+            Raise(nameof(HasEntries));
+            Raise(nameof(CountText));
+            Raise(nameof(FileInfoText));
+            RaiseCommands();
+        }
+
+        private void StartInlineEdit(object? parameter)
+        {
+            if (!CanEditCurrentList) return;
+            var value = parameter as string ?? SelectedEntry;
+            if (string.IsNullOrWhiteSpace(value)) return;
+            EditingEntry = value;
+            EditingText = value;
+        }
+
+        private void CommitInlineEdit()
+        {
+            if (!IsEditing || string.IsNullOrWhiteSpace(EditingText)) return;
+            var oldValue = EditingEntry!;
+            var newValue = CleanDomain(EditingText);
+            if (string.IsNullOrWhiteSpace(newValue) || !IsValidListEntry(newValue))
+            {
+                Status = $"«{EditingText}» — недопустимый формат.";
+                return;
+            }
+            if (!oldValue.Equals(newValue, StringComparison.OrdinalIgnoreCase) &&
+                Entries.Any(e => !e.Equals(oldValue, StringComparison.OrdinalIgnoreCase) && e.Equals(newValue, StringComparison.OrdinalIgnoreCase)))
+            {
+                Status = "Такая запись уже есть в списке.";
+                return;
+            }
+            var idx = Entries.IndexOf(oldValue);
+            if (idx >= 0) Entries[idx] = newValue;
+            EditingEntry = null;
+            SelectedEntry = newValue;
+            MarkDirty();
+            Status = "Запись изменена. Нажмите «Сохранить список».";
+        }
+
+        private void CancelInlineEdit()
+        {
+            EditingEntry = null;
+            EditingText = "";
         }
 
         private async Task ApplyGameFilterPortsAsync()
@@ -667,7 +1090,9 @@ namespace ZapretGui.ViewModels
             _main.Home.ShowSuccess($"✅ GameFilter: порты обновлены (UDP: {udpPort}).");
             if (_main.Bypass.GetStatus().IsRunning)
             {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("GameFilter", "Перезапуск обхода для применения портов…", udpPort, 0, true, false)); } catch {}
                 await RestartBypassAsync();
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -683,10 +1108,13 @@ namespace ZapretGui.ViewModels
             Status = "Перезапускаю обход для применения обновлённых списков…";
             var strat = _main.Strategies.Find(status.StrategyName) ?? _main.Strategies.Recommended;
             if (strat == null) return;
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Перезапуск обхода", Status, strat.Name, 0, true, false)); } catch {}
 
-            var res = await _main.Bypass.StartAsync(strat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
+            var res = await _main.Bypass.SwitchToStrategyAsync(strat, EngineService.GetGameFilterMode(Settings.EnginePath), Settings.ShowWinwsConsole);
             Status = res.Ok ? "Обход успешно перезапущен с новыми списками!" : "Ошибка перезапуска: " + res.Message;
             _main.Home.RefreshStatus();
+            if (!res.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Перезапуск — ошибка", res.Message)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private async Task UpdateListsFromGithubAsync()
@@ -695,10 +1123,11 @@ namespace ZapretGui.ViewModels
             IsUpdatingLists = true;
             DomainListUpdateResultText = "Загружаю свежие списки с GitHub…";
             DomainListUpdateResultKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Обновление списков", DomainListUpdateResultText, "Загрузка с GitHub…", 0, true, false)); } catch {}
 
             try
             {
-                var progress = new Progress<string>(msg => DomainListUpdateResultText = msg);
+                var progress = new Progress<string>(msg => { DomainListUpdateResultText = msg; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(msg, "Списки…", null, true)); } catch {} });
                 var res = await DomainListUpdater.UpdateAllAsync(Settings.EnginePath, progress);
                 DomainListUpdateResultText = res.Message;
                 DomainListUpdateResultKey = res.Ok ? "Success" : "Danger";
@@ -706,10 +1135,17 @@ namespace ZapretGui.ViewModels
                 {
                     LoadEntries();
                 }
+                if (!res.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Списки — ошибка", res.Message)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Списки — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsUpdatingLists = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
         }
 
@@ -725,11 +1161,14 @@ namespace ZapretGui.ViewModels
             if (SelectedDnsProfile == null) return;
             DnsTestStatusText = $"Применяю {SelectedDnsProfile.Name} к сетевому адаптеру…";
             DnsTestStatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Настройка DNS", DnsTestStatusText, SelectedDnsProfile.PrimaryServer ?? "", 0, true, false)); } catch {}
 
             var result = await DnsManagementService.ApplyDnsProfileAsync(SelectedDnsProfile);
             DnsTestStatusText = result.Message;
             DnsTestStatusKey = result.Ok ? "Success" : "Danger";
             RefreshCurrentDns();
+            if (!result.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS — ошибка", result.Message)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private async Task ResetDnsToDhcpAsync()
@@ -737,11 +1176,14 @@ namespace ZapretGui.ViewModels
             var dhcpProfile = DnsProfiles.FirstOrDefault(p => p.IsDhcp) ?? new DnsProfile { Id = "dhcp", Name = "Автоматический DNS (DHCP)" };
             DnsTestStatusText = "Сбрасываю DNS на автоматический режим (DHCP)…";
             DnsTestStatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Сброс DNS", DnsTestStatusText, "DHCP…", 0, true, false)); } catch {}
 
             var result = await DnsManagementService.ApplyDnsProfileAsync(dhcpProfile);
             DnsTestStatusText = result.Message;
             DnsTestStatusKey = result.Ok ? "Success" : "Danger";
             RefreshCurrentDns();
+            if (!result.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS — ошибка", result.Message)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private async Task TestDnsServerAsync()
@@ -750,6 +1192,7 @@ namespace ZapretGui.ViewModels
             IsTestingDns = true;
             DnsTestStatusText = "Тестирую скорость ответа и резолвинг DNS…";
             DnsTestStatusKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Тест DNS", DnsTestStatusText, SelectedDnsProfile?.PrimaryServer ?? "", 0, true, false)); } catch {}
 
             try
             {
@@ -759,15 +1202,73 @@ namespace ZapretGui.ViewModels
                     ? $"DNS проверен успешно: задержка {res.Milliseconds} мс (резолв youtube.com -> {res.ResolvedIp})"
                     : $"Ошибка DNS: {res.Message}";
                 DnsTestStatusKey = res.Ok ? "Success" : "Danger";
+                if (!res.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS тест — ошибка", res.Message)); } catch {} return; }
+            }
+            catch (Exception ex)
+            {
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS тест — ошибка", ex.Message)); } catch {}
+                throw;
             }
             finally
             {
                 IsTestingDns = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
             }
+        }
+
+        private async Task CheckHijackAsync()
+        {
+            if (IsCheckingHijack) return;
+            IsCheckingHijack = true;
+            HijackSummary = "Проверяю DNS на подмену (сравнение системный vs Cloudflare DoH)…";
+            HijackSummaryKey = "Info";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Проверка подмены DNS", HijackSummary, "Сравнение с Cloudflare DoH…", 0, true, false)); } catch {}
+            try
+            {
+                var progress = new Progress<string>(msg => { HijackSummary = msg; try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(msg, "DNS hijack…", null, true)); } catch {} });
+                var report = await DnsManagementService.CheckHijackAsync(progress);
+                HijackReport = report;
+                HijackSummary = report.Summary;
+                HijackSummaryKey = report.StatusKey;
+                Settings.LastDnsHijackSummary = report.Summary;
+                Settings.LastDnsHijackCheckedAt = DateTime.Now;
+                SettingsStore.Save(Settings);
+                Raise(nameof(HijackCheckedAtText));
+            }
+            catch (Exception ex)
+            {
+                HijackSummary = "Ошибка проверки подмены: " + ex.Message;
+                HijackSummaryKey = "Danger";
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS hijack — ошибка", ex.Message)); } catch {}
+                return;
+            }
+            finally
+            {
+                IsCheckingHijack = false;
+                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
+            }
+        }
+
+        private async Task ApplySecureDnsAsync()
+        {
+            if (HijackReport == null || !HijackReport.HasHijack) return;
+            var cloudflare = DnsManagementService.PredefinedProfiles.FirstOrDefault(p => p.Id == "cloudflare");
+            if (cloudflare == null) return;
+            DnsTestStatusText = "Обнаружена подмена — применяю защищённый Cloudflare DNS…";
+            DnsTestStatusKey = "Warning";
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Защита DNS", DnsTestStatusText, "Cloudflare…", 0, true, false)); } catch {}
+            var res = await DnsManagementService.ApplyDnsProfileAsync(cloudflare);
+            DnsTestStatusText = res.Message;
+            DnsTestStatusKey = res.Ok ? "Success" : "Danger";
+            RefreshCurrentDns();
+            if (res.Ok) SelectedDnsProfile = cloudflare;
+            if (!res.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("DNS — ошибка", res.Message)); } catch {} return; }
+            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
         }
 
         private void RaiseCommands()
         {
+            (ClearSearchCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (AddEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (QuickAddDomainCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (EditEntryCommand as RelayCommand)?.RaiseCanExecuteChanged();
@@ -775,6 +1276,10 @@ namespace ZapretGui.ViewModels
             (SortEntriesCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (DeduplicateEntriesCommand as RelayCommand)?.RaiseCanExecuteChanged();
             (ExportListCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (SaveCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (CancelChangesCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (ImportListCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            (StartInlineEditCommand as RelayCommand)?.RaiseCanExecuteChanged();
         }
     }
 }

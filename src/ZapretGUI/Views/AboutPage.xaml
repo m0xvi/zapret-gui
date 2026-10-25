@@ -5,6 +5,8 @@
     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,0">
         <StackPanel Margin="24,20,20,26" MaxWidth="980" HorizontalAlignment="Left">
 
+            <Button Style="{StaticResource GhostButton}" Content="← Назад в Настройки" Padding="10,4" FontSize="11" HorizontalAlignment="Left" Margin="0,0,0,12"
+                    Click="BackToSettings_Click" ToolTip="Вернуться в Настройки" />
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />

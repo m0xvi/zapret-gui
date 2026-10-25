@@ -1,0 +1,108 @@
+<UserControl x:Class="ZapretGui.Views.GameModePage"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
+             Background="Transparent">
+    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,12" CanContentScroll="False">
+        <StackPanel Margin="24,20,20,32" MaxWidth="980">
+
+            <!-- Заголовок -->
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                    <TextBlock Style="{StaticResource DisplayText}" Text="Игровой режим"/>
+                    <TextBlock Style="{StaticResource MutedText}" Text="Отметь какие игры не трогать. Галочка — исключим UDP, сохранишь → перезапустим обход. EU не заходит → включи «Только Discord Voice»." TextWrapping="Wrap"/>
+                </StackPanel>
+                <Button Grid.Column="1" Style="{StaticResource SecondaryButton}" Content="Обновить" Command="{Binding RefreshCommand}" VerticalAlignment="Top"/>
+            </Grid>
+
+            <Border Margin="0,12,0,0" Background="{DynamicResource SuccessSoftBrush}" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1" CornerRadius="10" Padding="12,10" Visibility="{Binding MessageVisible, Converter={StaticResource BoolToVis}}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding Message, Mode=OneWay}" TextWrapping="Wrap" Foreground="{Binding MessageKey, Converter={StaticResource SeverityBrush}}" VerticalAlignment="Center"/>
+                    <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="✕" Margin="8,0,0,0" Command="{Binding DismissMessageCommand}"/>
+                </Grid>
+            </Border>
+
+            <!-- Вкл/выкл -->
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="36" Height="36" CornerRadius="9" Background="{DynamicResource SuccessSoftBrush}" VerticalAlignment="Center">
+                            <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="18" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Игровой режим"/>
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding GameModeStatusText}" TextWrapping="Wrap" FontSize="11"/>
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding DetectionStatusText}" TextWrapping="Wrap" FontSize="11" Foreground="{Binding DetectionStatusKey, Converter={StaticResource SeverityBrush}}" FontWeight="SemiBold" Margin="0,2,0,0"/>
+                        </StackPanel>
+                        <CheckBox Grid.Column="2" Style="{StaticResource SwitchCheckBox}" IsChecked="{Binding GameModeActive, Mode=TwoWay}" Content="{Binding GameModeBadge}" VerticalAlignment="Center"/>
+                    </Grid>
+                    <WrapPanel Margin="0,12,0,0">
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Автодетект игры" IsChecked="{Binding GameDetectionEnabled, Mode=TwoWay}"/>
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Авто-включать режим" Margin="16,0,0,0" IsChecked="{Binding AutoGameModeOnLaunch, Mode=TwoWay}" IsEnabled="{Binding GameDetectionEnabled}"/>
+                    </WrapPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Фильтр -->
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="ПРОФИЛЬ ПОРТОВ"/>
+                    <TextBlock Style="{StaticResource DimText}" Text="Выбери что исключать. «Только Discord Voice» — безопаснее всего, лобби не ломает." TextWrapping="Wrap" FontSize="11" Opacity="0.85" Margin="0,2,0,0"/>
+                    <ComboBox Style="{StaticResource AppComboBox}" Margin="0,10,0,0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate>
+                            <DataTemplate>
+                                <TextBlock Text="{Binding DisplayTitle}" TextWrapping="Wrap"/>
+                            </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                    </ComboBox>
+                    <TextBlock Style="{StaticResource DimText}" Text="{Binding SelectedProfileDescription}" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="11" Opacity="0.85"/>
+                    <Button Style="{StaticResource SecondaryButton}" Content="Применить профиль" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding ApplyProfileCommand}"/>
+                </StackPanel>
+            </Border>
+
+            <!-- Игры -->
+            <Border Style="{StaticResource Card}" Margin="0,14,0,0" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="КАКИЕ ИГРЫ НЕ ТРОГАТЬ"/>
+                    <TextBlock Style="{StaticResource DimText}" Text="Галочка = добавим домены игры в список и подскажем профиль. Сохрани — перезапустим обход." TextWrapping="Wrap" FontSize="11" Opacity="0.85" Margin="0,2,0,0"/>
+                    <ItemsControl ItemsSource="{Binding GameOptions}" Margin="0,12,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Style="{StaticResource InnerCard}" Margin="0,0,0,8" Background="{DynamicResource CardBrush}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        <CheckBox Style="{StaticResource CheckBoxApp}" VerticalAlignment="Center" IsChecked="{Binding IsEnabled, Mode=TwoWay}"/>
+                                        <StackPanel Grid.Column="1" Margin="10,0,0,0" VerticalAlignment="Center">
+                                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="{Binding Name}" TextWrapping="Wrap"/>
+                                            <TextBlock Style="{StaticResource DimText}" FontSize="11" Text="{Binding Description}" TextWrapping="Wrap" Opacity="0.85" Margin="0,1,0,0"/>
+                                            <TextBlock Style="{StaticResource DimText}" FontSize="10" Text="{Binding Status}" Foreground="{DynamicResource SuccessBrush}" FontWeight="SemiBold" Visibility="{Binding Status, Converter={StaticResource StringToVis}}" Margin="0,2,0,0"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <Button Style="{StaticResource PrimaryButton}" Content="Сохранить и перезапустить обход" Margin="0,8,0,0" HorizontalAlignment="Left" Padding="18,8" Command="{Binding FixSelectedGamesCommand}"/>
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.7" TextWrapping="Wrap" Margin="0,8,0,0" Text="Если EU лобби Phasmophobia всё равно ClientTimeout → выбери профиль «Только Discord Voice» выше и нажми «Применить профиль». Азию трогать не нужно — она и так заходит."/>
+                </StackPanel>
+            </Border>
+
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

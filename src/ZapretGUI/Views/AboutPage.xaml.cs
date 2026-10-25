@@ -20,5 +20,10 @@ namespace ZapretGui.Views
 
         private void OpenLicense_Click(object sender, System.Windows.RoutedEventArgs e)
             => Shell.OpenUrl(EngineService.RepoUrl + "/blob/main/LICENSE.txt");
+
+        private void BackToSettings_Click(object sender, System.Windows.RoutedEventArgs e)
+        {
+            if (DataContext is MainViewModel vm) vm.Navigate("settings");
+        }
     }
 }

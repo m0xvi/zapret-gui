@@ -24,6 +24,35 @@ namespace ZapretGui
         {
             base.OnStartup(e);
 
+            // Фикс бага селектов в ScrollViewer: при скролле Popup остаётся на старом месте и скроллится вместе со страницей (скрин 2: метрики 60 сек)
+            // Глобально закрываем все открытые ComboBox при любом скролле
+            System.Windows.EventManager.RegisterClassHandler(typeof(System.Windows.Controls.ScrollViewer), System.Windows.Controls.ScrollViewer.ScrollChangedEvent, new System.Windows.Controls.ScrollChangedEventHandler((s, e) =>
+            {
+                if (e.VerticalChange == 0 && e.HorizontalChange == 0) return;
+                try
+                {
+                    foreach (System.Windows.Window win in System.Windows.Application.Current.Windows)
+                    {
+                        CloseOpenComboBoxes(win);
+                    }
+                }
+                catch {}
+            }));
+
+            void CloseOpenComboBoxes(System.Windows.DependencyObject depObj)
+            {
+                if (depObj == null) return;
+                int count = System.Windows.Media.VisualTreeHelper.GetChildrenCount(depObj);
+                for (int i = 0; i < count; i++)
+                {
+                    var child = System.Windows.Media.VisualTreeHelper.GetChild(depObj, i);
+                    if (child is System.Windows.Controls.ComboBox cb && cb.IsDropDownOpen)
+                        cb.IsDropDownOpen = false;
+                    else
+                        CloseOpenComboBoxes(child);
+                }
+            }
+
             // Временная копия приложения выполняет замену exe после завершения
             // основного процесса и не создаёт обычное окно.
             if (GuiUpdateService.IsUpdaterMode(e.Args))
@@ -126,6 +155,31 @@ namespace ZapretGui
                     if (installed)
                     {
                         StrategyParser.EnsureUserLists(settings.EnginePath);
+                        // Автозапуск обхода и службы вместе с программой (по просьбе пользователя)
+                        if (settings.AutoStartBypass && !settings.SafeMode && !viewModel.Bypass.GetStatus().IsRunning)
+                        {
+                            try
+                            {
+                                await window.Dispatcher.InvokeAsync(async () =>
+                                {
+                                    try
+                                    {
+                                        if (!Shell.IsAdmin()) { AppLog.Warn("Автозапуск обхода пропущен — нет прав администратора"); return; }
+                                        var strat = viewModel.Strategies.Find(settings.SelectedStrategy) ?? viewModel.Strategies.Recommended;
+                                        if (strat == null) { AppLog.Warn("Автозапуск обхода пропущен — стратегия не выбрана"); return; }
+                                        AppLog.Info($"Автозапуск обхода: {strat.Name}");
+                                        var mode = EngineService.GetGameFilterMode(settings.EnginePath);
+                                        // Если служба уже установлена — запускаем через службу, иначе обычный обход
+                                        var isSvc = viewModel.Bypass.IsServiceInstalled();
+                                        var res = isSvc
+                                            ? await viewModel.Bypass.InstallServiceAsync(strat, mode)
+                                            : await viewModel.Bypass.StartAsync(strat, mode, false);
+                                        if (!res.Ok) AppLog.Warn("Автозапуск обхода: " + res.Message);
+                                        else AppLog.Info("Автозапуск обхода — успешно");
+                                    } catch (System.Exception ex) { AppLog.Error("Ошибка автозапуска обхода: " + ex.Message); }
+                                });
+                            } catch (System.Exception ex) { AppLog.Error("Ошибка автозапуска обхода (outer): " + ex.Message); }
+                        }
                     }
 
                     if (installed && settings.AutoCheckEngineUpdates && !settings.SafeMode)

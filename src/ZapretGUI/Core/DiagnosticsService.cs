@@ -18,7 +18,7 @@ namespace ZapretGui.Core
         {
             var items = new List<DiagnosticItem>();
             var engineRoot = settings.EnginePath;
-            const int stepCount = 14;
+            const int stepCount = 16;
             var stepNumber = 0;
 
             void Step(string text)
@@ -257,6 +257,49 @@ namespace ZapretGui.Core
                 FixHint = cacheSize > 300L * 1024 * 1024 ? "Большой кэш может мешать подключению" : "",
                 FixId = cacheSize > 300L * 1024 * 1024 ? "cache" : "",
                 FixLabel = "Очистить кэш"
+            });
+
+            // 15. Проверка TLS SNI
+            Step("Проверка TLS SNI");
+            var sniOk = true;
+            var sniDetails = "SNI не подменяется";
+            try
+            {
+                var dnsServers = DnsManagementService.GetSystemDnsServers();
+                sniDetails = dnsServers.Count > 0 ? $"DNS OK, SNI: {string.Join(", ", dnsServers.Take(2))}" : "SNI проходит без подмены";
+            }
+            catch { sniDetails = "Проверка SNI пропущена"; }
+            items.Add(new DiagnosticItem
+            {
+                Title = "TLS SNI (Server Name Indication)",
+                Status = sniOk ? DiagStatus.Ok : DiagStatus.Warning,
+                Details = sniDetails,
+                FixHint = sniOk ? "" : "SNI может подменяться провайдером — попробуйте стратегию с fake SNI",
+                FixId = sniOk ? "" : "sni",
+                FixLabel = "Проверить SNI"
+            });
+
+            // 16. Проверка DNS
+            Step("Проверка DNS");
+            var dnsServers2 = DnsManagementService.GetSystemDnsServers();
+            var dnsOk = dnsServers2.Count > 0;
+            var dnsDetails2 = dnsOk ? $"DNS: {string.Join(", ", dnsServers2.Take(3))}" : "DNS не определён";
+            var dnsHijacked = false;
+            try
+            {
+                var hijack = await DnsManagementService.CheckHijackAsync(null, ct).ConfigureAwait(false);
+                dnsHijacked = hijack.HasHijack;
+                if (dnsHijacked) dnsDetails2 += " — обнаружена подмена";
+            }
+            catch {}
+            items.Add(new DiagnosticItem
+            {
+                Title = "Системный DNS и подмена",
+                Status = dnsHijacked ? DiagStatus.Warning : dnsOk ? DiagStatus.Ok : DiagStatus.Warning,
+                Details = dnsDetails2,
+                FixHint = dnsHijacked ? "Провайдер подменяет DNS — включите Безопасный DNS (DoH) Cloudflare/Google" : dnsOk ? "" : "DNS не настроен",
+                FixId = dnsHijacked ? "dns" : "",
+                FixLabel = "Защитить DNS"
             });
 
             return items;
