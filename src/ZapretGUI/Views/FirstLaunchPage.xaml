@@ -2,7 +2,7 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              Background="Transparent">
-    <Grid Margin="24,20,20,20">
+    <Grid Style="{StaticResource PageRoot}">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
@@ -11,7 +11,7 @@
         </Grid.RowDefinitions>
 
         <!-- Заголовок мастера -->
-        <Grid Grid.Row="0">
+        <Grid Grid.Row="0" Style="{StaticResource PageHeader}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
@@ -21,15 +21,15 @@
                 <TextBlock Style="{StaticResource MutedText}"
                            Text="Быстрая пошаговая настройка приложения. Все параметры можно изменить позже в любой момент." />
             </StackPanel>
-            <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Button Style="{StaticResource GhostButton}" Content="Пропустить мастер"
+            <WrapPanel Grid.Column="1" Style="{StaticResource PageActions}">
+                <Button Style="{StaticResource PageActionGhost}" Content="Пропустить мастер"
                         Command="{Binding SkipWizardCommand}"
                         ToolTip="Завершить мастер с безопасными настройками по умолчанию" />
             </WrapPanel>
         </Grid>
 
         <!-- Полоса шагов (1 - 6) -->
-        <Grid Grid.Row="1" Margin="0,16,0,14">
+        <Grid Grid.Row="1" MaxWidth="1180" Margin="0,16,0,14">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="*" />
@@ -71,7 +71,7 @@
         </Grid>
 
         <!-- Содержимое текущего шага -->
-        <Border Grid.Row="2" Style="{StaticResource Card}" Padding="20,18">
+        <Border Grid.Row="2" Style="{StaticResource Card}" MaxWidth="1180" Padding="20,18">
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" PanningMode="VerticalOnly">
                 <StackPanel>
                     <Grid>
@@ -337,10 +337,10 @@
                         <TextBlock Style="{StaticResource DimText}" Text="{Binding SafeModeChoiceText}" Margin="27,4,0,0" TextWrapping="Wrap" />
 
                         <WrapPanel Margin="0,18,0,0">
-                            <Button Style="{StaticResource PrimaryButton}" Content="Завершить настройку"
+                            <Button Style="{StaticResource PageActionPrimary}" Content="Завершить настройку"
                                     Command="{Binding FinishManualCommand}"
                                     ToolTip="Сохранить настройки и перейти на главную страницу" />
-                            <Button Style="{StaticResource SecondaryButton}" Content="Установить в службу Windows"
+                            <Button Style="{StaticResource PageAction}" Content="Установить в службу Windows"
                                     Margin="10,0,0,0" Command="{Binding InstallServiceCommand}"
                                     ToolTip="Установить выбранную стратегию как автозапускаемую службу zapret" />
                         </WrapPanel>
@@ -351,20 +351,20 @@
         </Border>
 
         <!-- Нижняя навигационная панель -->
-        <Grid Grid.Row="3" Margin="0,14,0,4">
+        <Grid Grid.Row="3" MaxWidth="1180" Margin="0,14,0,4">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto" />
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
-            <Button Style="{StaticResource GhostButton}" Content="← Назад"
+            <Button Style="{StaticResource PageActionGhost}" Content="← Назад"
                     Command="{Binding PreviousCommand}" />
             <WrapPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right">
-                <Button Style="{StaticResource GhostButton}" Content="Пропустить шаг" Margin="0,0,8,0"
+                <Button Style="{StaticResource PageActionGhost}" Content="Пропустить шаг" Margin="0,0,8,0"
                         Command="{Binding SkipStepCommand}"
                         Visibility="{Binding IsSkipVisible, Converter={StaticResource BoolToVis}}"
                         ToolTip="Перейти к следующему шагу мастера" />
-                <Button Style="{StaticResource PrimaryButton}" Content="Продолжить →"
+                <Button Style="{StaticResource PageActionPrimary}" Content="Продолжить →"
                         Command="{Binding NextCommand}"
                         Visibility="{Binding IsFinishStep, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
             </WrapPanel>

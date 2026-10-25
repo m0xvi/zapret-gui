@@ -102,7 +102,7 @@ namespace ZapretGui.ViewModels
             _evaluationHistory = StrategyEvaluationHistoryStore.Load();
 
             Categories = new[] { "Все категории", "FAKE TLS AUTO", "ALT", "SIMPLE FAKE", "БАЗОВАЯ", "EXP", "АВТОКОНСТРУКТОР" };
-            SubTabs = new[] { "Каталог" }; // v2.0: конструктор, автоподбор, SNI-пул, targets, сеть и матрица убраны из UI
+            SubTabs = new[] { "Каталог", "Матрица DNS×стратегии" }; // v2.1: матрица возвращена вторым экраном
 
             // Инициализация контрольных адресов
             TargetEndpoints = new ObservableCollection<MonitorTarget>(main.Settings.MonitorTargets);
@@ -195,23 +195,21 @@ namespace ZapretGui.ViewModels
                 if (Set(ref _selectedSubTabIndex, Math.Clamp(value, 0, SubTabs.Length - 1)))
                 {
                     Raise(nameof(IsCatalogTabVisible));
-                    Raise(nameof(IsBuilderTabVisible));
-                    Raise(nameof(IsAutoTunerTabVisible));
-                    Raise(nameof(IsSniPoolTabVisible));
-                    Raise(nameof(IsTargetsTabVisible));
-                    Raise(nameof(IsNetworkTabVisible));
                     Raise(nameof(IsMatrixTabVisible));
+                    Raise(nameof(SubTabHint));
                 }
             }
         }
 
         public bool IsCatalogTabVisible => SelectedSubTabIndex == 0;
-        public bool IsBuilderTabVisible => SelectedSubTabIndex == 1;
-        public bool IsAutoTunerTabVisible => SelectedSubTabIndex == 2;
-        public bool IsSniPoolTabVisible => SelectedSubTabIndex == 3;
-        public bool IsTargetsTabVisible => SelectedSubTabIndex == 4;
-        public bool IsNetworkTabVisible => SelectedSubTabIndex == 5;
-        public bool IsMatrixTabVisible => SelectedSubTabIndex == 6;
+        public bool IsMatrixTabVisible => SelectedSubTabIndex == 1;
+
+        public string SubTabHint => SelectedSubTabIndex switch
+        {
+            0 => "Проверьте стратегию и примените её — список читается из .bat-файлов движка.",
+            1 => "Каждая стратегия × каждый DNS за один проход: находит рабочую комбинацию и применяет её.",
+            _ => ""
+        };
 
         public AppSettings Settings => _main.Settings;
         public BypassController Bypass => _main.Bypass;

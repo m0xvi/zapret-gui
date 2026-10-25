@@ -174,10 +174,18 @@ namespace ZapretGui.ViewModels
                 {
                     Raise(nameof(IsEditorTabVisible));
                     Raise(nameof(IsDnsTabVisible));
+                    Raise(nameof(SubTabHint));
                     Raise(nameof(IsFiltersTabVisible));
                 }
             }
         }
+
+        public string SubTabHint => SelectedSubTabIndex switch
+        {
+            0 => "Свои домены, которые обход всегда пропускает мимо фильтра.",
+            1 => "DNS поверх HTTPS — защита от подмены адресов провайдером.",
+            _ => ""
+        };
 
         public bool IsEditorTabVisible => SelectedSubTabIndex == 0;
         public bool IsDnsTabVisible => SelectedSubTabIndex == 1;

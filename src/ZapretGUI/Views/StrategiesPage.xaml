@@ -3,44 +3,63 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              Background="Transparent">
-    <Grid Margin="24,20,20,26">
+    <Grid Style="{StaticResource PageRoot}">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <!-- Заголовок и главные действия -->
-        <Grid Grid.Row="0">
+        <!-- Шапка раздела -->
+        <Grid Grid.Row="0" Style="{StaticResource PageHeader}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="*" />
                 <ColumnDefinition Width="Auto" />
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0" Margin="0,0,12,0">
                 <TextBlock Style="{StaticResource DisplayText}" Text="Стратегии" />
-                <TextBlock Style="{StaticResource MutedText}"
-                           Text="Список стратегий движка: проверьте и примените подходящую." />
+                <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
+                           Text="Каталог стратегий движка и проверка «стратегия × DNS»." />
             </StackPanel>
-            <WrapPanel Grid.Column="1" MaxWidth="500" HorizontalAlignment="Right" VerticalAlignment="Top">
-                <Button Style="{StaticResource PrimaryButton}" Content="Проверить все" Command="{Binding TestAllCommand}"
+            <WrapPanel Grid.Column="1" Style="{StaticResource PageActions}">
+                <Button Style="{StaticResource PageActionPrimary}" Content="Проверить все"
+                        Command="{Binding TestAllCommand}"
                         ToolTip="Последовательно запустить каждую стратегию и проверить YouTube, Discord, GitHub и пользовательские адреса" />
                 <Button Style="{StaticResource DangerButton}" Content="Остановить" Margin="8,0,0,0"
                         Command="{Binding CancelTestCommand}"
                         Visibility="{Binding IsTestingAll, Converter={StaticResource BoolToVis}}"
                         ToolTip="Остановить перебор стратегий" />
-                <Button Style="{StaticResource SecondaryButton}" Content="Обновить" Margin="8,0,0,0" Command="{Binding RefreshCommand}"
+                <Button Style="{StaticResource PageAction}" Content="Обновить" Margin="8,0,0,0"
+                        Command="{Binding RefreshCommand}"
                         ToolTip="Перечитать .bat файлы движка и сохранённые стратегии" />
-                <Button Style="{StaticResource GhostButton}" Content="Папка .bat" Margin="8,0,0,0" Command="{Binding OpenFolderCommand}"
+                <Button Style="{StaticResource PageActionGhost}" Content="Папка .bat" Margin="8,0,0,0"
+                        Command="{Binding OpenFolderCommand}"
                         ToolTip="Открыть папку движка в проводнике" />
             </WrapPanel>
         </Grid>
 
-        <!-- Интеллектуальная рекомендация — ПЕРЕДЕЛАНО 1.6.6: акцентная карточка с лидером -->
-        <Border Grid.Row="1" Margin="0,12,0,4" Padding="0" CornerRadius="12" BorderThickness="1.2" BorderBrush="{DynamicResource AccentBrush}" Background="{DynamicResource AccentSoftBrush}"
-                Visibility="{Binding HasBestRecommendation, Converter={StaticResource BoolToVis}}">
-            <Grid Margin="16,12,16,12">
+        <!-- Вкладки раздела -->
+        <StackPanel Grid.Row="1" Style="{StaticResource PageTabs}">
+            <controls:SegmentedControl ItemsSource="{Binding SubTabs}"
+                                       SelectedIndex="{Binding SelectedSubTabIndex, Mode=TwoWay}" />
+            <TextBlock Style="{StaticResource PageTabHint}" Text="{Binding SubTabHint}" />
+        </StackPanel>
+
+        <!-- ============================== ВКЛАДКА 1: КАТАЛОГ СТРАТЕГИЙ ============================== -->
+        <Grid Grid.Row="2" Margin="0,14,0,0" MaxWidth="1180"
+              Visibility="{Binding IsCatalogTabVisible, Converter={StaticResource BoolToVis}}">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+
+            <!-- Лидер сети — акцентная карточка с рекомендацией -->
+            <Border Grid.Row="0" Margin="0,0,0,10" Padding="0" CornerRadius="12" BorderThickness="1.2"
+                    BorderBrush="{DynamicResource AccentBrush}" Background="{DynamicResource AccentSoftBrush}"
+                    Visibility="{Binding HasBestRecommendation, Converter={StaticResource BoolToVis}}">
+                <Grid Margin="16,12,16,12">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="*" />
@@ -58,21 +77,13 @@
                     </WrapPanel>
                     <TextBlock Style="{StaticResource DimText}" Text="{Binding BestStrategyDetailsText}" Margin="0,3,0,0" FontSize="11" TextWrapping="Wrap" Foreground="{DynamicResource TextBrush}" Opacity="0.85" />
                 </StackPanel>
-                <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="⚡ Применить лидер" Padding="16,8" MinHeight="36" FontWeight="SemiBold"
+                <Button Grid.Column="2" Style="{StaticResource PrimaryButton}" Content="⚡ Применить лидер" Padding="14,7" MinHeight="34" FontSize="12.5" FontWeight="SemiBold"
                         Command="{Binding ApplyBestRecommendedCommand}" ToolTip="Запустить рекомендованную для вашей сети стратегию" VerticalAlignment="Center" />
-            </Grid>
-        </Border>
+                </Grid>
+            </Border>
 
-        <!-- ============================== ВКЛАДКА 1: КАТАЛОГ СТРАТЕГИЙ ============================== -->
-        <Grid Grid.Row="4" Visibility="{Binding IsCatalogTabVisible, Converter={StaticResource BoolToVis}}">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="Auto" />
-                <RowDefinition Height="*" />
-            </Grid.RowDefinitions>
-
-            <!-- Поиск и фильтры каталога — sticky Card с тенью -->
-            <Border Grid.Row="0" Style="{StaticResource Card}" Margin="0,0,0,10" Padding="12,10">
+            <!-- Поиск и фильтры каталога -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Margin="0,0,0,10" Padding="14,10">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*" />
@@ -98,7 +109,7 @@
             </Border>
 
             <!-- Панель пакетного тестирования -->
-            <Border Grid.Row="1" Margin="0,0,0,10" Padding="12,8"
+            <Border Grid.Row="2" Margin="0,0,0,10" Padding="12,8"
                     CornerRadius="9" Background="{Binding TestSummaryKey, Converter={StaticResource SoftSeverityBrush}}"
                     Visibility="{Binding TestProgressVisible, Converter={StaticResource BoolToVis}}">
                 <StackPanel>
@@ -117,7 +128,7 @@
             </Border>
 
             <!-- Двухколоночный мастер-детейл вид каталога -->
-            <Grid Grid.Row="2">
+            <Grid Grid.Row="3">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="11*" MinWidth="380" />
                     <ColumnDefinition Width="9*" MinWidth="340" />
@@ -298,6 +309,119 @@
             </Grid>
         </Grid>
 
+        <!-- ============================== МАТРИЦА: СТРАТЕГИЯ × DNS ============================== -->
+        <ScrollViewer Grid.Row="2" Style="{StaticResource PageScroll}" Margin="0,14,0,0"
+                      Visibility="{Binding IsMatrixTabVisible, Converter={StaticResource BoolToVis}}">
+            <StackPanel Style="{StaticResource PageContent}">
+
+                <Border Style="{StaticResource PageCardFirst}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,12,0">
+                                <TextBlock Style="{StaticResource TitleText}" Text="Проверка «стратегия × DNS»" FontSize="15" />
+                                <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0"
+                                           Text="Каждая стратегия с каждым DNS (Cloudflare, Quad9, Google, DHCP). Исходные DNS и обход возвращаются автоматически." />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Center" Style="{StaticResource PageActions}">
+                                <Button Style="{StaticResource PageActionPrimary}" Content="Проверить всё"
+                                        Command="{Binding BypassCenter.RunMatrixCommand}"
+                                        ToolTip="Перебрать все комбинации стратегий и DNS" />
+                                <Button Style="{StaticResource DangerButton}" Content="Остановить" Margin="8,0,0,0"
+                                        Command="{Binding BypassCenter.CancelMatrixCommand}"
+                                        Visibility="{Binding BypassCenter.IsMatrixRunning, Converter={StaticResource BoolToVis}}" />
+                            </WrapPanel>
+                        </Grid>
+
+                        <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0"
+                                Visibility="{Binding BypassCenter.IsMatrixRunning, Converter={StaticResource BoolToVis}}">
+                            <StackPanel>
+                                <Grid>
+                                    <TextBlock Style="{StaticResource BodyText}" Text="{Binding BypassCenter.MatrixText, Mode=OneWay}" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Style="{StaticResource DimText}" Text="{Binding BypassCenter.MatrixPercent, Mode=OneWay}"
+                                               HorizontalAlignment="Right" FontWeight="SemiBold" />
+                                </Grid>
+                                <ProgressBar Style="{StaticResource ThinProgress}" Margin="0,8,0,0"
+                                             Minimum="0"
+                                             Maximum="{Binding BypassCenter.MatrixMax, Mode=OneWay}"
+                                             Value="{Binding BypassCenter.MatrixProgress, Mode=OneWay}" />
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0"
+                                Visibility="{Binding BypassCenter.IsMatrixRunning, Converter={StaticResource BoolToVis}, ConverterParameter=invert}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center">
+                                    <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold"
+                                               Text="{Binding BypassCenter.MatrixSummary, Mode=OneWay}" TextWrapping="Wrap" />
+                                    <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0"
+                                               Text="{Binding BypassCenter.MatrixBestText, Mode=OneWay}" TextWrapping="Wrap"
+                                               Foreground="{DynamicResource SuccessBrush}" FontWeight="SemiBold"
+                                               Visibility="{Binding BypassCenter.MatrixBestText, Converter={StaticResource StringToVis}}" />
+                                </StackPanel>
+                                <Button Grid.Column="1" Style="{StaticResource PageActionPrimary}" Content="Применить лучшее"
+                                        Command="{Binding BypassCenter.ApplyBestCommand}"
+                                        VerticalAlignment="Center"
+                                        ToolTip="Применить стратегию и DNS победителя матрицы" />
+                            </Grid>
+                        </Border>
+
+                        <Grid Margin="0,10,0,0"
+                              Visibility="{Binding BypassCenter.MatrixLastRunVisible, Converter={StaticResource BoolToVis}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding BypassCenter.MatrixLastRunText}"
+                                       VerticalAlignment="Center" />
+                            <Button Grid.Column="1" Style="{StaticResource PageActionGhost}" Content="Очистить"
+                                    Command="{Binding BypassCenter.ClearMatrixHistoryCommand}"
+                                    ToolTip="Удалить сохранённые результаты матрицы" />
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Style="{StaticResource PageCard}" Padding="14,12"
+                        Visibility="{Binding BypassCenter.MatrixResults.Count, Converter={StaticResource CountToVis}}">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="РЕЗУЛЬТАТЫ (СТРАТЕГИЯ × DNS)" />
+                        <ListView Margin="0,4,0,0" MaxHeight="460" ItemsSource="{Binding BypassCenter.MatrixResults}"
+                                  SelectedItem="{Binding BypassCenter.SelectedMatrixEntry, Mode=TwoWay}"
+                                  ScrollViewer.VerticalScrollBarVisibility="Auto">
+                            <ListView.View>
+                                <GridView>
+                                    <GridViewColumn Header="Стратегия" Width="220" DisplayMemberBinding="{Binding Strategy}" />
+                                    <GridViewColumn Header="DNS" Width="120" DisplayMemberBinding="{Binding Dns}" />
+                                    <GridViewColumn Header="Результат" Width="110">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="{Binding Status}" Foreground="{Binding StatusKey, Converter={StaticResource SeverityBrush}}" FontWeight="SemiBold" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="Успех" Width="90" DisplayMemberBinding="{Binding Summary}" />
+                                    <GridViewColumn Header="Лучшая" Width="70">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <TextBlock Text="⭐" Visibility="{Binding IsBest, Converter={StaticResource BoolToVis}}" HorizontalAlignment="Center" />
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                </GridView>
+                            </ListView.View>
+                        </ListView>
+                    </StackPanel>
+                </Border>
+
+            </StackPanel>
+        </ScrollViewer>
 
     </Grid>
 </UserControl>

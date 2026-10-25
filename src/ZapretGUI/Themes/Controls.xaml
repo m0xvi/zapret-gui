@@ -1097,6 +1097,81 @@
     </Style>
 
 
+    <!-- ==================== ЕДИНЫЙ ШАБЛОН СТРАНИЦЫ (v2.1) ====================
+         Все разделы строятся одинаково:
+           Grid PageRoot
+             ├─ строка 0: шапка  (DisplayText + MutedText слева, PageActions справа)
+             ├─ строка 1: вкладки (PageTabs, только если у раздела есть подвкладки)
+             └─ строка 2: PageScroll → PageContent (карточки, отступы PageCard)
+         Ширина контента везде одна — 1180 px по центру. -->
+    <Style x:Key="PageRoot" TargetType="Grid">
+        <Setter Property="Margin" Value="24,20,20,20" />
+    </Style>
+
+    <Style x:Key="PageHeader" TargetType="Grid">
+        <Setter Property="MaxWidth" Value="1180" />
+    </Style>
+
+    <Style x:Key="PageActions" TargetType="WrapPanel">
+        <Setter Property="HorizontalAlignment" Value="Right" />
+        <Setter Property="VerticalAlignment" Value="Top" />
+        <Setter Property="Margin" Value="16,0,0,0" />
+    </Style>
+
+    <Style x:Key="PageAction" TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+        <Setter Property="Padding" Value="14,7" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="MinWidth" Value="86" />
+        <Setter Property="FontSize" Value="12.5" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <Style x:Key="PageActionPrimary" TargetType="Button" BasedOn="{StaticResource PrimaryButton}">
+        <Setter Property="Padding" Value="16,7" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="FontSize" Value="12.5" />
+    </Style>
+
+    <Style x:Key="PageActionGhost" TargetType="Button" BasedOn="{StaticResource GhostButton}">
+        <Setter Property="Padding" Value="12,7" />
+        <Setter Property="MinHeight" Value="34" />
+        <Setter Property="FontSize" Value="12.5" />
+    </Style>
+
+    <Style x:Key="PageTabs" TargetType="StackPanel">
+        <Setter Property="Margin" Value="0,16,0,0" />
+        <Setter Property="MaxWidth" Value="1180" />
+    </Style>
+
+    <Style x:Key="PageTabHint" TargetType="TextBlock" BasedOn="{StaticResource DimText}">
+        <Setter Property="Margin" Value="2,8,0,0" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="Opacity" Value="0.85" />
+    </Style>
+
+    <Style x:Key="PageScroll" TargetType="ScrollViewer">
+        <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+        <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="Padding" Value="0,0,4,20" />
+        <Setter Property="Focusable" Value="False" />
+        <Setter Property="CanContentScroll" Value="False" />
+        <Setter Property="PanningMode" Value="VerticalOnly" />
+    </Style>
+
+    <Style x:Key="PageContent" TargetType="StackPanel">
+        <Setter Property="MaxWidth" Value="1180" />
+        <Setter Property="Margin" Value="0,0,0,0" />
+    </Style>
+
+    <Style x:Key="PageCard" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Margin" Value="0,12,0,0" />
+    </Style>
+
+    <Style x:Key="PageCardFirst" TargetType="Border" BasedOn="{StaticResource Card}">
+        <Setter Property="Margin" Value="0,16,0,0" />
+    </Style>
+
     <!-- Запрет выделения всего кроме текста — v1.15.0: все кроме TextBox не фокусируются, без рамки фокуса -->
     <Style TargetType="TextBlock">
         <Setter Property="Focusable" Value="False" />

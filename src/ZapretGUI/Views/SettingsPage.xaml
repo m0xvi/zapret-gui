@@ -4,12 +4,17 @@
              xmlns:controls="clr-namespace:ZapretGui.Views.Controls"
              xmlns:views="clr-namespace:ZapretGui.Views"
              Background="Transparent">
-    <ScrollViewer x:Name="RootScrollViewer" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Padding="0,0,4,12" CanContentScroll="False" ScrollChanged="OnScrollChanged">
-        <StackPanel Margin="24,20,20,32" MaxWidth="1100" HorizontalAlignment="Stretch">
+    <Grid Style="{StaticResource PageRoot}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
 
-            <!-- Заголовок -->
-            <Grid>
-                <Grid.ColumnDefinitions>
+        <!-- Шапка раздела -->
+        <Grid Grid.Row="0" Style="{StaticResource PageHeader}">
+            <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
@@ -17,15 +22,15 @@
                     <TextBlock Style="{StaticResource DisplayText}" Text="Настройки" />
                     <TextBlock Style="{StaticResource MutedText}" Text="Изменения сохраняются автоматически." TextWrapping="Wrap" />
                 </StackPanel>
-                <WrapPanel Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Top">
-                    <Button Style="{StaticResource GhostButton}" Content="↺ Сбросить"
+            <WrapPanel Grid.Column="1" Style="{StaticResource PageActions}">
+                    <Button Style="{StaticResource PageActionGhost}" Content="↺ Сбросить"
                             Command="{Binding ResetSettingsCommand}"
                             ToolTip="Вернуть все настройки к значениям по умолчанию" />
                 </WrapPanel>
             </Grid>
 
-            <!-- Статус сохранения -->
-            <Border Margin="0,14,0,0" CornerRadius="8" Padding="12,9"
+        <!-- Статус сохранения -->
+        <Border Grid.Row="1" MaxWidth="1180" Margin="0,12,0,0" CornerRadius="8" Padding="12,9"
                     Background="{DynamicResource ElevatedBrush}" BorderBrush="{DynamicResource BorderBrush}" BorderThickness="1">
                 <Grid>
                     <Grid.ColumnDefinitions>
@@ -37,12 +42,15 @@
                 </Grid>
             </Border>
 
-            <!-- Переключатель разделов — главный навигатор настроек -->
-            <controls:SegmentedControl Margin="0,16,0,0"
-                                       ItemsSource="{Binding SettingsTabs}"
+        <!-- Переключатель разделов — главный навигатор настроек -->
+        <StackPanel Grid.Row="2" Style="{StaticResource PageTabs}">
+            <controls:SegmentedControl ItemsSource="{Binding SettingsTabs}"
                                        SelectedIndex="{Binding SelectedTabIndex, Mode=TwoWay}" />
+            <TextBlock Style="{StaticResource PageTabHint}" Text="{Binding SelectedTabHint}" TextWrapping="Wrap" />
+        </StackPanel>
 
-            <TextBlock Style="{StaticResource DimText}" Text="{Binding SelectedTabHint}" Margin="2,8,0,0" FontStyle="Italic" TextWrapping="Wrap" />
+        <ScrollViewer x:Name="RootScrollViewer" Grid.Row="3" Style="{StaticResource PageScroll}" Margin="0,12,0,0" ScrollChanged="OnScrollChanged">
+        <StackPanel Style="{StaticResource PageContent}">
 
             <!-- ===================== ВКЛАДКА 0: ОБЩИЕ ===================== -->
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsGeneralTabSelected, Converter={StaticResource BoolToVis}}">
@@ -567,5 +575,6 @@
             </StackPanel>
 
         </StackPanel>
-    </ScrollViewer>
+        </ScrollViewer>
+    </Grid>
 </UserControl>
