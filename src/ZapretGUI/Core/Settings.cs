@@ -141,6 +141,12 @@ namespace ZapretGui.Core
         /// <summary>Задержка автозапуска обхода при старте Windows в секундах (0-60).</summary>
         public int StartupDelaySeconds { get; set; } = 5;
 
+        /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.
+        /// По умолчанию выключено (v1.32.0): приложение не меняет стратегию само — выключатель в «Автоматизации».</summary>
+        public bool AutoRecoverStrategy { get; set; } = false;
+
+        /// <summary>Бесшовное автопереключение без окон и подтверждений (новый движок failover).
+        /// По умолчанию выключено (v1.32.0): смена стратегии — только по решению пользователя.</summary>
         /// <summary>Пробовать подобрать другую стратегию после подтверждённого сбоя обхода.</summary>
         public bool AutoRecoverStrategy { get; set; } = false;
 

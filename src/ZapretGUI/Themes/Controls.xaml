@@ -638,27 +638,35 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ComboBox">
-                    <Grid>
+                    <Grid SnapsToDevicePixels="True">
                         <ToggleButton x:Name="ToggleButton" Focusable="False" ClickMode="Press"
                                       Background="{TemplateBinding Background}"
                                       BorderBrush="{TemplateBinding BorderBrush}"
                                       Style="{StaticResource ComboBoxToggleTemplate}"
                                       IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" />
+                        <!-- ContentTemplateSelector обязателен: без него DisplayMemberPath не работает и в поле
+                             видно имя класса (например, ZapretGui.Core.StrategyInfo) вместо названия. -->
                         <ContentPresenter x:Name="ContentSite" IsHitTestVisible="False"
                                           Content="{TemplateBinding SelectionBoxItem}"
                                           ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                                          ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                                          ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                                           Margin="{TemplateBinding Padding}" VerticalAlignment="Center"
                                           HorizontalAlignment="Left" />
+                        <!-- Поле списка занимает всю область (Background=Transparent, рамка с отступом внутри):
+                             иначе прозрачная зона под Popup перехватывала мышь на пути к пункту и список
+                             закрывался сам. Анимация выключена — с Fade popup мигает. -->
                         <Popup x:Name="PART_Popup" Placement="Bottom" AllowsTransparency="True" Focusable="False"
-                               PopupAnimation="Fade" IsOpen="{TemplateBinding IsDropDownOpen}">
-                            <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderStrongBrush}"
-                                    BorderThickness="1" CornerRadius="10" Margin="0,6,0,10"
-                                    MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
-                                    MaxHeight="{TemplateBinding MaxDropDownHeight}">
-                                <ScrollViewer VerticalScrollBarVisibility="Auto">
-                                    <ItemsPresenter />
+                               PopupAnimation="None" IsOpen="{TemplateBinding IsDropDownOpen}">
+                            <Grid x:Name="DropDown" Background="Transparent" SnapsToDevicePixels="True"
+                                  MinWidth="{Binding ActualWidth, RelativeSource={RelativeSource TemplatedParent}}"
+                                  MaxHeight="{TemplateBinding MaxDropDownHeight}">
+                                <Border Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderStrongBrush}"
+                                        BorderThickness="1" CornerRadius="10" Margin="0,4,0,8" />
+                                <ScrollViewer VerticalScrollBarVisibility="Auto" Margin="4,8,4,12" SnapsToDevicePixels="True">
+                                    <ItemsPresenter KeyboardNavigation.DirectionalNavigation="Contained" />
                                 </ScrollViewer>
-                            </Border>
+                            </Grid>
                         </Popup>
                     </Grid>
                     <ControlTemplate.Triggers>
