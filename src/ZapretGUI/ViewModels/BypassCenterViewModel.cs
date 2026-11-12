@@ -50,6 +50,8 @@ namespace ZapretGui.ViewModels
         private string _voiceStatusText = "Голос Discord ещё не проверялся — 16/16 по HTTP не гарантирует голосовой канал.";
         private string _voiceStatusKey = "Muted";
         private string _voiceAdviceText = "";
+        private string _voiceEndpointText = "";
+        private bool _isVoiceResetting;
 
         public BypassCenterViewModel(MainViewModel main)
         {
@@ -74,6 +76,8 @@ namespace ZapretGui.ViewModels
             ClearMatrixHistoryCommand = new RelayCommand(ClearMatrixHistory, () => !IsMatrixRunning && MatrixHasHistory);
             CheckVoiceCommand = new AsyncRelayCommand(() => CheckVoiceAsync(), () => !IsVoiceChecking && !IsMatrixRunning);
             EnableDiscordVoiceCommand = new AsyncRelayCommand(EnableDiscordVoiceAsync, () => !IsVoiceChecking && !IsMatrixRunning);
+            ResetDiscordVoiceCommand = new AsyncRelayCommand(ResetDiscordVoiceAsync, () => !IsVoiceResetting && !IsMatrixRunning);
+            RefreshVoiceEndpointCommand = new RelayCommand(RefreshVoiceEndpoint, () => !IsVoiceResetting);
             OpenMatrixHistoryFolderCommand = new RelayCommand(() => Shell.OpenFolder(AppPaths.AppData));
 
             RefreshAll();
@@ -176,6 +180,45 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        public bool IsVoiceResetting
+        {
+            get => _isVoiceResetting;
+            private set
+            {
+                if (!Set(ref _isVoiceResetting, value)) return;
+                (ResetDiscordVoiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                (RefreshVoiceEndpointCommand as RelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+
+        /// <summary>Строка «Последний узел: rotterdam1234.discord.media:50001 · журнал Discord».</summary>
+        public string VoiceEndpointText
+        {
+            get => _voiceEndpointText;
+            private set
+            {
+                if (Set(ref _voiceEndpointText, value)) Raise(nameof(VoiceEndpointVisible));
+            }
+        }
+
+        public bool VoiceEndpointVisible => !string.IsNullOrWhiteSpace(VoiceEndpointText);
+
+        public void RefreshVoiceEndpoint()
+        {
+            try
+            {
+                var endpoint = DiscordVoiceSession.FindLastEndpoint();
+                VoiceEndpointText = endpoint == null
+                    ? ""
+                    : "Последний узел: " + endpoint.AddressText + " · " + endpoint.Source + " · " + endpoint.SeenAtText;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("[Матрица] Не удалось прочитать узел Discord: " + ex.Message);
+                VoiceEndpointText = "";
+            }
+        }
+
         public string VoiceGameFilterText
         {
             get
@@ -205,6 +248,8 @@ namespace ZapretGui.ViewModels
         public ICommand ClearMatrixHistoryCommand { get; }
         public ICommand CheckVoiceCommand { get; }
         public ICommand EnableDiscordVoiceCommand { get; }
+        public ICommand ResetDiscordVoiceCommand { get; }
+        public ICommand RefreshVoiceEndpointCommand { get; }
         public ICommand OpenMatrixHistoryFolderCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand ApplyStrategyCommand { get; }
@@ -230,6 +275,7 @@ namespace ZapretGui.ViewModels
             Raise(nameof(SeamlessStatusKey));
             Raise(nameof(VoiceGameFilterText));
             Raise(nameof(VoiceNeedsUdpFix));
+            RefreshVoiceEndpoint();
         }
 
         private void RefreshStrategies()
@@ -658,6 +704,45 @@ namespace ZapretGui.ViewModels
                 Message = "✅ Голос Discord проходит — UDP 50000-65535 обрабатывается.";
                 MessageKey = "Success";
             }
+        }
+
+        /// <summary>
+        /// Сброс залипшей голосовой сессии: Discord держит пару «узел:порт» до конца сессии, и если до неё
+        /// нет маршрута (WSAENETUNREACH — «Не установлен маршрут»), переподключение в тот же канал
+        /// возвращает клиента в ту же дыру. Перезапуск клиента выбирает новый узел (v2.2.1).
+        /// </summary>
+        public async Task ResetDiscordVoiceAsync()
+        {
+            if (IsVoiceResetting) return;
+            IsVoiceResetting = true;
+            VoiceStatusText = "Сбрасываю голосовую сессию Discord…";
+            VoiceStatusKey = "Warning";
+            try
+            {
+                var progress = new Progress<string>(text => VoiceStatusText = text);
+                var result = await DiscordVoiceSession.ResetAsync(progress).ConfigureAwait(true);
+                foreach (var step in result.Steps) AppLog.Info("[Голос Discord] " + step);
+                VoiceStatusText = result.Message;
+                VoiceStatusKey = result.Ok ? "Success" : "Warning";
+                VoiceAdviceText = "";
+                Message = result.Message;
+                MessageKey = result.Ok ? "Success" : "Warning";
+                RefreshVoiceEndpoint();
+            }
+            catch (Exception ex)
+            {
+                VoiceStatusText = "Не удалось сбросить голосовую сессию: " + ex.Message;
+                VoiceStatusKey = "Danger";
+                AppLog.Error("[Матрица] Сброс голосовой сессии: " + ex.Message);
+            }
+            finally
+            {
+                IsVoiceResetting = false;
+            }
+
+            // Discord стартует не мгновенно — даём ему подняться и сразу проверяем голос.
+            await Task.Delay(4000).ConfigureAwait(true);
+            await CheckVoiceAsync().ConfigureAwait(true);
         }
 
         private async Task ApplyBestAsync()
