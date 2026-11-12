@@ -1217,7 +1217,14 @@ namespace ZapretGui.ViewModels
                 // 2. Включаем поддержку TCP Timestamps
                 WinServices.EnsureTcpTimestamps();
 
-                // 3. Выбираем стратегию с поддержкой UDP desync (general (ALT9) или general (EXP))
+                // 3. Включаем обработку голосового диапазона UDP 50000-65535 (раньше сообщение обещало это,
+                //    но игровой фильтр не включался — из-за этого Discord писал «Не установлен маршрут»)
+                Settings.GameFilterProfileId = "discord_voice";
+                SettingsStore.Save(Settings);
+                EngineService.SetGameFilterMode(Settings.EnginePath, GameFilterMode.TcpAndUdp);
+                _main.GameMode.Refresh();
+
+                // 4. Выбираем стратегию с поддержкой UDP desync (general (ALT9) или general (EXP))
                 var targetStrat = _main.Strategies.Find("general (ALT9)")
                                ?? _main.Strategies.Find("general (EXP)")
                                ?? _main.Strategies.Find("general (ALT13)")
@@ -1230,7 +1237,7 @@ namespace ZapretGui.ViewModels
                     await _main.StrategiesPage.ApplyStrategyAsync(targetStrat).ConfigureAwait(true);
                 }
 
-                // 4. Очищаем кэш Discord и сбрасываем DNS
+                // 5. Очищаем кэш Discord и сбрасываем DNS
                 EngineService.ClearDiscordCache();
                 DnsManagementService.FlushDnsCache();
 
