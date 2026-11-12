@@ -31,6 +31,7 @@ namespace ZapretGui.CoreLogicHarness
                 ("Заблокированный WinDivert пропускается с предупреждением", LockedDriverIsSkippedSafely),
                 ("Updater GUI принимает только безопасный репозиторий", GuiRepositoryValidationIsStrict),
                 ("Updater GUI выбирает только проверяемый portable EXE", GuiPortableAssetSelectionIsStrict),
+                ("Голосовой узел Discord распознаётся в логе и leveldb", DiscordVoiceEndpointIsParsed),
                 ("План докачки покрывает файл без дыр и наложений", UpdateChunkPlanIsComplete),
                 ("Зеркала добавляются только для файлов GitHub", UpdateSourcesIncludeMirrors),
                 ("Согласованность движка отмечает драйвер, списки и стратегии", EngineConsistencyIsChecked),
@@ -547,6 +548,23 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 Size = 123,
                 DownloadUrl = valid.DownloadUrl
             }), "asset без digest ошибочно признан безопасным");
+        }
+
+        private static void DiscordVoiceEndpointIsParsed()
+        {
+            Assert(DiscordVoiceSession.TryExtractEndpoint(
+                    "[2026-10-25] voice ws: wss://rotterdam1234.discord.media:443 connected", out var host, out var port),
+                "узел из строки с портом не распознан");
+            Assert(host == "rotterdam1234.discord.media", "неверный host: " + host);
+            Assert(port == 443, "неверный порт: " + port);
+
+            Assert(DiscordVoiceSession.TryExtractEndpoint("Frankfurt12.discord.media", out var host2, out var port2),
+                "узел без порта не распознан");
+            Assert(host2 == "frankfurt12.discord.media" && port2 == 0, "регистр или порт обработаны неверно");
+
+            Assert(!DiscordVoiceSession.TryExtractEndpoint("https://discord.com/app", out _, out _),
+                "обычный сайт Discord принят за голосовой узел");
+            Assert(!DiscordVoiceSession.TryExtractEndpoint("", out _, out _), "пустая строка дала узел");
         }
 
         private static void UpdateChunkPlanIsComplete()

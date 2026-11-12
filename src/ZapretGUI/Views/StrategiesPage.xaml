@@ -411,6 +411,15 @@
                                            Foreground="{DynamicResource WarningBrush}"
                                            Text="{Binding BypassCenter.VoiceAdviceText}"
                                            Visibility="{Binding BypassCenter.VoiceAdviceVisible, Converter={StaticResource BoolToVis}}" />
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0"
+                                            Visibility="{Binding BypassCenter.VoiceEndpointVisible, Converter={StaticResource BoolToVis}}">
+                                    <TextBlock Style="{StaticResource DimText}" FontSize="10.5" Opacity="0.8"
+                                               Text="{Binding BypassCenter.VoiceEndpointText}" TextTrimming="CharacterEllipsis" />
+                                    <Button Style="{StaticResource PageActionGhost}" Content="Обновить" Margin="8,0,0,0"
+                                            Padding="8,1" MinHeight="0" FontSize="10.5"
+                                            Command="{Binding BypassCenter.RefreshVoiceEndpointCommand}"
+                                            ToolTip="Перечитать последний голосовой узел из журналов Discord" />
+                                </StackPanel>
                             </StackPanel>
                             <WrapPanel Grid.Column="1" VerticalAlignment="Center">
                                 <Button Style="{StaticResource PageAction}" Content="Проверить голос"
@@ -420,6 +429,9 @@
                                         Command="{Binding BypassCenter.EnableDiscordVoiceCommand}"
                                         Visibility="{Binding BypassCenter.VoiceNeedsUdpFix, Converter={StaticResource BoolToVis}}"
                                         ToolTip="Включить игровой фильтр TCP+UDP с профилем «Только Discord Voice» (UDP 50000-65535) и перезапустить обход" />
+                                <Button Style="{StaticResource PageAction}" Content="Сбросить сессию" Margin="8,0,0,0"
+                                        Command="{Binding BypassCenter.ResetDiscordVoiceCommand}"
+                                        ToolTip="Закрыть Discord, очистить RTC-кэш и DNS, запустить клиент заново. Помогает, когда голос залип на узле без маршрута («Не установлен маршрут»)" />
                             </WrapPanel>
                         </Grid>
                     </StackPanel>
