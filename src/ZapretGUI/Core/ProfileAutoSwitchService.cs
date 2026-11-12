@@ -47,6 +47,12 @@ namespace ZapretGui.Core
         public void Start()
         {
             if (_settings.SafeMode) return;
+            // v2.2.2: автопрофиль меняет стратегию — значит подчиняется мастеру автосмены.
+            if (!_settings.StrategyAutoSwitchAllowed)
+            {
+                AppLog.Info("[ProfileAutoSwitch] Автосмена стратегий выключена — автопрофиль не запускаю");
+                return;
+            }
             _pollTimer.Start();
             CurrentIdentity = NetworkDetector.GetCurrentIdentity();
             _lastIdentity = CurrentIdentity;
@@ -74,6 +80,7 @@ namespace ZapretGui.Core
         {
             if (_isSwitching) return;
             if (_settings.SafeMode) return;
+            if (!_settings.StrategyAutoSwitchAllowed) return;
             if (!_settings.AutoSwitchProfileOnNetworkChange && !_settings.AutoSwitchProfileOnFailure) return;
 
             var identity = NetworkDetector.GetCurrentIdentity();

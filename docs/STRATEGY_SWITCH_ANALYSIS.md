@@ -134,3 +134,29 @@ public async Task<OperationResult> SwitchToStrategyAsync(StrategyInfo s, GameFil
 
 ---
 *Автор аудита: агент Arena, ветка `arena/01a0c100-zapret-gui`, коммиты `ff7917f` → `f1ba118` → `1.6.3`*
+
+---
+
+## 4. v2.2.2 — все самопроизвольные переключения закрыты мастер-выключателем
+
+Дата: 2026-10-25. Жалоба: «стратегии скачут, хотя автопереключение выключено».
+
+Причина: единого выключателя не было — флаги `AutoRecoverStrategy`, `SeamlessFailoverEnabled`,
+`AutoSwitchToBestStrategy` жили отдельно, а часть путей (сторож, автозапуск, автопрофили) вообще
+их не читала. Дополнительно `SettingsStore.Load` принудительно включал `AutoStartBypass`, а
+автозапуск подставлял `Recommended`, если сохранённая стратегия не находилась в движке.
+
+Введено:
+
+- `AppSettings.AutoSwitchStrategyMasterEnabled` (default `false`), `StrategyAutoSwitchAllowed` (мастер + не SafeMode),
+  `DisableAutoStrategySwitching()`, `MigrateAutoStrategySwitchSchema()` (UiSchemaVersion = 3).
+- Гейт `StrategyAutoSwitchAllowed` стоит в: `WatchdogService.TryFallbackStrategyAsync`,
+  `WatchdogService.HandleCrashAsync` (выбор цели восстановления), `SeamlessFailoverService.IsEnabled`
+  и `DoSeamlessSwitchAsync`, `MonitoringViewModel` (восстановление, автоподбор, вход в recovery),
+  `ProfileAutoSwitchService.Start/CheckAndSwitchAsync`.
+- Подмена `Find(Selected) ?? Recommended` убрана из автозапуска (`App.xaml.cs`, `MainWindow.xaml.cs`),
+  из `ProfileManager.ApplyProfileAsync` и из трея. `ProfileManager` больше не включает сторож из профиля.
+
+Правило на будущее: **любой путь, который меняет стратегию без клика пользователя, обязан
+проверять `Settings.StrategyAutoSwitchAllowed`; путь, который лишь перезапускает ту же стратегию,
+обязан брать её из статуса обхода, а не из `SelectedStrategy`/`Recommended`.**

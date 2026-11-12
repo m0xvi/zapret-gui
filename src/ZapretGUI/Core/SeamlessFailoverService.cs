@@ -49,7 +49,9 @@ namespace ZapretGui.Core
 
         private int GetInterval() => Math.Clamp(_settings.SeamlessCheckMinutes > 0 ? _settings.SeamlessCheckMinutes : 5, 2, 60);
         private int GetCooldown() => Math.Clamp(_settings.SeamlessCooldownMinutes > 0 ? _settings.SeamlessCooldownMinutes : DefaultCooldownMinutes, 5, 120);
-        private bool IsEnabled => !_settings.SafeMode && _settings.SeamlessFailoverEnabled;
+        // v2.2.2: мастер автосмены — общий предохранитель. Пока он выключен,
+        // бесшовное переключение не запускается даже если его флаг остался включённым.
+        private bool IsEnabled => !_settings.SafeMode && _settings.SeamlessFailoverEnabled && _settings.AutoSwitchStrategyMasterEnabled;
 
         public void Start()
         {
@@ -386,6 +388,8 @@ namespace ZapretGui.Core
 
         private async Task DoSeamlessSwitchAsync(BypassController bypass, BypassStatus before, StrategyInfo next, MonitorTarget failedTarget, ResourceProbeResult? gameBestProbe)
         {
+            // Последний предохранитель: ручная проверка могла стартовать до выключения мастера.
+            if (!_settings.StrategyAutoSwitchAllowed) return;
             var mode = EngineService.GetGameFilterMode(_settings.EnginePath);
             OperationResult res;
             // Сохраняем предыдущую для отката

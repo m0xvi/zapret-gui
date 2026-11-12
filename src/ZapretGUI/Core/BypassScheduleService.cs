@@ -76,9 +76,14 @@ namespace ZapretGui.Core
                     var strat = _strategyFactory();
                     if (strat != null)
                     {
+                        // v2.2.2: переустановка службы не должна молча включать автозапуск,
+                        // который пользователь выключил на «Обзоре».
+                        var previousStartType = WinServices.GetStartType(WinServices.ZapretService);
                         var res = _settings.ScheduleUseService
                             ? await bypass.InstallServiceAsync(strat, EngineService.GetGameFilterMode(_settings.EnginePath))
                             : await bypass.StartAsync(strat, EngineService.GetGameFilterMode(_settings.EnginePath), _settings.ShowWinwsConsole);
+                        if (_settings.ScheduleUseService && res.Ok && previousStartType == ServiceStartType.Demand)
+                            WinServices.SetStartType(WinServices.ZapretService, false);
                         StatusChanged?.Invoke(res.Ok ? $"Расписание: обход запущен ({strat.Name})" : $"Расписание: ошибка старта — {res.Message}");
                     }
                 }
@@ -92,12 +97,10 @@ namespace ZapretGui.Core
                     _lastStopTrigger = now;
                     AppLog.Info($"[Schedule] Авто-стоп обхода по расписанию {stop:hh\\:mm}");
                     StatusChanged?.Invoke($"Расписание: стоп {stop:hh\\:mm}");
+                    // v2.2.2: службу только останавливаем, но не удаляем. Раньше авто-стоп сносил
+                    // службу целиком, и следующий авто-старт создавал её заново — со стороны это
+                    // выглядело как «настройки службы и автозапуск сбросились сами».
                     var res = await bypass.StopAsync();
-                    // Если служба — удалить службу тоже
-                    if (status.ServiceState == ServiceState.Running)
-                    {
-                        await bypass.RemoveServiceAsync();
-                    }
                     StatusChanged?.Invoke(res.Ok ? "Расписание: обход остановлен" : $"Расписание: ошибка стопа — {res.Message}");
                 }
             }

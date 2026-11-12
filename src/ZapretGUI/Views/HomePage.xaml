@@ -64,6 +64,9 @@
                             <TextBlock Style="{StaticResource MutedText}" Text="{Binding StrategyText}" Margin="0,4,0,0" TextTrimming="CharacterEllipsis" />
                             <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" FontSize="11"
                                        Text="{Binding UptimeText, StringFormat=Работает: {0}}" />
+                            <TextBlock Style="{StaticResource DimText}" Margin="0,2,0,0" FontSize="11" Opacity="0.75"
+                                       Text="Автосмена стратегий выключена"
+                                       Visibility="{Binding AutoSwitchDisabled, Converter={StaticResource BoolToVis}}" />
                             <Border Margin="0,8,0,0" CornerRadius="7" Padding="8,5"
                                     Background="{Binding ConnectionHealthKey, Converter={StaticResource SoftSeverityBrush}}"
                                     BorderBrush="{Binding ConnectionHealthKey, Converter={StaticResource SeverityBrush}}" BorderThickness="1"
@@ -93,10 +96,10 @@
                                         <TextBlock Text="{Binding ServiceToggleStatusText}" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <CheckBox Grid.Column="1" Style="{StaticResource SwitchCheckBox}" VerticalAlignment="Center"
-                                              IsChecked="{Binding ServiceInstalled, Mode=OneWay}" Command="{Binding ToggleServiceCommand}"
+                                              IsChecked="{Binding IsServiceToggleOn, Mode=OneWay}" Command="{Binding ToggleServiceCommand}"
                                               IsEnabled="{Binding IsServiceToggleEnabled}" Content=""
                                               Visibility="{Binding IsServicePending, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
-                                              ToolTip="Включить/выключить автозапуск службой Windows (нужны права администратора)" />
+                                              ToolTip="{Binding ServiceToggleHint}" />
                                 </Grid>
                             </Border>
                             <Button Style="{StaticResource PageAction}" Content="Обновить службу" Margin="0,8,0,0"
@@ -105,6 +108,12 @@
                                     IsEnabled="{Binding IsServiceToggleEnabled}"
                                     Command="{Binding ReinstallServiceCommand}"
                                     ToolTip="Применить текущую стратегию и фильтры к установленной службе" />
+                            <Button Style="{StaticResource GhostButton}" Content="Удалить службу" Margin="0,6,0,0"
+                                    HorizontalAlignment="Stretch" Padding="8,4" FontSize="11"
+                                    Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}}"
+                                    IsEnabled="{Binding IsServiceToggleEnabled}"
+                                    Command="{Binding RemoveServiceCommand}"
+                                    ToolTip="{Binding ServiceRemoveHint}" />
                         </StackPanel>
                     </Grid>
                 </Border>

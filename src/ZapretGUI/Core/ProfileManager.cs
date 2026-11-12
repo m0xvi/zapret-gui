@@ -184,7 +184,9 @@ namespace ZapretGui.Core
                     settings.SelectedStrategy = profile.StrategyName;
                 }
                 settings.GameModeActive = profile.GameModeActive;
-                settings.WatchdogEnabled = profile.WatchdogEnabled;
+                // v2.2.2: профиль больше не включает сторожа обратно. Раньше встроенные профили
+                // несли WatchdogEnabled = true и «оживляли» выключенный пользователем сторож —
+                // он же и перезапускал обход. Выбор сторожа принадлежит только пользователю.
                 settings.RealTimePingEnabled = profile.RealTimePingEnabled;
 
                 if (!string.IsNullOrEmpty(profile.ProviderName) || !string.IsNullOrEmpty(profile.ProviderAsn))
@@ -206,9 +208,10 @@ namespace ZapretGui.Core
                     await DnsManagementService.ApplyDnsProfileAsync(dnsProfile).ConfigureAwait(false);
                 }
 
-                // 3. Если обход был запущен или выбранная стратегия существует — перезапускаем
+                // 3. Если обход был запущен и стратегия профиля существует — перезапускаем.
+                // v2.2.2: без подмены на «рекомендованную» — профиль не должен молча менять стратегию.
                 var isRunning = bypass.GetStatus().IsRunning;
-                var strategy = strategies.Find(settings.SelectedStrategy) ?? strategies.Recommended;
+                var strategy = strategies.Find(settings.SelectedStrategy);
                 if (isRunning && strategy != null)
                 {
                     var res = await bypass.SwitchToStrategyAsync(strategy, profile.GameFilter, settings.ShowWinwsConsole).ConfigureAwait(false);
@@ -218,6 +221,8 @@ namespace ZapretGui.Core
                 }
 
                 profile.LastAppliedAt = DateTime.UtcNow;
+                if (isRunning && strategy == null)
+                    return (false, $"Профиль «{profile.Name}» применён, но стратегии «{profile.StrategyName}» нет в движке — обход не перезапускаю.");
                 return (true, $"Профиль «{profile.Name}» успешно применён (стратегия «{settings.SelectedStrategy}», DNS: {profile.DnsProfileId}).");
             }
             catch (Exception ex)

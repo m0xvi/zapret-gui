@@ -132,6 +132,7 @@ namespace ZapretGui.ViewModels
             {
                 WatchdogNotificationRequested?.Invoke(alert);
             };
+            AppLog.Info($"[Settings] Автосмена стратегий: {(settings.StrategyAutoSwitchAllowed ? "разрешена" : "выключена — приложение не переключает стратегию само")}");
             if (settings.WatchdogEnabled && !settings.SafeMode)
             {
                 Watchdog.Start();
@@ -168,7 +169,8 @@ namespace ZapretGui.ViewModels
                 Profiles.RefreshNetwork();
                 Raise(nameof(AutoSwitchNetworkStatus));
             });
-            ScheduleService = new BypassScheduleService(settings, () => Bypass, () => Strategies.Find(settings.SelectedStrategy) ?? Strategies.Recommended);
+            // v2.2.2: расписание запускает только сохранённую стратегию — без подмены на «рекомендованную».
+            ScheduleService = new BypassScheduleService(settings, () => Bypass, () => Strategies.Find(settings.SelectedStrategy));
             ScheduleService.StatusChanged += msg => System.Windows.Application.Current?.Dispatcher?.Invoke(() =>
             {
                 Home.RefreshStatus();

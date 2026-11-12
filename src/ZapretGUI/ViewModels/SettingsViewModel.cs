@@ -77,10 +77,54 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedTabIndex = 4; }
         }
 
+        /// <summary>v2.2.2: единый мастер автосмены стратегий. Выключение гасит и подчинённые механизмы,
+        /// поэтому «выключил, а оно переключает» больше невозможно.</summary>
+        public bool MasterAutoSwitchEnabled
+        {
+            get => Settings.AutoSwitchStrategyMasterEnabled;
+            set
+            {
+                if (Settings.AutoSwitchStrategyMasterEnabled == value) return;
+                Settings.AutoSwitchStrategyMasterEnabled = value;
+                if (!value) Settings.DisableAutoStrategySwitching();
+                SettingsStore.Save(Settings);
+                _main.NotifySeamlessChanged();
+                Status = value
+                    ? "Автосмена стратегий разрешена"
+                    : "Автосмена стратегий выключена — приложение не меняет стратегию само";
+                RaiseAutoSwitchState();
+            }
+        }
+
+        /// <summary>Короткое описание состояния мастера для карточки.</summary>
+        public string MasterAutoSwitchHint => Settings.AutoSwitchStrategyMasterEnabled
+            ? "Разрешено: включённые ниже механизмы могут переключать стратегию."
+            : "Запрещено: сторож только перезапускает ту же стратегию, всё остальное молчит.";
+
+        private void RaiseAutoSwitchState()
+        {
+            Raise(nameof(MasterAutoSwitchEnabled));
+            Raise(nameof(MasterAutoSwitchHint));
+            Raise(nameof(SeamlessFailoverEnabled));
+            Raise(nameof(SeamlessStatus));
+            Raise(nameof(SeamlessStatusKey));
+            Raise(nameof(AutoRecoverStrategy));
+            Raise(nameof(AutoSwitchToBestStrategy));
+        }
+
         public bool SeamlessFailoverEnabled
         {
             get => Settings.SeamlessFailoverEnabled;
-            set { if (Settings.SeamlessFailoverEnabled != value) { Settings.SeamlessFailoverEnabled = value; SettingsStore.Save(Settings); _main.NotifySeamlessChanged(); Raise(nameof(SeamlessFailoverEnabled)); Raise(nameof(SeamlessStatus)); Raise(nameof(SeamlessStatusKey)); } }
+            set
+            {
+                if (Settings.SeamlessFailoverEnabled == value) return;
+                Settings.SeamlessFailoverEnabled = value;
+                // Подчинённый механизм включает мастер, иначе его флаг ничего не делает.
+                if (value) Settings.AutoSwitchStrategyMasterEnabled = true;
+                SettingsStore.Save(Settings);
+                _main.NotifySeamlessChanged();
+                RaiseAutoSwitchState();
+            }
         }
         public int SeamlessCheckMinutes
         {
@@ -100,7 +144,14 @@ namespace ZapretGui.ViewModels
         public bool AutoSwitchToBestStrategy
         {
             get => Settings.AutoSwitchToBestStrategy;
-            set { if (Settings.AutoSwitchToBestStrategy != value) { Settings.AutoSwitchToBestStrategy = value; SettingsStore.Save(Settings); Raise(nameof(AutoSwitchToBestStrategy)); } }
+            set
+            {
+                if (Settings.AutoSwitchToBestStrategy == value) return;
+                Settings.AutoSwitchToBestStrategy = value;
+                if (value) Settings.AutoSwitchStrategyMasterEnabled = true;
+                SettingsStore.Save(Settings);
+                RaiseAutoSwitchState();
+            }
         }
 
         public int BestStrategyCheckMinutes
@@ -546,7 +597,8 @@ namespace ZapretGui.ViewModels
             set
             {
                 Settings.SafeMode = value;
-                if (value) Settings.AutoStartBypass = false;
+                // v2.2.2: SafeMode больше не стирает выбор «запускать обход вместе с приложением» —
+                // сам автозапуск и так блокируется проверкой SafeMode во всех точках старта.
                 OnSettingChanged();
                 _main.RefreshReadiness();
                 _main.NotifySeamlessChanged();
@@ -657,7 +709,11 @@ namespace ZapretGui.ViewModels
         public bool AutoRecoverStrategy
         {
             get => _main.Monitoring.AutoRecoverStrategy;
-            set => _main.Monitoring.AutoRecoverStrategy = value;
+            set
+            {
+                _main.Monitoring.AutoRecoverStrategy = value;
+                RaiseAutoSwitchState();
+            }
         }
 
         public bool MonitorNotificationsEnabled
@@ -1023,6 +1079,7 @@ namespace ZapretGui.ViewModels
 
         public void Reload()
         {
+            RaiseAutoSwitchState();
             _enginePath = Settings.EnginePath;
             Raise(nameof(EnginePath));
             _themeIndex = (int)Settings.Theme;
@@ -1053,6 +1110,9 @@ namespace ZapretGui.ViewModels
             Raise(nameof(AutoDiagnoseOnFirstLaunch));
             Raise(nameof(ResourceMonitoringEnabled));
             Raise(nameof(AutoRecoverStrategy));
+            Raise(nameof(MasterAutoSwitchEnabled));
+            Raise(nameof(MasterAutoSwitchHint));
+            Raise(nameof(AutoSwitchToBestStrategy));
             Raise(nameof(MonitorNotificationsEnabled));
             Raise(nameof(MonitoringIntervalMinutes));
             Raise(nameof(WatchdogEnabled));
@@ -1321,7 +1381,8 @@ namespace ZapretGui.ViewModels
             _main.Settings.FirstLaunchDiagnosticsCompleted = false;
             _main.Settings.PreviousSelectedStrategy = "";
             _main.Settings.ResourceMonitoringEnabled = false;
-            _main.Settings.AutoRecoverStrategy = true;
+            // v2.2.2: сброс настроек возвращает заводские значения — автосмена выключена.
+            _main.Settings.DisableAutoStrategySwitching();
             _main.Settings.MonitorNotificationsEnabled = true;
             _main.Settings.ResourceMonitoringIntervalMinutes = 15;
             _main.Settings.MonitorTargets.Clear();

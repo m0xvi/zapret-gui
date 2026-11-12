@@ -970,11 +970,20 @@ namespace ZapretGui.Core
             var imagePath = "\"" + WinwsPath + "\" " + string.Join(" ", args.Select(QuoteIfNeeded));
 
             AppLog.SvcInfo($"Установка службы zapret со стратегией «{strategy.Name}»");
+            // v2.2.2: пересоздание службы не должно возвращать автозапуск, который пользователь
+            // выключил на «Обзоре». Запоминаем тип запуска и восстанавливаем его после sc create.
+            var previousStartType = WinServices.GetStartType(WinServices.ZapretService);
             WinServices.Delete(WinServices.ZapretService);
 
             var create = WinServices.Create(WinServices.ZapretService, imagePath, "zapret", "Zapret DPI bypass software");
             if (!create.Ok)
                 return OperationResult.Fail("sc create не сработал: " + create.All);
+
+            if (previousStartType == ServiceStartType.Demand || previousStartType == ServiceStartType.Disabled)
+            {
+                WinServices.SetStartType(WinServices.ZapretService, false);
+                AppLog.SvcInfo("Автозапуск службы сохранён выключенным (start= demand)");
+            }
 
             WinServices.SetInstalledStrategyName(strategy.Name);
 

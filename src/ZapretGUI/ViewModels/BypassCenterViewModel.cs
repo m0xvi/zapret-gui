@@ -122,7 +122,20 @@ namespace ZapretGui.ViewModels
         public bool UseDohForBlocked { get => Settings.UseDohForBlockedHosts; set { Settings.UseDohForBlockedHosts = value; SettingsStore.Save(Settings); Raise(nameof(UseDohForBlocked)); } }
 
         // Seamless proxy
-        public bool SeamlessEnabled { get => Settings.SeamlessFailoverEnabled; set { Settings.SeamlessFailoverEnabled = value; SettingsStore.Save(Settings); _main.NotifySeamlessChanged(); Raise(nameof(SeamlessEnabled)); Raise(nameof(SeamlessStatus)); } }
+        public bool SeamlessEnabled
+        {
+            get => Settings.SeamlessFailoverEnabled;
+            set
+            {
+                Settings.SeamlessFailoverEnabled = value;
+                // v2.2.2: включение бесшовного переключения включает и мастер автосмены.
+                if (value) Settings.AutoSwitchStrategyMasterEnabled = true;
+                SettingsStore.Save(Settings);
+                _main.NotifySeamlessChanged();
+                Raise(nameof(SeamlessEnabled));
+                Raise(nameof(SeamlessStatus));
+            }
+        }
         public string SeamlessStatus => _main.SeamlessStatusText;
         public string SeamlessStatusKey => _main.SeamlessStatusKey;
 

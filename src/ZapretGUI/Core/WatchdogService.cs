@@ -46,7 +46,8 @@ namespace ZapretGui.Core
             IsRunning = true;
             var interval = Math.Clamp(_settings.WatchdogIntervalSeconds, 5, 120);
             _timer.Change(TimeSpan.FromSeconds(interval), TimeSpan.FromSeconds(interval));
-            AppLog.Info($"[Watchdog] Запущен, интервал {interval}с, автоперезапуск={_settings.WatchdogAutoRestart}");
+            AppLog.Info($"[Watchdog] Запущен, интервал {interval}с, автоперезапуск={_settings.WatchdogAutoRestart}, " +
+                        $"автосмена стратегий={(_settings.StrategyAutoSwitchAllowed ? "вкл" : "выкл — перезапускаю только ту же стратегию")}");
         }
 
         public void Stop()
@@ -171,8 +172,25 @@ namespace ZapretGui.Core
                     return;
                 }
 
+                // v2.2.2: стратегию меняем только при включённом мастере автосмены.
+                // Иначе восстанавливаем ровно ту стратегию, которая работала, — это перезапуск, а не переключение.
                 var strat = _strategyResolver();
+                if (!_settings.StrategyAutoSwitchAllowed)
+                {
+                    var crashed = FindStrategy(strategyName);
+                    if (crashed != null) strat = crashed;
+                }
                 if (strat == null) return;
+                if (!_settings.StrategyAutoSwitchAllowed
+                    && !string.IsNullOrWhiteSpace(strategyName)
+                    && !string.Equals(strat.Name, strategyName, StringComparison.OrdinalIgnoreCase))
+                {
+                    var skipped = $"[Watchdog] Не удалось восстановить «{strategyName}»: стратегия не найдена в движке. Автосмена выключена, другую стратегию не запускаю.";
+                    AppLog.Warn(skipped);
+                    LastEventText = skipped;
+                    AlertRaised?.Invoke(skipped);
+                    return;
+                }
 
                 AppLog.Warn($"[Watchdog] Обнаружено аварийное завершение обхода. Выполняю автоматическое восстановление («{strat.Name}»)...");
                 LastRecoveryTime = DateTime.Now;
@@ -182,8 +200,9 @@ namespace ZapretGui.Core
                     // Обеспечиваем BFE — без него WinDivert не стартует и служба сразу падает
                     await EnsureBfeRunningAsync();
 
-                    var selected = _strategyResolver();
-                    // Если выбранная стратегия отличается от упавшей — переустанавливаем службу бесшовно
+                    // Используем уже разрешённую цель: при выключенной автосмене это упавшая стратегия.
+                    var selected = strat;
+                    // Если целевая стратегия отличается от упавшей — переустанавливаем службу бесшовно
                     if (selected != null && !string.Equals(selected.Name, strategyName, StringComparison.OrdinalIgnoreCase))
                     {
                         AppLog.Info($"[Watchdog] Стратегия изменена ({strategyName} → {selected.Name}), переустанавливаю службу");
@@ -254,6 +273,17 @@ namespace ZapretGui.Core
             }
         }
 
+        private StrategyInfo? FindStrategy(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name) || _allStrategiesResolver == null) return null;
+            try
+            {
+                return _allStrategiesResolver().FirstOrDefault(s =>
+                    s.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+            }
+            catch { return null; }
+        }
+
         private async Task<bool> TryStartServiceWithWaitAsync()
         {
             try
@@ -289,10 +319,12 @@ namespace ZapretGui.Core
         {
             try
             {
-                // Фикс v1.32.2: не переключаем принудительно если пользователь выключил автосмену (как в v1.32.0)
-                if (!_settings.AutoRecoverStrategy && !_settings.SeamlessFailoverEnabled)
+                // v2.2.2: единственная точка проверки — мастер автосмены (в него сведены
+                // AutoRecover/Seamless/AutoSwitchToBest). Пока он выключен, сторож только
+                // перезапускает ту же стратегию и никогда не выбирает другую.
+                if (!_settings.StrategyAutoSwitchAllowed)
                 {
-                    AppLog.Info("[Watchdog] Fallback пропущен — автосмена выключена (AutoRecover=false, Seamless=false), пробую только перезапуск той же стратегии");
+                    AppLog.Info("[Watchdog] Fallback пропущен — автосмена стратегий выключена, остаюсь на текущей стратегии");
                     return false;
                 }
                 if (_allStrategiesResolver == null) return false;
