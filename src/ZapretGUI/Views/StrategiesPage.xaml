@@ -388,6 +388,43 @@
                     </StackPanel>
                 </Border>
 
+                <!-- Голос Discord: матрица мерит HTTP и не видит дроп UDP, из-за которого Discord пишет
+                     «Не установлен маршрут» -->
+                <Border Style="{StaticResource PageCard}">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <StackPanel Grid.Column="0" Margin="0,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SectionText}" Text="ГОЛОС DISCORD (UDP)" />
+                                <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
+                                    <Ellipse Width="7" Height="7" VerticalAlignment="Center"
+                                             Fill="{Binding BypassCenter.VoiceStatusKey, Converter={StaticResource SeverityBrush}}" />
+                                    <TextBlock Style="{StaticResource BodyText}" Margin="8,0,0,0" TextWrapping="Wrap"
+                                               Text="{Binding BypassCenter.VoiceStatusText}" />
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0" TextWrapping="Wrap"
+                                           Text="{Binding BypassCenter.VoiceGameFilterText}" />
+                                <TextBlock Style="{StaticResource DimText}" Margin="0,6,0,0" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource WarningBrush}"
+                                           Text="{Binding BypassCenter.VoiceAdviceText}"
+                                           Visibility="{Binding BypassCenter.VoiceAdviceVisible, Converter={StaticResource BoolToVis}}" />
+                            </StackPanel>
+                            <WrapPanel Grid.Column="1" VerticalAlignment="Center">
+                                <Button Style="{StaticResource PageAction}" Content="Проверить голос"
+                                        Command="{Binding BypassCenter.CheckVoiceCommand}"
+                                        ToolTip="Проба голосовых шлюзов Discord по UDP (WebRTC/STUN)" />
+                                <Button Style="{StaticResource PageActionPrimary}" Content="Включить обход голоса" Margin="8,0,0,0"
+                                        Command="{Binding BypassCenter.EnableDiscordVoiceCommand}"
+                                        Visibility="{Binding BypassCenter.VoiceNeedsUdpFix, Converter={StaticResource BoolToVis}}"
+                                        ToolTip="Включить игровой фильтр TCP+UDP с профилем «Только Discord Voice» (UDP 50000-65535) и перезапустить обход" />
+                            </WrapPanel>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
                 <Border Style="{StaticResource PageCard}" Padding="14,12"
                         Visibility="{Binding BypassCenter.MatrixResults.Count, Converter={StaticResource CountToVis}}">
                     <StackPanel>

@@ -44,6 +44,12 @@ namespace ZapretGui.ViewModels
         private string _matrixBestText = "—";
         private string _matrixLastRunText = "";
         private DnsStrategyMatrixEntry? _selectedMatrixEntry;
+        private bool _isVoiceChecking;
+        private bool _voiceChecked;
+        private bool _voiceReady;
+        private string _voiceStatusText = "Голос Discord ещё не проверялся — 16/16 по HTTP не гарантирует голосовой канал.";
+        private string _voiceStatusKey = "Muted";
+        private string _voiceAdviceText = "";
 
         public BypassCenterViewModel(MainViewModel main)
         {
@@ -66,6 +72,8 @@ namespace ZapretGui.ViewModels
             ApplyStrategyCommand = new AsyncRelayCommand(ApplySelectedStrategyAsync, () => SelectedStrategy != null && !IsMatrixRunning);
             DismissMessageCommand = new RelayCommand(() => { Message = ""; MessageKey = "Info"; });
             ClearMatrixHistoryCommand = new RelayCommand(ClearMatrixHistory, () => !IsMatrixRunning && MatrixHasHistory);
+            CheckVoiceCommand = new AsyncRelayCommand(() => CheckVoiceAsync(), () => !IsVoiceChecking && !IsMatrixRunning);
+            EnableDiscordVoiceCommand = new AsyncRelayCommand(EnableDiscordVoiceAsync, () => !IsVoiceChecking && !IsMatrixRunning);
             OpenMatrixHistoryFolderCommand = new RelayCommand(() => Shell.OpenFolder(AppPaths.AppData));
 
             RefreshAll();
@@ -128,6 +136,62 @@ namespace ZapretGui.ViewModels
         public string MatrixHistorySummary => MatrixHasHistory ? $"Сохранено: {MatrixResults.Count} комбинаций · {MatrixLastRunText}" : "История пуста — нажми «Проверить всё»";
         public DnsStrategyMatrixEntry? SelectedMatrixEntry { get => _selectedMatrixEntry; set => Set(ref _selectedMatrixEntry, value); }
 
+        // ---- Голос Discord: HTTP-проверка матрицы не видит UDP WebRTC, поэтому проверяем отдельно ----
+        public bool IsVoiceChecking
+        {
+            get => _isVoiceChecking;
+            private set
+            {
+                if (!Set(ref _isVoiceChecking, value)) return;
+                (CheckVoiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                (EnableDiscordVoiceCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+            }
+        }
+        public bool VoiceChecked { get => _voiceChecked; private set { if (Set(ref _voiceChecked, value)) Raise(nameof(VoiceNeedsUdpFix)); } }
+        public bool VoiceReady
+        {
+            get => _voiceReady;
+            private set
+            {
+                if (Set(ref _voiceReady, value)) Raise(nameof(VoiceNeedsUdpFix));
+            }
+        }
+        public string VoiceStatusText { get => _voiceStatusText; private set => Set(ref _voiceStatusText, value); }
+        public string VoiceStatusKey { get => _voiceStatusKey; private set => Set(ref _voiceStatusKey, value); }
+        public string VoiceAdviceText { get => _voiceAdviceText; private set { if (Set(ref _voiceAdviceText, value)) Raise(nameof(VoiceAdviceVisible)); } }
+        public bool VoiceAdviceVisible => !string.IsNullOrWhiteSpace(VoiceAdviceText);
+        /// <summary>Голос не работает и обход UDP для него не включён — предлагаем исправить одним кликом.</summary>
+        public bool VoiceNeedsUdpFix => VoiceChecked && !VoiceReady && !VoiceUdpCovered;
+
+        /// <summary>Обрабатывает ли winws голосовой диапазон UDP 50000-65535 при текущих настройках.</summary>
+        private bool VoiceUdpCovered
+        {
+            get
+            {
+                var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+                if (mode is GameFilterMode.Disabled or GameFilterMode.TcpOnly) return false;
+                var profile = GameFilterPortConfig.GetProfileById(Settings.GameFilterProfileId);
+                return profile.UdpPorts.Contains("50000", StringComparison.Ordinal) ||
+                       profile.UdpPorts.Contains("1024-65535", StringComparison.Ordinal);
+            }
+        }
+
+        public string VoiceGameFilterText
+        {
+            get
+            {
+                var mode = EngineService.GetGameFilterMode(Settings.EnginePath) switch
+                {
+                    GameFilterMode.Disabled => "выключен",
+                    GameFilterMode.TcpOnly => "только TCP",
+                    GameFilterMode.UdpOnly => "только UDP",
+                    _ => "TCP+UDP"
+                };
+                var profile = GameFilterPortConfig.GetProfileById(Settings.GameFilterProfileId);
+                return $"Игровой фильтр: {mode} · профиль «{profile.Name}» · UDP {profile.UdpPorts}";
+            }
+        }
+
         public ICommand RefreshCommand { get; }
         public ICommand ApplyDnsCommand { get; }
         public ICommand CheckHijackCommand { get; }
@@ -139,6 +203,8 @@ namespace ZapretGui.ViewModels
         public ICommand CancelMatrixCommand { get; }
         public ICommand ApplyBestCommand { get; }
         public ICommand ClearMatrixHistoryCommand { get; }
+        public ICommand CheckVoiceCommand { get; }
+        public ICommand EnableDiscordVoiceCommand { get; }
         public ICommand OpenMatrixHistoryFolderCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand ApplyStrategyCommand { get; }
@@ -162,6 +228,8 @@ namespace ZapretGui.ViewModels
             Raise(nameof(BypassStatusKey));
             Raise(nameof(SeamlessStatus));
             Raise(nameof(SeamlessStatusKey));
+            Raise(nameof(VoiceGameFilterText));
+            Raise(nameof(VoiceNeedsUdpFix));
         }
 
         private void RefreshStrategies()
@@ -486,6 +554,109 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        /// <summary>
+        /// Проверка голосового стека Discord (UDP/WebRTC). Матрица измеряет HTTP-доступность и не видит
+        /// дроп UDP на 50000-65535, из-за которого Discord пишет «Не установлен маршрут».
+        /// </summary>
+        public async Task CheckVoiceAsync()
+        {
+            if (IsVoiceChecking) return;
+            IsVoiceChecking = true;
+            VoiceStatusText = "Проверяю голосовые шлюзы Discord (UDP/WebRTC)…";
+            VoiceStatusKey = "Muted";
+            VoiceAdviceText = "";
+            try
+            {
+                var report = await DiscordVoiceRtcProber.RunFullVoiceAuditAsync().ConfigureAwait(true);
+                VoiceChecked = true;
+                VoiceReady = report.OverallVoiceReady;
+                if (report.OverallVoiceReady)
+                {
+                    VoiceStatusText = $"Голос Discord OK — {report.PassedCount}/{report.TotalCount} шлюзов, {report.AveragePingMs} мс.";
+                    VoiceStatusKey = "Success";
+                }
+                else if (VoiceNeedsUdpFix)
+                {
+                    VoiceStatusText = $"Голос Discord не проходит — {report.PassedCount}/{report.TotalCount} шлюзов. UDP 50000-65535 сейчас не обрабатывается.";
+                    VoiceStatusKey = "Danger";
+                    VoiceAdviceText = "Матрица выбирает по HTTP, а голос идёт по UDP. Включи игровой фильтр в режиме TCP+UDP с профилем «Только Discord Voice» — этого обычно достаточно.";
+                }
+                else
+                {
+                    VoiceStatusText = $"Голос Discord не проходит — {report.PassedCount}/{report.TotalCount} шлюзов, хотя UDP 50000-65535 обрабатывается.";
+                    VoiceStatusKey = "Danger";
+                    VoiceAdviceText = "UDP уже обрабатывается, значит дело не в winws: Discord первым делом пробует IPv6. " +
+                                      "Отключи IPv6 у адаптера и перезапусти Discord.";
+                }
+                AppLog.Info($"[Матрица] Голос Discord: {VoiceStatusText}");
+            }
+            catch (Exception ex)
+            {
+                VoiceChecked = true;
+                VoiceReady = false;
+                VoiceStatusKey = "Warning";
+                VoiceStatusText = "Не удалось проверить голос Discord: " + ex.Message;
+                AppLog.Warn("[Матрица] Голос Discord: " + ex.Message);
+            }
+            finally
+            {
+                IsVoiceChecking = false;
+                Raise(nameof(VoiceGameFilterText));
+            }
+        }
+
+        /// <summary>Включает обработку UDP 50000-65535 (профиль «Только Discord Voice») и перезапускает обход.</summary>
+        public async Task EnableDiscordVoiceAsync()
+        {
+            if (IsVoiceChecking) return;
+            IsVoiceChecking = true;
+            VoiceStatusText = "Включаю обход голоса Discord (UDP 50000-65535)…";
+            VoiceStatusKey = "Warning";
+            try
+            {
+                Settings.GameFilterProfileId = "discord_voice";
+                SettingsStore.Save(Settings);
+                EngineService.SetGameFilterMode(Settings.EnginePath, GameFilterMode.TcpAndUdp);
+                _main.GameMode.Refresh();
+
+                var status = _main.Bypass.GetStatus();
+                var strat = Strategies.Find(Settings.SelectedStrategy) ?? Strategies.Recommended;
+                if (status.IsRunning && strat != null)
+                {
+                    var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+                    var res = status.ServiceState == ServiceState.NotInstalled
+                        ? await _main.Bypass.SwitchToStrategyAsync(strat, mode, Settings.ShowWinwsConsole).ConfigureAwait(true)
+                        : await _main.Bypass.InstallServiceAsync(strat, mode).ConfigureAwait(true);
+                    AppLog.Info($"[Матрица] Обход голоса включён: {res.Message}");
+                }
+                else
+                {
+                    VoiceAdviceText = "Настройки сохранены. Запусти обход, чтобы голос пошёл через winws.";
+                }
+                _main.Home.RefreshStatus();
+                Raise(nameof(VoiceGameFilterText));
+            }
+            catch (Exception ex)
+            {
+                VoiceStatusText = "Не удалось включить обход голоса: " + ex.Message;
+                VoiceStatusKey = "Danger";
+                AppLog.Error("[Матрица] Включение обхода голоса: " + ex.Message);
+            }
+            finally
+            {
+                IsVoiceChecking = false;
+                Raise(nameof(VoiceGameFilterText));
+            }
+
+            await CheckVoiceAsync().ConfigureAwait(true);
+            if (VoiceReady)
+            {
+                VoiceAdviceText = "";
+                Message = "✅ Голос Discord проходит — UDP 50000-65535 обрабатывается.";
+                MessageKey = "Success";
+            }
+        }
+
         private async Task ApplyBestAsync()
         {
             var best = MatrixResults.Where(r => r.IsBest).OrderByDescending(r => r.Passed).ThenBy(r => r.AvgMs).FirstOrDefault()
@@ -508,6 +679,16 @@ namespace ZapretGui.ViewModels
             _main.Home.RefreshStatus();
             Raise(nameof(CurrentDnsText));
             Raise(nameof(BypassStatusText));
+
+            // Матрица мерила HTTP: сразу проверяем голос, иначе «16/16» выглядит как полный успех.
+            await CheckVoiceAsync().ConfigureAwait(true);
+            if (res.Ok)
+            {
+                Message = VoiceReady
+                    ? $"{Message} Голос Discord: OK."
+                    : $"{Message} Голос Discord не проходит — см. карточку «Голос Discord» ниже.";
+                MessageKey = VoiceReady ? "Success" : "Warning";
+            }
         }
     }
 }

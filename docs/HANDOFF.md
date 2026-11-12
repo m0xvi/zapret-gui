@@ -1259,3 +1259,34 @@ CI и что требует Windows runtime.
 **Версия:** `ZapretGUI.csproj` → 2.1.0. Ничего в контрактах обхода (`BypassController`, `StrategyParser`,
 `EngineService`, `WinServices`) не менялось; проверки — `tools/check_bindings.py` (18 XAML / 105 ключей) и
 сборка на `windows-latest`.
+
+---
+
+## Голос Discord и матрица (v2.1.1, 2026-10-25)
+
+Жалоба владельца: «в Дискорде пишет "не установлен маршрут", хотя стоят лучшие стратегия и DNS из матрицы».
+Причина: матрица измеряет **HTTP**-доступность (`ConnectionTester`, 16 проверок), а голос Discord идёт по
+**UDP** на портах 50000-65535. `general (ALT13) × Cloudflare 16/16` означает только TCP/HTTP; если обход UDP
+не включён, ТСПУ дропает голосовые пакеты и Discord показывает «Не установлен маршрут».
+
+Что сделано:
+
+- `Views/StrategiesPage.xaml` (вкладка «Матрица DNS×стратегии») — карточка **«ГОЛОС DISCORD (UDP)»**:
+  статус, текущее состояние игрового фильтра (`VoiceGameFilterText`), подсказка и две кнопки —
+  «Проверить голос» и (по условию) «Включить обход голоса».
+- `ViewModels/BypassCenterViewModel.cs`:
+  - `CheckVoiceAsync()` — прогон `DiscordVoiceRtcProber.RunFullVoiceAuditAsync()` (STUN/UDP к голосовым
+    шлюзам Discord), результат в `VoiceStatusText` / `VoiceStatusKey` / `VoiceAdviceText`.
+  - `VoiceUdpCovered` — обрабатывает ли winws UDP 50000-65535 при текущих `GameFilterMode` и
+    `GameFilterProfileId`; если нет, `VoiceNeedsUdpFix == true` и показывается кнопка исправления.
+  - `EnableDiscordVoiceAsync()` — ставит `GameFilterProfileId = "discord_voice"`,
+    `GameFilterMode = TcpAndUdp`, перезапускает обход/службу и перепроверяет голос.
+  - `ApplyBestAsync()` — после «Применить лучшее» автоматически проверяет голос и пишет результат в сообщение
+    («Голос Discord: OK» / «не проходит — см. карточку»), чтобы 16/16 не выглядело полным успехом.
+- `ViewModels/DiagnosticsViewModel.cs` — `OptimizeDiscordVoiceAsync` раньше **обещал** в сообщении «UDP 50000-65535»,
+  но игровой фильтр не включал; теперь реально ставит профиль `discord_voice` и режим `TcpAndUdp`.
+
+Если UDP уже обрабатывается, а голос всё равно не идёт, подсказка указывает на IPv6 (Discord сначала пробует
+IPv6-адрес шлюза; при отсутствии IPv6-маршрута Windows отдаёт WSAENETUNREACH — «Не установлен маршрут»).
+
+**Версия:** `ZapretGUI.csproj` → 2.1.1.
