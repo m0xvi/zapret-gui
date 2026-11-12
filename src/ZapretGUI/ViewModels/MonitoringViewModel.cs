@@ -205,10 +205,16 @@ namespace ZapretGui.ViewModels
             set
             {
                 Settings.AutoRecoverStrategy = value;
+                // v2.2.2: подчинённый флаг без мастера ничего не значит — включаем мастер вместе с ним.
+                if (value) Settings.AutoSwitchStrategyMasterEnabled = true;
                 SettingsStore.Save(Settings);
                 Raise(nameof(AutoRecoverStrategy));
+                Raise(nameof(AutoSwitchAllowed));
             }
         }
+
+        /// <summary>Разрешена ли автосмена стратегий сейчас (мастер-выключатель + не SafeMode).</summary>
+        public bool AutoSwitchAllowed => Settings.StrategyAutoSwitchAllowed;
 
         public int MonitoringIntervalMinutes
         {
@@ -271,7 +277,8 @@ namespace ZapretGui.ViewModels
                 Message = $"Недоступен ресурс: {failed.Target.Name}. Запускаю сравнение прямого подключения и обхода.";
                 MessageKey = "Warning";
 
-                if (Settings.AutoRecoverStrategy && !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning)
+                // v2.2.2: восстановление только при явно включённой автосмене.
+                if (Settings.AutoRecoverStrategy && Settings.StrategyAutoSwitchAllowed && _main.Bypass.GetStatus().IsRunning)
                     await DiagnoseAndRecoverAsync(failed.Target);
             }
             catch (Exception ex)
@@ -303,6 +310,7 @@ namespace ZapretGui.ViewModels
 
         private async Task DiagnoseAndRecoverAsync(MonitorTarget target)
         {
+            if (!Settings.StrategyAutoSwitchAllowed) return;
             Diagnosis = await _main.Bypass.DiagnoseResourceAsync(target);
             if (Diagnosis.Kind != ResourceDiagnosisKind.StrategyBreaks)
             {
@@ -395,6 +403,7 @@ namespace ZapretGui.ViewModels
 
         private async Task RecoverGameStrategyAsync(MonitorTarget target, BypassStatus before)
         {
+            if (!Settings.StrategyAutoSwitchAllowed) return;
             var current = Diagnosis?.WithBypass;
             // v1.32.3: сортировка по реальным тестам, пропуск битых
             var candidates = _main.Strategies.Items
@@ -512,7 +521,7 @@ namespace ZapretGui.ViewModels
             if (!Settings.ResourceMonitoringEnabled || IsBusy) return;
             await CheckAllAsync();
             // Фоновая проверка лучшей стратегии, если включено в Настройках → Сеть
-            if (Settings.AutoSwitchToBestStrategy && !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning)
+            if (Settings.AutoSwitchToBestStrategy && Settings.StrategyAutoSwitchAllowed && _main.Bypass.GetStatus().IsRunning)
             {
                 var minutes = Math.Clamp(Settings.BestStrategyCheckMinutes, 5, 120);
                 if ((DateTime.Now - _lastBestCheck).TotalMinutes < minutes) return;
@@ -524,6 +533,7 @@ namespace ZapretGui.ViewModels
         // v1.32.3: нормализовано — только рабочие (YouTube+Discord) и с уведомлением, а не «абы какие»
         private async Task TrySwitchToBestStrategyAsync()
         {
+            if (!Settings.StrategyAutoSwitchAllowed) return;
             var before = _main.Bypass.GetStatus();
             // сортируем по реальным тестам, пропуск битых
             var candidates = _main.Strategies.Items
@@ -614,6 +624,7 @@ namespace ZapretGui.ViewModels
             if (Settings.ResourceMonitoringEnabled) _timer.Start(); else _timer.Stop();
             Raise(nameof(ResourceMonitoringEnabled));
             Raise(nameof(AutoRecoverStrategy));
+            Raise(nameof(AutoSwitchAllowed));
             Raise(nameof(MonitoringIntervalMinutes));
         }
 

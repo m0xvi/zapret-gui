@@ -36,6 +36,8 @@ namespace ZapretGui.CoreLogicHarness
                 ("Зеркала добавляются только для файлов GitHub", UpdateSourcesIncludeMirrors),
                 ("Согласованность движка отмечает драйвер, списки и стратегии", EngineConsistencyIsChecked),
                 ("Разбор состояния службы устойчив к языку Windows", ServiceStateParsingIsLocalized),
+                ("Тип запуска службы читается на любом языке Windows", ServiceStartTypeParsingIsLocalized),
+                ("Автосмена стратегий закрыта мастер-выключателем", AutoSwitchMasterGatesEveryPath),
                 ("Безопасная остановка служб тестируется без реального обхода", SafeServiceStopIsIsolated),
                 ("Кэш состояния служб различает актуальные и остаточные службы", ServiceHealthCacheIsExplicit),
                 ("Режимы ipset сохраняют и восстанавливают список", IpsetModesRoundTrip),
@@ -1089,6 +1091,61 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
             var testArgs = new List<string> { "--wf-tcp=443", "--dpi-desync=fake", "--dpi-desync-fake-tls-mod=sni=google.com,pad=10" };
             var replaced = SniFakePoolManager.ApplySniOverride(testArgs, "sberbank.ru");
             Assert(replaced.Any(a => a.Contains("sni=sberbank.ru,pad=10")), "Замена SNI внутри mod не сработала");
+        }
+
+        private static void ServiceStartTypeParsingIsLocalized()
+        {
+            Assert(WinServices.ParseStartType("START_TYPE         : 2   AUTO_START") == ServiceStartType.Auto,
+                "AUTO_START не распознан");
+            Assert(WinServices.ParseStartType("START_TYPE         : 3   DEMAND_START") == ServiceStartType.Demand,
+                "DEMAND_START не распознан");
+            Assert(WinServices.ParseStartType("ТИП_ЗАПУСКА        : 4   DISABLED") == ServiceStartType.Disabled,
+                "DISABLED не распознан");
+            Assert(WinServices.ParseStartType("ТИП ЗАПУСКА        : 2   АВТО") == ServiceStartType.Auto,
+                "локализованный тип запуска не распознан");
+            Assert(WinServices.ParseStartType("") == ServiceStartType.Unknown,
+                "пустой вывод не должен давать тип запуска");
+        }
+
+        private static void AutoSwitchMasterGatesEveryPath()
+        {
+            // По умолчанию приложение не переключает стратегии само.
+            var defaults = new AppSettings();
+            Assert(!defaults.AutoSwitchStrategyMasterEnabled, "мастер автосмены должен быть выключен по умолчанию");
+            Assert(!defaults.StrategyAutoSwitchAllowed, "автосмена не должна быть разрешена по умолчанию");
+
+            // Миграция: раньше автосмену включал любой из трёх флагов — переносим это в мастер.
+            var legacy = new AppSettings { AutoRecoverStrategy = true };
+            legacy.MigrateAutoStrategySwitchSchema();
+            Assert(legacy.AutoSwitchStrategyMasterEnabled, "старый флаг AutoRecover не перенесён в мастер");
+            Assert(legacy.StrategyAutoSwitchAllowed, "перенесённая автосмена должна работать");
+            Assert(legacy.UiSchemaVersion == 3, "версия схемы настроек не обновлена");
+
+            var migrated = new AppSettings { UiSchemaVersion = 3, SeamlessFailoverEnabled = false };
+            migrated.MigrateAutoStrategySwitchSchema();
+            Assert(!migrated.AutoSwitchStrategyMasterEnabled, "повторная миграция не должна включать автосмену");
+
+            var clean = new AppSettings { UiSchemaVersion = 3 };
+            clean.MigrateAutoStrategySwitchSchema();
+            Assert(!clean.AutoSwitchStrategyMasterEnabled, "миграция новой схемы не должна включать автосмену");
+
+            // SafeMode запрещает автосмену даже при включённом мастере.
+            var safe = new AppSettings { AutoSwitchStrategyMasterEnabled = true, SafeMode = true };
+            Assert(!safe.StrategyAutoSwitchAllowed, "SafeMode должен запрещать автосмену");
+
+            // Выключение мастера гасит все подчинённые механизмы — «одно состояние вместо трёх».
+            var on = new AppSettings
+            {
+                AutoSwitchStrategyMasterEnabled = true,
+                AutoRecoverStrategy = true,
+                SeamlessFailoverEnabled = true,
+                AutoSwitchToBestStrategy = true
+            };
+            on.DisableAutoStrategySwitching();
+            Assert(!on.AutoSwitchStrategyMasterEnabled && !on.AutoRecoverStrategy &&
+                   !on.SeamlessFailoverEnabled && !on.AutoSwitchToBestStrategy,
+                "мастер не погасил подчинённые флаги");
+            Assert(!on.StrategyAutoSwitchAllowed, "после выключения мастера автосмена всё ещё разрешена");
         }
 
         private static void Assert(bool value, string message)

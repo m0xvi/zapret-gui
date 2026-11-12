@@ -143,6 +143,28 @@
             <!-- ===================== ВКЛАДКА 1: АВТОМАТИКА ===================== -->
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsBypassTabSelected, Converter={StaticResource BoolToVis}}">
 
+                <!-- v2.2.2: один мастер-выключатель автосмены стратегий -->
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource ElevatedBrush}" VerticalAlignment="Top">
+                            <TextBlock Text="&#xE72E;" FontFamily="{DynamicResource IconFont}" FontSize="16"
+                                       Foreground="{DynamicResource TextBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                            <TextBlock Style="{StaticResource SectionText}" Text="АВТОСМЕНА СТРАТЕГИЙ" Margin="0,0,0,2" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding MasterAutoSwitchHint}" TextWrapping="Wrap" />
+                        </StackPanel>
+                        <CheckBox Grid.Column="2" Style="{StaticResource SwitchCheckBox}" Content="" VerticalAlignment="Center"
+                                  IsChecked="{Binding MasterAutoSwitchEnabled, Mode=TwoWay}"
+                                  ToolTip="Разрешить приложению менять стратегию без вашего участия" />
+                    </Grid>
+                </Border>
+
                 <Border Style="{StaticResource Card}" Margin="0,14,0,0">
                     <StackPanel>
                         <Grid>
@@ -196,7 +218,8 @@
                                 <TextBlock Style="{StaticResource SectionText}" Text="БЕСШОВНОЕ ПЕРЕКЛЮЧЕНИЕ СТРАТЕГИЙ" Margin="0,0,0,2" />
                                 <TextBlock Style="{StaticResource DimText}" Text="Без окон и подтверждений: сам проверяет YouTube/Discord и тихо переключает на рабочую стратегию, сохраняя режим служба/процесс." TextWrapping="Wrap" />
                             </StackPanel>
-                            <CheckBox Grid.Column="2" Style="{StaticResource SwitchCheckBox}" Content="" IsChecked="{Binding SeamlessFailoverEnabled, Mode=TwoWay}" ToolTip="Включить бесшовное автопереключение" VerticalAlignment="Center" />
+                            <CheckBox Grid.Column="2" Style="{StaticResource SwitchCheckBox}" Content="" IsChecked="{Binding SeamlessFailoverEnabled, Mode=TwoWay}"
+                                      ToolTip="Включить бесшовное автопереключение (включает и мастер автосмены)" VerticalAlignment="Center" />
                         </Grid>
                         <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Background="{DynamicResource ElevatedBrush}" Visibility="{Binding SeamlessFailoverEnabled, Converter={StaticResource BoolToVis}}">
                             <StackPanel>

@@ -29,6 +29,9 @@ namespace ZapretGui.ViewModels
         private string _connectionProgressText = "";
         private int _suppressWrites;
         private string _legacyWarning = "";
+        // ---- Автозапуск службы Windows (v2.2.2) ----
+        private bool _serviceAutoStart;
+        private DateTime _serviceAutoStartCheckedUtc = DateTime.MinValue;
         private DateTime _lastLegacyCheck = DateTime.MinValue;
         private LegacyInstallInfo? _legacyCache;
         private string _newConnectionAddress = "";
@@ -241,10 +244,21 @@ namespace ZapretGui.ViewModels
         public string RunningStrategyName => _status.StrategyName;
         public bool ServiceInstalled => _status.ServiceState != ServiceState.NotInstalled;
         public string InstallServiceButtonText => ServiceInstalled
-            ? "Служба уже установлена, удалить?"
+            ? "Служба установлена"
             : "Установить в службу";
-        public string ServiceToggleStatusText => ServiceInstalled ? "Автозапуск включён" : "Автозапуск выключен";
-        public bool IsServiceToggleOn => ServiceInstalled;
+        /// <summary>Служба установлена и Windows запускает её сама (START_TYPE = AUTO).</summary>
+        public bool ServiceAutoStartEnabled => ServiceInstalled && _serviceAutoStart;
+        public string ServiceToggleStatusText => !ServiceInstalled
+            ? "Служба не установлена"
+            : _serviceAutoStart ? "Автозапуск включён" : "Автозапуск выключен";
+        /// <summary>Тумблер управляет только автозапуском: служба при выключении остаётся на месте.</summary>
+        public bool IsServiceToggleOn => ServiceAutoStartEnabled;
+        public string ServiceToggleHint => !ServiceInstalled
+            ? "Включить: установить службу с автозапуском"
+            : _serviceAutoStart
+                ? "Выключить автозапуск — служба останется работать до перезагрузки"
+                : "Включить автозапуск: Windows будет запускать службу сама";
+        public string ServiceRemoveHint => "Удалить службу zapret из Windows";
         public bool IsServicePending => StrategyApplicationService.IsServicePending(_status.ServiceState);
         public string ServicePendingText => StrategyApplicationService.ServicePendingText(_status.ServiceState);
         public bool IsServiceToggleEnabled => !IsBusy && !IsServicePending;
@@ -274,6 +288,9 @@ namespace ZapretGui.ViewModels
         public string ReadinessDetails => _main.ReadinessDetails;
         public string ReadinessKey => _main.ReadinessKey;
         public bool ReadinessActionVisible => !_main.ReadinessIsReady || !_main.Settings.FirstLaunchWizardCompleted;
+
+        /// <summary>v2.2.2: индикатор в карточке статуса — видно, что приложение не переключает стратегии само.</summary>
+        public bool AutoSwitchDisabled => !Settings.StrategyAutoSwitchAllowed;
 
         public string UptimeText => _status.UptimeText;
         public string PidText => _status.Pid.HasValue ? "PID " + _status.Pid.Value : "—";
@@ -774,10 +791,14 @@ namespace ZapretGui.ViewModels
         public void RefreshStatus()
         {
             _status = Bypass.GetStatus();
+            RefreshServiceAutoStart();
             Raise(nameof(IsRunning));
             Raise(nameof(ServiceInstalled));
+            Raise(nameof(ServiceAutoStartEnabled));
             Raise(nameof(ServiceToggleStatusText));
             Raise(nameof(IsServiceToggleOn));
+            Raise(nameof(ServiceToggleHint));
+            Raise(nameof(ServiceRemoveHint));
             Raise(nameof(IsServicePending));
             Raise(nameof(ServicePendingText));
             Raise(nameof(IsServiceToggleEnabled));
@@ -787,6 +808,7 @@ namespace ZapretGui.ViewModels
             Raise(nameof(BypassStateKey));
             Raise(nameof(State));
             Raise(nameof(StrategyText));
+            Raise(nameof(AutoSwitchDisabled));
             Raise(nameof(UptimeText));
             Raise(nameof(PidText));
             Raise(nameof(ServiceText));
@@ -798,6 +820,23 @@ namespace ZapretGui.ViewModels
             RefreshLegacyWarning();
             RaiseCommands();
         }
+
+        /// <summary>Тип запуска службы читается через «sc qc», поэтому кэшируем на 10 секунд:
+        /// карточка статуса обновляется таймером каждые 3 секунды.</summary>
+        private void RefreshServiceAutoStart()
+        {
+            if (!ServiceInstalled)
+            {
+                _serviceAutoStart = false;
+                _serviceAutoStartCheckedUtc = DateTime.UtcNow;
+                return;
+            }
+            if ((DateTime.UtcNow - _serviceAutoStartCheckedUtc).TotalSeconds < 10) return;
+            _serviceAutoStartCheckedUtc = DateTime.UtcNow;
+            _serviceAutoStart = WinServices.GetStartType(WinServices.ZapretService) == ServiceStartType.Auto;
+        }
+
+        private void InvalidateServiceAutoStart() => _serviceAutoStartCheckedUtc = DateTime.MinValue;
 
         private void RaiseCommands()
         {
@@ -1037,6 +1076,9 @@ namespace ZapretGui.ViewModels
             }
         }
 
+        /// <summary>v2.2.2: тумблер «Автозапуск» больше не удаляет службу. Выключение —
+        /// это «sc config start= demand» (служба и обход продолжают работать), включение —
+        /// «start= auto». Удаление службы вынесено в отдельную явную кнопку.</summary>
         private async Task ToggleServiceAsync()
         {
             if (IsServicePending)
@@ -1044,15 +1086,64 @@ namespace ZapretGui.ViewModels
                 ShowWarning(ServicePendingText + " Подождите завершения перехода.");
                 return;
             }
-            if (ServiceInstalled) await RemoveServiceAsync();
-            else await InstallServiceAsync();
+            if (!ServiceInstalled)
+            {
+                await InstallServiceAsync();
+                return;
+            }
+            await SetServiceAutoStartAsync(!ServiceAutoStartEnabled);
+        }
+
+        private async Task SetServiceAutoStartAsync(bool enabled)
+        {
+            if (!Shell.IsAdmin())
+            {
+                ShowError("Для изменения автозапуска службы нужны права администратора.");
+                return;
+            }
+
+            IsBusy = true;
+            ShowInfo(enabled ? "Включаю автозапуск службы…" : "Выключаю автозапуск службы…");
+            try
+            {
+                var result = WinServices.SetStartType(WinServices.ZapretService, enabled);
+                if (!result.Ok)
+                {
+                    ShowError("Не удалось изменить автозапуск службы: " + result.All);
+                    return;
+                }
+
+                if (enabled)
+                {
+                    // Автозапуск имеет смысл только у работающей службы. Если обход уже работает
+                    // (службой или отдельным процессом), второй экземпляр winws не запускаем.
+                    var current = Bypass.GetStatus();
+                    if (!current.IsRunning)
+                    {
+                        WinServices.Start(WinServices.ZapretService);
+                        await Shell.WaitForAsync(() => WinServices.Query(WinServices.ZapretService) == ServiceState.Running, 12000);
+                    }
+                    ShowSuccess("Автозапуск службы включён");
+                }
+                else
+                {
+                    ShowSuccess("Автозапуск службы выключен — обход продолжит работать до перезагрузки");
+                }
+            }
+            finally
+            {
+                IsBusy = false;
+                InvalidateServiceAutoStart();
+                RefreshStatus();
+            }
         }
 
         private async Task InstallServiceAsync()
         {
             if (ServiceInstalled)
             {
-                await RemoveServiceAsync();
+                // Служба уже стоит — тумблер лишь включает её автозапуск, ничего не удаляя.
+                await SetServiceAutoStartAsync(true);
                 return;
             }
 
@@ -1073,11 +1164,18 @@ namespace ZapretGui.ViewModels
             try
             {
                 var result = await Bypass.InstallServiceAsync(strategy, CurrentGameFilter());
-                if (result.Ok) ShowSuccess(result.Message); else ShowError(result.Message);
+                if (result.Ok)
+                {
+                    // Windows должна запускать службу сама — фиксируем старт «auto» явно.
+                    WinServices.SetStartType(WinServices.ZapretService, true);
+                    ShowSuccess(result.Message);
+                }
+                else ShowError(result.Message);
             }
             finally
             {
                 IsBusy = false;
+                InvalidateServiceAutoStart();
                 RefreshStatus();
             }
         }
@@ -1100,20 +1198,27 @@ namespace ZapretGui.ViewModels
             ShowInfo("Переустанавливаю службу zapret…");
             try
             {
-                await Bypass.RemoveServiceAsync();
+                // InstallServiceAsync сам пересоздаёт службу и сохраняет прежний тип запуска,
+                // поэтому «Обновить службу» не включает автозапуск, выключенный пользователем.
                 var result = await Bypass.InstallServiceAsync(strategy, CurrentGameFilter());
                 if (result.Ok) ShowSuccess(result.Message); else ShowError(result.Message);
             }
             finally
             {
                 IsBusy = false;
+                InvalidateServiceAutoStart();
                 RefreshStatus();
             }
         }
 
         private async Task RemoveServiceAsync()
         {
-            // Удаление службы по явному клику тумблера — без лишнего вопроса, только по действию пользователя (1.17.24)
+            // v2.2.2: удаление службы — отдельное явное действие с подтверждением.
+            // Автозапуск выключается тумблером и службу больше не удаляет.
+            if (!Confirm("Удалить службу zapret?",
+                    "Обход, запущенный как служба, остановится, а служба будет удалена из Windows.\n" +
+                    "Чтобы просто убрать автозапуск, выключите тумблер — служба останется работать."))
+                return;
 
             Settings.BypassManuallyStopped = true; SettingsStore.Save(Settings); _main.Watchdog.NotifyManualStop();
             IsBusy = true;
@@ -1126,6 +1231,7 @@ namespace ZapretGui.ViewModels
             finally
             {
                 IsBusy = false;
+                InvalidateServiceAutoStart();
                 RefreshStatus();
             }
         }

@@ -165,8 +165,9 @@ namespace ZapretGui
                                     try
                                     {
                                         if (!Shell.IsAdmin()) { AppLog.Warn("Автозапуск обхода пропущен — нет прав администратора"); return; }
-                                        var strat = viewModel.Strategies.Find(settings.SelectedStrategy) ?? viewModel.Strategies.Recommended;
-                                        if (strat == null) { AppLog.Warn("Автозапуск обхода пропущен — стратегия не выбрана"); return; }
+                                        // v2.2.2: автозапуск не подменяет стратегию на «рекомендованную».
+                                        var strat = viewModel.Strategies.Find(settings.SelectedStrategy);
+                                        if (strat == null) { AppLog.Warn("Автозапуск обхода пропущен — сохранённая стратегия не найдена в движке"); return; }
                                         AppLog.Info($"Автозапуск обхода: {strat.Name}");
                                         var mode = EngineService.GetGameFilterMode(settings.EnginePath);
                                         // Если служба уже установлена — запускаем через службу, иначе обычный обход

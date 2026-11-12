@@ -93,9 +93,15 @@ namespace ZapretGui.Views
                 _vm.Settings.AutoStartBypass &&
                 !string.IsNullOrEmpty(_vm.Settings.SelectedStrategy) &&
                 _vm.Strategies.Find(_vm.Settings.SelectedStrategy) != null;
-            // Если служба уже установлена — убеждаемся что она Running даже если AutoStartBypass выключен (Windows должна была запустить, но могла упасть)
+            // v2.2.2: службу поднимаем только если Windows реально должна её запускать
+            // (START_TYPE = auto). Если пользователь выключил автозапуск службы и приложения,
+            // мы не «оживляем» её при старте GUI — именно это раздражало.
             var serviceInstalledAtStartup = _vm.Bypass.IsServiceInstalled();
-            if ((shouldAutoStartBypass || serviceInstalledAtStartup) && !_vm.Settings.SafeMode)
+            var serviceAutoStartAtStartup = serviceInstalledAtStartup &&
+                WinServices.GetStartType(WinServices.ZapretService) == ServiceStartType.Auto;
+            if (serviceInstalledAtStartup && !serviceAutoStartAtStartup && !shouldAutoStartBypass)
+                AppLog.Info("[Startup] Автозапуск службы и приложения выключен — службу не трогаю");
+            if ((shouldAutoStartBypass || serviceAutoStartAtStartup) && !_vm.Settings.SafeMode)
             {
                 Dispatcher.BeginInvoke(new Action(async () =>
                 {
@@ -108,10 +114,11 @@ namespace ZapretGui.Views
                             await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(delay));
                         }
 
-                        var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
+                        // v2.2.2: без подмены на «рекомендованную» — автозапуск не должен менять стратегию молча.
+                        var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy);
                         if (strategy == null)
                         {
-                            AppLog.Warn("[Startup] Стратегия для автозапуска не найдена");
+                            AppLog.Warn("[Startup] Стратегия для автозапуска не найдена — автозапуск пропущен");
                             return;
                         }
 
@@ -129,12 +136,16 @@ namespace ZapretGui.Views
                                     var r = WinServices.Start(WinServices.ZapretService);
                                     AppLog.Info($"[Startup] sc start result: ok={r.Ok}");
                                     started = await Shell.WaitForAsync(() => WinServices.Query(WinServices.ZapretService) == ServiceState.Running, 12000);
-                                    if (!started)
+                                    if (!started && shouldAutoStartBypass)
                                     {
                                         AppLog.Warn("[Startup] sc start не помог — переустанавливаю службу с выбранной стратегией");
                                         var res = await _vm.Bypass.InstallServiceAsync(strategy, EngineService.GetGameFilterMode(_vm.Settings.EnginePath));
                                         AppLog.Info($"[Startup] InstallService: {res.Message}");
                                         _vm.Home.ShowInfo(res.Message);
+                                    }
+                                    else if (!started)
+                                    {
+                                        AppLog.Warn("[Startup] Служба не запустилась, но автозапуск приложения выключен — не переустанавливаю (стратегия не меняется)");
                                     }
                                     else
                                     {
@@ -207,10 +218,11 @@ namespace ZapretGui.Views
                     else
                     {
                         _vm.Settings.BypassManuallyStopped = false; SettingsStore.Save(_vm.Settings); _vm.Watchdog.NotifyManualStart();
-                        var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy) ?? _vm.Strategies.Recommended;
+                        // v2.2.2: не подменяем выбранную стратегию «рекомендованной» молча.
+                        var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy);
                         if (strategy == null)
                         {
-                            _tray?.ShowBalloon("Zapret GUI", "Стратегия не выбрана");
+                            _tray?.ShowBalloon("Zapret GUI", "Сохранённая стратегия не найдена — выберите её на странице «Стратегии»");
                             return;
                         }
                         // Запуск из трея без вопроса — бесшовно (1.17.24)

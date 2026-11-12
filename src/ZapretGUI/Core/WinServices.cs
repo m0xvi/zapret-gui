@@ -9,6 +9,9 @@ namespace ZapretGui.Core
 {
     public enum ServiceState { NotInstalled, Unknown, Stopped, StartPending, StopPending, Running, Paused }
 
+    /// <summary>Тип запуска службы (START_TYPE из «sc qc»).</summary>
+    public enum ServiceStartType { Unknown, Boot, System, Auto, Demand, Disabled }
+
     /// <summary>Обёртка над sc.exe для служб zapret и WinDivert (как в service.bat).</summary>
     public static class WinServices
     {
@@ -113,6 +116,59 @@ namespace ZapretGui.Core
         {
             Stop(name);
             Shell.Run("sc.exe", new[] { "delete", name }, 20000);
+        }
+
+        /// <summary>Тип запуска службы. Нужен, чтобы включать/выключать автозапуск отдельно от
+        /// установки службы (v2.2.2): раньше «выключить автозапуск» означало удалить службу.</summary>
+        public static ServiceStartType GetStartType(string name)
+        {
+            try
+            {
+                var result = Shell.Run("sc.exe", new[] { "qc", name }, 15000);
+                return ParseStartType(result.All);
+            }
+            catch { return ServiceStartType.Unknown; }
+        }
+
+        /// <summary>Разбирает START_TYPE из вывода «sc qc» независимо от языка Windows.</summary>
+        public static ServiceStartType ParseStartType(string text)
+        {
+            text ??= "";
+            foreach (var line in text.Split('\n'))
+            {
+                if (line.IndexOf("START_TYPE", StringComparison.OrdinalIgnoreCase) < 0 &&
+                    line.IndexOf("ЗАПУСК", StringComparison.OrdinalIgnoreCase) < 0)
+                    continue;
+                var match = Regex.Match(line, @":\s*(\d+)");
+                if (match.Success && int.TryParse(match.Groups[1].Value, out var code))
+                {
+                    return code switch
+                    {
+                        0 => ServiceStartType.Boot,
+                        1 => ServiceStartType.System,
+                        2 => ServiceStartType.Auto,
+                        3 => ServiceStartType.Demand,
+                        4 => ServiceStartType.Disabled,
+                        _ => ServiceStartType.Unknown
+                    };
+                }
+            }
+
+            // Резервный разбор по тексту, если числового поля нет.
+            if (text.Contains("AUTO_START", StringComparison.OrdinalIgnoreCase)) return ServiceStartType.Auto;
+            if (text.Contains("DEMAND_START", StringComparison.OrdinalIgnoreCase)) return ServiceStartType.Demand;
+            if (text.Contains("DISABLED", StringComparison.OrdinalIgnoreCase)) return ServiceStartType.Disabled;
+            return ServiceStartType.Unknown;
+        }
+
+        /// <summary>Включает/выключает автозапуск службы, не трогая саму службу и её состояние.
+        /// auto — старт вместе с Windows, demand — только вручную.</summary>
+        public static ShellResult SetStartType(string name, bool autoStart)
+        {
+            var mode = autoStart ? "auto" : "demand";
+            var result = Shell.Run("sc.exe", new[] { "config", name, "start=", mode }, 20000);
+            AppLog.Info($"[Services] sc config {name} start= {mode}: ok={result.Ok} {result.All.Trim()}");
+            return result;
         }
 
         /// <summary>Имя стратегии, установленной в службу (как в service.bat через reg add).</summary>

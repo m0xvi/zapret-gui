@@ -1371,3 +1371,46 @@ IPv6-адрес шлюза; при отсутствии IPv6-маршрута Wi
   «Обновить» и кнопка «Сбросить сессию».
 
 **Версия:** 2.2.1.
+
+---
+
+## Аудит автосмены стратегий и автозапуска службы (v2.2.2, 2026-10-25)
+
+Запрос владельца: «постоянно скачут стратегии, хотя автопереключение выключено» + «раздражает
+выключение автозапуска службы Windows». Разбор всех путей, которые меняли стратегию без действия
+пользователя:
+
+| Путь | Было | Стало |
+|------|------|-------|
+| `SettingsStore.Load` | принудительно `AutoStartBypass = true` при каждой загрузке (миграция) | значение из `settings.json` уважается; `SafeMode` больше не стирает флаг |
+| `MainWindow` автозапуск | служба поднималась/переустанавливалась даже при выключенном автозапуске; стратегия при ненахождении подменялась на `Recommended` | поднимаем только при `START_TYPE=auto` или включённом `AutoStartBypass`; без подмены стратегии |
+| `App.xaml.cs` автозапуск | `Find(Selected) ?? Recommended` | только `Find(Selected)`, иначе автозапуск пропускается |
+| `WatchdogService.HandleCrashAsync` | переустановка службы с `SelectedStrategy` (могла отличаться от упавшей) | при выключенном мастере восстанавливается ровно упавшая стратегия |
+| `WatchdogService.TryFallbackStrategyAsync` | гейт `!AutoRecover && !Seamless` | единый гейт `StrategyAutoSwitchAllowed` |
+| `SeamlessFailoverService` | `SeamlessFailoverEnabled` | + мастер; плюс финальный предохранитель в `DoSeamlessSwitchAsync` |
+| `MonitoringViewModel` | `AutoRecover` / `AutoSwitchToBest` без мастера | + `StrategyAutoSwitchAllowed` во всех точках и на входе в recovery |
+| `ProfileAutoSwitchService` | автопрофили переключали стратегию | подчиняется мастеру |
+| `ProfileManager.ApplyProfileAsync` | профиль включал сторож и подменял стратегию на `Recommended` | сторож берётся только из настроек, подмены нет |
+| `SettingsViewModel` сброс | `AutoRecoverStrategy = true` | `DisableAutoStrategySwitching()` |
+| Трей «вкл/выкл» | `Find(...) ?? Recommended` | без подмены, с сообщением «стратегия не найдена» |
+
+Модель настроек:
+
+- `AppSettings.AutoSwitchStrategyMasterEnabled` — единственный мастер (по умолчанию `false`),
+  `[JsonIgnore] StrategyAutoSwitchAllowed => Master && !SafeMode`;
+- `DisableAutoStrategySwitching()` гасит мастер и все три подчинённых флага;
+- `MigrateAutoStrategySwitchSchema()` (UiSchemaVersion → 3) переносит старое поведение тем, у кого
+  автосмена была реально включена; каждый подчинённый переключатель в UI включает мастер сам.
+
+Автозапуск службы:
+
+- `WinServices.ServiceStartType`, `ParseStartType` (языконезависимый разбор `sc qc`),
+  `GetStartType`, `SetStartType` (`sc config start= auto|demand`).
+- `HomeViewModel`: `ServiceAutoStartEnabled`/`IsServiceToggleOn` = «служба стоит и `start=auto`»,
+  тумблер переключает только тип запуска (служба не удаляется), `RemoveServiceCommand` —
+  отдельная кнопка с подтверждением; тип запуска кэшируется на 10 с (карточка обновляется каждые 3 с).
+
+**Тесты**: `CoreLogicHarness` — «Тип запуска службы читается на любом языке Windows»,
+«Автосмена стратегий закрыта мастер-выключателем».
+
+**Версия:** 2.2.2.

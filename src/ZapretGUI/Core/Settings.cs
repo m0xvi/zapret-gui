@@ -154,6 +154,34 @@ namespace ZapretGui.Core
         /// По умолчанию выключено (v1.32.0): смена стратегии — только по решению пользователя.</summary>
         public bool SeamlessFailoverEnabled { get; set; } = false;
 
+        /// <summary>v2.2.2: единственный мастер-выключатель автосмены стратегий.
+        /// Пока он выключен, ни один фоновый механизм (сторож, бесшовный failover,
+        /// автоподбор лучшей, автопрофили) не меняет выбранную стратегию.
+        /// По умолчанию выключен: приложение ничего не переключает само.</summary>
+        public bool AutoSwitchStrategyMasterEnabled { get; set; } = false;
+
+        /// <summary>Разрешена ли автосмена стратегий прямо сейчас (мастер + не SafeMode).</summary>
+        [JsonIgnore]
+        public bool StrategyAutoSwitchAllowed => AutoSwitchStrategyMasterEnabled && !SafeMode;
+
+        /// <summary>Гасит мастер и все подчинённые механизмы автосмены — одно состояние вместо трёх флагов.</summary>
+        public void DisableAutoStrategySwitching()
+        {
+            AutoSwitchStrategyMasterEnabled = false;
+            AutoRecoverStrategy = false;
+            SeamlessFailoverEnabled = false;
+            AutoSwitchToBestStrategy = false;
+        }
+
+        /// <summary>Одноразовая миграция схемы автосмены: раньше её включал любой из трёх флагов.
+        /// Переносим это в мастер-выключатель, чтобы у таких пользователей поведение не поменялось.</summary>
+        public void MigrateAutoStrategySwitchSchema()
+        {
+            if (UiSchemaVersion >= 3) return;
+            AutoSwitchStrategyMasterEnabled = AutoRecoverStrategy || SeamlessFailoverEnabled || AutoSwitchToBestStrategy;
+            UiSchemaVersion = 3;
+        }
+
         /// <summary>Интервал бесшовной проверки в минутах (2-60).</summary>
         public int SeamlessCheckMinutes { get; set; } = 5;
 
@@ -324,9 +352,9 @@ namespace ZapretGui.Core
                         loaded.MonitorTargets ??= new List<MonitorTarget>();
                         loaded.ProviderContext ??= new ProviderContext();
                         loaded.CustomDnsProfiles ??= new List<DnsProfile>();
-                        // Миграция автозапуска: ранее по умолчанию выкл, теперь вкл — включаем для существующих профилей
-                        if (!loaded.AutoStartBypass && loaded.FirstLaunchWizardCompleted && !loaded.SafeMode)
-                            loaded.AutoStartBypass = true;
+                        // Миграция автозапуска: раньше флаг включали принудительно при каждой загрузке,
+                        // из-за чего выключенный пользователем автозапуск возвращался и обход стартовал
+                        // «сам» (v2.2.2). Теперь значение из settings.json уважается как есть.
 
                         // v2.0 «тонкий» интерфейс: выключаем то, что раньше было включено по умолчанию
                         // и создавало визуальный шум (пинг в шапке, окно метрик над панелью задач, правая сводка).
@@ -337,6 +365,8 @@ namespace ZapretGui.Core
                             loaded.IsSummarySheetExpanded = false;
                             loaded.UiSchemaVersion = 2;
                         }
+                        // v2.2.2: единый мастер автосмены стратегий вместо разрозненных флагов.
+                        loaded.MigrateAutoStrategySwitchSchema();
                         return loaded;
                     }
                 }
