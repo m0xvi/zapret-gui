@@ -595,38 +595,35 @@ namespace ZapretGui.Core
             var client = source.UseDirect ? ClientWithoutProxy : ClientWithProxy;
             using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
             cts.CancelAfter(StallTimeout);
-            try
+            using var request = new HttpRequestMessage(HttpMethod.Get, source.Url);
+            request.Headers.Range = new RangeHeaderValue(chunk.Start + chunk.Done, chunk.End - 1);
+            using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token)
+                .ConfigureAwait(false);
+
+            if (response.StatusCode == HttpStatusCode.OK && chunk.Start + chunk.Done > 0)
+                throw new NotSupportedException("Источник не поддерживает докачку фрагментов");
+
+            if (response.StatusCode != HttpStatusCode.PartialContent && response.StatusCode != HttpStatusCode.OK)
+                response.EnsureSuccessStatusCode();
+
+            var offset = response.StatusCode == HttpStatusCode.PartialContent ? chunk.Start + chunk.Done : 0;
+            await using var stream = await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false);
+            await using var file = new FileStream(state.GetPartPath(), FileMode.OpenOrCreate, FileAccess.Write,
+                FileShare.ReadWrite, 128 * 1024, FileOptions.Asynchronous);
+            file.Seek(offset, SeekOrigin.Begin);
+
+            var buffer = new byte[128 * 1024];
+            while (chunk.Done < chunk.Length)
             {
-                using var request = new HttpRequestMessage(HttpMethod.Get, source.Url);
-                request.Headers.Range = new RangeHeaderValue(chunk.Start + chunk.Done, chunk.End - 1);
-                using var response = await client.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cts.Token)
-                    .ConfigureAwait(false);
-
-                if (response.StatusCode == HttpStatusCode.OK && chunk.Start + chunk.Done > 0)
-                    throw new NotSupportedException("Источник не поддерживает докачку фрагментов");
-
-                if (response.StatusCode != HttpStatusCode.PartialContent && response.StatusCode != HttpStatusCode.OK)
-                    response.EnsureSuccessStatusCode();
-
-                var offset = response.StatusCode == HttpStatusCode.PartialContent ? chunk.Start + chunk.Done : 0;
-                await using var stream = await response.Content.ReadAsStreamAsync(cts.Token).ConfigureAwait(false);
-                await using var file = new FileStream(state.GetPartPath(), FileMode.OpenOrCreate, FileAccess.Write,
-                    FileShare.ReadWrite, 128 * 1024, FileOptions.Asynchronous);
-                file.Seek(offset, SeekOrigin.Begin);
-
-                var buffer = new byte[128 * 1024];
-                while (chunk.Done < chunk.Length)
-                {
-                    var want = (int)Math.Min(buffer.Length, chunk.Length - chunk.Done);
-                    var read = await stream.ReadAsync(buffer.AsMemory(0, want), cts.Token).ConfigureAwait(false);
-                    if (read <= 0) break;
-                    await file.WriteAsync(buffer.AsMemory(0, read), cts.Token).ConfigureAwait(false);
-                    chunk.Done += read;
-                    state.Add(read);
-                    cts.CancelAfter(StallTimeout); // данные идут — продлеваем сторожевой таймер
-                }
-                await file.FlushAsync(cts.Token).ConfigureAwait(false);
+                var want = (int)Math.Min(buffer.Length, chunk.Length - chunk.Done);
+                var read = await stream.ReadAsync(buffer.AsMemory(0, want), cts.Token).ConfigureAwait(false);
+                if (read <= 0) break;
+                await file.WriteAsync(buffer.AsMemory(0, read), cts.Token).ConfigureAwait(false);
+                chunk.Done += read;
+                state.Add(read);
+                cts.CancelAfter(StallTimeout); // данные идут — продлеваем сторожевой таймер
             }
+            await file.FlushAsync(cts.Token).ConfigureAwait(false);
         }
 
         // ------------------------------------------------------------------ последовательная загрузка
