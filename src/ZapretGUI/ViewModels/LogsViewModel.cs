@@ -207,15 +207,27 @@ namespace ZapretGui.ViewModels
                 return filtered;
             }).ContinueWith(t =>
                 {
-                    var filtered = t.Result;
-                    void Apply()
+                    // Если фильтрация упала, флаг обязан сброситься, иначе журнал навсегда
+                    // перестаёт обновляться до перезапуска (v2.2.0).
+                    try
                     {
-                        Entries.Clear();
-                        AddBatched(filtered, 250);
+                        var filtered = t.IsCompletedSuccessfully ? t.Result : new List<LogEntry>();
+                        void Apply()
+                        {
+                            Entries.Clear();
+                            AddBatched(filtered, 250);
+                        }
+                        if (dispatcher != null && !dispatcher.CheckAccess()) dispatcher.BeginInvoke(new Action(Apply), DispatcherPriority.Background);
+                        else Apply();
+                    }
+                    catch (Exception ex)
+                    {
+                        AppLog.Warn("Не удалось применить фильтр журнала: " + ex.Message);
+                    }
+                    finally
+                    {
                         _isReloading = false;
                     }
-                    if (dispatcher != null && !dispatcher.CheckAccess()) dispatcher.BeginInvoke(new Action(Apply), DispatcherPriority.Background);
-                    else Apply();
                 }, System.Threading.Tasks.TaskScheduler.Default);
         }
 

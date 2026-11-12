@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
@@ -28,6 +29,8 @@ namespace ZapretGui.ViewModels
         private bool _guiUpdateHasError;
         private string _guiUpdateErrorText = "";
         private double _progress;
+        private string _guiUpdateTransfer = "";
+        private UpdateDownloadControl? _downloadControl;
         private bool _indeterminate;
         private string _status = "Нажмите «Проверить обновления»";
         private bool _hostsChecked;
@@ -67,6 +70,7 @@ namespace ZapretGui.ViewModels
             CancelCommand = new RelayCommand(() => _cts?.Cancel(), () => IsBusy);
             RetryGuiUpdateCommand = new AsyncRelayCommand(RetryGuiUpdateAsync, () => !IsBusy || GuiUpdateHasError);
             OpenManualGuiDownloadCommand = new RelayCommand(() => Shell.OpenUrl(GuiUpdateManualUrl));
+            SpeedUpGuiUpdateCommand = new RelayCommand(SpeedUpGuiUpdate, () => IsGuiUpdating);
             DismissGuiUpdateErrorCommand = new RelayCommand(() => { IsGuiUpdating = false; GuiUpdateHasError = false; GuiUpdateErrorText = ""; }, () => GuiUpdateHasError);
             OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
             BackToSettingsCommand = new RelayCommand(() => _main.Navigate("settings"));
@@ -245,6 +249,8 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(GuiUpdateOverlayVisible));
                     Raise(nameof(GuiUpdateErrorVisible));
                     Raise(nameof(GuiUpdateProgressVisible));
+                    Raise(nameof(GuiUpdateTransferVisible));
+                    (SpeedUpGuiUpdateCommand as RelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -261,6 +267,7 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(GuiUpdateHasError));
                     Raise(nameof(GuiUpdateErrorVisible));
                     Raise(nameof(GuiUpdateProgressVisible));
+                    Raise(nameof(GuiUpdateTransferVisible));
                     (DismissGuiUpdateErrorCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (RetryGuiUpdateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
@@ -284,6 +291,50 @@ namespace ZapretGui.ViewModels
         public bool GuiUpdateProgressVisible => IsGuiUpdating && !GuiUpdateHasError;
 
         public string GuiUpdateManualUrl => _guiRelease?.HtmlUrl ?? EngineService.RepoUrl + "/releases/latest";
+
+        /// <summary>Скорость, остаток и источник — вторая строка под прогрессом (v2.2.0).</summary>
+        public string GuiUpdateTransferText
+        {
+            get => _guiUpdateTransfer;
+            private set
+            {
+                if (Set(ref _guiUpdateTransfer, value)) Raise(nameof(GuiUpdateTransferVisible));
+            }
+        }
+
+        public bool GuiUpdateTransferVisible => !string.IsNullOrWhiteSpace(GuiUpdateTransferText) && GuiUpdateProgressVisible;
+
+        /// <summary>Зеркала GitHub для загрузки обновлений (можно выключить в «Настройках»).</summary>
+        public bool UseUpdateMirrors
+        {
+            get => Settings.UseUpdateMirrors;
+            set
+            {
+                if (Settings.UseUpdateMirrors == value) return;
+                Settings.UseUpdateMirrors = value;
+                SettingsStore.Save(Settings);
+                Raise(nameof(UseUpdateMirrors));
+            }
+        }
+
+        private void ApplyDownloadInfo(UpdateDownloadInfo info)
+        {
+            var parts = new List<string>();
+            if (!string.IsNullOrWhiteSpace(info.SpeedText)) parts.Add(info.SpeedText);
+            if (!string.IsNullOrWhiteSpace(info.RemainingText)) parts.Add(info.RemainingText);
+            if (!string.IsNullOrWhiteSpace(info.SourceName)) parts.Add("источник: " + info.SourceName);
+            if (info.Connections > 1) parts.Add(info.Connections + " соединения");
+            GuiUpdateTransferText = string.Join(" · ", parts);
+        }
+
+        /// <summary>«Ускорить через зеркало»: загрузчик переключит источник между попытками, не теряя байтов.</summary>
+        private void SpeedUpGuiUpdate()
+        {
+            if (_downloadControl == null) return;
+            _downloadControl.PreferMirror();
+            GuiUpdateStatus = "Переключаю загрузку на зеркало GitHub…";
+            AppLog.Info("[GuiUpdate] Пользователь запросил зеркало вручную");
+        }
 
         public double Progress
         {
@@ -416,6 +467,7 @@ namespace ZapretGui.ViewModels
         public ICommand CancelCommand { get; }
         public ICommand RetryGuiUpdateCommand { get; }
         public ICommand OpenManualGuiDownloadCommand { get; }
+        public ICommand SpeedUpGuiUpdateCommand { get; }
         public ICommand DismissGuiUpdateErrorCommand { get; }
         public ICommand OpenLogsCommand { get; }
         public ICommand BackToSettingsCommand { get; }
@@ -503,7 +555,9 @@ namespace ZapretGui.ViewModels
         private async Task<GuiUpdateResult> TryDownloadGuiAsync()
         {
             var result = await GuiUpdateService.DownloadAndScheduleAsync(
-                _guiRelease!, new Progress<ProgressInfo>(ApplyProgress), _cts!.Token);
+                _guiRelease!, new Progress<ProgressInfo>(ApplyProgress), _cts!.Token,
+                Settings.UseUpdateMirrors, _downloadControl,
+                new Progress<UpdateDownloadInfo>(ApplyDownloadInfo));
             GuiUpdateStatus = result.Message;
             SetMessage(result.Message, result.Ok ? "Success" : "Danger");
             AppLog.Info("[GuiUpdate] DownloadAndSchedule результат: " + result.Message + " Ok=" + result.Ok);
@@ -602,8 +656,13 @@ namespace ZapretGui.ViewModels
             Indeterminate = true;
             Status = "Подготавливаю безопасное обновление GUI…";
             GuiUpdateStatus = $"Начинаю загрузку {_guiRelease.Tag}…";
+            GuiUpdateTransferText = "";
+            _downloadControl = new UpdateDownloadControl();
             AppLog.Info($"[GuiUpdate] Начинаю DownloadAndSchedule для {_guiRelease.Tag} из {_guiRelease.PortableAsset?.DownloadUrl}");
-            _cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+            // Раньше стоял жёсткий лимит 10 минут на всё обновление: на медленном канале оно
+            // обрывалось на ровном месте. Теперь живость соединения стережёт сам загрузчик,
+            // а потолок нужен только чтобы не висеть бесконечно (v2.2.0).
+            _cts = new CancellationTokenSource(TimeSpan.FromMinutes(45));
             try
             {
                 var result = await TryDownloadGuiAsync();
@@ -649,7 +708,7 @@ namespace ZapretGui.ViewModels
             {
                 var msg = ex.Message.Contains("UAC") || ex.Message.Contains("администратора")
                     ? ex.Message
-                    : "Загрузка обновления GUI отменена.";
+                    : "Загрузка обновления GUI отменена. Скачанные мегабайты сохранены — «Повторить» продолжит с этого места.";
                 GuiUpdateStatus = msg;
                 GuiUpdateHasError = true;
                 GuiUpdateErrorText = msg;
@@ -809,7 +868,7 @@ namespace ZapretGui.ViewModels
             Progress = 0;
             Indeterminate = true;
             Status = "Движок не найден. Скачиваю актуальную версию…";
-            _cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+            _cts = new CancellationTokenSource(TimeSpan.FromMinutes(45));
 
             try
             {
@@ -920,7 +979,7 @@ namespace ZapretGui.ViewModels
             Progress = 0;
             Indeterminate = true;
             Status = "Подготовка обновления…";
-            _cts = new CancellationTokenSource(TimeSpan.FromMinutes(10));
+            _cts = new CancellationTokenSource(TimeSpan.FromMinutes(45));
             try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Обновление движка", Status, "Подготовка — проверка SHA-256…", 0, false, true, () => _cts?.Cancel())); } catch {}
 
             try

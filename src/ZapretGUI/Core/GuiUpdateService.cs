@@ -236,9 +236,15 @@ namespace ZapretGui.Core
             return null;
         }
 
+        /// <param name="progress">Полоса прогресса старого вида (проценты + текст).</param>
+        /// <param name="ct">Отмена. Частично скачанный файл сохраняется — повтор продолжит загрузку.</param>
+        /// <param name="useMirrors">Разрешить зеркала GitHub (заметно быстрее на заблокированных каналах).</param>
+        /// <param name="control">Ручное управление из окна обновления («Ускорить через зеркало»).</param>
+        /// <param name="transfer">Подробный прогресс: скорость, остаток, текущий источник.</param>
         public static async Task<GuiUpdateResult> DownloadAndScheduleAsync(
             GuiReleaseInfo release, IProgress<ProgressInfo>? progress = null,
-            CancellationToken ct = default)
+            CancellationToken ct = default, bool useMirrors = true,
+            UpdateDownloadControl? control = null, IProgress<UpdateDownloadInfo>? transfer = null)
         {
             var asset = release.PortableAsset;
             if (asset == null)
@@ -290,6 +296,10 @@ namespace ZapretGui.Core
                 return Failure("Самообновление доступно только для ZapretGUI.exe (текущий файл: " + Path.GetFileName(target) + "). Переименуйте файл в ZapretGUI.exe или скачайте обновление вручную со страницы релиза.");
 
             var updateId = Guid.NewGuid().ToString("N");
+            // Частично скачанный файл живёт в стабильной папке кэша: «Отмена»/ошибка/повтор продолжают
+            // загрузку с того же места, а не с нуля (v2.2.0).
+            var cacheDirectory = AppPaths.EnsureDir(Path.Combine(AppPaths.TempDir, "gui-update-cache"));
+            var partPath = Path.Combine(cacheDirectory, asset.Name + ".part");
             var updateDirectory = Path.Combine(AppPaths.TempDir, "gui-update-" + updateId);
             var staged = Path.Combine(updateDirectory, asset.Name);
             var helperDirectory = Path.Combine(updateDirectory, "helper");
@@ -318,7 +328,23 @@ namespace ZapretGui.Core
                 Directory.CreateDirectory(AppPaths.GuiBackupDir);
                 Directory.CreateDirectory(helperDirectory);
                 progress?.Report(new ProgressInfo { Percent = 0, Status = "Скачиваю обновление GUI" });
-                await DownloadFileAsync(asset.DownloadUrl, staged, asset.Size, progress, ct).ConfigureAwait(false);
+                PruneUpdateCache(cacheDirectory, asset.Name);
+                var sources = UpdateDownloader.BuildSources(asset.DownloadUrl, useMirrors, control?.MirrorRequested == true);
+                var bridge = new Progress<UpdateDownloadInfo>(info =>
+                {
+                    transfer?.Report(info);
+                    var speed = string.IsNullOrWhiteSpace(info.SpeedText) ? "" : " · " + info.SpeedText;
+                    progress?.Report(new ProgressInfo
+                    {
+                        Percent = info.Percent,
+                        Status = $"Скачано {info.Received / 1024.0 / 1024.0:0.0} из {info.Total / 1024.0 / 1024.0:0.0} МБ{speed}"
+                    });
+                });
+                await UpdateDownloader.DownloadAsync(partPath, asset.Size, sources, bridge, control, ct)
+                    .ConfigureAwait(false);
+                TryDelete(partPath + ".json");
+                Directory.CreateDirectory(updateDirectory);
+                File.Move(partPath, staged, true);
                 progress?.Report(new ProgressInfo { Percent = -1, Status = "Проверяю SHA-256 обновления GUI" });
                 await VerifyDigestAsync(staged, plan.ExpectedSha256, ct).ConfigureAwait(false);
 
@@ -368,7 +394,9 @@ namespace ZapretGui.Core
             }
             catch (OperationCanceledException ex)
             {
-                CleanupUpdateFiles(updateDirectory, PlanFile);
+                // Уже скачанный и проверенный файл возвращаем в кэш: повтор не потратит трафик.
+                ReturnToCache(staged, partPath);
+                CleanupUpdateFiles(updateDirectory, PlanFile); // .part в кэше не трогаем: повтор докачает
                 // Если это отмена UAC, показываем понятное сообщение
                 if (ex.Message.Contains("UAC") || ex.Message.Contains("администратора"))
                     return Failure(ex.Message);
@@ -376,6 +404,7 @@ namespace ZapretGui.Core
             }
             catch (Exception ex)
             {
+                ReturnToCache(staged, partPath);
                 CleanupUpdateFiles(updateDirectory, PlanFile);
                 AppLog.Error("Не удалось подготовить обновление GUI: " + ex.ToString());
                 // Даём подсказку для ручной установки
@@ -636,69 +665,6 @@ namespace ZapretGui.Core
             return Convert.ToHexString(SHA256.HashData(stream)).ToLowerInvariant();
         }
 
-        /// <summary>Загрузка с повторами (v1.28.2): попытка 1 — обычное соединение; попытка 2 — через 2 с
-        /// (сбои и вмешательство провайдера часто разовые); попытка 3 — без системного прокси. Файл перед
-        /// каждой попыткой пересоздаётся, SHA-256 проверяется после загрузки.</summary>
-        private static async Task DownloadFileAsync(string url, string path, long expectedSize,
-            IProgress<ProgressInfo>? progress, CancellationToken ct)
-        {
-            var attempts = new (HttpClient Client, string Name, int DelayMs)[]
-            {
-                (Http, "обычное соединение", 0),
-                (Http, "повтор", 2000),
-                (HttpDirect, "без системного прокси", 4000)
-            };
-            Exception? last = null;
-            for (var i = 0; i < attempts.Length; i++)
-            {
-                var (client, name, delayMs) = attempts[i];
-                if (delayMs > 0)
-                {
-                    progress?.Report(new ProgressInfo { Percent = -1, Status = "Соединение не удалось, повторяю (" + name + ")…" });
-                    await Task.Delay(delayMs, ct).ConfigureAwait(false);
-                }
-                try
-                {
-                    if (i > 0) AppLog.Info($"[GuiUpdate] Повтор загрузки ({i + 1} из {attempts.Length}, {name}): {url}");
-                    await DownloadOnceAsync(client, url, path, expectedSize, progress, ct).ConfigureAwait(false);
-                    return;
-                }
-                catch (OperationCanceledException) { throw; }
-                catch (Exception ex)
-                {
-                    last = ex;
-                    AppLog.Warn($"[GuiUpdate] Загрузка не удалась ({name}): {Describe(ex)}");
-                    TryDelete(path);
-                }
-            }
-            throw new IOException("Не удалось скачать обновление. " + Describe(last ?? new IOException("неизвестная ошибка")), last);
-        }
-
-        private static async Task DownloadOnceAsync(HttpClient client, string url, string path, long expectedSize,
-            IProgress<ProgressInfo>? progress, CancellationToken ct)
-        {
-            using var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-            var total = response.Content.Headers.ContentLength ?? expectedSize;
-            await using var source = await response.Content.ReadAsStreamAsync(ct).ConfigureAwait(false);
-            await using var target = File.Create(path);
-            var buffer = new byte[128 * 1024];
-            long received = 0;
-            int read;
-            while ((read = await source.ReadAsync(buffer, ct).ConfigureAwait(false)) > 0)
-            {
-                await target.WriteAsync(buffer.AsMemory(0, read), ct).ConfigureAwait(false);
-                received += read;
-                if (total > 0) progress?.Report(new ProgressInfo
-                {
-                    Percent = received * 100.0 / total,
-                    Status = $"Скачано {received / 1024.0 / 1024.0:0.0} из {total / 1024.0 / 1024.0:0.0} МБ"
-                });
-            }
-            if (expectedSize > 0 && received != expectedSize)
-                throw new InvalidDataException($"Размер обновления не совпадает: получено {received}, ожидалось {expectedSize} байт");
-        }
-
         private static DateTime? ParseDate(JsonElement item, string property)
             => item.TryGetProperty(property, out var value) && DateTime.TryParse(value.GetString(), out var date)
                 ? date : null;
@@ -721,6 +687,40 @@ namespace ZapretGui.Core
             catch (Exception ex)
             {
                 AppLog.Warn("Не удалось ограничить резервные копии GUI: " + ex.Message);
+            }
+        }
+
+        /// <summary>Переносит готовый staged exe обратно в кэш докачки, чтобы «Повторить» не качало заново.</summary>
+        private static void ReturnToCache(string staged, string partPath)
+        {
+            try
+            {
+                if (!File.Exists(staged) || File.Exists(partPath)) return;
+                Directory.CreateDirectory(Path.GetDirectoryName(partPath)!);
+                File.Move(staged, partPath, true);
+                AppLog.Info("[GuiUpdate] Скачанный файл сохранён в кэше — повтор продолжит с него");
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("[GuiUpdate] Не удалось сохранить скачанный файл в кэше: " + ex.Message);
+            }
+        }
+
+        /// <summary>В кэше докачки остаётся только файл текущего релиза — обрывки прошлых версий не копятся.</summary>
+        private static void PruneUpdateCache(string cacheDirectory, string keepFileName)
+        {
+            try
+            {
+                foreach (var path in Directory.GetFiles(cacheDirectory))
+                {
+                    var name = Path.GetFileName(path);
+                    if (name.StartsWith(keepFileName, StringComparison.OrdinalIgnoreCase)) continue;
+                    TryDelete(path);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("[GuiUpdate] Не удалось почистить кэш загрузки: " + ex.Message);
             }
         }
 

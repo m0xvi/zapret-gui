@@ -31,6 +31,8 @@ namespace ZapretGui.CoreLogicHarness
                 ("Заблокированный WinDivert пропускается с предупреждением", LockedDriverIsSkippedSafely),
                 ("Updater GUI принимает только безопасный репозиторий", GuiRepositoryValidationIsStrict),
                 ("Updater GUI выбирает только проверяемый portable EXE", GuiPortableAssetSelectionIsStrict),
+                ("План докачки покрывает файл без дыр и наложений", UpdateChunkPlanIsComplete),
+                ("Зеркала добавляются только для файлов GitHub", UpdateSourcesIncludeMirrors),
                 ("Согласованность движка отмечает драйвер, списки и стратегии", EngineConsistencyIsChecked),
                 ("Разбор состояния службы устойчив к языку Windows", ServiceStateParsingIsLocalized),
                 ("Безопасная остановка служб тестируется без реального обхода", SafeServiceStopIsIsolated),
@@ -545,6 +547,36 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 Size = 123,
                 DownloadUrl = valid.DownloadUrl
             }), "asset без digest ошибочно признан безопасным");
+        }
+
+        private static void UpdateChunkPlanIsComplete()
+        {
+            foreach (var total in new long[] { 1, 1024 * 1024, 17L * 1024 * 1024, 66391816 })
+            {
+                var chunks = UpdateDownloader.PlanChunks(total, UpdateDownloader.MaxConnections);
+                Assert(chunks.Count > 0, "файл не разбит на фрагменты");
+                Assert(chunks.Count <= UpdateDownloader.MaxConnections, "фрагментов больше разрешённого");
+                Assert(chunks[0].Start == 0, "план не начинается с нуля");
+                Assert(chunks[chunks.Count - 1].End == total, "план не покрывает файл целиком");
+                for (var i = 0; i < chunks.Count; i++)
+                {
+                    Assert(chunks[i].End > chunks[i].Start, "пустой фрагмент");
+                    if (i > 0) Assert(chunks[i].Start == chunks[i - 1].End, "дыра или наложение между фрагментами");
+                }
+            }
+        }
+
+        private static void UpdateSourcesIncludeMirrors()
+        {
+            const string url = "https://github.com/m0xvi/zapret-gui/releases/download/v2.2.0/ZapretGUI-2.2.0-win-x64-portable.exe";
+            var withMirrors = UpdateDownloader.BuildSources(url, useMirrors: true);
+            var withoutMirrors = UpdateDownloader.BuildSources(url, useMirrors: false);
+            Assert(withMirrors.Count > 1, "зеркала не добавлены");
+            Assert(withoutMirrors.Count == 1 && !withoutMirrors[0].IsMirror, "зеркала добавлены при выключенной настройке");
+            Assert(withMirrors[0].Url == url && !withMirrors[0].IsMirror, "GitHub должен идти первым источником");
+            Assert(withMirrors.Skip(1).All(s => s.Url.EndsWith(url, StringComparison.Ordinal)), "зеркало исказило адрес файла");
+            var mirrorFirst = UpdateDownloader.BuildSources(url, useMirrors: true, preferMirror: true);
+            Assert(mirrorFirst[0].IsMirror, "по запросу «ускорить» зеркало не стало первым");
         }
 
         private static void EngineConsistencyIsChecked()

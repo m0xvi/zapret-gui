@@ -457,8 +457,9 @@ namespace ZapretGui.ViewModels
             MatrixText = $"Запуск матрицы {strategies.Count} стратегий × {dnsPool.Count} DNS = {total} тестов…";
             MatrixSummary = "Подготовка — сохраняю исходный DNS и состояние обхода…";
             var bestEntry = (DnsStrategyMatrixEntry?)null;
+            // Запоминаем точный список адресов адаптера: раньше восстановление шло «по профилю»,
+            // и нестандартный DNS провайдера молча превращался в DHCP (v2.2.0).
             var originalDns = DnsManagementService.GetSystemDnsServers();
-            var originalDnsProfile = DnsProfiles.FirstOrDefault(p => originalDns.Contains(p.PrimaryServer)) ?? DnsProfiles.First(p => p.Id == "dhcp");
             var beforeStatus = _main.Bypass.GetStatus();
             var beforeStrategy = beforeStatus.StrategyName;
 
@@ -529,7 +530,9 @@ namespace ZapretGui.ViewModels
                 try
                 {
                     MatrixText = "Восстанавливаю исходный DNS и обход…";
-                    await DnsManagementService.ApplyDnsProfileAsync(originalDnsProfile);
+                    var (restoredOk, restoredMsg) = await DnsManagementService.RestoreDnsServersAsync(originalDns);
+                    AppLog.Info("[Матрица] Восстановление DNS: " + restoredMsg
+                        + (restoredOk ? "" : " (проверьте DNS адаптера вручную)"));
                     await Task.Delay(800);
                     if (beforeStatus.IsRunning && !string.IsNullOrWhiteSpace(beforeStrategy))
                     {

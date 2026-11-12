@@ -350,6 +350,9 @@
                                   IsChecked="{Binding Settings.IncludePrerelease, Mode=TwoWay}" />
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Проверять GUI" Margin="0,8,0,0"
                                   IsChecked="{Binding Settings.AutoCheckGuiUpdates, Mode=TwoWay}" />
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Зеркала GitHub для загрузки" Margin="0,8,0,0"
+                                  IsChecked="{Binding UseUpdateMirrors, Mode=TwoWay}"
+                                  ToolTip="Качать обновления через быстрые зеркала GitHub. Целостность проверяется по SHA-256, подмена исключена" />
                     </StackPanel>
 
                     <Border Grid.Column="1" Width="1" Background="{DynamicResource BorderBrush}" Opacity="0.4" Margin="20,2,20,2" />

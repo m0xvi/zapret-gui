@@ -27,6 +27,7 @@
     <Compile Include="..\..\src\ZapretGUI\Core\EngineConsistency.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\EngineFileUpdater.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\GuiUpdateService.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\UpdateDownloader.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticsHistory.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticsExportReport.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\EngineService.cs" />
