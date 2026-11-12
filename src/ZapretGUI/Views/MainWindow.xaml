@@ -284,12 +284,24 @@
                                    Margin="0,10,0,0" HorizontalAlignment="Center"
                                    Foreground="{DynamicResource TextMutedBrush}" FontSize="11"
                                    Visibility="{Binding Updates.Indeterminate, Converter={StaticResource BoolToVis}}" />
+                        <TextBlock Text="{Binding Updates.GuiUpdateTransferText}" Margin="0,8,0,0"
+                                   TextWrapping="Wrap" TextAlignment="Center"
+                                   Foreground="{DynamicResource AccentBrush}" FontSize="11.5" FontWeight="SemiBold"
+                                   Visibility="{Binding Updates.GuiUpdateTransferVisible, Converter={StaticResource BoolToVis}}" />
                         <TextBlock Text="Не закрывайте приложение — после загрузки оно автоматически перезапустится"
-                                   Margin="0,12,0,0" TextWrapping="Wrap" TextAlignment="Center"
+                                   Margin="0,10,0,0" TextWrapping="Wrap" TextAlignment="Center"
                                    Foreground="{DynamicResource TextMutedBrush}" FontSize="11" />
-                        <Button Style="{StaticResource GhostButton}" Content="Отмена" Margin="0,14,0,0"
-                                HorizontalAlignment="Center" Command="{Binding Updates.CancelCommand}"
-                                ToolTip="Прервать загрузку обновления GUI" />
+                        <WrapPanel HorizontalAlignment="Center" Margin="0,14,0,0">
+                            <Button Style="{StaticResource SecondaryButton}" Content="Ускорить через зеркало" Padding="14,6" Margin="0,0,8,0"
+                                    Command="{Binding Updates.SpeedUpGuiUpdateCommand}"
+                                    ToolTip="Переключить загрузку на зеркало GitHub, не теряя уже скачанного (v2.2.0)" />
+                            <Button Style="{StaticResource GhostButton}" Content="Скачать в браузере" Padding="14,6" Margin="0,0,8,0"
+                                    Command="{Binding Updates.OpenManualGuiDownloadCommand}"
+                                    ToolTip="Открыть страницу релиза: браузер умеет докачивать файл сам" />
+                            <Button Style="{StaticResource GhostButton}" Content="Отмена" Padding="14,6"
+                                    Command="{Binding Updates.CancelCommand}"
+                                    ToolTip="Прервать загрузку. Скачанные мегабайты сохранятся — «Повторить» продолжит" />
+                        </WrapPanel>
                     </StackPanel>
                     <!-- Секция ошибки — видима только при ошибке -->
                     <StackPanel Margin="0,14,0,0" Visibility="{Binding Updates.GuiUpdateErrorVisible, Converter={StaticResource BoolToVis}}">

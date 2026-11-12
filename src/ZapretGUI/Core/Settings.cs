@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
+using System.Threading;
 using System.Text.Json.Serialization;
 
 namespace ZapretGui.Core
@@ -44,6 +45,10 @@ namespace ZapretGui.Core
 
         /// <summary>Учитывать pre-release версии при проверке обновлений.</summary>
         public bool IncludePrerelease { get; set; }
+
+        /// <summary>Качать обновления через зеркала GitHub: на медленном/заблокированном канале это
+        /// в разы быстрее. Целостность гарантирует SHA-256 из GitHub API (v2.2.0).</summary>
+        public bool UseUpdateMirrors { get; set; } = true;
 
         /// <summary>Сохранять пользовательские списки и флаги при обновлении движка.</summary>
         public bool PreserveUserDataOnUpdate { get; set; } = true;
@@ -343,19 +348,38 @@ namespace ZapretGui.Core
             return new AppSettings();
         }
 
+        /// <summary>Фон (watchdog, автопереключение, seamless) и интерфейс пишут настройки одновременно.
+        /// Без блокировки два потока использовали один и тот же settings.json.tmp, File.Replace падал,
+        /// и изменение молча терялось (v2.2.0).</summary>
+        private static readonly object SaveGate = new();
+
         public static void Save(AppSettings settings)
         {
-            try
+            lock (SaveGate)
             {
                 var json = JsonSerializer.Serialize(settings, Options);
-                var tmp = AppPaths.SettingsFile + ".tmp";
-                File.WriteAllText(tmp, json);
-                if (File.Exists(AppPaths.SettingsFile)) File.Replace(tmp, AppPaths.SettingsFile, null);
-                else File.Move(tmp, AppPaths.SettingsFile);
-            }
-            catch (Exception ex)
-            {
-                AppLog.Error("Не удалось сохранить settings.json: " + ex.Message);
+                for (var attempt = 1; attempt <= 3; attempt++)
+                {
+                    // Уникальное имя: даже если предыдущая запись не успела за собой убрать.
+                    var tmp = AppPaths.SettingsFile + "." + Guid.NewGuid().ToString("N") + ".tmp";
+                    try
+                    {
+                        File.WriteAllText(tmp, json);
+                        if (File.Exists(AppPaths.SettingsFile)) File.Replace(tmp, AppPaths.SettingsFile, null);
+                        else File.Move(tmp, AppPaths.SettingsFile);
+                        return;
+                    }
+                    catch (Exception ex)
+                    {
+                        try { if (File.Exists(tmp)) File.Delete(tmp); } catch { }
+                        if (attempt == 3)
+                        {
+                            AppLog.Error("Не удалось сохранить settings.json: " + ex.Message);
+                            return;
+                        }
+                        Thread.Sleep(60 * attempt);
+                    }
+                }
             }
         }
     }

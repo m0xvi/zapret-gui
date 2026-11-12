@@ -115,12 +115,14 @@ namespace ZapretGui.Core
 
         private const string ApiReleases = "https://api.github.com/repos/" + Owner + "/" + Repository + "/releases";
         private const string RawBase = "https://raw.githubusercontent.com/" + Owner + "/" + Repository + "/main/.service/";
-        private static readonly string[] RawMirrorsBase = new[]
+        // Живые зеркала (v2.2.0): raw.fastgit.org, hub.fastgit.xyz, download.fastgit.org и ghproxy.com
+        // закрыты с 2023-го — каждое мёртвое зеркало съедало таймаут перед рабочей попыткой.
+        public static readonly (string Prefix, string Name)[] GitHubProxies = new[]
         {
-            RawBase,
-            "https://cdn.jsdelivr.net/gh/Flowseal/zapret-discord-youtube@main/.service/",
-            "https://raw.fastgit.org/Flowseal/zapret-discord-youtube/main/.service/",
-            "https://ghproxy.com/https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/"
+            ("https://ghproxy.net/", "ghproxy.net"),
+            ("https://gh-proxy.com/", "gh-proxy.com"),
+            ("https://ghfast.top/", "ghfast.top"),
+            ("https://github.moeyy.xyz/", "moeyy.xyz")
         };
         private static IEnumerable<string> GetMirrorsFor(string primaryUrl)
         {
@@ -130,15 +132,14 @@ namespace ZapretGui.Core
                 var tail = primaryUrl.Split("zapret-discord-youtube/main/")[1];
                 yield return primaryUrl;
                 yield return "https://cdn.jsdelivr.net/gh/Flowseal/zapret-discord-youtube@main/" + tail;
-                yield return "https://raw.fastgit.org/Flowseal/zapret-discord-youtube/main/" + tail;
-                yield return "https://ghproxy.com/" + primaryUrl;
+                foreach (var (prefix, _) in GitHubProxies)
+                    yield return prefix + primaryUrl;
             }
             else if (primaryUrl.Contains("github.com/Flowseal/zapret-discord-youtube/releases/download/"))
             {
                 yield return primaryUrl;
-                yield return "https://ghproxy.com/" + primaryUrl;
-                yield return primaryUrl.Replace("https://github.com", "https://hub.fastgit.xyz");
-                yield return primaryUrl.Replace("https://github.com", "https://download.fastgit.org");
+                foreach (var (prefix, _) in GitHubProxies)
+                    yield return prefix + primaryUrl;
             }
             else
             {

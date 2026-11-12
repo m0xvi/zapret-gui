@@ -185,12 +185,18 @@ namespace ZapretGui.Core
                     if (!res1.Ok)
                         return (false, $"Не удалось установить основной DNS: {res1.StdErr}");
 
+                    var secondaryOk = true;
                     if (!string.IsNullOrWhiteSpace(profile.SecondaryServer))
                     {
-                        await Task.Run(() => Shell.Run("netsh.exe", new[] { "interface", "ip", "add", "dns", $"name={adapterName}", profile.SecondaryServer, "index=2" })).ConfigureAwait(false);
+                        var res2 = await Task.Run(() => Shell.Run("netsh.exe", new[] { "interface", "ip", "add", "dns", $"name={adapterName}", profile.SecondaryServer, "index=2" })).ConfigureAwait(false);
+                        secondaryOk = res2.Ok;
+                        if (!res2.Ok)
+                            AppLog.Warn($"[DNS] вторичный сервер {profile.SecondaryServer} не добавлен: {res2.StdErr}");
                     }
 
                     await Task.Run(() => Shell.Run("ipconfig.exe", new[] { "/flushdns" })).ConfigureAwait(false);
+                    if (!secondaryOk)
+                        return (true, $"Установлен только основной {profile.Name} ({profile.PrimaryServer}) для адаптера «{adapterName}»: вторичный сервер не принят. Кэш DNS очищен.");
                     return (true, $"Установлен {profile.Name} ({profile.PrimaryServer}) для адаптера «{adapterName}». Кэш DNS очищен.");
                 }
             }
@@ -259,6 +265,45 @@ namespace ZapretGui.Core
                     .ToList();
             }
             catch { return new List<string>(); }
+        }
+
+        /// <summary>
+        /// Возвращает адаптер к ровно тому списку DNS, который был до эксперимента (матрица, тесты).
+        /// Раньше восстановление шло «по первому совпавшему профилю», и если системный DNS не совпадал
+        /// с предустановленным, он молча превращался в DHCP (v2.2.0).
+        /// </summary>
+        public static async Task<(bool Ok, string Message)> RestoreDnsServersAsync(IReadOnlyList<string> servers)
+        {
+            var nic = GetActiveInterface();
+            if (nic == null) return (false, "Не найден активный сетевой адаптер.");
+            var adapterName = nic.Name;
+            try
+            {
+                var list = (servers ?? Array.Empty<string>())
+                    .Where(s => !string.IsNullOrWhiteSpace(s) && IPAddress.TryParse(s, out _))
+                    .Distinct()
+                    .ToList();
+                if (list.Count == 0)
+                {
+                    var dhcp = await Task.Run(() => Shell.Run("netsh.exe", new[] { "interface", "ip", "set", "dns", $"name={adapterName}", "dhcp" })).ConfigureAwait(false);
+                    await Task.Run(() => Shell.Run("ipconfig.exe", new[] { "/flushdns" })).ConfigureAwait(false);
+                    return (dhcp.Ok, dhcp.Ok ? "DNS возвращён в режим DHCP" : "netsh: " + dhcp.StdErr);
+                }
+
+                var first = await Task.Run(() => Shell.Run("netsh.exe", new[] { "interface", "ip", "set", "dns", $"name={adapterName}", "static", list[0] })).ConfigureAwait(false);
+                if (!first.Ok) return (false, "Не удалось вернуть основной DNS: " + first.StdErr);
+                for (var i = 1; i < list.Count; i++)
+                {
+                    var index = i + 1;
+                    await Task.Run(() => Shell.Run("netsh.exe", new[] { "interface", "ip", "add", "dns", $"name={adapterName}", list[i], $"index={index}" })).ConfigureAwait(false);
+                }
+                await Task.Run(() => Shell.Run("ipconfig.exe", new[] { "/flushdns" })).ConfigureAwait(false);
+                return (true, "DNS восстановлен: " + string.Join(", ", list));
+            }
+            catch (Exception ex)
+            {
+                return (false, "Ошибка восстановления DNS: " + ex.Message);
+            }
         }
 
         public static async Task<DnsHijackReport> CheckHijackAsync(IProgress<string>? progress = null, CancellationToken ct = default)
