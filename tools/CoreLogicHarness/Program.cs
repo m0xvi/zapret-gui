@@ -37,6 +37,8 @@ namespace ZapretGui.CoreLogicHarness
                 ("Согласованность движка отмечает драйвер, списки и стратегии", EngineConsistencyIsChecked),
                 ("Разбор состояния службы устойчив к языку Windows", ServiceStateParsingIsLocalized),
                 ("Тип запуска службы читается на любом языке Windows", ServiceStartTypeParsingIsLocalized),
+                ("Причина недоступности ресурса видна в интерфейсе", ConnectionCheckExplainsFailure),
+                ("Встроенный список ресурсов один для всех проверок", SingleBuiltInTargetList),
                 ("Автосмена стратегий закрыта мастер-выключателем", AutoSwitchMasterGatesEveryPath),
                 ("Настройка автообновления списков сохраняется", ListsOnStartupSettingRoundTrips),
                 ("Безопасная остановка служб тестируется без реального обхода", SafeServiceStopIsIsolated),
@@ -1106,6 +1108,64 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 "локализованный тип запуска не распознан");
             Assert(WinServices.ParseStartType("") == ServiceStartType.Unknown,
                 "пустой вывод не должен давать тип запуска");
+
+            // v2.2.4: тип запуска читается из реестра, а интерфейс всегда объясняет состояние словами.
+            Assert(WinServices.DescribeStartType(ServiceStartType.Auto) == "автозапуск с Windows",
+                "описание типа запуска AUTO изменилось");
+            Assert(WinServices.DescribeStartType(ServiceStartType.Demand) == "только вручную",
+                "описание типа запуска DEMAND изменилось");
+            Assert(WinServices.DescribeStartType(ServiceStartType.Unknown) == "неизвестно",
+                "неизвестный тип запуска должен описываться словом «неизвестно»");
+        }
+
+        /// <summary>v2.2.4: у недоступного ресурса всегда есть видимая причина, а не «нет соединения».</summary>
+        private static void ConnectionCheckExplainsFailure()
+        {
+            var tlsBlocked = new ConnectionCheck
+            {
+                Title = "YouTube",
+                Host = "www.youtube.com",
+                Ok = false,
+                Kind = ResourceResultKind.TlsError,
+                TcpOk = true
+            };
+            Assert(tlsBlocked.CauseText == "TLS блокируется", "причина TLS-сбоя должна быть названа");
+            Assert(tlsBlocked.StatusText.Contains("TLS"), "в статусе строки должна быть причина, а не только «нет соединения»");
+
+            var noDns = new ConnectionCheck { Ok = false, Kind = ResourceResultKind.DnsError };
+            Assert(noDns.CauseText == "DNS не ответил", "причина DNS-сбоя должна быть названа");
+
+            var tcpTimeout = new ConnectionCheck { Ok = false, Kind = ResourceResultKind.Timeout, TcpOk = false };
+            Assert(tcpTimeout.CauseText == "TCP не подключился", "тайм-аут TCP должен отличаться от тайм-аута HTTPS");
+
+            var httpsTimeout = new ConnectionCheck { Ok = false, Kind = ResourceResultKind.Timeout, TcpOk = true };
+            Assert(httpsTimeout.CauseText == "HTTPS не ответил", "после успешного TCP причина должна указывать на HTTPS");
+
+            var ok = new ConnectionCheck { Ok = true, Milliseconds = 42, Kind = ResourceResultKind.Available };
+            Assert(ok.StatusText == "OK · 42 мс", "успешная проверка не должна показывать причину");
+            Assert(ok.CauseText == "", "у успешной проверки причины нет");
+        }
+
+        /// <summary>v2.2.4: встроенный список ресурсов один — им пользуются и «Обзор», и мониторинг.</summary>
+        private static void SingleBuiltInTargetList()
+        {
+            var builtIn = MonitorTargetStore.BuiltInTargets;
+            Assert(builtIn.Count >= 3, "встроенный список ресурсов не должен быть пустым");
+            Assert(builtIn.Any(t => t.Host.Equals("www.youtube.com", StringComparison.OrdinalIgnoreCase)),
+                "YouTube должен быть во встроенном списке");
+
+            var defaults = ConnectionTester.GetEffectiveTargets();
+            Assert(defaults.Count == builtIn.Count,
+                "быстрая проверка должна использовать тот же встроенный список, что и мониторинг");
+
+            var custom = new AppSettings();
+            MonitorTargetStore.EnsureDefaults(custom);
+            custom.MonitorTargets.Add(MonitorTarget.CreateBuiltIn("Twitch", "https://twitch.tv")!);
+            var withUserList = ConnectionTester.GetEffectiveTargets(custom);
+            Assert(withUserList.Any(t => t.Host.Equals("twitch.tv", StringComparison.OrdinalIgnoreCase)),
+                "пользовательский ресурс должен попадать в быструю проверку");
+            Assert(withUserList.Count >= custom.MonitorTargets.Count,
+                "быстрая проверка не должна терять ресурсы из настроек");
         }
 
         private static void AutoSwitchMasterGatesEveryPath()

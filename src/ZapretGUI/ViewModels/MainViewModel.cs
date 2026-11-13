@@ -199,6 +199,7 @@ namespace ZapretGui.ViewModels
                 new() { Key = "game-mode", Title = "Игровой режим", Icon = "\uE7FC" },
                 new() { Key = "diagnostics", Title = "Проверка", Icon = "\uE90F" },
                 new() { Key = "user-lists", Title = "Списки", Icon = "\uE8FD" },
+                new() { Key = "updates", Title = "Обновления", Icon = "\uE895" },
                 new() { Key = "settings", Title = "Настройки", Icon = "\uE713" },
             };
             _selectedNav = NavItems[0];

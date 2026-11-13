@@ -57,7 +57,6 @@ namespace ZapretGui.ViewModels
             UpdateEngineCommand = new AsyncRelayCommand(UpdateEngineAsync, () => !IsBusy && HasEnginePackage && UpdateAvailable);
             RollbackEngineCommand = new AsyncRelayCommand(RollbackEngineAsync,
                 () => !IsBusy && SelectedEngineBackup != null);
-            UpdateIpsetCommand = new AsyncRelayCommand(UpdateIpsetAsync, () => !IsBusy);
             CheckHostsCommand = new AsyncRelayCommand(CheckHostsAsync, () => !IsBusy);
             ApplyHostsCommand = new RelayCommand(ApplyHosts, () => !IsBusy && _hostsFile.Length > 0);
             UpdateHostsCommand = new AsyncRelayCommand(UpdateHostsAsync, () => !IsBusy);
@@ -73,7 +72,6 @@ namespace ZapretGui.ViewModels
             SpeedUpGuiUpdateCommand = new RelayCommand(SpeedUpGuiUpdate, () => IsGuiUpdating);
             DismissGuiUpdateErrorCommand = new RelayCommand(() => { IsGuiUpdating = false; GuiUpdateHasError = false; GuiUpdateErrorText = ""; }, () => GuiUpdateHasError);
             OpenLogsCommand = new RelayCommand(() => _main.Navigate("logs"));
-            BackToSettingsCommand = new RelayCommand(() => _main.Navigate("settings"));
             RefreshEngineBackups();
             RefreshConsistency();
         }
@@ -227,7 +225,6 @@ namespace ZapretGui.ViewModels
                     (CheckGuiUpdateCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (UpdateGuiCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (UpdateEngineCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
-                    (UpdateIpsetCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (CheckHostsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (ApplyHostsCommand as RelayCommand)?.RaiseCanExecuteChanged();
                     (UpdateHostsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
@@ -454,7 +451,6 @@ namespace ZapretGui.ViewModels
         public ICommand UpdateGuiCommand { get; }
         public ICommand UpdateEngineCommand { get; }
         public ICommand RollbackEngineCommand { get; }
-        public ICommand UpdateIpsetCommand { get; }
         public ICommand CheckHostsCommand { get; }
         public ICommand ApplyHostsCommand { get; }
         public ICommand UpdateHostsCommand { get; }
@@ -470,7 +466,6 @@ namespace ZapretGui.ViewModels
         public ICommand SpeedUpGuiUpdateCommand { get; }
         public ICommand DismissGuiUpdateErrorCommand { get; }
         public ICommand OpenLogsCommand { get; }
-        public ICommand BackToSettingsCommand { get; }
 
         private readonly ObservableCollection<ReleaseAsset> _assets = new();
 
@@ -1190,29 +1185,6 @@ namespace ZapretGui.ViewModels
             if (!info.IsIndeterminate) Progress = info.Percent;
             Status = info.Status;
             try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Update(info.Status, "", info.IsIndeterminate ? (double?)null : info.Percent, info.IsIndeterminate)); } catch {}
-        }
-
-        private async Task UpdateIpsetAsync()
-        {
-            IsBusy = true;
-            Indeterminate = true;
-            Status = "Обновляю список ipset-all.txt…";
-            try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Show("Обновление списка", Status, "Загрузка ipset-all.txt…", 0, true, false)); } catch {}
-            try
-            {
-                var ok = await EngineService.UpdateIpsetAsync(Settings.EnginePath);
-                Status = ok ? "Список ipset обновлён" : "Не удалось обновить список ipset";
-                SetMessage(ok
-                    ? "Список ipset-all.txt обновлён из репозитория. Перезапустите обход для применения."
-                    : "Ошибка обновления списка ipset. Смотрите журнал.", ok ? "Success" : "Danger");
-                _main.Home.ReloadFromEngine();
-            }
-            finally
-            {
-                IsBusy = false;
-                Indeterminate = false;
-                try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.Hide()); } catch {}
-            }
         }
 
         private async Task CheckHostsAsync()

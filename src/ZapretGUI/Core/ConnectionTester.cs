@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Net.Sockets;
 using System.Threading;
@@ -15,54 +14,61 @@ namespace ZapretGui.Core
         public bool Ok { get; init; }
         public long Milliseconds { get; init; }
         public string Details { get; init; } = "";
+        public ResourceResultKind Kind { get; init; }
 
-        public string StatusText => Ok ? $"OK · {Milliseconds} мс" : "нет соединения";
+        /// <summary>TCP-соединение установилось. Если да, а ресурс «недоступен» — проблема в TLS/HTTP,
+        /// а не в отсутствии интернета: браузер в этот момент может работать через QUIC.</summary>
+        public bool TcpOk { get; init; }
+
+        /// <summary>Короткая причина отказа. Раньше UI показывал только «нет соединения» и было
+        /// непонятно, что именно не прошло: DNS, TCP, TLS или HTTPS.</summary>
+        public string CauseText => Ok ? "" : Kind switch
+        {
+            ResourceResultKind.DnsError => "DNS не ответил",
+            ResourceResultKind.Timeout => TcpOk ? "HTTPS не ответил" : "TCP не подключился",
+            ResourceResultKind.TcpError => TcpOk ? "HTTPS не открылся" : "TCP закрыт",
+            ResourceResultKind.TlsError => "TLS блокируется",
+            ResourceResultKind.HttpError => "ошибка HTTPS",
+            _ => "причина неизвестна"
+        };
+
+        public string StatusText => Ok ? $"OK · {Milliseconds} мс" : "нет соединения · " + CauseText;
         public string SeverityKey => Ok ? "Success" : "Danger";
     }
 
-    /// <summary>Быстрая проверка доступности ресурсов (TCP-подключение + HTTPS-запрос).</summary>
+    /// <summary>Быстрая проверка доступности ресурсов (DNS → TCP → HTTPS).</summary>
     public static class ConnectionTester
     {
+        /// <summary>Единый список целей: то, что пользователь видит и настраивает в «Проверка → Ресурсы».
+        /// До v2.2.4 здесь был отдельный список из 8 адресов, который расходился с фоновой проверкой.</summary>
         public static List<MonitorTarget> GetEffectiveTargets(AppSettings? settings = null)
         {
-            var list = new List<MonitorTarget>
+            var list = new List<MonitorTarget>();
+            if (settings?.MonitorTargets != null)
             {
-                // v2.0: 8 базовых целей вместо 14. Этого достаточно, чтобы отличить
-                // блокировку DPI от сбоя сети, и проверка проходит заметно быстрее.
-                MonitorTarget.CreateBuiltIn("YouTube", "https://www.youtube.com/generate_204"),
-                MonitorTarget.CreateBuiltIn("YouTube image", "https://i.ytimg.com/generate_204"),
-                MonitorTarget.CreateBuiltIn("Discord", "https://discord.com/api/v9/gateway"),
-                MonitorTarget.CreateBuiltIn("Discord CDN", "https://cdn.discordapp.com/favicon.ico"),
-                MonitorTarget.CreateBuiltIn("Google", "https://www.google.com/generate_204"),
-                MonitorTarget.CreateBuiltIn("Cloudflare", "https://www.cloudflare.com"),
-                MonitorTarget.CreateBuiltIn("ChatGPT", "https://chatgpt.com"),
-                MonitorTarget.CreateBuiltIn("GitHub (обновления)", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt")
-            };
+                foreach (var target in settings.MonitorTargets.Where(t => t.Enabled))
+                {
+                    if (list.Any(x => x.Host.Equals(target.Host, StringComparison.OrdinalIgnoreCase)))
+                        continue;
+                    list.Add(target);
+                }
+            }
+
+            if (list.Count == 0)
+                list.AddRange(MonitorTargetStore.BuiltInTargets);
 
             // Доп цели из utils/targets.txt (если включено и файл есть) — как в Flowseal test zapret.ps1
             if (settings != null && settings.UseTargetsTxtForStrategyTest && !string.IsNullOrWhiteSpace(settings.EnginePath))
             {
                 try
                 {
-                    var extras = TargetsTxtLoader.LoadFromEngine(settings.EnginePath);
-                    foreach (var ex in extras)
+                    foreach (var extra in TargetsTxtLoader.LoadFromEngine(settings.EnginePath))
                     {
-                        if (!list.Any(x => x.Host.Equals(ex.Host, StringComparison.OrdinalIgnoreCase)))
-                            list.Add(ex);
+                        if (!list.Any(x => x.Host.Equals(extra.Host, StringComparison.OrdinalIgnoreCase)))
+                            list.Add(extra);
                     }
                 }
                 catch { }
-            }
-
-            if (settings?.MonitorTargets != null)
-            {
-                foreach (var custom in settings.MonitorTargets.Where(t => t.Enabled && !t.IsBuiltIn))
-                {
-                    if (!list.Any(x => x.Host.Equals(custom.Host, StringComparison.OrdinalIgnoreCase)))
-                    {
-                        list.Add(custom);
-                    }
-                }
             }
 
             return list;
@@ -112,51 +118,10 @@ namespace ZapretGui.Core
                 Host = target.Host,
                 Ok = probe.Ok,
                 Milliseconds = probe.Milliseconds,
+                Kind = probe.Kind,
+                TcpOk = probe.TcpOk,
                 Details = probe.Details
             };
-        }
-
-        private static async Task<ConnectionCheck> CheckAsync(string title, string host, string url, CancellationToken ct)
-        {
-            var watch = Stopwatch.StartNew();
-            try
-            {
-                using var client = new TcpClient();
-                var connect = client.ConnectAsync(host, 443);
-                var completed = await Task.WhenAny(connect, Task.Delay(5000, ct)).ConfigureAwait(false);
-                if (completed != connect || !client.Connected)
-                {
-                    return new ConnectionCheck
-                    {
-                        Title = title, Host = host, Ok = false, Milliseconds = watch.ElapsedMilliseconds,
-                        Details = "TCP-подключение к порту 443 не установлено"
-                    };
-                }
-
-                var tcpMs = watch.ElapsedMilliseconds;
-
-                using var handler = new System.Net.Http.HttpClientHandler { UseProxy = false, AllowAutoRedirect = false };
-                using var http = new System.Net.Http.HttpClient(handler) { Timeout = TimeSpan.FromSeconds(8) };
-                using var response = await http.GetAsync(url, ct).ConfigureAwait(false);
-
-                return new ConnectionCheck
-                {
-                    Title = title,
-                    Host = host,
-                    Ok = (int)response.StatusCode < 500,
-                    Milliseconds = watch.ElapsedMilliseconds,
-                    Details = $"TCP {tcpMs} мс · HTTP {(int)response.StatusCode}"
-                };
-            }
-            catch (Exception ex)
-            {
-                return new ConnectionCheck
-                {
-                    Title = title, Host = host, Ok = false,
-                    Milliseconds = watch.ElapsedMilliseconds,
-                    Details = ex is TaskCanceledException ? "Превышено время ожидания" : ex.Message
-                };
-            }
         }
     }
 }

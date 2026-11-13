@@ -141,6 +141,10 @@ namespace ZapretGui.Core
         public string DnsDetails { get; init; } = "";
         public string Details { get; init; } = "";
 
+        /// <summary>TCP-соединение установилось. Если TCP прошёл, а HTTPS нет — это не «нет интернета»,
+        /// а блокировка на уровне TLS/HTTP (часто браузер в этот момент работает через QUIC).</summary>
+        public bool TcpOk { get; init; }
+
         public string StatusKey => Ok ? "Success" : "Danger";
         public string StatusText => Ok
             ? (Target.IsGame ? $"Пинг · {Milliseconds} мс" : $"Доступен · {Milliseconds} мс")
@@ -185,19 +189,36 @@ namespace ZapretGui.Core
             var started = DateTime.UtcNow;
             try
             {
-                var lookup = Dns.GetHostAddressesAsync(host);
-                var completed = await Task.WhenAny(lookup, Task.Delay(3000, ct)).ConfigureAwait(false);
-                if (completed != lookup)
+                // v2.2.4: 3 секунды было слишком мало — на медленном или «задумавшемся» DNS
+                // (особенно при включённом обходе и зашифрованном DNS) ресурс помечался
+                // недоступным, хотя браузер открывал сайт по кэшу. Даём 5 секунд и один повтор.
+                System.Net.IPAddress[] addresses = Array.Empty<System.Net.IPAddress>();
+                var timedOut = false;
+                for (var attempt = 0; attempt < 2 && addresses.Length == 0; attempt++)
                 {
-                    ct.ThrowIfCancellationRequested();
+                    var lookup = Dns.GetHostAddressesAsync(host);
+                    var wait = attempt == 0 ? 5000 : 3000;
+                    var completed = await Task.WhenAny(lookup, Task.Delay(wait, ct)).ConfigureAwait(false);
+                    if (completed != lookup)
+                    {
+                        ct.ThrowIfCancellationRequested();
+                        timedOut = true;
+                        continue;
+                    }
+
+                    timedOut = false;
+                    addresses = await lookup.ConfigureAwait(false);
+                }
+
+                if (addresses.Length == 0 && timedOut)
+                {
                     return new DnsProbeResult
                     {
                         Milliseconds = Elapsed(started),
-                        Details = "тайм-аут DNS"
+                        Details = "DNS не ответил за 5 с (два запроса)"
                     };
                 }
 
-                var addresses = await lookup.ConfigureAwait(false);
                 return new DnsProbeResult
                 {
                     Ok = addresses.Length > 0,
@@ -227,6 +248,8 @@ namespace ZapretGui.Core
         {
             var started = DateTime.UtcNow;
             DnsProbeResult? dns = null;
+            var tcpOk = false;
+            var tcpMilliseconds = 0L;
             try
             {
                 var host = string.IsNullOrWhiteSpace(target.Host) ? new Uri(target.Url).Host : target.Host;
@@ -244,13 +267,16 @@ namespace ZapretGui.Core
                     return Failure(target, started, ResourceResultKind.Timeout, "тайм-аут TCP", dns);
                 }
                 await connect.ConfigureAwait(false);
+                tcpOk = true;
+                tcpMilliseconds = Elapsed(started);
+
                 if (target.IsGame)
                 {
-                    var tcpMilliseconds = Elapsed(started);
                     return new ResourceProbeResult
                     {
                         Target = target,
                         Ok = true,
+                        TcpOk = true,
                         Milliseconds = tcpMilliseconds,
                         Kind = ResourceResultKind.Available,
                         DnsOk = dns.Ok,
@@ -260,6 +286,73 @@ namespace ZapretGui.Core
                     };
                 }
 
+                // HTTPS-запрос с одним повтором: одиночный обрыв TLS часто бывает случайным
+                // (сервер сбросил соединение, DPI отбросил пакет), и без повтора ресурс
+                // помечался недоступным, хотя сайт у пользователя открывался.
+                (bool Ok, int Status, string Error, ResourceResultKind Kind) attempt = default;
+                for (var tryIndex = 0; tryIndex < 2; tryIndex++)
+                {
+                    attempt = await TryHttpsAsync(target.Url, ct).ConfigureAwait(false);
+                    if (attempt.Ok || ct.IsCancellationRequested) break;
+                    if (tryIndex == 0) await Task.Delay(400, ct).ConfigureAwait(false);
+                }
+
+                if (attempt.Ok)
+                {
+                    return new ResourceProbeResult
+                    {
+                        Target = target,
+                        Ok = true,
+                        TcpOk = true,
+                        Milliseconds = Elapsed(started),
+                        HttpStatusCode = attempt.Status,
+                        Kind = ResourceResultKind.Available,
+                        DnsOk = dns.Ok,
+                        DnsMilliseconds = dns.Milliseconds,
+                        DnsDetails = dns.Details,
+                        Details = $"HTTP {attempt.Status} · DNS {dns.Milliseconds} мс"
+                    };
+                }
+
+                // TCP прошёл, а HTTPS — нет: это блокировка TLS/HTTP, а не «нет соединения».
+                var reason = attempt.Kind == ResourceResultKind.TlsError
+                    ? "TCP ок, TLS не прошёл"
+                    : attempt.Kind == ResourceResultKind.Timeout
+                        ? "TCP ок, HTTPS не ответил"
+                        : $"TCP ок, HTTPS ошибка ({attempt.Status})";
+                var details = string.IsNullOrWhiteSpace(attempt.Error) ? reason : reason + ": " + attempt.Error;
+                return Failure(target, started, attempt.Kind, details, dns, tcpOk: true);
+            }
+            catch (TaskCanceledException)
+            {
+                return Failure(target, started, ResourceResultKind.Timeout, "тайм-аут", dns, tcpOk);
+            }
+            catch (System.Net.Http.HttpRequestException ex)
+            {
+                var text = ex.Message;
+                var kind = text.Contains("SSL", StringComparison.OrdinalIgnoreCase) ||
+                           text.Contains("TLS", StringComparison.OrdinalIgnoreCase)
+                    ? ResourceResultKind.TlsError
+                    : ResourceResultKind.HttpError;
+                return Failure(target, started, kind, Short(text), dns, tcpOk);
+            }
+            catch (SocketException ex)
+            {
+                return Failure(target, started, ResourceResultKind.TcpError, Short(ex.Message), dns, tcpOk);
+            }
+            catch (Exception ex)
+            {
+                return Failure(target, started, ResourceResultKind.Unknown, Short(ex.Message), dns, tcpOk);
+            }
+        }
+
+        /// <summary>Один HTTPS-запрос без системного прокси. Любой код &lt; 500 считается успехом:
+        /// TLS-рукопожатие и TCP прошли, сервер ответил (204/302/404 на служебные пути).</summary>
+        private static async Task<(bool Ok, int Status, string Error, ResourceResultKind Kind)> TryHttpsAsync(
+            string url, CancellationToken ct)
+        {
+            try
+            {
                 using var handler = new System.Net.Http.HttpClientHandler
                 {
                     UseProxy = false,
@@ -269,28 +362,15 @@ namespace ZapretGui.Core
                 {
                     Timeout = TimeSpan.FromSeconds(8)
                 };
-                using var response = await http.GetAsync(target.Url,
+                using var response = await http.GetAsync(url,
                     System.Net.Http.HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false);
                 var status = (int)response.StatusCode;
-                // Любой HTTP-код ответа (< 500) подтверждает, что TLS-рукопожатие и TCP-соединение
-                // успешно прошли сквозь ТСПУ и сервер ответил (включая 404/400/426/204 на служебные пути).
                 var ok = status > 0 && status < 500;
-                return new ResourceProbeResult
-                {
-                    Target = target,
-                    Ok = ok,
-                    Milliseconds = Elapsed(started),
-                    HttpStatusCode = status,
-                    Kind = ok ? ResourceResultKind.Available : ResourceResultKind.HttpError,
-                    DnsOk = dns.Ok,
-                    DnsMilliseconds = dns.Milliseconds,
-                    DnsDetails = dns.Details,
-                    Details = $"HTTP {status} · DNS {dns.Milliseconds} мс"
-                };
+                return (ok, status, ok ? "" : "HTTP " + status, ResourceResultKind.HttpError);
             }
-            catch (TaskCanceledException)
+            catch (TaskCanceledException) when (!ct.IsCancellationRequested)
             {
-                return Failure(target, started, ResourceResultKind.Timeout, "тайм-аут", dns);
+                return (false, 0, "тайм-аут HTTPS", ResourceResultKind.Timeout);
             }
             catch (System.Net.Http.HttpRequestException ex)
             {
@@ -299,24 +379,21 @@ namespace ZapretGui.Core
                            text.Contains("TLS", StringComparison.OrdinalIgnoreCase)
                     ? ResourceResultKind.TlsError
                     : ResourceResultKind.HttpError;
-                return Failure(target, started, kind, Short(text), dns);
-            }
-            catch (SocketException ex)
-            {
-                return Failure(target, started, ResourceResultKind.TcpError, Short(ex.Message), dns);
+                return (false, 0, Short(text), kind);
             }
             catch (Exception ex)
             {
-                return Failure(target, started, ResourceResultKind.Unknown, Short(ex.Message), dns);
+                return (false, 0, Short(ex.Message), ResourceResultKind.Unknown);
             }
         }
 
         private static ResourceProbeResult Failure(MonitorTarget target, DateTime started,
-            ResourceResultKind kind, string details, DnsProbeResult? dns = null)
+            ResourceResultKind kind, string details, DnsProbeResult? dns = null, bool tcpOk = false)
             => new()
             {
                 Target = target,
                 Ok = false,
+                TcpOk = tcpOk,
                 Milliseconds = Elapsed(started),
                 Kind = kind,
                 DnsOk = dns?.Ok ?? false,
@@ -352,6 +429,11 @@ namespace ZapretGui.Core
             "chatgpt.com", "openai.com", "www.pubg.com", "pubg.com", "front.pubg.com",
             "prozone.pubg.com", "api.kineticgames.co.uk"
         };
+
+        /// <summary>Базовые ресурсы «из коробки». Единственный источник встроенного списка:
+        /// им пользуются и «Обзор» (быстрая проверка), и фоновая проверка ресурсов.</summary>
+        public static IReadOnlyList<MonitorTarget> BuiltInTargets { get; } =
+            DefaultTargets.Select(t => MonitorTarget.CreateBuiltIn(t.Name, t.Url)).ToList();
 
         public static void EnsureDefaults(AppSettings settings)
         {

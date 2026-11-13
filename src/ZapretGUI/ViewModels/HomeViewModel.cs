@@ -29,14 +29,13 @@ namespace ZapretGui.ViewModels
         private string _connectionProgressText = "";
         private int _suppressWrites;
         private string _legacyWarning = "";
-        // ---- Автозапуск службы Windows (v2.2.2) ----
-        private bool _serviceAutoStart;
+        // ---- Автозапуск службы Windows (v2.2.2, уточнено в v2.2.4) ----
+        private ServiceStartType _serviceStartType = ServiceStartType.Unknown;
         private DateTime _serviceAutoStartCheckedUtc = DateTime.MinValue;
         private bool _serviceToggleBusy;
         private bool _isAdmin;
         private DateTime _lastLegacyCheck = DateTime.MinValue;
         private LegacyInstallInfo? _legacyCache;
-        private string _newConnectionAddress = "";
         // ---- Здоровье соединения ----
         private string _connectionHealthKey = "Muted";
         private string _connectionHealthText = "";
@@ -72,8 +71,6 @@ namespace ZapretGui.ViewModels
             _isAdmin = Shell.IsAdmin();
             MonitorTargetStore.EnsureDefaults(main.Settings);
             SettingsStore.Save(main.Settings);
-            foreach (var target in main.Settings.MonitorTargets.Where(t => !t.IsGame))
-                ConnectionTargets.Add(target);
 
             StartCommand = new AsyncRelayCommand(StartAsync, () => !IsRunning && HasStrategy && !IsBusy);
             StopCommand = new AsyncRelayCommand(StopAsync, () => IsRunning && !IsBusy);
@@ -85,9 +82,6 @@ namespace ZapretGui.ViewModels
             ToggleServiceCommand = new AsyncRelayCommand(ToggleServiceAsync, () => !IsBusy);
             ReapplyServiceCommand = new AsyncRelayCommand(ReinstallServiceAsync, () => ServiceInstalled && !IsBusy && HasStrategy);
             TestConnectionCommand = new AsyncRelayCommand(TestConnectionAsync, () => !ConnectionBusy);
-            AddConnectionTargetCommand = new RelayCommand(AddConnectionTarget);
-            EditConnectionTargetCommand = new RelayCommand(EditConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
-            RemoveConnectionTargetCommand = new RelayCommand(RemoveConnectionTarget, p => p is MonitorTarget target && !target.IsBuiltIn);
             CheckUpdatesCommand = new RelayCommand(() => _main.Navigate("updates"));
             OpenDiagnosticsCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
             OpenFirstLaunchCommand = new RelayCommand(() => _main.Navigate("first-run"));
@@ -231,13 +225,6 @@ namespace ZapretGui.ViewModels
 
         public ObservableCollection<string> StrategyNames { get; } = new();
         public ObservableCollection<ConnectionCheck> ConnectionChecks { get; } = new();
-        public ObservableCollection<MonitorTarget> ConnectionTargets { get; } = new();
-
-        public string NewConnectionAddress
-        {
-            get => _newConnectionAddress;
-            set => Set(ref _newConnectionAddress, value);
-        }
 
         public string[] GameFilterOptions { get; } = { "Выключен", "TCP + UDP", "Только TCP", "Только UDP" };
         public string[] IpsetOptions { get; } = { "Списки (loaded)", "Отключён (none)", "Все IP (any)" };
@@ -249,25 +236,38 @@ namespace ZapretGui.ViewModels
         public string InstallServiceButtonText => ServiceInstalled
             ? "Служба установлена"
             : "Установить в службу";
-        /// <summary>Служба установлена и Windows запускает её сама (START_TYPE = AUTO).</summary>
-        public bool ServiceAutoStartEnabled => ServiceInstalled && _serviceAutoStart;
+        /// <summary>Служба установлена и Windows запускает её сама (Start = 2 / AUTO_START).</summary>
+        public bool ServiceAutoStartEnabled => ServiceInstalled && _serviceStartType == ServiceStartType.Auto;
         public string ServiceToggleStatusText => !ServiceInstalled
             ? "Служба не установлена"
-            : _serviceAutoStart ? "Автозапуск включён" : "Автозапуск выключен";
+            : _serviceStartType switch
+            {
+                ServiceStartType.Auto => "Автозапуск включён",
+                ServiceStartType.Demand => "Автозапуск выключен",
+                ServiceStartType.Disabled => "Служба отключена в Windows",
+                ServiceStartType.Unknown => "Автозапуск: не удалось определить",
+                _ => "Автозапуск: " + WinServices.DescribeStartType(_serviceStartType)
+            };
         /// <summary>Тумблер управляет только автозапуском: служба при выключении остаётся на месте.</summary>
         public bool IsServiceToggleOn => ServiceAutoStartEnabled;
         public string ServiceToggleHint => !ServiceInstalled
             ? "Включить: установить службу с автозапуском"
-            : !_isAdmin
-                ? "Нужны права администратора — запустите Zapret GUI от имени администратора"
-                : _serviceAutoStart
+            : ServiceGateHintVisible
+                ? ServiceGateHint
+                : ServiceAutoStartEnabled
                     ? "Выключить автозапуск — служба останется работать до перезагрузки"
                     : "Включить автозапуск: Windows будет запускать службу сама";
         public string ServiceRemoveHint => "Удалить службу zapret из Windows";
 
-        /// <summary>Подсказка про права — показывается в карточке службы, чтобы клик не «пропадал» молча.</summary>
-        public bool ServiceAdminHintVisible => ServiceInstalled && !_isAdmin;
-        public string ServiceAdminHint => "Нужны права администратора";
+        /// <summary>Причина, по которой тумблер автозапуска сейчас недоступен. Пустая строка — доступен.
+        /// Требование: неактивный элемент управления всегда объясняет себя (v2.2.4).</summary>
+        public string ServiceGateHint =>
+            !ServiceInstalled ? "" :
+            !_isAdmin ? "нужны права администратора — перезапустите программу от имени администратора" :
+            IsServicePending ? ServicePendingText :
+            _serviceStartType == ServiceStartType.Unknown ? "Windows не отдаёт тип запуска службы — нажмите «Обновить службу»" :
+            IsBusy ? "идёт операция — подождите" : "";
+        public bool ServiceGateHintVisible => !string.IsNullOrEmpty(ServiceGateHint);
 
         /// <summary>Двухсторонний тумблер автозапуска службы (v2.2.3). Раньше CheckBox сочетал
         /// OneWay-привязку и Command: при сбое команды состояние откатывалось и клик выглядел
@@ -759,9 +759,6 @@ namespace ZapretGui.ViewModels
         public ICommand ToggleServiceCommand { get; }
         public ICommand ReapplyServiceCommand { get; }
         public ICommand TestConnectionCommand { get; }
-        public ICommand AddConnectionTargetCommand { get; }
-        public ICommand EditConnectionTargetCommand { get; }
-        public ICommand RemoveConnectionTargetCommand { get; }
         public ICommand CheckUpdatesCommand { get; }
         public ICommand OpenDiagnosticsCommand { get; }
         public ICommand OpenFirstLaunchCommand { get; }
@@ -836,8 +833,8 @@ namespace ZapretGui.ViewModels
             Raise(nameof(ServiceToggleHint));
             Raise(nameof(ServiceRemoveHint));
             Raise(nameof(ServiceAutoStartToggle));
-            Raise(nameof(ServiceAdminHintVisible));
-            Raise(nameof(ServiceAdminHint));
+            Raise(nameof(ServiceGateHint));
+            Raise(nameof(ServiceGateHintVisible));
             Raise(nameof(IsServicePending));
             Raise(nameof(ServicePendingText));
             Raise(nameof(IsServiceToggleEnabled));
@@ -860,19 +857,23 @@ namespace ZapretGui.ViewModels
             RaiseCommands();
         }
 
-        /// <summary>Тип запуска службы читается через «sc qc», поэтому кэшируем на 10 секунд:
-        /// карточка статуса обновляется таймером каждые 3 секунды.</summary>
+        /// <summary>Тип запуска службы кэшируем на 5 секунд (карточка обновляется таймером каждые 3 с).
+        /// Неизвестное состояние не кэшируем — иначе тумблер «залипал» в выключенном виде.</summary>
         private void RefreshServiceAutoStart()
         {
             if (!ServiceInstalled)
             {
-                _serviceAutoStart = false;
+                _serviceStartType = ServiceStartType.Unknown;
                 _serviceAutoStartCheckedUtc = DateTime.UtcNow;
                 return;
             }
-            if ((DateTime.UtcNow - _serviceAutoStartCheckedUtc).TotalSeconds < 10) return;
+            if (_serviceStartType != ServiceStartType.Unknown &&
+                (DateTime.UtcNow - _serviceAutoStartCheckedUtc).TotalSeconds < 5) return;
+
             _serviceAutoStartCheckedUtc = DateTime.UtcNow;
-            _serviceAutoStart = WinServices.GetStartType(WinServices.ZapretService) == ServiceStartType.Auto;
+            _serviceStartType = WinServices.GetStartType(WinServices.ZapretService);
+            if (_serviceStartType == ServiceStartType.Unknown)
+                AppLog.Warn("[Services] Не удалось определить тип запуска службы zapret — покажу это в карточке");
         }
 
         private void InvalidateServiceAutoStart() => _serviceAutoStartCheckedUtc = DateTime.MinValue;
@@ -1149,7 +1150,8 @@ namespace ZapretGui.ViewModels
                 // Явная обратная связь и предложение перезапуститься от админа — вместо «клик ничего не делает».
                 ShowError("Для изменения автозапуска службы нужны права администратора.");
                 Raise(nameof(ServiceAutoStartToggle));
-                Raise(nameof(ServiceAdminHintVisible));
+                Raise(nameof(ServiceGateHint));
+                Raise(nameof(ServiceGateHintVisible));
                 if (Confirm("Нужны права администратора", "Перезапустить Zapret GUI от имени администратора?"))
                     _main.RestartAsAdminCommand.Execute(null);
                 return;
@@ -1161,9 +1163,19 @@ namespace ZapretGui.ViewModels
             try
             {
                 var result = WinServices.SetStartType(WinServices.ZapretService, enabled);
-                if (!result.Ok)
+
+                // Проверяем не отчёт команды, а фактическое состояние службы.
+                InvalidateServiceAutoStart();
+                var actual = WinServices.GetStartType(WinServices.ZapretService);
+                var expected = enabled ? ServiceStartType.Auto : ServiceStartType.Demand;
+
+                if (!result.Ok || actual != expected)
                 {
-                    ShowError("Не удалось изменить автозапуск службы: " + result.All.Trim());
+                    var detail = actual == ServiceStartType.Unknown
+                        ? "Windows не отдаёт тип запуска службы (нужны права администратора?)"
+                        : $"фактически: {WinServices.DescribeStartType(actual)}";
+                    ShowError($"Не удалось изменить автозапуск службы — {detail}.");
+                    AppLog.Warn($"[Services] Смена автозапуска не применилась. sc: {result.All.Trim()}");
                     return;
                 }
 
@@ -1341,7 +1353,7 @@ namespace ZapretGui.ViewModels
             ConnectionHealthVisible = false;
             try
             {
-                var results = await ConnectionTester.RunAsync(ConnectionTargets, default,
+                var results = await ConnectionTester.RunAsync(Settings, default,
                     new Progress<string>(UpdateConnectionProgress));
                 foreach (var check in results) ConnectionChecks.Add(check);
 
@@ -1355,81 +1367,28 @@ namespace ZapretGui.ViewModels
                 Raise(nameof(ConnectionHealthText));
 
                 var failed = total - ok;
-                if (failed == 0) ShowSuccess("Все проверенные ресурсы доступны");
-                else if (failed == results.Count) ShowError("Ни один ресурс не открылся — проверьте обход и DNS");
-                else ShowWarning($"Часть ресурсов недоступна ({failed} из {results.Count})");
+                if (failed == 0)
+                {
+                    ShowSuccess("Все проверенные ресурсы доступны");
+                }
+                else
+                {
+                    // Причина видна сразу: «нет соединения» без пояснения вводило в заблуждение —
+                    // сайт мог открываться в браузере через QUIC/кэш, а проверка падала на TLS.
+                    var worst = results.Where(r => !r.Ok)
+                        .OrderBy(r => r.TcpOk ? 0 : 1)
+                        .Take(2)
+                        .Select(r => $"{r.Title}: {r.CauseText}")
+                        .ToList();
+                    var text = string.Join(" · ", worst);
+                    if (failed == results.Count) ShowError("Не открылся ни один ресурс — " + text);
+                    else ShowWarning($"Недоступно {failed} из {results.Count} — {text}");
+                }
             }
             finally
             {
                 ConnectionBusy = false;
             }
-        }
-
-        private void AddConnectionTarget()
-        {
-            var dialog = new Views.InputDialog(
-                "Добавить адрес",
-                "Введите URL или домен для проверки соединения:")
-            {
-                Owner = System.Windows.Application.Current?.MainWindow
-            };
-            if (dialog.ShowDialog() != true) return;
-            NewConnectionAddress = dialog.Value;
-
-            if (!MonitorTarget.TryCreate(NewConnectionAddress, null, out var target, out var error) || target == null)
-            {
-                ShowWarning(error);
-                return;
-            }
-            if (ConnectionTargets.Any(t => t.Host.Equals(target.Host, StringComparison.OrdinalIgnoreCase)))
-            {
-                ShowWarning("Этот адрес уже есть в проверке соединения");
-                return;
-            }
-            Settings.MonitorTargets.Add(target);
-            ConnectionTargets.Add(target);
-            SettingsStore.Save(Settings);
-            NewConnectionAddress = "";
-            ShowSuccess("Адрес добавлен в проверку соединения");
-        }
-
-        private void EditConnectionTarget(object? parameter)
-        {
-            if (parameter is not MonitorTarget target || target.IsBuiltIn) return;
-            var dialog = new Views.InputDialog(
-                "Изменить адрес",
-                "Укажите новый URL или домен для проверки:",
-                target.Url)
-            {
-                Owner = System.Windows.Application.Current?.MainWindow
-            };
-            if (dialog.ShowDialog() != true) return;
-            var updated = (dialog.Value ?? "").Trim();
-            if (string.IsNullOrWhiteSpace(updated)) return;
-
-            if (!MonitorTarget.TryCreate(updated, target.Name, out var newTarget, out var error) || newTarget == null)
-            {
-                ShowWarning(error);
-                return;
-            }
-
-            var index = ConnectionTargets.IndexOf(target);
-            if (index >= 0)
-            {
-                ConnectionTargets[index] = newTarget;
-                var sIndex = Settings.MonitorTargets.FindIndex(t => t.Id == target.Id || t.Host.Equals(target.Host, StringComparison.OrdinalIgnoreCase));
-                if (sIndex >= 0) Settings.MonitorTargets[sIndex] = newTarget;
-                SettingsStore.Save(Settings);
-                ShowSuccess("Адрес проверки обновлён");
-            }
-        }
-
-        private void RemoveConnectionTarget(object? parameter)
-        {
-            if (parameter is not MonitorTarget target || target.IsBuiltIn) return;
-            Settings.MonitorTargets.Remove(target);
-            ConnectionTargets.Remove(target);
-            SettingsStore.Save(Settings);
         }
 
         public void ClearFullCheckResult()
@@ -1537,7 +1496,7 @@ namespace ZapretGui.ViewModels
                 // Шаг 2: проверка соединения (ваши хосты + YouTube/Discord)
                 FullCheckStatusText = "Шаг 2/4: проверяю доступность сайтов…";
                 ConnectionChecks.Clear();
-                var connResults = await ConnectionTester.RunAsync(ConnectionTargets, _fullCheckCts.Token, null);
+                var connResults = await ConnectionTester.RunAsync(Settings, _fullCheckCts.Token, null);
                 foreach (var r in connResults) ConnectionChecks.Add(r);
                 // Обновляем health для кольца
                 {
@@ -1767,7 +1726,7 @@ namespace ZapretGui.ViewModels
                 // Шаг 2: сеть — DNS +hosts +сетевые пробы
                 UnifiedStatusText = "Шаг 2/3: сетевые пробы (YouTube, Discord, задержка)…";
                 ConnectionChecks.Clear();
-                var connResults = await ConnectionTester.RunAsync(ConnectionTargets, _unifiedCts.Token, new Progress<string>(s =>
+                var connResults = await ConnectionTester.RunAsync(Settings, _unifiedCts.Token, new Progress<string>(s =>
                 {
                     if (s.StartsWith("CONNECTION_PROGRESS:", StringComparison.Ordinal))
                     {

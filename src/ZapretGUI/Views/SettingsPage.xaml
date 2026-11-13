@@ -267,43 +267,7 @@
                     </StackPanel>
                 </Border>
 
-                <!-- v2.2.3: обновление всех списков доменов и IP при запуске приложения -->
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
-                    <StackPanel>
-                        <Grid>
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                                <ColumnDefinition Width="Auto" />
-                            </Grid.ColumnDefinitions>
-                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" VerticalAlignment="Top">
-                                <TextBlock Text="&#xE896;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
-                            </Border>
-                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="СПИСКИ ДОМЕНОВ И IP" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
-                                           Text="list-general, list-discord, list-youtube, list-google, ipset — из репозитория Flowseal." />
-                            </StackPanel>
-                        </Grid>
-                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Обновлять все списки при запуске приложения" Margin="0,14,0,0"
-                                  IsChecked="{Binding UpdateListsOnStartup, Mode=TwoWay}" />
-                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap"
-                                   Text="Обновление идёт в фоне после старта и не задерживает включение обхода. Изменения списков применяются при следующем запуске обхода." />
-                        <Grid Margin="0,10,0,0">
-                            <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="Auto" />
-                                <ColumnDefinition Width="*" />
-                            </Grid.ColumnDefinitions>
-                            <Button Style="{StaticResource GhostButton}" Content="Обновить сейчас"
-                                    Command="{Binding UpdateListsNowCommand}"
-                                    ToolTip="Скачать свежие списки с GitHub прямо сейчас" />
-                            <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Margin="12,0,0,0" VerticalAlignment="Center"
-                                       TextWrapping="Wrap" FontSize="11" Text="{Binding ListsUpdateStatus}" />
-                        </Grid>
-                    </StackPanel>
-                </Border>
-
-                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -522,11 +486,7 @@
             </StackPanel>
 
             <!-- ===================== ВКЛАДКА 3: ОБНОВЛЕНИЯ ===================== -->
-            <StackPanel Margin="0,4,0,0" Visibility="{Binding IsUpdatesTabSelected, Converter={StaticResource BoolToVis}}">
-                <views:UpdatesPage DataContext="{Binding Updates}" ShowHeader="False" />
-            </StackPanel>
-
-            <!-- ===================== ВКЛАДКА 4: СИСТЕМА (поведение обхода, файлы, о программе) ===================== -->
+            <!-- ===================== ВКЛАДКА 4: СИСТЕМА (была 5-й до v2.2.4) (поведение обхода, файлы, о программе) ===================== -->
             <StackPanel Margin="0,16,0,0" Visibility="{Binding IsAdvancedTabSelected, Converter={StaticResource BoolToVis}}">
 
                 <!-- Поведение обхода — перенесено из вкладки Обход -->
