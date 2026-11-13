@@ -183,6 +183,30 @@ namespace ZapretGui
                         }
                     }
 
+                    // v2.2.3: обновление всех списков доменов и IP при запуске (по настройке).
+                    // Идёт после автозапуска обхода, чтобы не задерживать включение защиты.
+                    if (installed && settings.UpdateListsOnStartup && !settings.SafeMode)
+                    {
+                        try
+                        {
+                            AppLog.Info("[Lists] Обновление всех списков при запуске…");
+                            var listsResult = await DomainListUpdater.UpdateAllAsync(settings.EnginePath);
+                            settings.LastListsUpdateSummary = listsResult.Message;
+                            SettingsStore.Save(settings);
+                            AppLog.Info($"[Lists] Автообновление при запуске: {listsResult.Message}");
+                            await window.Dispatcher.InvokeAsync(() =>
+                            {
+                                viewModel.Strategies.Refresh();
+                                viewModel.Home.RefreshStatus();
+                                viewModel.NotifyTray("📚 Списки доменов обновлены при запуске");
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            AppLog.Warn("[Lists] Ошибка автообновления списков при запуске: " + ex.Message);
+                        }
+                    }
+
                     if (installed && settings.AutoCheckEngineUpdates && !settings.SafeMode)
                         await window.Dispatcher.InvokeAsync(async () => await viewModel.Updates.CheckAsync());
 

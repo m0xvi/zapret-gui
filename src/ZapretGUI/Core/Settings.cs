@@ -323,6 +323,12 @@ namespace ZapretGui.Core
         /// <summary>Сводный лист справа — развёрнут. Панель удалена в v2.0, поле нужно только для чтения старых settings.json.</summary>
         public bool IsSummarySheetExpanded { get; set; }
 
+        /// <summary>Обновлять все списки доменов и IP при запуске приложения (фоном, из репозитория Flowseal).</summary>
+        public bool UpdateListsOnStartup { get; set; }
+
+        /// <summary>Итог последнего автообновления списков при запуске.</summary>
+        public string LastListsUpdateSummary { get; set; } = "";
+
         /// <summary>Версия схемы интерфейса для одноразовых миграций (v2.0 — упрощённый интерфейс).</summary>
         public int UiSchemaVersion { get; set; }
     }

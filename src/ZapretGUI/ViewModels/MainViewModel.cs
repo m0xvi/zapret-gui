@@ -813,6 +813,12 @@ namespace ZapretGui.ViewModels
             WatchdogNotificationRequested?.Invoke(message);
         }
 
+        /// <summary>Баллон в трее для фоновых событий (обновление списков и т.п.).</summary>
+        public void NotifyTray(string message)
+        {
+            WatchdogNotificationRequested?.Invoke(message);
+        }
+
         /// <summary>Вызывается при выходе: остановка обхода, если так настроено.</summary>
         public async System.Threading.Tasks.Task ShutdownAsync()
         {

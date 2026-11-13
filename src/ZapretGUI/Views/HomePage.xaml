@@ -96,12 +96,16 @@
                                         <TextBlock Text="{Binding ServiceToggleStatusText}" Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" />
                                     </StackPanel>
                                     <CheckBox Grid.Column="1" Style="{StaticResource SwitchCheckBox}" VerticalAlignment="Center"
-                                              IsChecked="{Binding IsServiceToggleOn, Mode=OneWay}" Command="{Binding ToggleServiceCommand}"
+                                              IsChecked="{Binding ServiceAutoStartToggle, Mode=TwoWay}"
                                               IsEnabled="{Binding IsServiceToggleEnabled}" Content=""
                                               Visibility="{Binding IsServicePending, Converter={StaticResource BoolToVis}, ConverterParameter=invert}"
                                               ToolTip="{Binding ServiceToggleHint}" />
                                 </Grid>
                             </Border>
+                            <TextBlock Style="{StaticResource DimText}" Margin="2,6,0,0" FontSize="11" Opacity="0.85"
+                                       TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"
+                                       Text="{Binding ServiceAdminHint, StringFormat=⚠ {0}: перезапустите программу от имени администратора}"
+                                       Visibility="{Binding ServiceAdminHintVisible, Converter={StaticResource BoolToVis}}" />
                             <Button Style="{StaticResource PageAction}" Content="Обновить службу" Margin="0,8,0,0"
                                     HorizontalAlignment="Stretch"
                                     Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}}"
