@@ -158,6 +158,8 @@
                         <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
                             <TextBlock Style="{StaticResource SectionText}" Text="АВТОСМЕНА СТРАТЕГИЙ" Margin="0,0,0,2" />
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding MasterAutoSwitchHint}" TextWrapping="Wrap" />
+                            <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.7" Margin="0,4,0,0" TextWrapping="Wrap"
+                                       Text="Общий выключатель: механизмы ниже работают только при разрешённой автосмене." />
                         </StackPanel>
                         <CheckBox Grid.Column="2" Style="{StaticResource SwitchCheckBox}" Content="" VerticalAlignment="Center"
                                   IsChecked="{Binding MasterAutoSwitchEnabled, Mode=TwoWay}"
@@ -177,7 +179,7 @@
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,0,0">
                                 <TextBlock Style="{StaticResource SectionText}" Text="СТОРОЖЕВОЙ ТАЙМЕР (WATCHDOG)" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Следит, чтобы winws.exe и служба zapret не падали молча." TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource DimText}" Text="Следит, чтобы winws.exe и служба zapret не падали молча. Перезапускает ту же стратегию, другую не выбирает." TextWrapping="Wrap" />
                             </StackPanel>
                         </Grid>
                         <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Включить сторож" Margin="0,14,0,0"
@@ -204,7 +206,7 @@
                 </Border>
 
                 <Border Style="{StaticResource Card}" Margin="0,14,0,0" BorderBrush="{DynamicResource SuccessBrush}" BorderThickness="1">
-                    <StackPanel>
+                    <StackPanel IsEnabled="{Binding MasterAutoSwitchEnabled}">
                         <Grid>
                             <Grid.ColumnDefinitions>
                                 <ColumnDefinition Width="Auto" />
@@ -215,11 +217,11 @@
                                 <TextBlock Text="&#xE8F5;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
                             </Border>
                             <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                                <TextBlock Style="{StaticResource SectionText}" Text="БЕСШОВНОЕ ПЕРЕКЛЮЧЕНИЕ СТРАТЕГИЙ" Margin="0,0,0,2" />
-                                <TextBlock Style="{StaticResource DimText}" Text="Без окон и подтверждений: сам проверяет YouTube/Discord и тихо переключает на рабочую стратегию, сохраняя режим служба/процесс." TextWrapping="Wrap" />
+                                <TextBlock Style="{StaticResource SectionText}" Text="МЕХАНИЗМ: БЕСШОВНО" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource DimText}" Text="{Binding SeamlessDependencyHint}" TextWrapping="Wrap" />
                             </StackPanel>
                             <CheckBox Grid.Column="2" Style="{StaticResource SwitchCheckBox}" Content="" IsChecked="{Binding SeamlessFailoverEnabled, Mode=TwoWay}"
-                                      ToolTip="Включить бесшовное автопереключение (включает и мастер автосмены)" VerticalAlignment="Center" />
+                                      ToolTip="Тихо переключать на рабочую стратегию при сбое ресурсов" VerticalAlignment="Center" />
                         </Grid>
                         <Border Style="{StaticResource InnerCard}" Margin="0,12,0,0" Background="{DynamicResource ElevatedBrush}" Visibility="{Binding SeamlessFailoverEnabled, Converter={StaticResource BoolToVis}}">
                             <StackPanel>
@@ -260,7 +262,44 @@
                                 <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap" Text="Логика: 2 подтверждённых сбоя подряд → сравнение «прямо vs обход» → если стратегия мешает — тест 8 кандидатов на упавшем ресурсе → бесшовный SwitchToStrategyAsync/InstallService. Уведомление только в трей, без MessageBox." />
                             </StackPanel>
                         </Border>
-                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap" Text="Работает в фоне даже когда окно в трее. Учитывает SafeMode и не трогает обход если он выключен." Visibility="{Binding SeamlessFailoverEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap"
+                                   Text="Работает в фоне и не трогает обход, если он выключен." Visibility="{Binding SeamlessFailoverEnabled, Converter={StaticResource BoolToVis}, ConverterParameter=invert}" />
+                    </StackPanel>
+                </Border>
+
+                <!-- v2.2.3: обновление всех списков доменов и IP при запуске приложения -->
+                <Border Style="{StaticResource Card}" Margin="0,14,0,0">
+                    <StackPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <Border Width="32" Height="32" CornerRadius="8" Background="{DynamicResource InfoSoftBrush}" VerticalAlignment="Top">
+                                <TextBlock Text="&#xE896;" FontFamily="{DynamicResource IconFont}" FontSize="16" Foreground="{DynamicResource InfoBrush}" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                            </Border>
+                            <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
+                                <TextBlock Style="{StaticResource SectionText}" Text="СПИСКИ ДОМЕНОВ И IP" Margin="0,0,0,2" />
+                                <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap"
+                                           Text="list-general, list-discord, list-youtube, list-google, ipset — из репозитория Flowseal." />
+                            </StackPanel>
+                        </Grid>
+                        <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Обновлять все списки при запуске приложения" Margin="0,14,0,0"
+                                  IsChecked="{Binding UpdateListsOnStartup, Mode=TwoWay}" />
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,8,0,0" Opacity="0.8" TextWrapping="Wrap"
+                                   Text="Обновление идёт в фоне после старта и не задерживает включение обхода. Изменения списков применяются при следующем запуске обхода." />
+                        <Grid Margin="0,10,0,0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Button Style="{StaticResource GhostButton}" Content="Обновить сейчас"
+                                    Command="{Binding UpdateListsNowCommand}"
+                                    ToolTip="Скачать свежие списки с GitHub прямо сейчас" />
+                            <TextBlock Grid.Column="1" Style="{StaticResource DimText}" Margin="12,0,0,0" VerticalAlignment="Center"
+                                       TextWrapping="Wrap" FontSize="11" Text="{Binding ListsUpdateStatus}" />
+                        </Grid>
                     </StackPanel>
                 </Border>
 

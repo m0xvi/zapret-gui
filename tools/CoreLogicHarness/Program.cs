@@ -38,6 +38,7 @@ namespace ZapretGui.CoreLogicHarness
                 ("Разбор состояния службы устойчив к языку Windows", ServiceStateParsingIsLocalized),
                 ("Тип запуска службы читается на любом языке Windows", ServiceStartTypeParsingIsLocalized),
                 ("Автосмена стратегий закрыта мастер-выключателем", AutoSwitchMasterGatesEveryPath),
+                ("Настройка автообновления списков сохраняется", ListsOnStartupSettingRoundTrips),
                 ("Безопасная остановка служб тестируется без реального обхода", SafeServiceStopIsIsolated),
                 ("Кэш состояния служб различает актуальные и остаточные службы", ServiceHealthCacheIsExplicit),
                 ("Режимы ipset сохраняют и восстанавливают список", IpsetModesRoundTrip),
@@ -1146,6 +1147,22 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                    !on.SeamlessFailoverEnabled && !on.AutoSwitchToBestStrategy,
                 "мастер не погасил подчинённые флаги");
             Assert(!on.StrategyAutoSwitchAllowed, "после выключения мастера автосмена всё ещё разрешена");
+        }
+
+        private static void ListsOnStartupSettingRoundTrips()
+        {
+            var defaults = new AppSettings();
+            Assert(!defaults.UpdateListsOnStartup, "автообновление списков не должно быть включено по умолчанию");
+
+            var json = JsonSerializer.Serialize(new AppSettings { UpdateListsOnStartup = true, LastListsUpdateSummary = "ok" });
+            var back = JsonSerializer.Deserialize<AppSettings>(json) ?? throw new InvalidOperationException("настройки не читаются");
+            Assert(back.UpdateListsOnStartup, "флаг автообновления списков потерялся при сериализации");
+            Assert(back.LastListsUpdateSummary == "ok", "итог обновления списков потерялся при сериализации");
+
+            // Сброс автосмены не должен затрагивать настройку списков.
+            var settings = new AppSettings { UpdateListsOnStartup = true, AutoSwitchStrategyMasterEnabled = true };
+            settings.DisableAutoStrategySwitching();
+            Assert(settings.UpdateListsOnStartup, "сброс автосмены выключил автообновление списков");
         }
 
         private static void Assert(bool value, string message)

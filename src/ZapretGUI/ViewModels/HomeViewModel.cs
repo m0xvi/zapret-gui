@@ -32,6 +32,8 @@ namespace ZapretGui.ViewModels
         // ---- Автозапуск службы Windows (v2.2.2) ----
         private bool _serviceAutoStart;
         private DateTime _serviceAutoStartCheckedUtc = DateTime.MinValue;
+        private bool _serviceToggleBusy;
+        private bool _isAdmin;
         private DateTime _lastLegacyCheck = DateTime.MinValue;
         private LegacyInstallInfo? _legacyCache;
         private string _newConnectionAddress = "";
@@ -67,6 +69,7 @@ namespace ZapretGui.ViewModels
         public HomeViewModel(MainViewModel main)
         {
             _main = main;
+            _isAdmin = Shell.IsAdmin();
             MonitorTargetStore.EnsureDefaults(main.Settings);
             SettingsStore.Save(main.Settings);
             foreach (var target in main.Settings.MonitorTargets.Where(t => !t.IsGame))
@@ -255,10 +258,43 @@ namespace ZapretGui.ViewModels
         public bool IsServiceToggleOn => ServiceAutoStartEnabled;
         public string ServiceToggleHint => !ServiceInstalled
             ? "Включить: установить службу с автозапуском"
-            : _serviceAutoStart
-                ? "Выключить автозапуск — служба останется работать до перезагрузки"
-                : "Включить автозапуск: Windows будет запускать службу сама";
+            : !_isAdmin
+                ? "Нужны права администратора — запустите Zapret GUI от имени администратора"
+                : _serviceAutoStart
+                    ? "Выключить автозапуск — служба останется работать до перезагрузки"
+                    : "Включить автозапуск: Windows будет запускать службу сама";
         public string ServiceRemoveHint => "Удалить службу zapret из Windows";
+
+        /// <summary>Подсказка про права — показывается в карточке службы, чтобы клик не «пропадал» молча.</summary>
+        public bool ServiceAdminHintVisible => ServiceInstalled && !_isAdmin;
+        public string ServiceAdminHint => "Нужны права администратора";
+
+        /// <summary>Двухсторонний тумблер автозапуска службы (v2.2.3). Раньше CheckBox сочетал
+        /// OneWay-привязку и Command: при сбое команды состояние откатывалось и клик выглядел
+        /// «неживым». Теперь клик меняет это свойство, а оно уже выполняет действие и
+        /// возвращает реальное состояние службы.</summary>
+        public bool ServiceAutoStartToggle
+        {
+            get => ServiceAutoStartEnabled;
+            set
+            {
+                if (value == ServiceAutoStartEnabled) return;
+                if (_serviceToggleBusy)
+                {
+                    // Откатываем визуальное состояние, если операция уже идёт.
+                    Raise(nameof(ServiceAutoStartToggle));
+                    return;
+                }
+                if (!ServiceInstalled)
+                {
+                    // Службы нет — первый клик ставит её (с автозапуском).
+                    _ = InstallServiceAsync();
+                    Raise(nameof(ServiceAutoStartToggle));
+                    return;
+                }
+                _ = ApplyServiceAutoStartAsync(value);
+            }
+        }
         public bool IsServicePending => StrategyApplicationService.IsServicePending(_status.ServiceState);
         public string ServicePendingText => StrategyApplicationService.ServicePendingText(_status.ServiceState);
         public bool IsServiceToggleEnabled => !IsBusy && !IsServicePending;
@@ -799,6 +835,9 @@ namespace ZapretGui.ViewModels
             Raise(nameof(IsServiceToggleOn));
             Raise(nameof(ServiceToggleHint));
             Raise(nameof(ServiceRemoveHint));
+            Raise(nameof(ServiceAutoStartToggle));
+            Raise(nameof(ServiceAdminHintVisible));
+            Raise(nameof(ServiceAdminHint));
             Raise(nameof(IsServicePending));
             Raise(nameof(ServicePendingText));
             Raise(nameof(IsServiceToggleEnabled));
@@ -1091,17 +1130,32 @@ namespace ZapretGui.ViewModels
                 await InstallServiceAsync();
                 return;
             }
-            await SetServiceAutoStartAsync(!ServiceAutoStartEnabled);
+            await ApplyServiceAutoStartAsync(!ServiceAutoStartEnabled);
         }
 
-        private async Task SetServiceAutoStartAsync(bool enabled)
+        /// <summary>Применяет тип запуска службы и всегда возвращает тумблер к реальному состоянию.</summary>
+        private async Task ApplyServiceAutoStartAsync(bool enabled)
         {
-            if (!Shell.IsAdmin())
+            if (IsServicePending)
             {
-                ShowError("Для изменения автозапуска службы нужны права администратора.");
+                ShowWarning(ServicePendingText + " Подождите завершения перехода.");
+                Raise(nameof(ServiceAutoStartToggle));
                 return;
             }
 
+            _isAdmin = Shell.IsAdmin();
+            if (!_isAdmin)
+            {
+                // Явная обратная связь и предложение перезапуститься от админа — вместо «клик ничего не делает».
+                ShowError("Для изменения автозапуска службы нужны права администратора.");
+                Raise(nameof(ServiceAutoStartToggle));
+                Raise(nameof(ServiceAdminHintVisible));
+                if (Confirm("Нужны права администратора", "Перезапустить Zapret GUI от имени администратора?"))
+                    _main.RestartAsAdminCommand.Execute(null);
+                return;
+            }
+
+            _serviceToggleBusy = true;
             IsBusy = true;
             ShowInfo(enabled ? "Включаю автозапуск службы…" : "Выключаю автозапуск службы…");
             try
@@ -1109,7 +1163,7 @@ namespace ZapretGui.ViewModels
                 var result = WinServices.SetStartType(WinServices.ZapretService, enabled);
                 if (!result.Ok)
                 {
-                    ShowError("Не удалось изменить автозапуск службы: " + result.All);
+                    ShowError("Не удалось изменить автозапуск службы: " + result.All.Trim());
                     return;
                 }
 
@@ -1130,11 +1184,17 @@ namespace ZapretGui.ViewModels
                     ShowSuccess("Автозапуск службы выключен — обход продолжит работать до перезагрузки");
                 }
             }
+            catch (Exception ex)
+            {
+                ShowError("Ошибка изменения автозапуска службы: " + ex.Message);
+            }
             finally
             {
+                _serviceToggleBusy = false;
                 IsBusy = false;
                 InvalidateServiceAutoStart();
                 RefreshStatus();
+                Raise(nameof(ServiceAutoStartToggle));
             }
         }
 
@@ -1143,7 +1203,7 @@ namespace ZapretGui.ViewModels
             if (ServiceInstalled)
             {
                 // Служба уже стоит — тумблер лишь включает её автозапуск, ничего не удаляя.
-                await SetServiceAutoStartAsync(true);
+                await ApplyServiceAutoStartAsync(true);
                 return;
             }
 

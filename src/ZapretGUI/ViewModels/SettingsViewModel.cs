@@ -98,13 +98,19 @@ namespace ZapretGui.ViewModels
 
         /// <summary>Короткое описание состояния мастера для карточки.</summary>
         public string MasterAutoSwitchHint => Settings.AutoSwitchStrategyMasterEnabled
-            ? "Разрешено: включённые ниже механизмы могут переключать стратегию."
-            : "Запрещено: сторож только перезапускает ту же стратегию, всё остальное молчит.";
+            ? "Разрешено. Механизм переключения выбирается ниже."
+            : "Запрещено: ничего не переключается само, сторож только перезапускает ту же стратегию.";
+
+        /// <summary>Пояснение, что «бесшовное переключение» — механизм внутри автосмены, а не второй выключатель.</summary>
+        public string SeamlessDependencyHint => Settings.AutoSwitchStrategyMasterEnabled
+            ? "Механизм автосмены: проверяет ресурсы и тихо переключает на рабочую стратегию."
+            : "Сначала разрешите автосмену выше — без неё этот механизм ничего не делает.";
 
         private void RaiseAutoSwitchState()
         {
             Raise(nameof(MasterAutoSwitchEnabled));
             Raise(nameof(MasterAutoSwitchHint));
+            Raise(nameof(SeamlessDependencyHint));
             Raise(nameof(SeamlessFailoverEnabled));
             Raise(nameof(SeamlessStatus));
             Raise(nameof(SeamlessStatusKey));
@@ -140,6 +146,85 @@ namespace ZapretGui.ViewModels
         public string SeamlessStatusKey => _main.SeamlessStatusKey;
         public string SeamlessLastSwitch => _main.SeamlessLastSwitchText;
         public ICommand TestSeamlessNowCommand => new AsyncRelayCommand(async () => { Status = "Запускаю внеплановую проверку…"; await _main.SeamlessFailover.CheckNowAsync(); Raise(nameof(SeamlessStatus)); Status = _main.SeamlessStatusText; }, () => !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning);
+
+        // ---------------- Списки доменов и IP (v2.2.3) ----------------
+
+        /// <summary>Обновлять все списки при запуске приложения.</summary>
+        public bool UpdateListsOnStartup
+        {
+            get => Settings.UpdateListsOnStartup;
+            set
+            {
+                if (Settings.UpdateListsOnStartup == value) return;
+                Settings.UpdateListsOnStartup = value;
+                SettingsStore.Save(Settings);
+                Status = value
+                    ? "Списки будут обновляться при каждом запуске приложения"
+                    : "Автообновление списков при запуске выключено";
+                Raise(nameof(UpdateListsOnStartup));
+            }
+        }
+
+        private string _listsUpdateStatus = "";
+        private bool _isListsUpdating;
+
+        /// <summary>Итог последнего обновления списков — показывается под переключателем.</summary>
+        public string ListsUpdateStatus
+        {
+            get
+            {
+                if (IsListsUpdating || !string.IsNullOrWhiteSpace(_listsUpdateStatus)) return _listsUpdateStatus;
+                return string.IsNullOrWhiteSpace(Settings.LastListsUpdateSummary)
+                    ? "Списки ещё не обновлялись"
+                    : Settings.LastListsUpdateSummary;
+            }
+            private set { _listsUpdateStatus = value; Raise(nameof(ListsUpdateStatus)); }
+        }
+
+        public bool IsListsUpdating
+        {
+            get => _isListsUpdating;
+            private set
+            {
+                _isListsUpdating = value;
+                Raise(nameof(IsListsUpdating));
+                Raise(nameof(ListsUpdateStatus));
+                UpdateListsNowCommand.RaiseCanExecuteChanged();
+            }
+        }
+
+        public AsyncRelayCommand UpdateListsNowCommand { get; }
+
+        private async Task UpdateListsNowAsync()
+        {
+            if (IsListsUpdating) return;
+            if (!EngineService.IsEngineReady(Settings.EnginePath))
+            {
+                ListsUpdateStatus = "Движок не установлен — обновлять нечего.";
+                return;
+            }
+            IsListsUpdating = true;
+            ListsUpdateStatus = "Загружаю списки с GitHub…";
+            try
+            {
+                var progress = new Progress<string>(msg => ListsUpdateStatus = msg);
+                var res = await DomainListUpdater.UpdateAllAsync(Settings.EnginePath, progress);
+                Settings.LastListsUpdateSummary = res.Message;
+                SettingsStore.Save(Settings);
+                ListsUpdateStatus = res.Message;
+                AppLog.Info($"[Lists] Ручное обновление списков: {res.Message}");
+                _main.Strategies.Refresh();
+            }
+            catch (Exception ex)
+            {
+                ListsUpdateStatus = "Ошибка обновления списков: " + ex.Message;
+                AppLog.Warn($"[Lists] Ошибка ручного обновления: {ex.Message}");
+            }
+            finally
+            {
+                IsListsUpdating = false;
+            }
+        }
 
         public bool AutoSwitchToBestStrategy
         {
@@ -191,6 +276,7 @@ namespace ZapretGui.ViewModels
             SaveProviderContextCommand = new RelayCommand(SaveProviderContext);
             ClearProviderContextCommand = new RelayCommand(ClearProviderContext);
             LookupProviderCommand = new AsyncRelayCommand(LookupProviderAsync, () => !IsProviderLookupBusy);
+            UpdateListsNowCommand = new AsyncRelayCommand(UpdateListsNowAsync, () => !IsListsUpdating);
             RerunFirstLaunchWizardCommand = new RelayCommand(RerunFirstLaunchWizard);
             ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
@@ -1112,6 +1198,7 @@ namespace ZapretGui.ViewModels
             Raise(nameof(AutoRecoverStrategy));
             Raise(nameof(MasterAutoSwitchEnabled));
             Raise(nameof(MasterAutoSwitchHint));
+            Raise(nameof(SeamlessDependencyHint));
             Raise(nameof(AutoSwitchToBestStrategy));
             Raise(nameof(MonitorNotificationsEnabled));
             Raise(nameof(MonitoringIntervalMinutes));
