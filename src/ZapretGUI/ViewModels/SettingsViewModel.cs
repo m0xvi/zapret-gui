@@ -25,8 +25,9 @@ namespace ZapretGui.ViewModels
         private bool _isProviderLookupBusy;
         private int _selectedTabIndex;
 
-        /// <summary>v2.0: пять вкладок вместо восьми. Сеть и Игры настраиваются на своих страницах.</summary>
-        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Автоматика", "🎨 Интерфейс", "🔄 Обновления", "⭐ Система" };
+        /// <summary>v2.2.4: четыре вкладки. «Обновления» и «Списки» — отдельные разделы навигации,
+        /// поэтому их больше нет в «Настройках» (раньше один и тот же экран открывался дважды).</summary>
+        public string[] SettingsTabs { get; } = { "⚙ Общие", "🛡 Автоматика", "🎨 Интерфейс", "⭐ Система" };
 
         public int SelectedTabIndex
         {
@@ -38,7 +39,6 @@ namespace ZapretGui.ViewModels
                     Raise(nameof(IsGeneralTabSelected));
                     Raise(nameof(IsBypassTabSelected));
                     Raise(nameof(IsAppearanceTabSelected));
-                    Raise(nameof(IsUpdatesTabSelected));
                     Raise(nameof(IsAdvancedTabSelected));
                     Raise(nameof(SelectedTabHint));
                 }
@@ -63,18 +63,10 @@ namespace ZapretGui.ViewModels
             set { if (value) SelectedTabIndex = 2; }
         }
 
-        public bool IsUpdatesTabSelected
+        public bool IsAdvancedTabSelected
         {
             get => _selectedTabIndex == 3;
             set { if (value) SelectedTabIndex = 3; }
-        }
-
-        public UpdatesViewModel Updates => _main.Updates;
-
-        public bool IsAdvancedTabSelected
-        {
-            get => _selectedTabIndex == 4;
-            set { if (value) SelectedTabIndex = 4; }
         }
 
         /// <summary>v2.2.2: единый мастер автосмены стратегий. Выключение гасит и подчинённые механизмы,
@@ -147,85 +139,6 @@ namespace ZapretGui.ViewModels
         public string SeamlessLastSwitch => _main.SeamlessLastSwitchText;
         public ICommand TestSeamlessNowCommand => new AsyncRelayCommand(async () => { Status = "Запускаю внеплановую проверку…"; await _main.SeamlessFailover.CheckNowAsync(); Raise(nameof(SeamlessStatus)); Status = _main.SeamlessStatusText; }, () => !Settings.SafeMode && _main.Bypass.GetStatus().IsRunning);
 
-        // ---------------- Списки доменов и IP (v2.2.3) ----------------
-
-        /// <summary>Обновлять все списки при запуске приложения.</summary>
-        public bool UpdateListsOnStartup
-        {
-            get => Settings.UpdateListsOnStartup;
-            set
-            {
-                if (Settings.UpdateListsOnStartup == value) return;
-                Settings.UpdateListsOnStartup = value;
-                SettingsStore.Save(Settings);
-                Status = value
-                    ? "Списки будут обновляться при каждом запуске приложения"
-                    : "Автообновление списков при запуске выключено";
-                Raise(nameof(UpdateListsOnStartup));
-            }
-        }
-
-        private string _listsUpdateStatus = "";
-        private bool _isListsUpdating;
-
-        /// <summary>Итог последнего обновления списков — показывается под переключателем.</summary>
-        public string ListsUpdateStatus
-        {
-            get
-            {
-                if (IsListsUpdating || !string.IsNullOrWhiteSpace(_listsUpdateStatus)) return _listsUpdateStatus;
-                return string.IsNullOrWhiteSpace(Settings.LastListsUpdateSummary)
-                    ? "Списки ещё не обновлялись"
-                    : Settings.LastListsUpdateSummary;
-            }
-            private set { _listsUpdateStatus = value; Raise(nameof(ListsUpdateStatus)); }
-        }
-
-        public bool IsListsUpdating
-        {
-            get => _isListsUpdating;
-            private set
-            {
-                _isListsUpdating = value;
-                Raise(nameof(IsListsUpdating));
-                Raise(nameof(ListsUpdateStatus));
-                UpdateListsNowCommand.RaiseCanExecuteChanged();
-            }
-        }
-
-        public AsyncRelayCommand UpdateListsNowCommand { get; }
-
-        private async Task UpdateListsNowAsync()
-        {
-            if (IsListsUpdating) return;
-            if (!EngineService.IsEngineReady(Settings.EnginePath))
-            {
-                ListsUpdateStatus = "Движок не установлен — обновлять нечего.";
-                return;
-            }
-            IsListsUpdating = true;
-            ListsUpdateStatus = "Загружаю списки с GitHub…";
-            try
-            {
-                var progress = new Progress<string>(msg => ListsUpdateStatus = msg);
-                var res = await DomainListUpdater.UpdateAllAsync(Settings.EnginePath, progress);
-                Settings.LastListsUpdateSummary = res.Message;
-                SettingsStore.Save(Settings);
-                ListsUpdateStatus = res.Message;
-                AppLog.Info($"[Lists] Ручное обновление списков: {res.Message}");
-                _main.Strategies.Refresh();
-            }
-            catch (Exception ex)
-            {
-                ListsUpdateStatus = "Ошибка обновления списков: " + ex.Message;
-                AppLog.Warn($"[Lists] Ошибка ручного обновления: {ex.Message}");
-            }
-            finally
-            {
-                IsListsUpdating = false;
-            }
-        }
-
         public bool AutoSwitchToBestStrategy
         {
             get => Settings.AutoSwitchToBestStrategy;
@@ -250,8 +163,7 @@ namespace ZapretGui.ViewModels
             0 => "Движок, папки и системный автозапуск — всё, что нужно для первого старта.",
             1 => "Сторож, бесшовное переключение, расписание и автоподбор стратегии.",
             2 => "Тема, масштаб, трей и горячие клавиши.",
-            3 => "Обновления движка и приложения.",
-            4 => "Поведение обхода, мастер первого запуска, файлы и журнал.",
+            3 => "Поведение обхода, мастер первого запуска, файлы и журнал.",
             _ => ""
         };
 
@@ -276,7 +188,6 @@ namespace ZapretGui.ViewModels
             SaveProviderContextCommand = new RelayCommand(SaveProviderContext);
             ClearProviderContextCommand = new RelayCommand(ClearProviderContext);
             LookupProviderCommand = new AsyncRelayCommand(LookupProviderAsync, () => !IsProviderLookupBusy);
-            UpdateListsNowCommand = new AsyncRelayCommand(UpdateListsNowAsync, () => !IsListsUpdating);
             RerunFirstLaunchWizardCommand = new RelayCommand(RerunFirstLaunchWizard);
             ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);

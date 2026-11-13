@@ -102,10 +102,10 @@
                                               ToolTip="{Binding ServiceToggleHint}" />
                                 </Grid>
                             </Border>
-                            <TextBlock Style="{StaticResource DimText}" Margin="2,6,0,0" FontSize="11" Opacity="0.85"
+                            <TextBlock Style="{StaticResource DimText}" Margin="2,6,0,0" FontSize="11" Opacity="0.9"
                                        TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"
-                                       Text="{Binding ServiceAdminHint, StringFormat=⚠ {0}: перезапустите программу от имени администратора}"
-                                       Visibility="{Binding ServiceAdminHintVisible, Converter={StaticResource BoolToVis}}" />
+                                       Text="{Binding ServiceGateHint, StringFormat=⚠ {0}}"
+                                       Visibility="{Binding ServiceGateHintVisible, Converter={StaticResource BoolToVis}}" />
                             <Button Style="{StaticResource PageAction}" Content="Обновить службу" Margin="0,8,0,0"
                                     HorizontalAlignment="Stretch"
                                     Visibility="{Binding ServiceInstalled, Converter={StaticResource BoolToVis}}"
@@ -134,7 +134,8 @@
                         <ItemsControl Margin="0,6,0,0" ItemsSource="{Binding ConnectionChecks}">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
-                                    <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}" Padding="0,6">
+                                    <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}" Padding="0,6"
+                                            ToolTip="{Binding Details}">
                                         <Grid>
                                             <Grid.ColumnDefinitions>
                                                 <ColumnDefinition Width="*" />
@@ -155,8 +156,8 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" FontSize="11"
-                                   Text="Список ресурсов и интервалы фоновой проверки — в «Проверка → Ресурсы»." />
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0" FontSize="11" TextWrapping="Wrap"
+                                   Text="Наведите на строку — покажу, что именно не прошло: DNS, TCP или TLS. Список ресурсов — в «Проверка → Ресурсы»." />
                     </StackPanel>
                 </Border>
 

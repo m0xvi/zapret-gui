@@ -15,14 +15,12 @@
                 <StackPanel Grid.Column="0" Margin="0,0,12,0">
                     <TextBlock Style="{StaticResource DisplayText}" Text="Обновления" />
                     <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
-                               Text="Версия GUI, движок, списки и hosts." />
+                               Text="Версия GUI и движок. Списки и hosts — в разделе «Списки»." />
                 </StackPanel>
                 <WrapPanel Grid.Column="1" Style="{StaticResource PageActions}">
                     <Button Style="{StaticResource PageActionPrimary}" Content="Проверить всё"
                             Command="{Binding CheckCommand}"
                             ToolTip="Проверить GUI (m0xvi) и движок (Flowseal) за один клик" />
-                    <Button Style="{StaticResource PageActionGhost}" Content="← Настройки" Margin="8,0,0,0"
-                            Click="BackToSettings_Click" ToolTip="Назад в Настройки" />
                 </WrapPanel>
             </Grid>
 
@@ -289,49 +287,7 @@
                 </Expander>
             </Border>
 
-            <!-- Списки и hosts -->
-            <Border Style="{StaticResource PageCard}">
-                <StackPanel>
-                    <TextBlock Style="{StaticResource SectionText}" Text="СПИСКИ И HOSTS" />
-
-                    <Grid Margin="0,10,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <TextBlock Style="{StaticResource BodyText}" Text="ipset-all.txt — IP для ipset" VerticalAlignment="Center"
-                                   TextTrimming="CharacterEllipsis" />
-                        <Button Grid.Column="1" Style="{StaticResource PageActionGhost}" Content="Обновить"
-                                VerticalAlignment="Center" Command="{Binding UpdateIpsetCommand}" />
-                    </Grid>
-
-                    <Border Height="1" Background="{DynamicResource BorderBrush}" Opacity="0.4" Margin="0,10,0,0" />
-
-                    <Grid Margin="0,10,0,0">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="Auto" />
-                        </Grid.ColumnDefinitions>
-                        <StackPanel VerticalAlignment="Center" Margin="0,0,10,0">
-                            <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-                                <Ellipse Width="5" Height="5" Fill="{Binding HostsStatusKey, Converter={StaticResource SeverityBrush}}"
-                                         VerticalAlignment="Center" />
-                                <TextBlock Style="{StaticResource BodyText}" Text="hosts" Margin="8,0,0,0" FontWeight="SemiBold"
-                                           VerticalAlignment="Center" />
-                            </StackPanel>
-                            <TextBlock Style="{StaticResource DimText}" Text="{Binding HostsStatus}" TextWrapping="Wrap" Margin="0,3,0,0"
-                                       Foreground="{Binding HostsStatusKey, Converter={StaticResource SeverityBrush}}" />
-                        </StackPanel>
-                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                            <Button Style="{StaticResource PageActionGhost}" Content="Проверить" Command="{Binding CheckHostsCommand}" />
-                            <Button Style="{StaticResource PageActionPrimary}" Content="Обновить" Margin="8,0,0,0"
-                                    Command="{Binding UpdateHostsCommand}" />
-                        </StackPanel>
-                    </Grid>
-                </StackPanel>
-            </Border>
-
-            <!-- Автообновления и ссылки -->
+                        <!-- Автообновления и ссылки -->
             <Border Style="{StaticResource PageCard}">
                 <Grid>
                     <Grid.ColumnDefinitions>

@@ -163,6 +163,27 @@ namespace ZapretGui.ViewModels
         }
 
         public AppSettings Settings => _main.Settings;
+
+        /// <summary>Списки и hosts обновляются на одной странице (v2.2.4): отдельные копии этих
+        /// действий в «Настройках» и «Обновлениях» удалены.</summary>
+        public UpdatesViewModel Updates => _main.Updates;
+
+        /// <summary>Обновлять все списки при запуске приложения (переехало из «Настроек»).</summary>
+        public bool UpdateListsOnStartup
+        {
+            get => Settings.UpdateListsOnStartup;
+            set
+            {
+                if (Settings.UpdateListsOnStartup == value) return;
+                Settings.UpdateListsOnStartup = value;
+                SettingsStore.Save(Settings);
+                Raise(nameof(UpdateListsOnStartup));
+            }
+        }
+
+        public string ListsLastUpdateText => string.IsNullOrWhiteSpace(Settings.LastListsUpdateSummary)
+            ? "Списки ещё не обновлялись"
+            : "Последнее обновление: " + Settings.LastListsUpdateSummary;
         public string[] SubTabs { get; }
 
         public int SelectedSubTabIndex
@@ -1141,6 +1162,9 @@ namespace ZapretGui.ViewModels
                 DomainListUpdateResultKey = res.Ok ? "Success" : "Danger";
                 if (res.Ok)
                 {
+                    Settings.LastListsUpdateSummary = res.Message;
+                    SettingsStore.Save(Settings);
+                    Raise(nameof(ListsLastUpdateText));
                     LoadEntries();
                 }
                 if (!res.Ok) { try { System.Windows.Application.Current?.Dispatcher?.Invoke(() => _main.GlobalOverlay.ShowError("Списки — ошибка", res.Message)); } catch {} return; }

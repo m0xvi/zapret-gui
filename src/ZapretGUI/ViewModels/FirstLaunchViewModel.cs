@@ -697,8 +697,6 @@ namespace ZapretGui.ViewModels
                     continue;
                 }
                 _main.Settings.MonitorTargets.Add(target);
-                // также в Home, чтобы сразу видно в Обзоре
-                _main.Home.ConnectionTargets.Add(target);
                 added++;
             }
             SettingsStore.Save(_main.Settings);

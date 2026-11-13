@@ -97,6 +97,35 @@
                             Visibility="{Binding DomainListUpdateResultText, Converter={StaticResource StringToVis}}">
                         <TextBlock Style="{StaticResource BodyText}" Text="{Binding DomainListUpdateResultText}" FontWeight="SemiBold" TextWrapping="Wrap" />
                     </Border>
+
+                    <!-- Автообновление и hosts: единственное место в приложении (v2.2.4) -->
+                    <Border Style="{StaticResource Divider}" />
+                    <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Обновлять списки при запуске приложения"
+                              IsChecked="{Binding UpdateListsOnStartup, Mode=TwoWay}"
+                              ToolTip="Списки скачиваются в фоне после старта и не задерживают включение обхода" />
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.8" Margin="0,6,0,0" TextWrapping="Wrap"
+                               Text="{Binding ListsLastUpdateText}" />
+
+                    <Grid Margin="0,12,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel VerticalAlignment="Center" Margin="0,0,12,0">
+                            <TextBlock Style="{StaticResource SectionText}" Text="HOSTS" />
+                            <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap"
+                                       Text="{Binding Updates.HostsStatus}"
+                                       Foreground="{Binding Updates.HostsStatusKey, Converter={StaticResource SeverityBrush}}" />
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button Style="{StaticResource GhostButton}" Content="Проверить"
+                                    Command="{Binding Updates.CheckHostsCommand}"
+                                    ToolTip="Сверить hosts с выбранными списками доменов" />
+                            <Button Style="{StaticResource PrimaryButton}" Content="Обновить hosts" Margin="8,0,0,0"
+                                    Command="{Binding Updates.UpdateHostsCommand}"
+                                    ToolTip="Перезаписать системный hosts по спискам доменов" />
+                        </StackPanel>
+                    </Grid>
                 </StackPanel>
             </Border>
 

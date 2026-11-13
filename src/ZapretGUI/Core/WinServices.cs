@@ -119,9 +119,14 @@ namespace ZapretGui.Core
         }
 
         /// <summary>Тип запуска службы. Нужен, чтобы включать/выключать автозапуск отдельно от
-        /// установки службы (v2.2.2): раньше «выключить автозапуск» означало удалить службу.</summary>
+        /// установки службы (v2.2.2): раньше «выключить автозапуск» означало удалить службу.
+        /// v2.2.4: сначала читаем реестр — значение Start не зависит от языка Windows и кодировки
+        /// консоли, из-за которой разбор «sc qc» мог молча не срабатывать (тумблер «не нажимался»).</summary>
         public static ServiceStartType GetStartType(string name)
         {
+            var fromRegistry = ReadStartTypeFromRegistry(name);
+            if (fromRegistry != ServiceStartType.Unknown) return fromRegistry;
+
             try
             {
                 var result = Shell.Run("sc.exe", new[] { "qc", name }, 15000);
@@ -129,6 +134,72 @@ namespace ZapretGui.Core
             }
             catch { return ServiceStartType.Unknown; }
         }
+
+        /// <summary>Значение Start из HKLM\SYSTEM\CurrentControlSet\Services\&lt;имя&gt; (2 — авто, 3 — вручную).</summary>
+        public static ServiceStartType ReadStartTypeFromRegistry(string name)
+        {
+            if (string.IsNullOrWhiteSpace(name)) return ServiceStartType.Unknown;
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\" + name);
+                var value = key?.GetValue("Start");
+                if (value is int code)
+                {
+                    return code switch
+                    {
+                        0 => ServiceStartType.Boot,
+                        1 => ServiceStartType.System,
+                        2 => ServiceStartType.Auto,
+                        3 => ServiceStartType.Demand,
+                        4 => ServiceStartType.Disabled,
+                        _ => ServiceStartType.Unknown
+                    };
+                }
+            }
+            catch (Exception ex)
+            {
+                AppLog.Debug($"[Services] Не удалось прочитать Start службы {name}: {ex.Message}");
+            }
+            return ServiceStartType.Unknown;
+        }
+
+        /// <summary>Прямая запись Start в реестр — резервный путь, если «sc config» не применился.</summary>
+        public static bool TryWriteStartTypeToRegistry(string name, ServiceStartType type)
+        {
+            var code = type switch
+            {
+                ServiceStartType.Boot => 0,
+                ServiceStartType.System => 1,
+                ServiceStartType.Auto => 2,
+                ServiceStartType.Demand => 3,
+                ServiceStartType.Disabled => 4,
+                _ => -1
+            };
+            if (code < 0) return false;
+            try
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(@"SYSTEM\CurrentControlSet\Services\" + name, writable: true);
+                if (key == null) return false;
+                key.SetValue("Start", code, RegistryValueKind.DWord);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn($"[Services] Не удалось записать Start службы {name}: {ex.Message}");
+                return false;
+            }
+        }
+
+        /// <summary>Понятное имя типа запуска для интерфейса и журнала.</summary>
+        public static string DescribeStartType(ServiceStartType type) => type switch
+        {
+            ServiceStartType.Auto => "автозапуск с Windows",
+            ServiceStartType.Demand => "только вручную",
+            ServiceStartType.Disabled => "служба отключена",
+            ServiceStartType.Boot => "загрузочный драйвер",
+            ServiceStartType.System => "системный драйвер",
+            _ => "неизвестно"
+        };
 
         /// <summary>Разбирает START_TYPE из вывода «sc qc» независимо от языка Windows.</summary>
         public static ServiceStartType ParseStartType(string text)
@@ -162,13 +233,48 @@ namespace ZapretGui.Core
         }
 
         /// <summary>Включает/выключает автозапуск службы, не трогая саму службу и её состояние.
-        /// auto — старт вместе с Windows, demand — только вручную.</summary>
+        /// auto — старт вместе с Windows, demand — только вручную. Результат проверяется по реестру:
+        /// если «sc config» отчитался об успехе, но значение не изменилось, пишем Start напрямую
+        /// и возвращаем фактическое состояние, чтобы UI не показывал ложный успех.</summary>
         public static ShellResult SetStartType(string name, bool autoStart)
         {
+            var target = autoStart ? ServiceStartType.Auto : ServiceStartType.Demand;
+            var before = GetStartType(name);
+            if (before == target)
+            {
+                AppLog.Info($"[Services] {name}: тип запуска уже «{DescribeStartType(target)}»");
+                return new ShellResult { ExitCode = 0, StdOut = "already " + DescribeStartType(target) };
+            }
+
             var mode = autoStart ? "auto" : "demand";
             var result = Shell.Run("sc.exe", new[] { "config", name, "start=", mode }, 20000);
             AppLog.Info($"[Services] sc config {name} start= {mode}: ok={result.Ok} {result.All.Trim()}");
-            return result;
+
+            var after = GetStartType(name);
+            if (after == target) return result;
+
+            // sc отработал (или не отработал) без видимого эффекта — правим Start напрямую.
+            AppLog.Warn($"[Services] {name}: тип запуска после sc config = «{DescribeStartType(after)}», " +
+                        $"ожидали «{DescribeStartType(target)}» — записываю Start в реестр");
+            if (TryWriteStartTypeToRegistry(name, target))
+            {
+                var verified = GetStartType(name);
+                if (verified == target)
+                {
+                    AppLog.Info($"[Services] {name}: тип запуска изменён через реестр — «{DescribeStartType(verified)}»");
+                    return new ShellResult { ExitCode = 0, StdOut = "registry " + DescribeStartType(target) };
+                }
+                AppLog.Warn($"[Services] {name}: после записи в реестр тип запуска = «{DescribeStartType(verified)}»");
+            }
+
+            // Ничего не помогло — честный отказ с фактическим состоянием.
+            var tail = Shell.Run("sc.exe", new[] { "qc", name }, 15000).All.Trim();
+            return new ShellResult
+            {
+                ExitCode = result.Ok ? 5 : result.ExitCode,
+                StdOut = result.StdOut,
+                StdErr = $"sc config не применился (фактически: {DescribeStartType(after)}). {tail}"
+            };
         }
 
         /// <summary>Имя стратегии, установленной в службу (как в service.bat через reg add).</summary>
