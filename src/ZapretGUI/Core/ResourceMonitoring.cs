@@ -420,6 +420,7 @@ namespace ZapretGui.Core
         {
             ("YouTube", "https://www.youtube.com/generate_204"),
             ("Discord", "https://discord.com/api/v9/gateway"),
+            ("Steam", "https://store.steampowered.com/"),
             ("GitHub", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/.service/version.txt"),
         };
 

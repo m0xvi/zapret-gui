@@ -158,7 +158,9 @@ namespace ZapretGui.Core
                 _settings.GameFilterProfileId,
                 _settings.CustomGameFilterTcpPorts,
                 _settings.CustomGameFilterUdpPorts,
-                _settings.SelectedFakeSni);
+                _settings.SelectedFakeSni,
+                EngineRoot,
+                _settings.SteamBypassEnabled);
             // Применяем YouTube-специфичные настройки для строгих регионов
             if (!string.IsNullOrWhiteSpace(_settings.YoutubeSniOverride))
             {
@@ -227,6 +229,7 @@ namespace ZapretGui.Core
             }
 
             StrategyParser.EnsureUserLists(EngineRoot);
+            SteamBypass.Ensure(_settings);
             _ensureTcpTimestamps();
 
             var args = BuildArgs(strategy, gameFilter);
@@ -964,6 +967,7 @@ namespace ZapretGui.Core
             }
 
             StrategyParser.EnsureUserLists(EngineRoot);
+            SteamBypass.Ensure(_settings);
             _ensureTcpTimestamps();
 
             var args = BuildArgs(strategy, gameFilter);

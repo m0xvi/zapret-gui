@@ -58,7 +58,9 @@ namespace ZapretGui.CoreLogicHarness
                 ("Менеджер фейковых бинарных нагрузок и Voice RTC эндпоинты работают", VoiceRtcProberAndFakeBinManagerWork),
                 ("Очистка кэша Discord и сетевой стек работают корректно", DiscordNetworkCleanerWorks),
                 ("Тонкая настройка портов GameFilter и профили исключений работают", GameFilterPortConfigWorks),
-                ("Пул TLS SNI фейков и подстановка SNI работают", SniFakePoolManagerWorks)
+                ("Пул TLS SNI фейков и подстановка SNI работают", SniFakePoolManagerWorks),
+                ("Списки Steam подмешиваются в TCP-блок обхода один раз", SteamBypassArgumentsAreSafe),
+                ("Списки Steam создаются и чистятся вместе с исключениями", SteamBypassListsAreManaged)
             };
 
             foreach (var check in checks)
@@ -207,6 +209,123 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 "отключённый game filter раскрыт неверно");
             Assert(strategy.Args[0].Contains("{GameFilterTCP}", StringComparison.Ordinal),
                 "исходная стратегия была изменена при подстановке");
+        }
+
+        /// <summary>v2.2.5: магазин Steam идёт через тот же TCP-блок обхода, что и остальные сайты.</summary>
+        private static void SteamBypassArgumentsAreSafe()
+        {
+            var engine = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "zg-steam-args");
+            var args = new System.Collections.Generic.List<string>
+            {
+                "--wf-tcp=80,443",
+                "--filter-tcp=443",
+                "--hostlist=" + System.IO.Path.Combine(engine, "lists", "list-general.txt"),
+                "--dpi-desync=multisplit",
+                "--new",
+                "--filter-udp=443",
+                "--hostlist=" + System.IO.Path.Combine(engine, "lists", "list-general.txt"),
+                "--dpi-desync=fake"
+            };
+            var patched = SteamBypass.ApplyToArgs(args, engine);
+            var newIndex = patched.IndexOf("--new");
+            var hostlistIndex = patched.FindIndex(a => a.Contains("steam-bypass.txt", StringComparison.OrdinalIgnoreCase));
+            var excludeIndex = patched.FindIndex(a => a.Contains("steam-bypass-exclude.txt", StringComparison.OrdinalIgnoreCase));
+            Assert(hostlistIndex > 0 && excludeIndex > 0, "списки Steam не подмешаны в аргументы");
+            Assert(hostlistIndex < newIndex, "список Steam должен попасть в TCP-блок, а не в UDP");
+            Assert(excludeIndex < newIndex, "исключения Steam должны попасть в тот же TCP-блок");
+            Assert(args.Count == 8, "исходный список аргументов изменён (должен остаться неизменным)");
+
+            var twice = SteamBypass.ApplyToArgs(patched, engine);
+            Assert(twice.Count(a => a.Contains("steam-bypass.txt", StringComparison.OrdinalIgnoreCase)) == 1,
+                "повторное подмешивание продублировало список Steam");
+
+            // Выбор блока: google-список (только 443) не должен перебивать общий (80,443, list-general).
+            var multiBlock = new System.Collections.Generic.List<string>
+            {
+                "--filter-tcp=2053,2083,2087,2096,8443",
+                "--hostlist-domains=discord.media",
+                "--dpi-desync=multisplit",
+                "--new",
+                "--filter-tcp=443",
+                "--hostlist=" + System.IO.Path.Combine(engine, "lists", "list-google.txt"),
+                "--ip-id=zero",
+                "--dpi-desync=multisplit",
+                "--new",
+                "--filter-tcp=80,443",
+                "--hostlist=" + System.IO.Path.Combine(engine, "lists", "list-general.txt"),
+                "--dpi-desync=multisplit",
+                "--new",
+                "--filter-udp=443",
+                "--ipset=" + System.IO.Path.Combine(engine, "lists", "ipset-all.txt"),
+                "--dpi-desync=fake"
+            };
+            var patchedMulti = SteamBypass.ApplyToArgs(multiBlock, engine);
+            var generalIndex = patchedMulti.FindIndex(0, a => a.Contains("list-general.txt", StringComparison.OrdinalIgnoreCase));
+            var injectedIndex = patchedMulti.FindIndex(a => a.Contains("steam-bypass.txt", StringComparison.OrdinalIgnoreCase));
+            var udpIndex = patchedMulti.FindIndex(a => a.StartsWith("--filter-udp", StringComparison.OrdinalIgnoreCase));
+            Assert(injectedIndex > generalIndex, "список Steam должен попасть в блок общего списка (list-general)");
+            Assert(injectedIndex < udpIndex, "список Steam не должен попасть в UDP-блок");
+            Assert(patchedMulti.FindIndex(a => a.Contains("list-google.txt", StringComparison.OrdinalIgnoreCase)) < injectedIndex,
+                "google-блок должен оставаться впереди без изменений");
+
+            var noHostlist = new System.Collections.Generic.List<string> { "--wf-tcp=443", "--filter-tcp=443", "--dpi-desync=fake" };
+            var untouched = SteamBypass.ApplyToArgs(noHostlist, engine);
+            Assert(untouched.SequenceEqual(noHostlist), "без hostlist-блока стратегия не должна меняться");
+
+            var built = BypassArgumentBuilder.Build(
+                new StrategyInfo
+                {
+                    Name = "steam",
+                    Args = new System.Collections.Generic.List<string>
+                    {
+                        "--wf-tcp={GameFilterTCP}",
+                        "--filter-tcp=443",
+                        "--hostlist=" + System.IO.Path.Combine(engine, "lists", "list-general.txt"),
+                        "--dpi-desync=fake"
+                    }
+                },
+                GameFilterMode.TcpAndUdp, null, null, null, null, engine, steamBypass: true);
+            Assert(built.Any(a => a.Contains("steam-bypass.txt", StringComparison.OrdinalIgnoreCase)),
+                "BypassArgumentBuilder не подмешал списки Steam");
+        }
+
+        /// <summary>v2.2.5: списки Steam создаются, а CDN-хосты уходят в исключения; при выключении файлы удаляются.</summary>
+        private static void SteamBypassListsAreManaged()
+        {
+            var engine = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "zg-steam-lists-" + Guid.NewGuid().ToString("N"));
+            var lists = System.IO.Path.Combine(engine, "lists");
+            System.IO.Directory.CreateDirectory(lists);
+            try
+            {
+                var settings = new AppSettings { EnginePath = engine, SteamBypassEnabled = true };
+                var (ok, message) = SteamBypass.Ensure(settings);
+                Assert(ok, "подготовка списков Steam не удалась: " + message);
+
+                var bypass = System.IO.File.ReadAllText(SteamBypass.BypassPath(engine));
+                var exclude = System.IO.File.ReadAllText(SteamBypass.ExcludePath(engine));
+                Assert(bypass.Contains("store", StringComparison.OrdinalIgnoreCase) || bypass.Contains("steampowered.com"),
+                    "в списке обхода Steam нет магазина");
+                Assert(exclude.Contains("steamstatic.com"), "CDN Steam должен быть исключён из обхода");
+
+                // Пользовательский exclude мог содержать steampowered.com (пресет Steam) — его нужно убрать,
+                // иначе магазин так и останется без обхода.
+                var excludeUser = System.IO.Path.Combine(lists, "list-exclude-user.txt");
+                System.IO.File.WriteAllLines(excludeUser, new[] { "steampowered.com", "example.org" });
+                SteamBypass.Ensure(settings);
+                var userLines = System.IO.File.ReadAllLines(excludeUser).Select(l => l.Trim().ToLowerInvariant()).ToList();
+                Assert(!userLines.Contains("steampowered.com"), "steampowered.com остался в исключениях — магазин без обхода");
+                Assert(userLines.Contains("example.org"), "чужие исключения пользователя удалять нельзя");
+                Assert(userLines.Contains("steamstatic.com"), "CDN Steam не попал в пользовательские исключения");
+
+                settings.SteamBypassEnabled = false;
+                SteamBypass.Ensure(settings);
+                Assert(!System.IO.File.Exists(SteamBypass.BypassPath(engine)) && !System.IO.File.Exists(SteamBypass.ExcludePath(engine)),
+                    "при выключении списки Steam должны удаляться");
+            }
+            finally
+            {
+                try { System.IO.Directory.Delete(engine, true); } catch { }
+            }
         }
 
         private static void ProviderContextAndCandidateAreSafe()

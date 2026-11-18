@@ -155,6 +155,8 @@ namespace ZapretGui
                     if (installed)
                     {
                         StrategyParser.EnsureUserLists(settings.EnginePath);
+                        // v2.2.5: списки Steam для магазина/сообщества (загрузки остаются напрямую).
+                        try { SteamBypass.Ensure(settings); } catch (Exception ex) { AppLog.Warn("[Steam] " + ex.Message); }
                         // Автозапуск обхода и службы вместе с программой (по просьбе пользователя)
                         if (settings.AutoStartBypass && !settings.SafeMode && !viewModel.Bypass.GetStatus().IsRunning)
                         {

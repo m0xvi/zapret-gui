@@ -39,6 +39,7 @@
     <Compile Include="..\..\src\ZapretGUI\Core\ServiceHealthCache.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\Shell.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\StrategyParser.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\SteamBypass.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\StrategyConstruction.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\NetworkObservationSnapshot.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\StrategyCandidateStore.cs" />

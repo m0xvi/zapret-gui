@@ -329,6 +329,10 @@ namespace ZapretGui.Core
         /// <summary>Итог последнего автообновления списков при запуске.</summary>
         public string LastListsUpdateSummary { get; set; } = "";
 
+        /// <summary>v2.2.5: вести магазин и сообщество Steam через обход (загрузки и CDN — напрямую).
+        /// Включено по умолчанию: без этого страницы Steam грузятся медленно.</summary>
+        public bool SteamBypassEnabled { get; set; } = true;
+
         /// <summary>Версия схемы интерфейса для одноразовых миграций (v2.0 — упрощённый интерфейс).</summary>
         public int UiSchemaVersion { get; set; }
     }
