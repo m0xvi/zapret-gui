@@ -60,7 +60,9 @@ namespace ZapretGui.CoreLogicHarness
                 ("Тонкая настройка портов GameFilter и профили исключений работают", GameFilterPortConfigWorks),
                 ("Пул TLS SNI фейков и подстановка SNI работают", SniFakePoolManagerWorks),
                 ("Списки Steam подмешиваются в TCP-блок обхода один раз", SteamBypassArgumentsAreSafe),
-                ("Списки Steam создаются и чистятся вместе с исключениями", SteamBypassListsAreManaged)
+                ("Списки Steam создаются и чистятся вместе с исключениями", SteamBypassListsAreManaged),
+                ("Профиль R.E.P.O. исключает Photon и Steam P2P из обхода", RepoProfileExcludesPhotonPorts),
+                ("Photon: список регионов и маршрут через обход переключаются", PhotonRegionsAndRouting)
             };
 
             foreach (var check in checks)
@@ -326,6 +328,107 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
             {
                 try { System.IO.Directory.Delete(engine, true); } catch { }
             }
+        }
+
+        /// <summary>v2.2.6: R.E.P.O. страдает от clienttimeout, если обход трогает UDP Photon/Steam P2P.</summary>
+        private static void RepoProfileExcludesPhotonPorts()
+        {
+            var profile = GameFilterPortConfig.GetProfileById("repo");
+            Assert(profile.Id == "repo", "профиль R.E.P.O. не найден");
+
+            var udp = GameFilterPortConfig.ResolveUdpPortString(GameFilterMode.TcpAndUdp, "repo");
+            foreach (var port in new[] { 4530, 4533, 5055, 5056, 5058, 9090, 9091, 27015, 27100 })
+                Assert(!PortRangeContains(udp, port), $"UDP {port} не должен попадать в обход (clienttimeout)");
+
+            Assert(PortRangeContains(udp, 50000), "голос Discord (50000-65535) должен остаться в обходе");
+
+            var strategy = new StrategyInfo
+            {
+                Name = "repo",
+                Args = new System.Collections.Generic.List<string>
+                {
+                    "--wf-tcp={GameFilterTCP}",
+                    "--wf-udp={GameFilterUDP}",
+                    "--dpi-desync=fake"
+                }
+            };
+            var args = BypassArgumentBuilder.Build(strategy, GameFilterMode.TcpAndUdp, "repo");
+            Assert(args[1].StartsWith("--wf-udp=", StringComparison.Ordinal), "UDP-диапазон не подставлен");
+            Assert(!PortRangeContains(args[1].Substring("--wf-udp=".Length), 5055), "5055 попал в wf-udp профиля R.E.P.O.");
+        }
+
+        /// <summary>v2.2.6: список регионов Photon и переключение маршрута Photon (обход/напрямую).</summary>
+        private static void PhotonRegionsAndRouting()
+        {
+            Assert(PhotonRegions.Regions.Count >= 5, "список регионов Photon слишком короткий");
+            Assert(PhotonRegions.Regions.Any(r => r.Name == "Европа" && r.Host == "ns-eu.photonengine.io"),
+                "Европа должна опрашиваться через ns-eu.photonengine.io");
+            Assert(PhotonRegions.Regions.Any(r => r.Host == "ns-us.photonengine.io"), "US East отсутствует в списке регионов");
+            Assert(PhotonRegions.BypassHosts.Contains("photonengine.io"), "в списке доменов Photon нет photonengine.io");
+            Assert(PhotonRegions.GamePorts.Contains("5055-5058"), "игровые порты Photon не помечены как исключаемые");
+
+            var empty = PhotonRegions.DescribeBest(Array.Empty<PhotonRegionResult>());
+            Assert(empty.Contains("Не удалось", StringComparison.Ordinal), "пустой результат должен объяснять причину");
+
+            var results = new List<PhotonRegionResult>
+            {
+                new() { Name = "США (восток)", Host = "ns-us.photonengine.io", Ok = true, Milliseconds = 130 },
+                new() { Name = "Европа", Host = "ns-eu.photonengine.io", Ok = true, Milliseconds = 55 }
+            };
+            var text = PhotonRegions.DescribeBest(results);
+            Assert(text.Contains("Европа", StringComparison.Ordinal) && text.Contains("55", StringComparison.Ordinal),
+                "подсказка должна указывать лучший регион и его пинг");
+
+            var json = JsonSerializer.Serialize(new AppSettings { PhotonThroughBypass = true });
+            var back = JsonSerializer.Deserialize<AppSettings>(json) ?? new AppSettings();
+            Assert(back.PhotonThroughBypass, "настройка «Photon через обход» потерялась при сохранении");
+            Assert(!new AppSettings().PhotonThroughBypass, "Photon по умолчанию должен идти напрямую");
+
+            var engine = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "zg-photon-" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(System.IO.Path.Combine(engine, "lists"));
+            try
+            {
+                var settings = new AppSettings { EnginePath = engine, PhotonThroughBypass = true };
+                var (ok, message) = PhotonRegions.ApplyRouting(settings);
+                Assert(ok, "маршрут через обход не применился: " + message);
+                var generalUser = System.IO.Path.Combine(engine, "lists", "list-general-user.txt");
+                var excludeUser = System.IO.Path.Combine(engine, "lists", "list-exclude-user.txt");
+                Assert(System.IO.File.ReadAllText(generalUser).Contains("photonengine.io"), "Photon не попал в список обхода");
+                Assert(!System.IO.File.ReadAllText(excludeUser).Contains("photonengine.io"),
+                    "Photon не должен быть в исключениях при маршруте через обход");
+
+                settings.PhotonThroughBypass = false;
+                PhotonRegions.ApplyRouting(settings);
+                Assert(!System.IO.File.ReadAllText(generalUser).Contains("photonengine.io"),
+                    "при маршруте напрямую Photon должен уйти из списка обхода");
+                Assert(System.IO.File.ReadAllText(excludeUser).Contains("photonengine.io"),
+                    "при маршруте напрямую Photon должен быть в исключениях");
+            }
+            finally
+            {
+                try { System.IO.Directory.Delete(engine, true); } catch { }
+            }
+        }
+
+        /// <summary>Проверяет, входит ли порт в строку вида «1024-4529,4534-5054».</summary>
+        private static bool PortRangeContains(string ranges, int port)
+        {
+            if (string.IsNullOrWhiteSpace(ranges)) return false;
+            foreach (var part in ranges.Split(','))
+            {
+                var value = part.Trim();
+                if (value.Length == 0) continue;
+                var dash = value.IndexOf('-');
+                if (dash < 0)
+                {
+                    if (int.TryParse(value, out var single) && single == port) return true;
+                    continue;
+                }
+                if (int.TryParse(value.Substring(0, dash), out var from) &&
+                    int.TryParse(value.Substring(dash + 1), out var to) &&
+                    port >= from && port <= to) return true;
+            }
+            return false;
         }
 
         private static void ProviderContextAndCandidateAreSafe()

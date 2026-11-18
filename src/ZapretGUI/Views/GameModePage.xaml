@@ -149,6 +149,51 @@
                 </StackPanel>
             </Border>
 
+            <!-- R.E.P.O.: регионы Photon (v2.2.6) -->
+            <Border Style="{StaticResource PageCard}">
+                <StackPanel>
+                    <TextBlock Style="{StaticResource SectionText}" Text="R.E.P.O.: РЕГИОНЫ PHOTON"/>
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.85" TextWrapping="Wrap" Margin="0,2,0,0"
+                               Text="Игра выбирает регион Photon сама, и цифры там завышены. Проверьте реальное время ответа и выберите регион в игре."/>
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" FontWeight="SemiBold"
+                               Text="{Binding RepoStateText}"
+                               Foreground="{Binding RepoStateKey, Converter={StaticResource SeverityBrush}}"/>
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+                        <Button Style="{StaticResource PageAction}" Content="Проверить регионы"
+                                Command="{Binding CheckPhotonRegionsCommand}"
+                                ToolTip="Измерить время ответа узлов Photon для каждого региона (кнопка недоступна во время проверки)"/>
+                        <TextBlock Grid.Column="1" Style="{StaticResource DimText}" FontSize="11" Margin="12,0,0,0"
+                                   VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding PhotonRegionHint}"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding PhotonRegionResults}" Margin="0,8,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Margin="0,2,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Style="{StaticResource DimText}" FontSize="11.5" Text="{Binding Name}"/>
+                                    <TextBlock Grid.Column="1" Style="{StaticResource DimText}" FontSize="11.5" FontWeight="SemiBold"
+                                               Text="{Binding StatusText}"
+                                               Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}"/>
+                                </Grid>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <CheckBox Style="{StaticResource SwitchCheckBox}" Margin="0,12,0,0"
+                              Content="Вести трафик Photon через обход"
+                              IsChecked="{Binding PhotonThroughBypass, Mode=TwoWay}"
+                              ToolTip="Если провайдер режет TLS до узлов Photon: включите и перезапустите обход. Игровой UDP Photon всегда идёт напрямую."/>
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.85" TextWrapping="Wrap" Margin="0,6,0,0"
+                               Text="{Binding PhotonRoutingStatus}" Visibility="{Binding PhotonRoutingStatus, Converter={StaticResource StringToVis}}"/>
+                </StackPanel>
+            </Border>
+
             </StackPanel>
         </ScrollViewer>
     </Grid>
