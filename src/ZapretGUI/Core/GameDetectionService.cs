@@ -58,6 +58,7 @@ namespace ZapretGui.Core
             { "Squad", "Squad" },
 
             // Игровые лаунчеры и платформы
+            { "REPO", "R.E.P.O." },
             { "steam", "Steam" },
             { "steamwebhelper", "Steam Client" },
             { "EpicGamesLauncher", "Epic Games" },

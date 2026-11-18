@@ -60,6 +60,7 @@ namespace ZapretGui.ViewModels
             FixPubgCommand = new AsyncRelayCommand(FixPubgAsync);
             FixSelectedGamesCommand = new AsyncRelayCommand(FixSelectedGamesAsync);
             ApplySteamBypassCommand = new AsyncRelayCommand(ApplySteamBypassAsync);
+            CheckPhotonRegionsCommand = new AsyncRelayCommand(CheckPhotonRegionsAsync, () => !IsCheckingPhotonRegions);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RefreshCommand = new RelayCommand(Refresh);
             DismissMessageCommand = new RelayCommand(() => { Message = ""; MessageKey = "Info"; });
@@ -79,6 +80,10 @@ namespace ZapretGui.ViewModels
             yield return new GameBypassOption(
                 "steam_cs2", "🎯 Steam / CS2 / Dota 2", "Valve Source Engine (27000-27100) — исключает из обхода, убирает loss/choke.",
                 new[] { "steampowered.com", "steamcommunity.com", "steamserver.net" }, "steam_cs2", "🎯");
+            yield return new GameBypassOption(
+                "repo", "🧩 R.E.P.O. — фикс clienttimeout",
+                "Игра ходит через Photon relay. Профиль исключает UDP Photon (4530-4533, 5055-5058, 9090-9091) и Steam P2P из обхода — меньше clienttimeout и скачков пинга.",
+                Array.Empty<string>(), "repo", "🧩");
             yield return new GameBypassOption(
                 "phasmophobia", "👻 Phasmophobia", "Steam P2P 27015-27200 + Photon (4530,5055). EU требует исключения — включи галочку и профиль «Phasmophobia».",
                 new[] { "kineticgames.co.uk", "photonengine.io", "ns.photonengine.io", "exitgames.com", "exitgamescloud.com", "steamcommunity.com" }, "phasmophobia", "👻");
@@ -145,6 +150,90 @@ namespace ZapretGui.ViewModels
             }
         }
         public string[] GameFilterOptions { get; } = { "Выключен (не трогать игры)", "TCP + UDP (максимум обхода)", "Только TCP", "Только UDP" };
+
+        // ---- R.E.P.O. / Photon (v2.2.6) ----
+        /// <summary>Вести TCP-трафик Photon через обход. По умолчанию напрямую: если у провайдера
+        /// режется TLS до узлов Photon, включение убирает задержку и «недоступный» регион.</summary>
+        public bool PhotonThroughBypass
+        {
+            get => Settings.PhotonThroughBypass;
+            set
+            {
+                if (Settings.PhotonThroughBypass == value) return;
+                Settings.PhotonThroughBypass = value;
+                SettingsStore.Save(Settings);
+                var (ok, msg) = PhotonRegions.ApplyRouting(Settings);
+                PhotonRoutingStatus = msg;
+                Message = msg;
+                MessageKey = ok ? "Info" : "Danger";
+                Raise(nameof(PhotonThroughBypass));
+            }
+        }
+
+        private string _photonRoutingStatus = "";
+        public string PhotonRoutingStatus { get => _photonRoutingStatus; private set => Set(ref _photonRoutingStatus, value); }
+
+        /// <summary>Понятное состояние: трогает ли обход игровой трафик R.E.P.O. прямо сейчас.</summary>
+        public string RepoStateText
+        {
+            get
+            {
+                var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+                if (mode is GameFilterMode.Disabled or GameFilterMode.TcpOnly)
+                    return "Обход не обрабатывает UDP — трафик Photon и так идёт напрямую.";
+                if (string.Equals(Settings.GameFilterProfileId, "repo", StringComparison.OrdinalIgnoreCase))
+                    return "Профиль «R.E.P.O.» активен: UDP Photon и Steam P2P не трогаются.";
+                var profile = GameFilterPortConfig.GetProfileById(Settings.GameFilterProfileId);
+                return $"Профиль «{profile.Name}» обрабатывает UDP {profile.UdpPorts} — включите галочку R.E.P.O. выше, чтобы убрать вмешательство.";
+            }
+        }
+        public string RepoStateKey
+        {
+            get
+            {
+                var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+                if (mode is GameFilterMode.Disabled or GameFilterMode.TcpOnly) return "Muted";
+                return string.Equals(Settings.GameFilterProfileId, "repo", StringComparison.OrdinalIgnoreCase) ? "Success" : "Warning";
+            }
+        }
+
+        public ObservableCollection<PhotonRegionResult> PhotonRegionResults { get; } = new();
+
+        private string _photonRegionHint = "Нажмите «Проверить регионы» — покажу реальное время ответа узлов Photon.";
+        public string PhotonRegionHint { get => _photonRegionHint; private set => Set(ref _photonRegionHint, value); }
+
+        private bool _isCheckingPhotonRegions;
+        public bool IsCheckingPhotonRegions
+        {
+            get => _isCheckingPhotonRegions;
+            private set { if (Set(ref _isCheckingPhotonRegions, value)) (CheckPhotonRegionsCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged(); }
+        }
+
+        public AsyncRelayCommand CheckPhotonRegionsCommand { get; }
+
+        private async Task CheckPhotonRegionsAsync()
+        {
+            if (IsCheckingPhotonRegions) return;
+            IsCheckingPhotonRegions = true;
+            PhotonRegionHint = "Измеряю узлы Photon…";
+            try
+            {
+                var results = await PhotonRegions.CheckAsync();
+                PhotonRegionResults.Clear();
+                foreach (var r in results) PhotonRegionResults.Add(r);
+                PhotonRegionHint = PhotonRegions.DescribeBest(results);
+                Message = PhotonRegionHint;
+                MessageKey = "Info";
+            }
+            catch (Exception ex)
+            {
+                PhotonRegionHint = "Не удалось проверить регионы: " + ex.Message;
+            }
+            finally
+            {
+                IsCheckingPhotonRegions = false;
+            }
+        }
 
         // ---- Steam: магазин и сообщество (v2.2.5) ----
         /// <summary>Вести магазин/сообщество Steam через обход. В сборке Flowseal домены Steam специально
@@ -227,6 +316,8 @@ namespace ZapretGui.ViewModels
             RefreshGamingStatus();
             RefreshDetectionStatus();
             Raise(nameof(GameFilterIndex));
+            Raise(nameof(RepoStateText));
+            Raise(nameof(RepoStateKey));
         }
 
         private void RefreshProfiles()
@@ -331,6 +422,28 @@ namespace ZapretGui.ViewModels
                         catch { }
                     }
                     opt.Status = added > 0 ? $"✅ +{added} доменов" : "уже в списке";
+
+                    // R.E.P.O.: игровой трафик идёт по UDP Photon, домены тут не нужны — важен профиль портов.
+                    if (opt.Id == "repo")
+                    {
+                        if (Settings.GameFilterProfileId != opt.ProfileId)
+                        {
+                            Settings.GameFilterProfileId = opt.ProfileId;
+                            SettingsStore.Save(Settings);
+                            SelectedProfile = GameFilterPortConfig.GetProfileById(opt.ProfileId);
+                        }
+                        opt.Status = "✅ профиль R.E.P.O.";
+                        var routing = PhotonRegions.ApplyRouting(Settings);
+                        Message = $"Включено «{opt.Name}»: профиль портов «R.E.P.O.» активен, UDP Photon и Steam P2P исключены из обхода. " +
+                                  "Перезапустите обход. " + routing.Message;
+                        MessageKey = "Success";
+                        RefreshProfiles();
+                        Raise(nameof(GameFilterIndex));
+                        Raise(nameof(GameOptions));
+                        Raise(nameof(RepoStateText));
+                        Raise(nameof(RepoStateKey));
+                        return;
+                    }
                     // если есть профиль — предлагаем переключить
                     if (!string.IsNullOrWhiteSpace(opt.ProfileId) && Settings.GameFilterProfileId != opt.ProfileId)
                     {
@@ -451,7 +564,19 @@ namespace ZapretGui.ViewModels
                     foreach (var d in opt.Domains)
                         if (!lines.Contains(d.ToLowerInvariant())) { writer.WriteLine(d); lines.Add(d.ToLowerInvariant()); totalAdded++; }
                 writer.Flush();
-                Message = $"Готово — добавлено {totalAdded} доменов для {enabled.Count} игр. Профиль «{SelectedProfile?.Name}» активен. Перезапусти обход.";
+
+                // Профиль портов берём из последней отмеченной игры: иначе «Сохранить и перезапустить»
+                // применял домены, но оставлял чужой профиль (например, Discord вместо R.E.P.O.).
+                var profileOption = enabled.LastOrDefault(o => !string.IsNullOrWhiteSpace(o.ProfileId));
+                if (profileOption != null && Settings.GameFilterProfileId != profileOption.ProfileId)
+                {
+                    Settings.GameFilterProfileId = profileOption.ProfileId;
+                    SettingsStore.Save(Settings);
+                    SelectedProfile = GameFilterPortConfig.GetProfileById(profileOption.ProfileId);
+                }
+                var routingNote = enabled.Any(o => o.Id == "repo") ? " " + PhotonRegions.ApplyRouting(Settings).Message : "";
+                Message = $"Готово — добавлено {totalAdded} доменов для {enabled.Count} игр. Профиль «{SelectedProfile?.Name}» активен.{routingNote} " +
+                          "Перезапусти обход.";
                 MessageKey = "Success";
                 if (_main.Bypass.GetStatus().IsRunning)
                 {

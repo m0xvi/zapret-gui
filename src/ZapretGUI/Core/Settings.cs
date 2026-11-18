@@ -333,6 +333,10 @@ namespace ZapretGui.Core
         /// Включено по умолчанию: без этого страницы Steam грузятся медленно.</summary>
         public bool SteamBypassEnabled { get; set; } = true;
 
+        /// <summary>v2.2.6: вести TCP-трафик Photon (R.E.P.O., Phasmophobia и др.) через обход.
+        /// По умолчанию напрямую: игры на Photon чувствительны к вмешательству в трафик.</summary>
+        public bool PhotonThroughBypass { get; set; }
+
         /// <summary>Версия схемы интерфейса для одноразовых миграций (v2.0 — упрощённый интерфейс).</summary>
         public int UiSchemaVersion { get; set; }
     }

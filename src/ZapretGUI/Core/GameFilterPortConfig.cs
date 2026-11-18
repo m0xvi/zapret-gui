@@ -97,6 +97,17 @@ namespace ZapretGui.Core
             },
             new()
             {
+                Id = "repo",
+                Name = "🧩 R.E.P.O. — фикс clienttimeout (Photon)",
+                Description = "R.E.P.O. ходит через Photon relay: исключаем UDP 4530-4533, 5055-5058, 9090-9091 " +
+                              "(игровой трафик) и Steam P2P 27015-27200. Обход перестаёт подделывать пакеты игры — " +
+                              "меньше clienttimeout и высокого пинга. Голос Discord работает.",
+                TcpPorts = "1024-65535",
+                UdpPorts = "1024-4529,4534-5054,5059-9089,9092-27014,27201-65535",
+                ExcludedPorts = "4530-4533,5055-5058,9090-9091,27015-27200"
+            },
+            new()
+            {
                 Id = "custom",
                 Name = "⚙️ Пользовательский диапазон портов",
                 Description = "Ручной ввод диапазонов TCP и UDP портов.",
