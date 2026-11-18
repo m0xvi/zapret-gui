@@ -59,6 +59,7 @@ namespace ZapretGui.ViewModels
             FixPhasmophobiaCommand = new AsyncRelayCommand(FixPhasmophobiaAsync);
             FixPubgCommand = new AsyncRelayCommand(FixPubgAsync);
             FixSelectedGamesCommand = new AsyncRelayCommand(FixSelectedGamesAsync);
+            ApplySteamBypassCommand = new AsyncRelayCommand(ApplySteamBypassAsync);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RefreshCommand = new RelayCommand(Refresh);
             DismissMessageCommand = new RelayCommand(() => { Message = ""; MessageKey = "Info"; });
@@ -66,6 +67,7 @@ namespace ZapretGui.ViewModels
             RefreshProfiles();
             RefreshGamingStatus();
             RefreshDetectionStatus();
+            if (Settings.SteamBypassEnabled) { try { SteamBypass.Ensure(Settings); } catch { } }
             if (_main.GameDetector != null) _main.GameDetector.GameStatusChanged += (_, __) => RefreshDetectionStatus();
         }
 
@@ -144,6 +146,54 @@ namespace ZapretGui.ViewModels
         }
         public string[] GameFilterOptions { get; } = { "Выключен (не трогать игры)", "TCP + UDP (максимум обхода)", "Только TCP", "Только UDP" };
 
+        // ---- Steam: магазин и сообщество (v2.2.5) ----
+        /// <summary>Вести магазин/сообщество Steam через обход. В сборке Flowseal домены Steam специально
+        /// исключены из общего списка (чтобы не тормозили загрузки), из-за этого страницы грузились медленно.</summary>
+        public bool SteamBypassEnabled
+        {
+            get => Settings.SteamBypassEnabled;
+            set
+            {
+                if (Settings.SteamBypassEnabled == value) return;
+                Settings.SteamBypassEnabled = value;
+                SettingsStore.Save(Settings);
+                var (ok, msg) = SteamBypass.Ensure(Settings);
+                SteamBypassStatus = msg;
+                Message = ok
+                    ? (value ? "Steam: страницы пойдут через обход. Перезапустите обход для применения."
+                             : "Обход Steam выключен — списки убраны.")
+                    : msg;
+                MessageKey = ok ? (value ? "Success" : "Info") : "Danger";
+                Raise(nameof(SteamBypassEnabled));
+                Raise(nameof(SteamBypassStateText));
+            }
+        }
+
+        public string SteamBypassStateText => SteamBypass.Describe(Settings);
+
+        /// <summary>Второй рычаг для Steam: клиент ходит по HTTP/3 (QUIC), а обход подделывает QUIC-пакеты,
+        /// из-за чего браузер Steam повторяет рукопожатие. Отключение fake-quic убирает эту задержку.</summary>
+        public bool DisableQuicFake
+        {
+            get => Settings.DisableQuicFake;
+            set
+            {
+                if (Settings.DisableQuicFake == value) return;
+                Settings.DisableQuicFake = value;
+                SettingsStore.Save(Settings);
+                Raise(nameof(DisableQuicFake));
+                Message = value
+                    ? "Подделка QUIC выключена. Перезапустите обход, чтобы Steam перестал ждать HTTP/3."
+                    : "Подделка QUIC включена (нужна для YouTube). Перезапустите обход.";
+                MessageKey = "Info";
+            }
+        }
+        public string SteamBypassHint => "Включает магазин и сообщество Steam в обход. Загрузки игр, картинки и видео (CDN) остаются напрямую — скорость скачивания не меняется.";
+
+        private string _steamBypassStatus = "";
+        public string SteamBypassStatus { get => _steamBypassStatus; private set { if (Set(ref _steamBypassStatus, value)) Raise(nameof(SteamBypassStatusVisible)); } }
+        public bool SteamBypassStatusVisible => !string.IsNullOrWhiteSpace(SteamBypassStatus);
+
         // ---- Сетевые твики ----
         private string _gamingNetworkStatus = "";
         public string GamingNetworkStatusText { get => _gamingNetworkStatus; private set => Set(ref _gamingNetworkStatus, value); }
@@ -166,6 +216,7 @@ namespace ZapretGui.ViewModels
         public ICommand FixPhasmophobiaCommand { get; }
         public ICommand FixPubgCommand { get; }
         public ICommand FixSelectedGamesCommand { get; }
+        public ICommand ApplySteamBypassCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand RefreshCommand { get; }
         public ICommand DismissMessageCommand { get; }
@@ -308,6 +359,35 @@ namespace ZapretGui.ViewModels
             catch (Exception ex)
             {
                 Message = $"Ошибка «{opt.Name}»: {ex.Message}"; MessageKey = "Danger";
+            }
+        }
+
+        /// <summary>Создаёт списки Steam и перезапускает обход, если он уже работает.</summary>
+        private async Task ApplySteamBypassAsync()
+        {
+            var (ok, msg) = SteamBypass.Ensure(Settings);
+            SteamBypassStatus = msg;
+            Message = msg;
+            MessageKey = ok ? "Success" : "Danger";
+            if (!ok) return;
+
+            if (_main.Bypass.GetStatus().IsRunning)
+            {
+                var strat = _main.Strategies.Find(Settings.SelectedStrategy) ?? _main.Strategies.Recommended;
+                if (strat != null)
+                {
+                    var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+                    var res = _main.Bypass.GetStatus().ServiceState == ServiceState.Running
+                        ? await _main.Bypass.InstallServiceAsync(strat, mode)
+                        : await _main.Bypass.SwitchToStrategyAsync(strat, mode, Settings.ShowWinwsConsole);
+                    Message = msg + " " + res.Message;
+                    MessageKey = res.Ok ? "Success" : "Warning";
+                    _main.Home.RefreshStatus();
+                }
+            }
+            else
+            {
+                Message = msg + " Обход выключен — списки применятся при следующем запуске.";
             }
         }
 

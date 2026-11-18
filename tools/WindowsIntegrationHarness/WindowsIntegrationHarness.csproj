@@ -43,6 +43,7 @@
     <Compile Include="..\..\src\ZapretGUI\Core\StrategyConstruction.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\StrategyEvaluationHistory.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\StrategyParser.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\SteamBypass.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\StrategyTesting.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\WinServices.cs" />
   </ItemGroup>

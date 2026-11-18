@@ -1489,3 +1489,40 @@ IPv6-адрес шлюза; при отсутствии IPv6-маршрута Wi
 «Встроенный список ресурсов один для всех проверок», плюс проверки `WinServices.DescribeStartType`.
 
 **Версия:** 2.2.4.
+
+---
+
+## Медленные страницы Steam (v2.2.5, 2026-10-25)
+
+Запрос: «очень долго грузятся страницы игр в Steam, они загружаются, но долго».
+
+**Причина.** В сборке Flowseal домены Steam убраны из `list-general.txt` специально: если гнать
+`steampowered.com` / `steamstatic.com` через `multisplit`, падают скорости загрузки игр. Побочный эффект —
+HTML магазина и сообщества (`store.steampowered.com`, `steamcommunity.com`, `api.steampowered.com`)
+не попадает ни в один `--hostlist`-блок и идёт напрямую, где ТСПУ замедляет TLS: страница открывается,
+но грузится десятки секунд. Второй фактор — QUIC/HTTP3: Steam-webhelper ходит по UDP/443, а обход
+подделывает QUIC-пакеты, из-за чего браузер клиента несколько раз повторяет рукопожатие.
+
+**Решение (`Core/SteamBypass.cs`).**
+- Управляемые списки: `lists\steam-bypass.txt` (магазин и сообщество) и
+  `lists\steam-bypass-exclude.txt` (CDN/загрузки/картинки: `steamstatic.com`, `steamcontent.com`,
+  `steamcommunity-a.akamaihd.net`, `steamcdn-a.akamaihd.net`, `steamcloud-eu.akamaihd.net`,
+  `steamserver.net`, `media.steampowered.com`).
+- `ApplyToArgs` подмешивает `--hostlist=<steam-bypass.txt>` и `--hostlist-exclude=<steam-bypass-exclude.txt>`
+  в **первый TCP-блок** стратегии, где уже есть `--hostlist=` (desync-параметры не выдумываются —
+  используется проверенная схема сборки). Повторный запуск ничего не дублирует; если подходящего блока
+  нет — стратегия не меняется и в журнал пишется предупреждение.
+- `Ensure(settings)` создаёт списки, **убирает** `steampowered.com`/`steamcommunity.com` из
+  `list-exclude-user.txt` (иначе магазин так и остаётся без обхода даже после включения пресета Steam)
+  и **добавляет** туда CDN-хосты. При выключении управляемые файлы удаляются.
+- Вызовы: старт приложения (после установки движка), `BypassController.StartAsync`,
+  `InstallServiceAsync`, переключатель и кнопка на странице.
+- UI: карточка «STEAM: БЫСТРЫЕ СТРАНИЦЫ» в «Игровом режиме» (включено по умолчанию,
+  `AppSettings.SteamBypassEnabled`), кнопка «Применить и перезапустить обход».
+- `MonitorTargetStore.DefaultTargets` пополнен `Steam` (`https://store.steampowered.com/`) —
+  время ответа магазина теперь видно в проверке ресурсов.
+
+**Тесты (`CoreLogicHarness`).** «Списки Steam подмешиваются в TCP-блок обхода один раз»,
+«Списки Steam создаются и чистятся вместе с исключениями».
+
+**Версия:** 2.2.5.

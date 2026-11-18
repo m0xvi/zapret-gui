@@ -17,7 +17,9 @@ namespace ZapretGui.Core
             string? gameFilterProfileId = null,
             string? customTcpPorts = null,
             string? customUdpPorts = null,
-            string? sniOverride = null)
+            string? sniOverride = null,
+            string? enginePath = null,
+            bool steamBypass = false)
         {
             var tcp = GameFilterPortConfig.ResolveTcpPortString(gameFilter, gameFilterProfileId, customTcpPorts);
             var udp = GameFilterPortConfig.ResolveUdpPortString(gameFilter, gameFilterProfileId, customUdpPorts);
@@ -31,6 +33,13 @@ namespace ZapretGui.Core
             if (!string.IsNullOrWhiteSpace(sniOverride))
             {
                 expandedArgs = SniFakePoolManager.ApplySniOverride(expandedArgs, sniOverride);
+            }
+
+            // v2.2.5: магазин Steam не входит в list-general (чтобы не тормозили загрузки),
+            // поэтому подмешиваем его отдельным списком в уже работающий TCP-блок.
+            if (steamBypass && !string.IsNullOrWhiteSpace(enginePath))
+            {
+                expandedArgs = SteamBypass.ApplyToArgs(expandedArgs, enginePath);
             }
 
             return expandedArgs;

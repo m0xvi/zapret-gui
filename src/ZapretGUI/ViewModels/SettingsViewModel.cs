@@ -755,11 +755,6 @@ namespace ZapretGui.ViewModels
             set { Settings.WatchdogNotifyUser = value; OnSettingChanged(); }
         }
 
-        public bool DisableQuicFake
-        {
-            get => Settings.DisableQuicFake;
-            set { Settings.DisableQuicFake = value; SettingsStore.Save(Settings); Raise(nameof(DisableQuicFake)); Status = value ? "QUIC fake отключён для теста YouTube" : "QUIC fake включён"; }
-        }
         public bool PreferIPv4ForBypass
         {
             get => Settings.PreferIPv4ForBypass;
@@ -1118,7 +1113,6 @@ namespace ZapretGui.ViewModels
             Raise(nameof(WatchdogAutoRestart));
             Raise(nameof(WatchdogNotifyUser));
             Raise(nameof(RealTimePingEnabled));
-            Raise(nameof(DisableQuicFake));
             Raise(nameof(PreferIPv4ForBypass));
             Raise(nameof(UseDohForBlockedHosts));
             Raise(nameof(YoutubeSniOverride));
