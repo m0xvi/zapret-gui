@@ -179,17 +179,20 @@ namespace ZapretGui.Core
         }
 
         /// <summary>Строка-подсказка: какой регион выбрать в игре и что это значит.</summary>
-        public static string DescribeBest(IReadOnlyList<PhotonRegionResult> results)
+        public static string DescribeBest(IReadOnlyList<PhotonRegionResult>? results)
         {
-            var best = results?.FirstOrDefault(r => r.Ok);
-            if (best == null) return "Не удалось измерить ни один узел Photon — проверьте интернет и DNS.";
-            var europe = results.FirstOrDefault(r => r.Name == "Европа");
-            if (europe is { Ok: true } && europe.Name == best.Name)
+            var reachable = (results ?? Array.Empty<PhotonRegionResult>()).Where(r => r.Ok).OrderBy(r => r.Milliseconds).ToList();
+            if (reachable.Count == 0)
+                return "Не удалось измерить ни один узел Photon — проверьте интернет и DNS.";
+
+            var best = reachable[0];
+            var europe = reachable.FirstOrDefault(r => r.Name == "Европа");
+            if (europe == null)
+                return $"Лучший регион: {best.Name} · {best.Milliseconds} мс. Европа не ответила — выбирайте её только если в игре пинг стабильный.";
+            if (europe.Name == best.Name)
                 return $"Лучший регион: Европа · {best.Milliseconds} мс. Выбирайте «Европа» в игре.";
-            if (europe is { Ok: true })
-                return $"Быстрее всего {best.Name} · {best.Milliseconds} мс, Европа отвечает {europe.Milliseconds} мс. " +
-                       "Выбирайте регион с меньшим числом — цифры в игре могут быть завышены.";
-            return $"Лучший регион: {best.Name} · {best.Milliseconds} мс. Европа не ответила — выбирайте её только если в игре пинг стабильный.";
+            return $"Быстрее всего {best.Name} · {best.Milliseconds} мс, Европа отвечает {europe.Milliseconds} мс. " +
+                   "Выбирайте регион с меньшим числом — цифры в игре могут быть завышены.";
         }
     }
 }
