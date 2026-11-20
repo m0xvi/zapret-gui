@@ -194,6 +194,7 @@ namespace ZapretGui.Core
         /// <summary>Короткая строка состояния для интерфейса: сначала про порты, потом про адреса Photon.</summary>
         public static string DescribeCoverage(AppSettings? settings)
         {
+            if (settings == null) return "Настройки недоступны.";
             if (!IpRangesExcluded(settings))
             {
                 if (PhotonRangePresentInIpset(settings))
@@ -201,7 +202,7 @@ namespace ZapretGui.Core
                 return "Списки движка не найдены — исключения Photon появятся после установки движка.";
             }
 
-            var mode = EngineService.GetGameFilterMode(settings?.EnginePath);
+            var mode = EngineService.GetGameFilterMode(settings.EnginePath);
             if (PortsTouchedByBypass(settings))
                 return "⚠ Порты R.E.P.O. (4530-4533, 5055-5058, 9090-9093, 27015-27200) сейчас в обходе — " +
                        "выберите профиль «R.E.P.O.» или режим без UDP/без TCP.";
@@ -220,8 +221,8 @@ namespace ZapretGui.Core
         /// </summary>
         public static bool BypassTouchesPhoton(AppSettings? settings)
         {
-            if (!PhotonRangePresentInIpset(settings) || IpRangesExcluded(settings)) return false;
-            var mode = EngineService.GetGameFilterMode(settings?.EnginePath);
+            if (settings == null || !PhotonRangePresentInIpset(settings) || IpRangesExcluded(settings)) return false;
+            var mode = EngineService.GetGameFilterMode(settings.EnginePath);
             return mode is GameFilterMode.TcpAndUdp or GameFilterMode.TcpOnly;
         }
 
