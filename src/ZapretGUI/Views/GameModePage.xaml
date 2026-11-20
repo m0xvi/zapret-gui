@@ -56,7 +56,7 @@
                             <TextBlock Text="&#xE7FC;" FontFamily="{DynamicResource IconFont}" FontSize="18" Foreground="{DynamicResource SuccessBrush}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel Grid.Column="1" Margin="12,0,12,0" VerticalAlignment="Center">
-                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Игровой режим"/>
+                            <TextBlock Style="{StaticResource BodyText}" FontWeight="SemiBold" Text="Игровой режим — пропуск портов игр"/>
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding GameModeStatusText}" TextWrapping="Wrap" FontSize="11"/>
                             <TextBlock Style="{StaticResource DimText}" Text="{Binding DetectionStatusText}" TextWrapping="Wrap" FontSize="11" Foreground="{Binding DetectionStatusKey, Converter={StaticResource SeverityBrush}}" FontWeight="SemiBold" Margin="0,2,0,0"/>
                         </StackPanel>
@@ -73,16 +73,38 @@
             <Border Style="{StaticResource PageCard}">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="ПРОФИЛЬ ПОРТОВ"/>
-                    <TextBlock Style="{StaticResource DimText}" Text="Какой UDP-трафик пропускать без обхода." TextWrapping="Wrap" FontSize="11" Opacity="0.85" Margin="0,2,0,0"/>
-                    <ComboBox Style="{StaticResource AppComboBox}" Margin="0,10,0,0" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
-                        <ComboBox.ItemTemplate>
-                            <DataTemplate>
-                                <TextBlock Text="{Binding DisplayTitle}" TextWrapping="Wrap"/>
-                            </DataTemplate>
-                        </ComboBox.ItemTemplate>
-                    </ComboBox>
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.85" TextWrapping="Wrap" Margin="0,2,0,0"
+                               Text="Это просто список портов, на которые обход не обращает внимания. Один профиль на всё приложение: профиль нужной игры выбирается сам, когда вы ставите галочку ниже."/>
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="2*" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <ComboBox Style="{StaticResource AppComboBox}" ItemsSource="{Binding Profiles}" SelectedItem="{Binding SelectedProfile, Mode=TwoWay}"
+                                  ToolTip="Профиль портов, который сейчас применяется к обходу">
+                            <ComboBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Text="{Binding DisplayTitle}" TextWrapping="Wrap"/>
+                                </DataTemplate>
+                            </ComboBox.ItemTemplate>
+                        </ComboBox>
+                        <ComboBox Grid.Column="1" Margin="8,0,0,0" Style="{StaticResource AppComboBox}"
+                                  ItemsSource="{Binding GameFilterOptions}" SelectedIndex="{Binding GameFilterIndex, Mode=TwoWay}"
+                                  ToolTip="Какие протоколы вообще пропускать через обход. Для R.E.P.O. годится «Выключен» или «Только TCP»."/>
+                    </Grid>
                     <TextBlock Style="{StaticResource DimText}" Text="{Binding SelectedProfileDescription}" TextWrapping="Wrap" Margin="0,6,0,0" FontSize="11" Opacity="0.85"/>
-                    <Button Style="{StaticResource PageAction}" Content="Применить профиль" Margin="0,10,0,0" HorizontalAlignment="Left" Command="{Binding ApplyProfileCommand}"/>
+                    <TextBlock Style="{StaticResource DimText}" Text="{Binding FilterModeHint}" TextWrapping="Wrap" Margin="0,4,0,0" FontSize="11"
+                               Foreground="{Binding FilterModeKey, Converter={StaticResource SeverityBrush}}"/>
+                    <Grid Margin="0,10,0,0">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Style="{StaticResource PageAction}" Content="Применить профиль"
+                                Command="{Binding ApplyProfileCommand}" ToolTip="Сохранить профиль и перезапустить обход, если он включён"/>
+                        <TextBlock Grid.Column="1" Style="{StaticResource DimText}" FontSize="11" Margin="12,0,0,0"
+                                   VerticalAlignment="Center" TextWrapping="Wrap" Text="{Binding ApplyProfileHint}"/>
+                    </Grid>
                 </StackPanel>
             </Border>
 
@@ -127,7 +149,8 @@
             <Border Style="{StaticResource PageCard}" BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1">
                 <StackPanel>
                     <TextBlock Style="{StaticResource SectionText}" Text="КАКИЕ ИГРЫ НЕ ТРОГАТЬ"/>
-                    <TextBlock Style="{StaticResource DimText}" Text="Галочка — добавить домены игры в список обхода и перезапустить его." TextWrapping="Wrap" FontSize="11" Opacity="0.85" Margin="0,2,0,0"/>
+                    <TextBlock Style="{StaticResource DimText}" TextWrapping="Wrap" FontSize="11" Opacity="0.85" Margin="0,2,0,0"
+                               Text="Галочка = «игра важнее обхода»: её порты выкидываются из обхода и добавляется профиль этой игры. Для R.E.P.O. этого достаточно — включите только его и не трогайте остальные."/>
                     <ItemsControl ItemsSource="{Binding GameOptions}" Margin="0,12,0,0">
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
@@ -155,9 +178,9 @@
             <!-- R.E.P.O.: регионы Photon (v2.2.6) -->
             <Border Style="{StaticResource PageCard}">
                 <StackPanel>
-                    <TextBlock Style="{StaticResource SectionText}" Text="R.E.P.O.: РЕГИОНЫ PHOTON"/>
+                    <TextBlock Style="{StaticResource SectionText}" Text="R.E.P.O.: ЧТО ВКЛЮЧАТЬ"/>
                     <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.85" TextWrapping="Wrap" Margin="0,2,0,0"
-                               Text="Игра выбирает регион Photon сама, и цифры там завышены. Проверьте реальное время ответа и выберите регион в игре."/>
+                               Text="Нажмите «Настроить R.E.P.O.» — этого достаточно, больше ничего отмечать не нужно. Настройка делает три вещи: ставит профиль портов «R.E.P.O.», переводит фильтр в режим без игрового UDP и выносит адреса Photon из ipset обхода. В игре региона выбирается сам; если Европа стабильно 800 мс — попробуйте США (восток)."/>
                     <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" FontWeight="SemiBold"
                                Text="{Binding RepoStateText}"
                                Foreground="{Binding RepoStateKey, Converter={StaticResource SeverityBrush}}"/>
@@ -165,14 +188,16 @@
                                Text="{Binding PhotonCoverageText}"
                                Foreground="{Binding PhotonCoverageKey, Converter={StaticResource SeverityBrush}}"/>
                     <WrapPanel Margin="0,8,0,0">
-                        <Button Style="{StaticResource PageAction}" Content="Починить R.E.P.O."
-                                Command="{Binding FixPhotonCommand}"
-                                ToolTip="Исключить адреса Photon (216.120.180.0/23) из ipset обхода, отключить обход Photon и перезапустить обход"/>
+                        <Button Style="{StaticResource PageActionPrimary}" Content="Настроить R.E.P.O."
+                                Command="{Binding SetupRepoCommand}"
+                                ToolTip="Один клик: профиль портов «R.E.P.O.», режим без игрового UDP, адреса Photon исключены из ipset и обход перезапущен"/>
                         <Button Style="{StaticResource PageActionGhost}" Content="Перезапустить обход" Margin="8,0,0,0"
                                 Command="{Binding RestartBypassCommand}"
                                 ToolTip="{Binding RestartBypassHint}"/>
                     </WrapPanel>
-                    <Grid Margin="0,10,0,0">
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.85" TextWrapping="Wrap" Margin="0,10,0,0"
+                               Text="Проверка ниже измеряет время ответа узлов Photon из вашей сети. Это не пинг в игре: в самой игре цифры считает клиент Photon и они бывают завышены."/>
+                    <Grid Margin="0,8,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
@@ -200,7 +225,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <CheckBox Style="{StaticResource SwitchCheckBox}" Margin="0,12,0,0"
-                              Content="Вести трафик Photon через обход (обычно не нужно)"
+                              Content="Вести трафик Photon через обход (для R.E.P.O. выключено)"
                               IsChecked="{Binding PhotonThroughBypass, Mode=TwoWay}"
                               ToolTip="Включайте только если без обхода не открываются сайты photonengine.io. Для R.E.P.O. это чаще вредит: игра начинает таймаутить."/>
                     <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.85" TextWrapping="Wrap" Margin="0,6,0,0"

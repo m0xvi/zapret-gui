@@ -53,7 +53,7 @@ namespace ZapretGui.ViewModels
 
             ToggleGameModeCommand = new RelayCommand(ToggleGameMode);
             ToggleDetectionCommand = new RelayCommand(() => { GameDetectionEnabled = !GameDetectionEnabled; });
-            ApplyProfileCommand = new AsyncRelayCommand(ApplyProfileAsync, () => SelectedProfile != null);
+            ApplyProfileCommand = new AsyncRelayCommand(ApplyProfileAsync, () => !IsRestartingBypass);
             ApplyGamingTweaksCommand = new AsyncRelayCommand(ApplyGamingTweaksAsync);
             RevertGamingTweaksCommand = new AsyncRelayCommand(RevertGamingTweaksAsync);
             FixPhasmophobiaCommand = new AsyncRelayCommand(FixPhasmophobiaAsync);
@@ -63,6 +63,7 @@ namespace ZapretGui.ViewModels
             CheckPhotonRegionsCommand = new AsyncRelayCommand(CheckPhotonRegionsAsync, () => !IsCheckingPhotonRegions);
             RestartBypassCommand = new AsyncRelayCommand(RestartBypassAsync, () => !IsRestartingBypass);
             FixPhotonCommand = new AsyncRelayCommand(FixPhotonAsync, () => !IsRestartingBypass);
+            SetupRepoCommand = new AsyncRelayCommand(SetupRepoAsync, () => !IsRestartingBypass);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RefreshCommand = new RelayCommand(Refresh);
             DismissMessageCommand = new RelayCommand(() => { Message = ""; MessageKey = "Info"; });
@@ -113,9 +114,32 @@ namespace ZapretGui.ViewModels
         public bool GameModeActive
         {
             get => Settings.GameModeActive;
-            set { Settings.GameModeActive = value; SettingsStore.Save(Settings); _main.ApplyGameFilterState(); Raise(nameof(GameModeActive)); Raise(nameof(GameModeStatusText)); Raise(nameof(GameModeBadge)); Raise(nameof(DetectionStatusText)); Raise(nameof(DetectionStatusKey)); }
+            set
+            {
+                if (Settings.GameModeActive == value) return;
+                Settings.GameModeActive = value;
+                SettingsStore.Save(Settings);
+                _main.ApplyGameFilterState();
+                Raise(nameof(GameModeActive));
+                Raise(nameof(GameModeStatusText));
+                Raise(nameof(GameModeBadge));
+                Raise(nameof(DetectionStatusText));
+                Raise(nameof(DetectionStatusKey));
+                Raise(nameof(GameFilterIndex));
+                Raise(nameof(FilterModeHint));
+                Raise(nameof(RepoStateText));
+                Raise(nameof(RepoStateKey));
+                // Тумблер меняет режим игрового фильтра — без перезапуска winws правка не действует.
+                if (value && _main.Bypass.GetStatus().IsRunning)
+                    _ = RestartAfterChangeAsync("Игровой режим включён");
+                else
+                    Message = value
+                        ? "Игровой режим включён: для игр UDP пропускается без обхода. Перезапустите обход, если он уже работает."
+                        : "Игровой режим выключен. Перезапустите обход, если он уже работает.";
+                MessageKey = "Info";
+            }
         }
-        public string GameModeStatusText => Settings.GameModeActive ? "Игровой режим ВКЛ — UDP пропускается для минимального пинга" : "Игровой режим ВЫКЛ — обычный обход (может мешать лобби)";
+        public string GameModeStatusText => Settings.GameModeActive ? "Игровой режим ВКЛ — UDP игр идёт напрямую, без обхода" : "Игровой режим ВЫКЛ — обход работает как обычно";
         public string GameModeBadge => Settings.GameModeActive ? "ВКЛ" : "ВЫКЛ";
 
         public bool GameDetectionEnabled
@@ -148,11 +172,75 @@ namespace ZapretGui.ViewModels
             {
                 var mode = value switch { 1 => GameFilterMode.TcpAndUdp, 2 => GameFilterMode.TcpOnly, 3 => GameFilterMode.UdpOnly, _ => GameFilterMode.Disabled };
                 EngineService.SetGameFilterMode(Settings.EnginePath, mode);
+                // Раньше здесь оставался включённым «Игровой режим» — и он молча перебивал выбор
+                // при следующем применении настроек (см. MainViewModel.ApplyGameFilterState).
+                if (Settings.GameModeActive)
+                {
+                    Settings.GameModeActive = false;
+                    SettingsStore.Save(Settings);
+                    Raise(nameof(GameModeActive));
+                    Raise(nameof(GameModeBadge));
+                    Raise(nameof(GameModeStatusText));
+                }
                 Raise(nameof(GameFilterIndex));
-                Message = value == 0 ? "Игровой фильтр выключен" : $"Игровой фильтр: {mode}. Перезапусти обход."; MessageKey = "Info";
+                Raise(nameof(FilterModeHint));
+                Raise(nameof(RepoStateText));
+                Raise(nameof(RepoStateKey));
+                if (_main.Bypass.GetStatus().IsRunning) _ = RestartAfterChangeAsync("Режим фильтра изменён");
+                else { Message = value == 0 ? "Игровой фильтр выключен — обход не трогает порты игр." : $"Режим фильтра: {mode}. Запустите обход, чтобы применить."; MessageKey = "Info"; }
             }
         }
         public string[] GameFilterOptions { get; } = { "Выключен (не трогать игры)", "TCP + UDP (максимум обхода)", "Только TCP", "Только UDP" };
+
+        /// <summary>Что значит выбранный режим — рядом с выпадающим списком, без догадок.</summary>
+        public string FilterModeHint
+        {
+            get
+            {
+                if (Settings.GameModeActive)
+                    return "Сейчас активен «Игровой режим» со страницы выше: он сам ставит «Только TCP» и перебивает выбор в этом списке. Выключите тумблер, если хотите задать режим вручную.";
+                return GameFilterIndex switch
+                {
+                    1 => "TCP и UDP всех портов профиля обрабатываются обходом. Для R.E.P.O. не подходит: игра ходит по UDP.",
+                    2 => "Обход трогает только TCP. UDP-трафик игр (Photon, Steam P2P) идёт напрямую — для R.E.P.O. это нормальный вариант.",
+                    3 => "Обход трогает только UDP, TCP не трогает. Для игр с Photon плохо: ломает игровой UDP.",
+                    _ => "Обход не трогает порты игр вообще. Для R.E.P.O. это самый безопасный вариант."
+                };
+            }
+        }
+
+        /// <summary>Цвет подсказки режима: предупреждаем, когда выбранный режим вредит игровому UDP.</summary>
+        public string FilterModeKey
+        {
+            get
+            {
+                if (Settings.GameModeActive) return "Warning";
+                return GameFilterIndex switch { 1 => "Warning", 3 => "Warning", 2 => "Success", _ => "Muted" };
+            }
+        }
+
+        /// <summary>Подсказка рядом с кнопкой «Применить профиль»: что произойдёт и почему кнопка может быть неактивна.</summary>
+        public string ApplyProfileHint
+        {
+            get
+            {
+                if (SelectedProfile == null) return "Сначала выберите профиль";
+                var status = _main.Bypass.GetStatus();
+                if (status.IsRunning) return "Профиль применится сразу: обход будет перезапущен.";
+                return "Обход выключен — профиль сохранится и применится при запуске обхода.";
+            }
+        }
+
+        /// <summary>Перезапуск обхода после смены настройки: раньше правка сохранялась, но winws работал со старыми портами.</summary>
+        private async Task RestartAfterChangeAsync(string reason)
+        {
+            Message = reason + " — перезапускаю обход…";
+            MessageKey = "Info";
+            var res = await _main.RestartBypassAsync();
+            Message = res.Ok ? reason + " — " + res.Message : reason + " — " + res.Message;
+            MessageKey = res.Ok ? "Success" : "Warning";
+            Refresh();
+        }
 
         // ---- Перезапуск обхода со страницы (v2.2.7) ----
         private bool _isRestartingBypass;
@@ -165,6 +253,8 @@ namespace ZapretGui.ViewModels
                 {
                     (RestartBypassCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (FixPhotonCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (SetupRepoCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (ApplyProfileCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     Raise(nameof(RestartBypassHint));
                     Raise(nameof(RestartBypassVisible));
                 }
@@ -210,23 +300,97 @@ namespace ZapretGui.ViewModels
             }
         }
 
-        /// <summary>Одна кнопка «Починить R.E.P.O.»: исключить Photon из ipset, отключить его обход
-        /// и перезапустить обход, чтобы списки применились.</summary>
+        /// <summary>Одна кнопка «Настроить R.E.P.O.»: профиль портов, безопасный режим фильтра,
+        /// исключение адресов Photon из ipset и перезапуск обхода.</summary>
         private async Task FixPhotonAsync()
         {
+            IsRestartingBypass = true;
+            try
+            {
+                var setup = await ApplyRepoSetupAsync();
+                Message = $"R.E.P.O. настроен: профиль портов «R.E.P.O.»{setup.ModeNote}. {setup.PhotonNote}";
+                MessageKey = setup.Ok ? "Success" : "Warning";
+                RefreshProfiles();
+                if (!setup.Ok) return;
+                if (_main.Bypass.GetStatus().IsRunning) await RestartAfterChangeAsync("R.E.P.O. настроен");
+                else Message += " Обход выключен — настройки применятся при запуске.";
+            }
+            finally
+            {
+                IsRestartingBypass = false;
+                Refresh();
+            }
+        }
+
+        /// <summary>Явная кнопка из карточки Photon: делает ровно то же, что галочка R.E.P.O.</summary>
+        private Task SetupRepoAsync() => FixPhotonAsync();
+
+        /// <summary>
+        /// Настройка R.E.P.O. в одном месте: профиль портов «R.E.P.O.», режим фильтра без UDP
+        /// (иначе порты профиля не важны — Photon всё равно попадёт под обход), Photon напрямую
+        /// и его адреса в ipset-exclude. Возвращает пояснения для интерфейса.
+        /// </summary>
+        private Task<(bool Ok, string ModeNote, string PhotonNote)> ApplyRepoSetupAsync()
+        {
+            var notes = new System.Text.StringBuilder();
+            var modeNote = "";
+
+            // 1. Профиль портов
+            if (Settings.GameFilterProfileId != "repo")
+            {
+                Settings.GameFilterProfileId = "repo";
+                SettingsStore.Save(Settings);
+                RefreshProfiles();
+            }
+
+            // 2. Режим фильтра: «Только UDP» для R.E.P.O. — прямой вред (обход бьёт по UDP Photon),
+            //    поэтому в этом случае аккуратно переводим на «Только TCP».
+            var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+            if (mode == GameFilterMode.UdpOnly)
+            {
+                mode = GameFilterMode.TcpOnly;
+                EngineService.SetGameFilterMode(Settings.EnginePath, mode);
+                modeNote = "; режим фильтра переключён с «только UDP» на «только TCP» (UDP Photon теперь не трогается)";
+            }
+            else if (mode == GameFilterMode.Disabled)
+            {
+                modeNote = "; фильтр выключен, обход вообще не трогает порты игр";
+            }
+            else if (mode == GameFilterMode.TcpOnly)
+            {
+                modeNote = "; режим «только TCP» — игровой UDP идёт напрямую";
+            }
+            else
+            {
+                modeNote = "; режим «TCP + UDP», порты Photon и Steam P2P исключены";
+            }
+
+            // «Игровой режим» сам ставит «Только TCP», но при следующем применении настроек
+            // может вернуть прежний режим — поэтому для R.E.P.O. его выключаем.
+            if (Settings.GameModeActive)
+            {
+                Settings.GameModeActive = false;
+                SettingsStore.Save(Settings);
+                Raise(nameof(GameModeActive));
+                Raise(nameof(GameModeBadge));
+                Raise(nameof(GameModeStatusText));
+                notes.Append("Тумблер «Игровой режим» выключен: он перебивал режим фильтра. ");
+            }
+
+            // 3. Photon напрямую + адреса Photon в ipset-exclude
             Settings.PhotonThroughBypass = false;
             SettingsStore.Save(Settings);
+            if (Settings.SteamBypassEnabled) { try { SteamBypass.Ensure(Settings); } catch { } }
             var (ok, msg) = PhotonRegions.Ensure(Settings);
+            PhotonRoutingStatus = msg;
             Raise(nameof(PhotonThroughBypass));
             Raise(nameof(PhotonCoverageText));
-            PhotonRoutingStatus = msg;
-            Message = msg;
-            MessageKey = ok ? "Success" : "Danger";
-            if (!ok) return;
-            await RestartBypassAsync();
-            Raise(nameof(PhotonCoverageText));
+            Raise(nameof(PhotonCoverageKey));
+            Raise(nameof(GameFilterIndex));
+            Raise(nameof(FilterModeHint));
             Raise(nameof(RepoStateText));
             Raise(nameof(RepoStateKey));
+            return Task.FromResult((ok, modeNote, notes + msg));
         }
 
         // ---- R.E.P.O. / Photon (v2.2.6) ----
@@ -264,6 +428,8 @@ namespace ZapretGui.ViewModels
             get
             {
                 var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+                if (PhotonRegions.PortsTouchedByBypass(Settings))
+                    return "⚠ Порты R.E.P.O. сейчас в обходе — нажмите «Настроить R.E.P.O.», иначе пинг и таймауты останутся.";
                 if (mode is GameFilterMode.Disabled or GameFilterMode.TcpOnly)
                     return "Обход не обрабатывает UDP — трафик Photon и так идёт напрямую.";
                 if (string.Equals(Settings.GameFilterProfileId, "repo", StringComparison.OrdinalIgnoreCase))
@@ -276,8 +442,9 @@ namespace ZapretGui.ViewModels
         {
             get
             {
+                if (PhotonRegions.PortsTouchedByBypass(Settings)) return "Danger";
                 var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
-                if (mode is GameFilterMode.Disabled or GameFilterMode.TcpOnly) return "Muted";
+                if (mode is GameFilterMode.Disabled or GameFilterMode.TcpOnly) return "Success";
                 return string.Equals(Settings.GameFilterProfileId, "repo", StringComparison.OrdinalIgnoreCase) ? "Success" : "Warning";
             }
         }
@@ -393,6 +560,7 @@ namespace ZapretGui.ViewModels
         public ICommand ApplySteamBypassCommand { get; }
         public ICommand RestartBypassCommand { get; }
         public ICommand FixPhotonCommand { get; }
+        public ICommand SetupRepoCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand RefreshCommand { get; }
         public ICommand DismissMessageCommand { get; }
@@ -408,6 +576,9 @@ namespace ZapretGui.ViewModels
             Raise(nameof(PhotonCoverageText));
             Raise(nameof(PhotonCoverageKey));
             Raise(nameof(RestartBypassHint));
+            Raise(nameof(FilterModeHint));
+            Raise(nameof(FilterModeKey));
+            Raise(nameof(ApplyProfileHint));
         }
 
         private void RefreshProfiles()
@@ -425,6 +596,21 @@ namespace ZapretGui.ViewModels
                 GamingNetworkIsOptimized = opt.IsOptimized;
             }
             catch { GamingNetworkStatusText = "Параметры сети по умолчанию"; GamingNetworkIsOptimized = false; }
+        }
+
+        /// <summary>Тумблер переключили не с этой страницы (горячая клавиша, бейдж игры, мини-оверлей) — обновляем тексты.</summary>
+        public void NotifyGameModeChanged()
+        {
+            Raise(nameof(GameModeActive));
+            Raise(nameof(GameModeBadge));
+            Raise(nameof(GameModeStatusText));
+            Raise(nameof(DetectionStatusText));
+            Raise(nameof(DetectionStatusKey));
+            Raise(nameof(GameFilterIndex));
+            Raise(nameof(FilterModeHint));
+            Raise(nameof(FilterModeKey));
+            Raise(nameof(RepoStateText));
+            Raise(nameof(RepoStateKey));
         }
 
         public void RefreshDetectionStatus()
@@ -452,22 +638,18 @@ namespace ZapretGui.ViewModels
             var status = _main.Bypass.GetStatus();
             if (status.IsRunning)
             {
-                var strat = _main.Strategies.Find(Settings.SelectedStrategy) ?? _main.Strategies.Recommended;
-                if (strat != null)
-                {
-                    var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
-                    var res = status.ServiceState == ServiceState.Running
-                        ? await _main.Bypass.InstallServiceAsync(strat, mode)
-                        : await _main.Bypass.SwitchToStrategyAsync(strat, mode, Settings.ShowWinwsConsole);
-                    Message = res.Message; MessageKey = res.Ok ? "Success" : "Danger";
-                    _main.Home.RefreshStatus();
-                }
+                // Единая точка перезапуска: учитывает службу, режим и подсказки об ошибках.
+                var res = await _main.RestartBypassAsync();
+                Message = $"Профиль «{SelectedProfile.Name}»: {res.Message}";
+                MessageKey = res.Ok ? "Success" : "Warning";
             }
             else
             {
-                Message = $"Профиль «{SelectedProfile.Name}» сохранён. Запусти обход чтобы применить."; MessageKey = "Success";
+                Message = $"Профиль «{SelectedProfile.Name}» сохранён. Запустите обход, чтобы применить."; MessageKey = "Success";
             }
             Raise(nameof(GameModeStatusText));
+            Raise(nameof(ApplyProfileHint));
+            Raise(nameof(FilterModeKey));
         }
 
         private async Task ToggleGameAsync(GameBypassOption opt)
@@ -516,24 +698,21 @@ namespace ZapretGui.ViewModels
                     // R.E.P.O.: игровой трафик идёт по UDP Photon, домены тут не нужны — важен профиль портов.
                     if (opt.Id == "repo")
                     {
-                        if (Settings.GameFilterProfileId != opt.ProfileId)
-                        {
-                            Settings.GameFilterProfileId = opt.ProfileId;
-                            SettingsStore.Save(Settings);
-                            SelectedProfile = GameFilterPortConfig.GetProfileById(opt.ProfileId);
-                        }
                         opt.Status = "✅ профиль R.E.P.O.";
-                        var routing = PhotonRegions.Ensure(Settings);
-                        Raise(nameof(PhotonCoverageText));
-                        Raise(nameof(PhotonCoverageKey));
-                        Message = $"Включено «{opt.Name}»: профиль портов «R.E.P.O.» активен, порты Photon и Steam P2P исключены из обхода. " +
-                                  "Перезапустите обход. " + routing.Message;
-                        MessageKey = "Success";
+                        // Одна галочка = весь сценарий: профиль портов, безопасный режим фильтра,
+                        // исключение Photon из ipset и перезапуск обхода, если он работает.
+                        var setup = await ApplyRepoSetupAsync();
+                        Message = $"R.E.P.O. настроен: профиль портов «R.E.P.O.»{setup.ModeNote}. {setup.PhotonNote}";
+                        MessageKey = setup.Ok ? "Success" : "Warning";
                         RefreshProfiles();
                         Raise(nameof(GameFilterIndex));
                         Raise(nameof(GameOptions));
                         Raise(nameof(RepoStateText));
                         Raise(nameof(RepoStateKey));
+                        Raise(nameof(PhotonCoverageText));
+                        Raise(nameof(PhotonCoverageKey));
+                        if (!setup.Ok) return;
+                        if (_main.Bypass.GetStatus().IsRunning) await RestartAfterChangeAsync("R.E.P.O. настроен");
                         return;
                     }
                     // если есть профиль — предлагаем переключить
@@ -666,7 +845,12 @@ namespace ZapretGui.ViewModels
                     SettingsStore.Save(Settings);
                     SelectedProfile = GameFilterPortConfig.GetProfileById(profileOption.ProfileId);
                 }
-                var routingNote = enabled.Any(o => o.Id == "repo") ? " " + PhotonRegions.Ensure(Settings).Message : "";
+                var routingNote = "";
+                if (enabled.Any(o => o.Id == "repo"))
+                {
+                    var setup = await ApplyRepoSetupAsync();
+                    routingNote = " " + setup.PhotonNote + setup.ModeNote;
+                }
                 Message = $"Готово — добавлено {totalAdded} доменов для {enabled.Count} игр. Профиль «{SelectedProfile?.Name}» активен.{routingNote} " +
                           "Перезапусти обход.";
                 MessageKey = "Success";

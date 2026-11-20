@@ -62,7 +62,8 @@ namespace ZapretGui.CoreLogicHarness
                 ("Списки Steam подмешиваются в TCP-блок обхода один раз", SteamBypassArgumentsAreSafe),
                 ("Списки Steam создаются и чистятся вместе с исключениями", SteamBypassListsAreManaged),
                 ("Профиль R.E.P.O. исключает Photon и Steam P2P из обхода", RepoProfileExcludesPhotonPorts),
-                ("Photon: список регионов и маршрут через обход переключаются", PhotonRegionsAndRouting)
+                ("Photon: список регионов и маршрут через обход переключаются", PhotonRegionsAndRouting),
+                ("Игровой режим: порты в обходе и Photon учитывают режим фильтра", GameModePortChecks)
             };
 
             foreach (var check in checks)
@@ -428,11 +429,62 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                     "повторный Ensure продублировал записи в ipset-exclude-user.txt");
 
                 // Если диапазон присутствует в ipset-all и не исключён — обход трогает игру.
+                Directory.CreateDirectory(System.IO.Path.Combine(engine, "utils"));
+                System.IO.File.WriteAllText(System.IO.Path.Combine(engine, "utils", "game_filter.enabled"), "tcp");
                 System.IO.File.WriteAllLines(System.IO.Path.Combine(engine, "lists", "ipset-all.txt"),
                     new[] { "216.120.180.0/23" });
                 System.IO.File.WriteAllLines(ipsetExclude, new[] { "203.0.113.113/32" });
                 Assert(PhotonRegions.BypassTouchesPhoton(settings),
                     "обход должен считаться вмешивающимся, пока Photon не исключён");
+                PhotonRegions.Ensure(settings);
+                Assert(!PhotonRegions.BypassTouchesPhoton(settings), "после Ensure обход не должен трогать Photon");
+            }
+            finally
+            {
+                try { System.IO.Directory.Delete(engine, true); } catch { }
+            }
+        }
+
+        /// <summary>v2.2.8: «порты в обходе» и «обход трогает Photon» должны учитывать режим фильтра,
+        /// иначе интерфейс писал «всё хорошо», пока игровой UDP реально обрабатывался обходом.</summary>
+        private static void GameModePortChecks()
+        {
+            var engine = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "zg-mode-" + Guid.NewGuid().ToString("N"));
+            System.IO.Directory.CreateDirectory(System.IO.Path.Combine(engine, "utils"));
+            System.IO.Directory.CreateDirectory(System.IO.Path.Combine(engine, "lists"));
+            try
+            {
+                var settings = new AppSettings { EnginePath = engine, GameFilterProfileId = "repo" };
+
+                // Режим выключен — обход не трогает порты игр вообще.
+                System.IO.File.Delete(System.IO.Path.Combine(engine, "utils", "game_filter.enabled"));
+                Assert(!PhotonRegions.PortsTouchedByBypass(settings), "при выключенном фильтре игровые порты не должны быть в обходе");
+
+                // «Только TCP» + профиль «R.E.P.O.» — TCP-диапазон не содержит портов Photon.
+                System.IO.File.WriteAllText(System.IO.Path.Combine(engine, "utils", "game_filter.enabled"), "tcp");
+                Assert(!PhotonRegions.PortsTouchedByBypass(settings), "профиль R.E.P.O. в режиме «только TCP» не должен трогать порты игры");
+
+                // Профиль по умолчанию в «Только TCP» — 9090 в обходе.
+                settings.GameFilterProfileId = "all_broad";
+                Assert(PhotonRegions.PortsTouchedByBypass(settings), "широкий профиль в режиме «только TCP» трогает порты Photon");
+
+                // «Только UDP» + профиль R.E.P.O. — UDP не содержит 9090.
+                System.IO.File.WriteAllText(System.IO.Path.Combine(engine, "utils", "game_filter.enabled"), "udp");
+                settings.GameFilterProfileId = "repo";
+                Assert(!PhotonRegions.PortsTouchedByBypass(settings), "профиль R.E.P.O. в режиме «только UDP» не должен трогать порты игры");
+
+                settings.GameFilterProfileId = "all_broad";
+                Assert(PhotonRegions.PortsTouchedByBypass(settings), "широкий профиль в режиме «только UDP» трогает игровой UDP");
+
+                // BypassTouchesPhoton: диапазон в ipset есть, но при «только UDP» TCP Photon не важен.
+                System.IO.File.WriteAllText(System.IO.Path.Combine(engine, "lists", "ipset-exclude-user.txt"), "203.0.113.113/32");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(engine, "lists", "ipset-all.txt"), "216.120.180.0/23");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(engine, "utils", "game_filter.enabled"), "udp");
+                Assert(!PhotonRegions.BypassTouchesPhoton(settings), "в режиме «только UDP» TCP-адреса Photon не обрабатываются");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(engine, "utils", "game_filter.enabled"), "tcp");
+                Assert(PhotonRegions.BypassTouchesPhoton(settings), "в режиме «только TCP» адреса Photon попадают под обход");
+
+                // После Ensure — не трогает.
                 PhotonRegions.Ensure(settings);
                 Assert(!PhotonRegions.BypassTouchesPhoton(settings), "после Ensure обход не должен трогать Photon");
             }

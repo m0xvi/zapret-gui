@@ -842,8 +842,14 @@ namespace ZapretGui.ViewModels
                 }, "game-mode", mode == GameFilterMode.Disabled ? "Muted" : "Success",
                     "Что пропускать без обхода — «Игровой режим»");
 
-                Add("Порты в обходе (TCP)", profile.TcpPorts, "game-mode", "Muted", "Профиль портов: " + profile.Name);
-                Add("Порты в обходе (UDP)", profile.UdpPorts, "game-mode", "Muted", "Профиль портов: " + profile.Name);
+                // Показываем то, что реально уходит в winws, а не «сырой» профиль: в режиме «только TCP»
+                // UDP-диапазон не используется вовсе, и это главное различие для игр вроде R.E.P.O.
+                var tcpPorts = GameFilterPortConfig.ResolveTcpPortString(mode, Settings.GameFilterProfileId, Settings.CustomGameFilterTcpPorts);
+                var udpPorts = GameFilterPortConfig.ResolveUdpPortString(mode, Settings.GameFilterProfileId, Settings.CustomGameFilterUdpPorts);
+                Add("Порты в обходе (TCP)", tcpPorts == "12" ? "не трогаются (режим без TCP)" : tcpPorts,
+                    "game-mode", "Muted", "Профиль портов: " + profile.Name);
+                Add("Порты в обходе (UDP)", udpPorts == "12" ? "не трогаются (игровой UDP пропускается)" : udpPorts,
+                    "game-mode", "Muted", "Профиль портов: " + profile.Name);
                 if (!string.IsNullOrWhiteSpace(profile.ExcludedPorts))
                     Add("Исключены из обхода", profile.ExcludedPorts, "game-mode", "Muted",
                         "Эти порты обход не трогает");
@@ -854,6 +860,10 @@ namespace ZapretGui.ViewModels
                     "game-mode",
                     PhotonRegions.BypassTouchesPhoton(Settings) ? "Danger" : "Success",
                     "Проверка регионов и кнопка «Починить» — в «Игровом режиме»");
+
+                Add("Игровой режим (тумблер)", Settings.GameModeActive ? "включён — UDP игр напрямую" : "выключен",
+                    "game-mode", Settings.GameModeActive ? "Warning" : "Muted",
+                    "Тумблер в «Игровом режиме»; для R.E.P.O. его лучше не включать");
 
                 Add("Steam", Settings.SteamBypassEnabled ? "магазин через обход" : "напрямую", "game-mode", "Muted",
                     "Переключатель — в «Игровом режиме»");
@@ -992,6 +1002,17 @@ namespace ZapretGui.ViewModels
             MiniOverlay.Refresh();
             Home.RefreshGamingStatus();
             Raise(nameof(GameModeSummaryText));
+            GameMode?.NotifyGameModeChanged();
+
+            // Тумблер меняет режим игрового фильтра, то есть аргументы winws. Без перезапуска
+            // переключение оставалось только в настройках и «не работало» (v2.2.8).
+            if (Bypass.GetStatus().IsRunning)
+            {
+                _ = RestartBypassAsync().ContinueWith(t =>
+                {
+                    if (t.IsFaulted) AppLog.Warn("[GUI] Перезапуск после смены игрового режима не удался: " + t.Exception?.GetBaseException().Message);
+                }, TaskContinuationOptions.OnlyOnFaulted);
+            }
         }
 
         public void ToggleMiniOverlay()
