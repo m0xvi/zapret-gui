@@ -122,6 +122,48 @@ namespace ZapretGui.Core
             AppLog.Info($"[Photon] Диапазоны Photon исключены из ipset-фильтра: {string.Join(", ", missing)}");
         }
 
+        /// <summary>Попадают ли порты игры в обход при выбранном профиле и режиме фильтра.</summary>
+        public static bool PortsTouchedByBypass(AppSettings? settings)
+        {
+            if (settings == null) return false;
+            var mode = EngineService.GetGameFilterMode(settings.EnginePath);
+            if (mode == GameFilterMode.Disabled) return false;
+            var tcp = GameFilterPortConfig.ResolveTcpPortString(mode, settings.GameFilterProfileId, settings.CustomGameFilterTcpPorts);
+            var udp = GameFilterPortConfig.ResolveUdpPortString(mode, settings.GameFilterProfileId, settings.CustomGameFilterUdpPorts);
+            // Профиль считается безопасным, если ни один игровой порт Photon не попал ни в TCP-, ни в UDP-диапазон.
+            foreach (var range in GamePorts)
+            {
+                var (from, to) = ParseRange(range);
+                for (var port = from; port <= to; port++)
+                {
+                    if (mode is GameFilterMode.TcpAndUdp or GameFilterMode.TcpOnly && PortInRanges(tcp, port)) return true;
+                    if (mode is GameFilterMode.TcpAndUdp or GameFilterMode.UdpOnly && PortInRanges(udp, port)) return true;
+                }
+            }
+            return false;
+        }
+
+        private static (int From, int To) ParseRange(string range)
+        {
+            var parts = range.Split('-');
+            var from = int.TryParse(parts[0], out var a) ? a : 0;
+            var to = parts.Length > 1 && int.TryParse(parts[1], out var b) ? b : from;
+            return (from, to);
+        }
+
+        private static bool PortInRanges(string ranges, int port)
+        {
+            if (string.IsNullOrWhiteSpace(ranges)) return false;
+            foreach (var part in ranges.Split(','))
+            {
+                var item = part.Trim();
+                if (item.Length == 0) continue;
+                var (from, to) = ParseRange(item);
+                if (port >= from && port <= to) return true;
+            }
+            return false;
+        }
+
         /// <summary>Проверяет, попадают ли адреса Photon в ipset обхода и исключены ли они.</summary>
         public static bool IpRangesExcluded(AppSettings? settings)
         {
@@ -149,19 +191,40 @@ namespace ZapretGui.Core
             catch { return false; }
         }
 
-        /// <summary>Короткая строка состояния для интерфейса.</summary>
+        /// <summary>Короткая строка состояния для интерфейса: сначала про порты, потом про адреса Photon.</summary>
         public static string DescribeCoverage(AppSettings? settings)
         {
-            if (IpRangesExcluded(settings))
-                return "Адреса Photon исключены из обхода (216.120.180.0/23) — игра не должна ловить clienttimeout.";
-            if (PhotonRangePresentInIpset(settings))
-                return "⚠ Адреса Photon есть в ipset обхода и НЕ исключены — обход может ломать игру. Нажмите «Починить».";
-            return "Списки движка не найдены — исключения Photon появятся после установки движка.";
+            if (settings == null) return "Настройки недоступны.";
+            if (!IpRangesExcluded(settings))
+            {
+                if (PhotonRangePresentInIpset(settings))
+                    return "⚠ Адреса Photon есть в ipset обхода и НЕ исключены — обход может ломать игру. Нажмите «Настроить R.E.P.O.».";
+                return "Списки движка не найдены — исключения Photon появятся после установки движка.";
+            }
+
+            var mode = EngineService.GetGameFilterMode(settings.EnginePath);
+            if (PortsTouchedByBypass(settings))
+                return "⚠ Порты R.E.P.O. (4530-4533, 5055-5058, 9090-9093, 27015-27200) сейчас в обходе — " +
+                       "выберите профиль «R.E.P.O.» или режим без UDP/без TCP.";
+            if (mode == GameFilterMode.Disabled)
+                return "Обход не трогает порты игр, адреса Photon исключены из ipset — R.E.P.O. идёт напрямую.";
+            return "Адреса Photon исключены из обхода (216.120.180.0/23), игровые порты не в обходе — игра не должна ловить clienttimeout.";
         }
 
-        /// <summary>Проверяет, трогает ли обход трафик Photon прямо сейчас.</summary>
+        /// <summary>
+        /// Трогает ли обход трафик Photon прямо сейчас.
+        ///
+        /// Раньше проверялось только «диапазон есть в ipset-all и не исключён». Этого мало: при
+        /// игровом режиме «Только TCP» обход работает по TCP-блокам, а адреса Photon из ipset
+        /// как раз под них и попадают. Поэтому учитываем режим фильтра: при «Только UDP» TCP
+        /// Photon не важен, при «TCP + UDP» и «Только TCP» — важен.
+        /// </summary>
         public static bool BypassTouchesPhoton(AppSettings? settings)
-            => PhotonRangePresentInIpset(settings) && !IpRangesExcluded(settings);
+        {
+            if (settings == null || !PhotonRangePresentInIpset(settings) || IpRangesExcluded(settings)) return false;
+            var mode = EngineService.GetGameFilterMode(settings.EnginePath);
+            return mode is GameFilterMode.TcpAndUdp or GameFilterMode.TcpOnly;
+        }
 
         /// <summary>Меряет время TCP-подключения к узлам Photon (3 попытки, берём лучшее).</summary>
         public static async Task<List<PhotonRegionResult>> CheckAsync(CancellationToken ct = default)
