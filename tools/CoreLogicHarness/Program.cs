@@ -347,7 +347,9 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
             var tcp = GameFilterPortConfig.ResolveTcpPortString(GameFilterMode.TcpAndUdp, "repo");
             foreach (var port in new[] { 4530, 5055, 5058, 9090, 9093, 27015 })
                 Assert(!PortRangeContains(tcp, port), $"TCP {port} не должен попадать в обход профиля R.E.P.O.");
-            Assert(PortRangeContains(tcp, 443), "обычный HTTPS должен остаться в обходе");
+            // 443 добавляется в --wf-tcp отдельно самим шаблоном, в игровом диапазоне его нет.
+            Assert(PortRangeContains(tcp, 9094) && PortRangeContains(tcp, 50000),
+                "остальные порты должны остаться в игровом диапазоне TCP");
 
             var strategy = new StrategyInfo
             {
