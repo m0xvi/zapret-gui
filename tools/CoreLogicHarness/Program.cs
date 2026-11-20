@@ -342,6 +342,13 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
 
             Assert(PortRangeContains(udp, 50000), "голос Discord (50000-65535) должен остаться в обходе");
 
+            // v2.2.7: порты Photon исключаются и по TCP — иначе блок
+            // «--filter-tcp=… --ipset=ipset-all.txt --dpi-desync-any-protocol=1» ломает игру.
+            var tcp = GameFilterPortConfig.ResolveTcpPortString(GameFilterMode.TcpAndUdp, "repo");
+            foreach (var port in new[] { 4530, 5055, 5058, 9090, 9093, 27015 })
+                Assert(!PortRangeContains(tcp, port), $"TCP {port} не должен попадать в обход профиля R.E.P.O.");
+            Assert(PortRangeContains(tcp, 443), "обычный HTTPS должен остаться в обходе");
+
             var strategy = new StrategyInfo
             {
                 Name = "repo",
@@ -364,6 +371,10 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
             Assert(PhotonRegions.Regions.Any(r => r.Name == "Европа" && r.Host == "ns-eu.photonengine.io"),
                 "Европа должна опрашиваться через ns-eu.photonengine.io");
             Assert(PhotonRegions.Regions.Any(r => r.Host == "ns-us.photonengine.io"), "US East отсутствует в списке регионов");
+            // v2.2.7: в списке только реально существующие узлы (остальные давали «узел не найден»).
+            Assert(PhotonRegions.Regions.All(r => r.Host is "ns-eu.photonengine.io" or "ns-us.photonengine.io"
+                    or "ns-usw.photonengine.io" or "ns-jp.photonengine.io" or "ns.photonengine.io"),
+                "в списке регионов остались несуществующие узлы Photon");
             Assert(PhotonRegions.BypassHosts.Contains("photonengine.io"), "в списке доменов Photon нет photonengine.io");
             Assert(PhotonRegions.GamePorts.Contains("5055-5058"), "игровые порты Photon не помечены как исключаемые");
 
@@ -389,20 +400,39 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
             try
             {
                 var settings = new AppSettings { EnginePath = engine, PhotonThroughBypass = true };
-                var (ok, message) = PhotonRegions.ApplyRouting(settings);
+                var (ok, message) = PhotonRegions.Ensure(settings);
                 Assert(ok, "маршрут через обход не применился: " + message);
                 var generalUser = System.IO.Path.Combine(engine, "lists", "list-general-user.txt");
                 var excludeUser = System.IO.Path.Combine(engine, "lists", "list-exclude-user.txt");
+                var ipsetExclude = System.IO.Path.Combine(engine, "lists", "ipset-exclude-user.txt");
                 Assert(System.IO.File.ReadAllText(generalUser).Contains("photonengine.io"), "Photon не попал в список обхода");
                 Assert(!System.IO.File.ReadAllText(excludeUser).Contains("photonengine.io"),
                     "Photon не должен быть в исключениях при маршруте через обход");
 
                 settings.PhotonThroughBypass = false;
-                PhotonRegions.ApplyRouting(settings);
+                PhotonRegions.Ensure(settings);
                 Assert(!System.IO.File.ReadAllText(generalUser).Contains("photonengine.io"),
                     "при маршруте напрямую Photon должен уйти из списка обхода");
                 Assert(System.IO.File.ReadAllText(excludeUser).Contains("photonengine.io"),
                     "при маршруте напрямую Photon должен быть в исключениях");
+
+                // v2.2.7: главное — адреса Photon не должны попадать в ipset обхода.
+                Assert(PhotonRegions.IpRangesExcluded(settings), "диапазоны Photon не исключены из ipset");
+                Assert(System.IO.File.ReadAllText(ipsetExclude).Contains("216.120.180.0/23"),
+                    "216.120.180.0/23 отсутствует в ipset-exclude-user.txt");
+                var lines = System.IO.File.ReadAllLines(ipsetExclude);
+                PhotonRegions.Ensure(settings);
+                Assert(System.IO.File.ReadAllLines(ipsetExclude).Length == lines.Length,
+                    "повторный Ensure продублировал записи в ipset-exclude-user.txt");
+
+                // Если диапазон присутствует в ipset-all и не исключён — обход трогает игру.
+                System.IO.File.WriteAllLines(System.IO.Path.Combine(engine, "lists", "ipset-all.txt"),
+                    new[] { "216.120.180.0/23" });
+                System.IO.File.WriteAllLines(ipsetExclude, new[] { "203.0.113.113/32" });
+                Assert(PhotonRegions.BypassTouchesPhoton(settings),
+                    "обход должен считаться вмешивающимся, пока Photon не исключён");
+                PhotonRegions.Ensure(settings);
+                Assert(!PhotonRegions.BypassTouchesPhoton(settings), "после Ensure обход не должен трогать Photon");
             }
             finally
             {

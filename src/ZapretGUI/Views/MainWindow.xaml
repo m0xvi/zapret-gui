@@ -86,6 +86,9 @@
 
             <WrapPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center" Margin="0,0,8,0"
                         shell:WindowChrome.IsHitTestVisibleInChrome="True">
+                <Button Style="{StaticResource IconButton}" Content="&#xE8A0;"
+                        Command="{Binding ToggleSummarySheetCommand}" ToolTip="{Binding SummarySheetToggleTooltip}"
+                        AutomationProperties.Name="Сводка параметров" />
                 <Button Style="{StaticResource IconButton}" Content="&#xE793;"
                         Command="{Binding ToggleThemeCommand}" ToolTip="Переключить тему (системная → тёмная → светлая)"
                         AutomationProperties.Name="Переключить тему" />
@@ -425,5 +428,79 @@
                 </StackPanel>
             </Border>
         </Grid>
+
+        <!-- ======================= ВЫДВИЖНАЯ СВОДКА ПАРАМЕТРОВ (v2.2.7) ======================= -->
+        <!-- Панель висит поверх контента справа, выезжает анимацией из-за края (см. MainWindow.xaml.cs).
+             Каждая строка — ссылка: клик ведёт на страницу, где этот параметр меняется. -->
+        <Border x:Name="SummaryPanel" Grid.RowSpan="3" HorizontalAlignment="Right" Width="370"
+                Margin="0,46,0,0" Visibility="Collapsed" Opacity="0"
+                Background="{DynamicResource CardBrush}" BorderBrush="{DynamicResource BorderBrush}"
+                BorderThickness="1,0,0,0" Panel.ZIndex="40">
+            <Border.RenderTransform>
+                <TranslateTransform x:Name="SummarySlide" X="370" />
+            </Border.RenderTransform>
+            <Border.Effect>
+                <DropShadowEffect BlurRadius="18" ShadowDepth="0" Opacity="0.35" Color="Black" />
+            </Border.Effect>
+            <Grid Margin="16,14,16,12">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+
+                <Grid Grid.Row="0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="ТЕКУЩИЕ ПАРАМЕТРЫ" />
+                        <TextBlock Style="{StaticResource DimText}" FontSize="11" Margin="0,2,0,0"
+                                   Text="Нажмите на значение, чтобы перейти и изменить." />
+                    </StackPanel>
+                    <Button Grid.Column="1" Style="{StaticResource GhostButton}" Content="✕" Padding="7,2"
+                            VerticalAlignment="Top" Command="{Binding ToggleSummarySheetCommand}"
+                            ToolTip="Свернуть сводку" />
+                </Grid>
+
+                <ScrollViewer Grid.Row="1" Style="{StaticResource PageScroll}" Margin="0,10,0,0"
+                              VerticalScrollBarVisibility="Auto">
+                    <ItemsControl ItemsSource="{Binding SummaryParameters}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border BorderThickness="0,0,0,1" BorderBrush="{DynamicResource BorderBrush}"
+                                        Padding="0,6" ToolTip="{Binding Hint}">
+                                    <StackPanel>
+                                        <TextBlock Style="{StaticResource DimText}" FontSize="10.5" Text="{Binding Label}" />
+                                        <Button Style="{StaticResource LinkButton}" HorizontalAlignment="Left"
+                                                Padding="0,1" Content="{Binding Value}"
+                                                Command="{Binding DataContext.OpenSummaryParameterCommand,
+                                                          RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}"
+                                                Foreground="{Binding SeverityKey, Converter={StaticResource SeverityBrush}}"
+                                                ToolTip="{Binding Hint}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <StackPanel Grid.Row="2" Margin="0,10,0,0">
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap"
+                               Text="{Binding SummaryRestartText}"
+                               Visibility="{Binding SummaryRestartTextVisible, Converter={StaticResource BoolToVis}}" />
+                    <Button Style="{StaticResource PrimaryButton}" Content="Перезапустить обход" Margin="0,8,0,0"
+                            HorizontalAlignment="Stretch" Command="{Binding SummaryRestartBypassCommand}"
+                            ToolTip="{Binding SummaryRestartHint}" />
+                    <TextBlock Style="{StaticResource DimText}" FontSize="10.5" Opacity="0.85" TextWrapping="Wrap"
+                               Margin="0,5,0,0" Text="{Binding SummaryRestartHint}" />
+                    <Button Style="{StaticResource GhostButton}" Content="Проверить ресурсы" Margin="0,6,0,0"
+                            HorizontalAlignment="Stretch" Command="{Binding SummaryCheckCommand}"
+                            ToolTip="Быстрая проверка YouTube, Discord, Steam и GitHub с показом причины отказа" />
+                </StackPanel>
+            </Grid>
+        </Border>
     </Grid>
 </Window>

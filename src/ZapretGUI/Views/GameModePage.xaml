@@ -18,10 +18,13 @@
             <StackPanel Grid.Column="0" Margin="0,0,12,0">
                 <TextBlock Style="{StaticResource DisplayText}" Text="Игровой режим" />
                 <TextBlock Style="{StaticResource MutedText}" Margin="0,2,0,0"
-                           Text="Профиль портов и игры, для которых обход не трогает UDP." />
+                           Text="Профиль портов и игры, трафик которых обход не трогает." />
             </StackPanel>
             <WrapPanel Grid.Column="1" Style="{StaticResource PageActions}">
-                <Button Style="{StaticResource PageActionGhost}" Content="Обновить" Command="{Binding RefreshCommand}"
+                <Button Style="{StaticResource PageActionPrimary}" Content="Перезапустить обход"
+                        Command="{Binding RestartBypassCommand}"
+                        ToolTip="{Binding RestartBypassHint}" />
+                <Button Style="{StaticResource PageActionGhost}" Content="Обновить" Margin="8,0,0,0" Command="{Binding RefreshCommand}"
                         ToolTip="Перечитать профили и состояние игрового фильтра" />
             </WrapPanel>
         </Grid>
@@ -158,6 +161,17 @@
                     <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Margin="0,6,0,0" FontWeight="SemiBold"
                                Text="{Binding RepoStateText}"
                                Foreground="{Binding RepoStateKey, Converter={StaticResource SeverityBrush}}"/>
+                    <TextBlock Style="{StaticResource DimText}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
+                               Text="{Binding PhotonCoverageText}"
+                               Foreground="{Binding PhotonCoverageKey, Converter={StaticResource SeverityBrush}}"/>
+                    <WrapPanel Margin="0,8,0,0">
+                        <Button Style="{StaticResource PageAction}" Content="Починить R.E.P.O."
+                                Command="{Binding FixPhotonCommand}"
+                                ToolTip="Исключить адреса Photon (216.120.180.0/23) из ipset обхода, отключить обход Photon и перезапустить обход"/>
+                        <Button Style="{StaticResource PageActionGhost}" Content="Перезапустить обход" Margin="8,0,0,0"
+                                Command="{Binding RestartBypassCommand}"
+                                ToolTip="{Binding RestartBypassHint}"/>
+                    </WrapPanel>
                     <Grid Margin="0,10,0,0">
                         <Grid.ColumnDefinitions>
                             <ColumnDefinition Width="Auto"/>
@@ -186,9 +200,9 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <CheckBox Style="{StaticResource SwitchCheckBox}" Margin="0,12,0,0"
-                              Content="Вести трафик Photon через обход"
+                              Content="Вести трафик Photon через обход (обычно не нужно)"
                               IsChecked="{Binding PhotonThroughBypass, Mode=TwoWay}"
-                              ToolTip="Если провайдер режет TLS до узлов Photon: включите и перезапустите обход. Игровой UDP Photon всегда идёт напрямую."/>
+                              ToolTip="Включайте только если без обхода не открываются сайты photonengine.io. Для R.E.P.O. это чаще вредит: игра начинает таймаутить."/>
                     <TextBlock Style="{StaticResource DimText}" FontSize="11" Opacity="0.85" TextWrapping="Wrap" Margin="0,6,0,0"
                                Text="{Binding PhotonRoutingStatus}" Visibility="{Binding PhotonRoutingStatus, Converter={StaticResource StringToVis}}"/>
                 </StackPanel>

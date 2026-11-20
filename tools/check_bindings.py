@@ -57,7 +57,7 @@ ITEM_TYPES = {
     "MonitoringPage": ["MonitorTarget", "ResourceProbeResult"],
     "LogsPage": ["LogEntry"],
     "SettingsPage": ["MetricHostOption"],
-    "MainWindow": ["NavItem"],
+    "MainWindow": ["NavItem", "SummaryParameter"],
 }
 
 # Типы, для которых второй сегмент не проверяем
