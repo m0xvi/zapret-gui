@@ -157,6 +157,8 @@ namespace ZapretGui
                         StrategyParser.EnsureUserLists(settings.EnginePath);
                         // v2.2.5: списки Steam для магазина/сообщества (загрузки остаются напрямую).
                         try { SteamBypass.Ensure(settings); } catch (Exception ex) { AppLog.Warn("[Steam] " + ex.Message); }
+                        // v2.2.7: адреса Photon (R.E.P.O.) исключаются из ipset обхода — иначе clienttimeout.
+                        try { PhotonRegions.Ensure(settings); } catch (Exception ex) { AppLog.Warn("[Photon] " + ex.Message); }
                         // Автозапуск обхода и службы вместе с программой (по просьбе пользователя)
                         if (settings.AutoStartBypass && !settings.SafeMode && !viewModel.Bypass.GetStatus().IsRunning)
                         {

@@ -10,6 +10,17 @@ using ZapretGui.Core;
 
 namespace ZapretGui.ViewModels
 {
+    /// <summary>Строка выдвижной сводки: подпись, значение и страница, куда ведёт клик.</summary>
+    public sealed class SummaryParameter
+    {
+        public string Label { get; init; } = "";
+        public string Value { get; init; } = "";
+        public string Key { get; init; } = "";
+        public string SeverityKey { get; init; } = "Muted";
+        public string Hint { get; init; } = "";
+        public bool HasValue => !string.IsNullOrWhiteSpace(Value);
+    }
+
     public sealed class NavItem
     {
         public string Key { get; init; } = "";
@@ -211,6 +222,18 @@ namespace ZapretGui.ViewModels
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RefreshAllCommand = new RelayCommand(RefreshAll);
             ToggleSummarySheetCommand = new RelayCommand(ToggleSummarySheet);
+            OpenSummaryParameterCommand = new RelayCommand(p =>
+            {
+                if (p is not SummaryParameter parameter || string.IsNullOrWhiteSpace(parameter.Key)) return;
+                Navigate(parameter.Key);
+                IsSummarySheetExpanded = false;
+            });
+            SummaryRestartBypassCommand = new AsyncRelayCommand(RestartBypassAsync, () => !IsRestartingBypass);
+            SummaryCheckCommand = new RelayCommand(() =>
+            {
+                Navigate("home");
+                Home.TestConnectionCommand.Execute(null);
+            });
             NavigateUpdatesCommand = new RelayCommand(() => Navigate("updates"));
             NavigateHomeCommand = new RelayCommand(() => Navigate("home"));
             NavigateDiagnosticsCommand = new RelayCommand(() => { Diagnostics.SelectedSubTab = 0; Navigate("diagnostics"); });
@@ -681,6 +704,7 @@ namespace ZapretGui.ViewModels
                 Profiles.RefreshNetwork();
                 RefreshReadiness();
                 MiniOverlay.Refresh();
+                if (IsSummarySheetExpanded) RefreshSummaryParameters();
             }
             catch { }
         }
@@ -696,6 +720,183 @@ namespace ZapretGui.ViewModels
         private void ToggleSummarySheet()
         {
             IsSummarySheetExpanded = !IsSummarySheetExpanded;
+            if (IsSummarySheetExpanded) RefreshSummaryParameters();
+        }
+
+        // ------------------------------------------------------------------ выдвижная сводка (v2.2.7)
+
+        public ObservableCollection<SummaryParameter> SummaryParameters { get; } = new();
+        public ICommand OpenSummaryParameterCommand { get; }
+        public ICommand SummaryRestartBypassCommand { get; }
+        public ICommand SummaryCheckCommand { get; }
+        public AsyncRelayCommand? SummaryRestartCommand => SummaryRestartBypassCommand as AsyncRelayCommand;
+
+        private bool _isRestartingBypass;
+        public bool IsRestartingBypass
+        {
+            get => _isRestartingBypass;
+            private set
+            {
+                if (Set(ref _isRestartingBypass, value))
+                {
+                    SummaryRestartCommand?.RaiseCanExecuteChanged();
+                    Raise(nameof(SummaryRestartHint));
+                    Raise(nameof(SummaryRestartText));
+                }
+            }
+        }
+
+        private string _summaryRestartText = "";
+        /// <summary>Результат последнего перезапуска — виден прямо в панели.</summary>
+        public string SummaryRestartText
+        {
+            get => _summaryRestartText;
+            private set { if (Set(ref _summaryRestartText, value)) Raise(nameof(SummaryRestartTextVisible)); }
+        }
+        public bool SummaryRestartTextVisible => !string.IsNullOrWhiteSpace(_summaryRestartText);
+
+        /// <summary>Почему кнопка «Перезапустить обход» сейчас недоступна — всегда написано.</summary>
+        public string SummaryRestartHint
+        {
+            get
+            {
+                if (IsRestartingBypass) return "Перезапускаю обход…";
+                var status = Bypass.GetStatus();
+                if (!status.IsRunning) return "Обход выключен — включите его на «Обзоре»";
+                if (!Shell.IsAdmin()) return "Нужны права администратора";
+                if ((Strategies.Find(Settings.SelectedStrategy) ?? Strategies.Recommended) == null) return "Не выбрана стратегия";
+                return "Применить текущие параметры к работающему обходу";
+            }
+        }
+
+        /// <summary>Перезапуск обхода с текущими параметрами: службу пересобираем, процесс перезапускаем.</summary>
+        public async Task<OperationResult> RestartBypassAsync()
+        {
+            var status = Bypass.GetStatus();
+            if (!status.IsRunning)
+                return OperationResult.Fail("Обход выключен — включите его на «Обзоре».");
+            if (!Shell.IsAdmin())
+                return OperationResult.Fail("Для перезапуска обхода нужны права администратора.");
+            var strategy = Strategies.Find(Settings.SelectedStrategy) ?? Strategies.Recommended;
+            if (strategy == null)
+                return OperationResult.Fail("Не выбрана стратегия — откройте «Стратегии».");
+
+            IsRestartingBypass = true;
+            SummaryRestartText = "Перезапускаю обход…";
+            try
+            {
+                var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+                var result = status.ServiceState == ServiceState.Running
+                    ? await Bypass.InstallServiceAsync(strategy, mode)
+                    : await Bypass.SwitchToStrategyAsync(strategy, mode, Settings.ShowWinwsConsole);
+                SummaryRestartText = result.Message;
+                AppLog.Info($"[GUI] Перезапуск обхода из сводки: {result.Message}");
+                return result;
+            }
+            catch (Exception ex)
+            {
+                SummaryRestartText = "Не удалось перезапустить обход: " + ex.Message;
+                return OperationResult.Fail(SummaryRestartText);
+            }
+            finally
+            {
+                IsRestartingBypass = false;
+                Home.RefreshStatus();
+                RefreshSummaryParameters();
+            }
+        }
+
+        /// <summary>Собирает живые параметры: порты, протоколы, DNS, Photon, Steam, QUIC, списки.</summary>
+        public void RefreshSummaryParameters()
+        {
+            try
+            {
+                SummaryParameters.Clear();
+
+                var status = Bypass.GetStatus();
+                Add("Обход", status.StateText, "home", status.IsRunning ? "Success" : "Muted",
+                    "Включение и выключение — в «Обзоре»");
+
+                var strategy = Strategies.Find(Settings.SelectedStrategy) ?? Strategies.Recommended;
+                Add("Стратегия", strategy?.Name ?? "не выбрана", "strategies",
+                    strategy == null ? "Warning" : "Muted", "Выбрать другую стратегию");
+
+                var serviceState = status.ServiceState;
+                Add("Служба Windows", serviceState switch
+                {
+                    ServiceState.Running => "работает",
+                    ServiceState.Stopped => "остановлена",
+                    ServiceState.NotInstalled => "не установлена",
+                    _ => serviceState.ToString()
+                }, "home", serviceState == ServiceState.Running ? "Success" : "Muted",
+                    "Служба, автозапуск и удаление — на «Обзоре»");
+
+                var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+                var profile = GameFilterPortConfig.GetProfileById(Settings.GameFilterProfileId);
+                Add("Игровой фильтр", mode switch
+                {
+                    GameFilterMode.TcpAndUdp => "TCP + UDP",
+                    GameFilterMode.TcpOnly => "только TCP",
+                    GameFilterMode.UdpOnly => "только UDP",
+                    _ => "выключен"
+                }, "game-mode", mode == GameFilterMode.Disabled ? "Muted" : "Success",
+                    "Что пропускать без обхода — «Игровой режим»");
+
+                Add("Порты в обходе (TCP)", profile.TcpPorts, "game-mode", "Muted", "Профиль портов: " + profile.Name);
+                Add("Порты в обходе (UDP)", profile.UdpPorts, "game-mode", "Muted", "Профиль портов: " + profile.Name);
+                if (!string.IsNullOrWhiteSpace(profile.ExcludedPorts))
+                    Add("Исключены из обхода", profile.ExcludedPorts, "game-mode", "Muted",
+                        "Эти порты обход не трогает");
+
+                Add("R.E.P.O. / Photon", PhotonRegions.BypassTouchesPhoton(Settings)
+                        ? "обход трогает Photon — возможен clienttimeout"
+                        : PhotonRegions.IpRangesExcluded(Settings) ? "исключён из обхода" : "без изменений",
+                    "game-mode",
+                    PhotonRegions.BypassTouchesPhoton(Settings) ? "Danger" : "Success",
+                    "Проверка регионов и кнопка «Починить» — в «Игровом режиме»");
+
+                Add("Steam", Settings.SteamBypassEnabled ? "магазин через обход" : "напрямую", "game-mode", "Muted",
+                    "Переключатель — в «Игровом режиме»");
+
+                Add("QUIC (HTTP/3)", Settings.DisableQuicFake ? "не подделывается" : "подделывается", "game-mode", "Muted",
+                    "Если страницы грузятся долго — попробуйте выключить");
+
+                Add("DNS", DnsManagementService.GetCurrentDnsSummary(), "user-lists", "Muted",
+                    "Смена DNS — «Списки» → «Безопасный DNS»");
+
+                Add("Списки доменов", DescribeLists(), "user-lists", "Muted", "Редактор списков и hosts");
+
+                Add("Обновления", Updates.HasAnyUpdate ? "есть обновление" : "актуально", "updates",
+                    Updates.HasAnyUpdate ? "Warning" : "Success", "Проверить и установить");
+            }
+            catch (Exception ex)
+            {
+                AppLog.Warn("[GUI] Не удалось собрать сводку: " + ex.Message);
+            }
+
+            void Add(string label, string value, string key, string severity, string hint)
+                => SummaryParameters.Add(new SummaryParameter
+                {
+                    Label = label, Value = value ?? "", Key = key, SeverityKey = severity, Hint = hint
+                });
+        }
+
+        /// <summary>Короткая статистика пользовательских списков (без чтения ipset-all — он большой).</summary>
+        private string DescribeLists()
+        {
+            try
+            {
+                var lists = System.IO.Path.Combine(Settings.EnginePath, "lists");
+                if (!System.IO.Directory.Exists(lists)) return "движок не установлен";
+                var userGeneral = System.IO.Path.Combine(lists, "list-general-user.txt");
+                var cdn = System.IO.Path.Combine(lists, "steam-bypass.txt");
+                var count = System.IO.File.Exists(userGeneral)
+                    ? System.IO.File.ReadLines(userGeneral).Count(l => !string.IsNullOrWhiteSpace(l) && !l.TrimStart().StartsWith("#"))
+                    : 0;
+                var steam = System.IO.File.Exists(cdn) ? " · Steam-список есть" : "";
+                return $"{count} своих доменов{steam}";
+            }
+            catch { return "не удалось прочитать"; }
         }
 
         private void RestartAsAdmin()

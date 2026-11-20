@@ -61,6 +61,8 @@ namespace ZapretGui.ViewModels
             FixSelectedGamesCommand = new AsyncRelayCommand(FixSelectedGamesAsync);
             ApplySteamBypassCommand = new AsyncRelayCommand(ApplySteamBypassAsync);
             CheckPhotonRegionsCommand = new AsyncRelayCommand(CheckPhotonRegionsAsync, () => !IsCheckingPhotonRegions);
+            RestartBypassCommand = new AsyncRelayCommand(RestartBypassAsync, () => !IsRestartingBypass);
+            FixPhotonCommand = new AsyncRelayCommand(FixPhotonAsync, () => !IsRestartingBypass);
             OpenEngineFolderCommand = new RelayCommand(() => Shell.OpenFolder(Settings.EnginePath));
             RefreshCommand = new RelayCommand(Refresh);
             DismissMessageCommand = new RelayCommand(() => { Message = ""; MessageKey = "Info"; });
@@ -69,6 +71,7 @@ namespace ZapretGui.ViewModels
             RefreshGamingStatus();
             RefreshDetectionStatus();
             if (Settings.SteamBypassEnabled) { try { SteamBypass.Ensure(Settings); } catch { } }
+            try { PhotonRegions.Ensure(Settings); } catch { }
             if (_main.GameDetector != null) _main.GameDetector.GameStatusChanged += (_, __) => RefreshDetectionStatus();
         }
 
@@ -82,7 +85,7 @@ namespace ZapretGui.ViewModels
                 new[] { "steampowered.com", "steamcommunity.com", "steamserver.net" }, "steam_cs2", "🎯");
             yield return new GameBypassOption(
                 "repo", "🧩 R.E.P.O. — фикс clienttimeout",
-                "Игра ходит через Photon relay. Профиль исключает UDP Photon (4530-4533, 5055-5058, 9090-9091) и Steam P2P из обхода — меньше clienttimeout и скачков пинга.",
+                "Игра ходит через Photon relay. Профиль исключает порты Photon (4530-4533, 5055-5058, 9090-9093) по TCP и UDP и Steam P2P — обход не трогает трафик игры.",
                 Array.Empty<string>(), "repo", "🧩");
             yield return new GameBypassOption(
                 "phasmophobia", "👻 Phasmophobia", "Steam P2P 27015-27200 + Photon (4530,5055). EU требует исключения — включи галочку и профиль «Phasmophobia».",
@@ -151,6 +154,81 @@ namespace ZapretGui.ViewModels
         }
         public string[] GameFilterOptions { get; } = { "Выключен (не трогать игры)", "TCP + UDP (максимум обхода)", "Только TCP", "Только UDP" };
 
+        // ---- Перезапуск обхода со страницы (v2.2.7) ----
+        private bool _isRestartingBypass;
+        public bool IsRestartingBypass
+        {
+            get => _isRestartingBypass;
+            private set
+            {
+                if (Set(ref _isRestartingBypass, value))
+                {
+                    (RestartBypassCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (FixPhotonCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    Raise(nameof(RestartBypassHint));
+                    Raise(nameof(RestartBypassVisible));
+                }
+            }
+        }
+
+        /// <summary>Кнопка «Перезапустить обход» доступна только когда есть что перезапускать,
+        /// а причина недоступности всегда написана рядом (требование: мёртвых кнопок нет).</summary>
+        public bool RestartBypassVisible => true;
+        public string RestartBypassHint
+        {
+            get
+            {
+                if (IsRestartingBypass) return "Перезапускаю обход…";
+                if (!Shell.IsAdmin()) return "Нужны права администратора";
+                if (!_main.Bypass.GetStatus().IsRunning) return "Обход выключен — сначала включите на «Обзоре»";
+                var strat = _main.Strategies.Find(Settings.SelectedStrategy);
+                if (strat == null) return "Стратегия не выбрана — откройте «Стратегии»";
+                return "Применить профиль портов и списки к работающему обходу";
+            }
+        }
+
+        private async Task RestartBypassAsync()
+        {
+            if (IsRestartingBypass) return;
+            IsRestartingBypass = true;
+            Message = "Перезапускаю обход с текущим профилем портов…";
+            MessageKey = "Info";
+            try
+            {
+                // Единая точка перезапуска — та же, что в выдвижной сводке.
+                var res = await _main.RestartBypassAsync();
+                Message = res.Message;
+                MessageKey = res.Ok ? "Success" : "Danger";
+            }
+            finally
+            {
+                IsRestartingBypass = false;
+                Raise(nameof(RepoStateText));
+                Raise(nameof(RepoStateKey));
+                Raise(nameof(PhotonCoverageText));
+                Raise(nameof(PhotonCoverageKey));
+            }
+        }
+
+        /// <summary>Одна кнопка «Починить R.E.P.O.»: исключить Photon из ipset, отключить его обход
+        /// и перезапустить обход, чтобы списки применились.</summary>
+        private async Task FixPhotonAsync()
+        {
+            Settings.PhotonThroughBypass = false;
+            SettingsStore.Save(Settings);
+            var (ok, msg) = PhotonRegions.Ensure(Settings);
+            Raise(nameof(PhotonThroughBypass));
+            Raise(nameof(PhotonCoverageText));
+            PhotonRoutingStatus = msg;
+            Message = msg;
+            MessageKey = ok ? "Success" : "Danger";
+            if (!ok) return;
+            await RestartBypassAsync();
+            Raise(nameof(PhotonCoverageText));
+            Raise(nameof(RepoStateText));
+            Raise(nameof(RepoStateKey));
+        }
+
         // ---- R.E.P.O. / Photon (v2.2.6) ----
         /// <summary>Вести TCP-трафик Photon через обход. По умолчанию напрямую: если у провайдера
         /// режется TLS до узлов Photon, включение убирает задержку и «недоступный» регион.</summary>
@@ -162,13 +240,20 @@ namespace ZapretGui.ViewModels
                 if (Settings.PhotonThroughBypass == value) return;
                 Settings.PhotonThroughBypass = value;
                 SettingsStore.Save(Settings);
-                var (ok, msg) = PhotonRegions.ApplyRouting(Settings);
+                var (ok, msg) = PhotonRegions.Ensure(Settings);
                 PhotonRoutingStatus = msg;
+                Raise(nameof(PhotonCoverageText));
+                Raise(nameof(PhotonCoverageKey));
                 Message = msg;
                 MessageKey = ok ? "Info" : "Danger";
                 Raise(nameof(PhotonThroughBypass));
             }
         }
+
+        /// <summary>Попадают ли адреса Photon в ipset обхода — главная причина clienttimeout.</summary>
+        public string PhotonCoverageText => PhotonRegions.DescribeCoverage(Settings);
+        public string PhotonCoverageKey => PhotonRegions.BypassTouchesPhoton(Settings) ? "Danger"
+            : PhotonRegions.IpRangesExcluded(Settings) ? "Success" : "Muted";
 
         private string _photonRoutingStatus = "";
         public string PhotonRoutingStatus { get => _photonRoutingStatus; private set => Set(ref _photonRoutingStatus, value); }
@@ -306,6 +391,8 @@ namespace ZapretGui.ViewModels
         public ICommand FixPubgCommand { get; }
         public ICommand FixSelectedGamesCommand { get; }
         public ICommand ApplySteamBypassCommand { get; }
+        public ICommand RestartBypassCommand { get; }
+        public ICommand FixPhotonCommand { get; }
         public ICommand OpenEngineFolderCommand { get; }
         public ICommand RefreshCommand { get; }
         public ICommand DismissMessageCommand { get; }
@@ -318,6 +405,9 @@ namespace ZapretGui.ViewModels
             Raise(nameof(GameFilterIndex));
             Raise(nameof(RepoStateText));
             Raise(nameof(RepoStateKey));
+            Raise(nameof(PhotonCoverageText));
+            Raise(nameof(PhotonCoverageKey));
+            Raise(nameof(RestartBypassHint));
         }
 
         private void RefreshProfiles()
@@ -433,8 +523,10 @@ namespace ZapretGui.ViewModels
                             SelectedProfile = GameFilterPortConfig.GetProfileById(opt.ProfileId);
                         }
                         opt.Status = "✅ профиль R.E.P.O.";
-                        var routing = PhotonRegions.ApplyRouting(Settings);
-                        Message = $"Включено «{opt.Name}»: профиль портов «R.E.P.O.» активен, UDP Photon и Steam P2P исключены из обхода. " +
+                        var routing = PhotonRegions.Ensure(Settings);
+                        Raise(nameof(PhotonCoverageText));
+                        Raise(nameof(PhotonCoverageKey));
+                        Message = $"Включено «{opt.Name}»: профиль портов «R.E.P.O.» активен, порты Photon и Steam P2P исключены из обхода. " +
                                   "Перезапустите обход. " + routing.Message;
                         MessageKey = "Success";
                         RefreshProfiles();
@@ -574,7 +666,7 @@ namespace ZapretGui.ViewModels
                     SettingsStore.Save(Settings);
                     SelectedProfile = GameFilterPortConfig.GetProfileById(profileOption.ProfileId);
                 }
-                var routingNote = enabled.Any(o => o.Id == "repo") ? " " + PhotonRegions.ApplyRouting(Settings).Message : "";
+                var routingNote = enabled.Any(o => o.Id == "repo") ? " " + PhotonRegions.Ensure(Settings).Message : "";
                 Message = $"Готово — добавлено {totalAdded} доменов для {enabled.Count} игр. Профиль «{SelectedProfile?.Name}» активен.{routingNote} " +
                           "Перезапусти обход.";
                 MessageKey = "Success";

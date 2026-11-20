@@ -43,6 +43,14 @@ namespace ZapretGui.Views
             _vm.NavChanged += ShowPage;
             ShowPage(_vm.SelectedNavKey);
 
+            // Выдвижная сводка параметров (v2.2.7): анимация + начальное состояние.
+            _vm.PropertyChanged += (_, e) =>
+            {
+                if (e.PropertyName == nameof(MainViewModel.IsSummarySheetExpanded))
+                    UpdateSummaryPanel(animate: true);
+            };
+            Loaded += (_, __) => UpdateSummaryPanel(animate: false);
+
             Loaded += (_, __) =>
             {
                 _vm.Hotkeys.Register(this);
@@ -706,6 +714,34 @@ namespace ZapretGui.Views
             _tray?.Dispose();
 
             if (Application.Current is App app) app.ShutdownApp();
+        }
+
+        private const double SummaryPanelOffset = 370;
+
+        /// <summary>Выезд/скрытие панели: сдвиг по X + прозрачность, 180 мс.</summary>
+        private void UpdateSummaryPanel(bool animate)
+        {
+            if (SummaryPanel == null || _vm == null) return;
+            var open = _vm.IsSummarySheetExpanded;
+            if (open && SummaryPanel.Visibility != Visibility.Visible)
+                SummaryPanel.Visibility = Visibility.Visible;
+
+            var duration = animate ? TimeSpan.FromMilliseconds(180) : TimeSpan.Zero;
+            var easing = new CubicEase { EasingMode = EasingMode.EaseOut };
+
+            var slide = new DoubleAnimation(open ? 0 : SummaryPanelOffset, duration) { EasingFunction = easing };
+            var fade = new DoubleAnimation(open ? 1 : 0, duration) { EasingFunction = easing };
+            if (!open && animate)
+            {
+                fade.Completed += (_, __) =>
+                {
+                    if (!_vm.IsSummarySheetExpanded) SummaryPanel.Visibility = Visibility.Collapsed;
+                };
+            }
+            if (!open && !animate) SummaryPanel.Visibility = Visibility.Collapsed;
+
+            SummarySlide.BeginAnimation(TranslateTransform.XProperty, slide);
+            SummaryPanel.BeginAnimation(OpacityProperty, fade);
         }
     }
 }

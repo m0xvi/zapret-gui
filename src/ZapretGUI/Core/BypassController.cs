@@ -230,6 +230,7 @@ namespace ZapretGui.Core
 
             StrategyParser.EnsureUserLists(EngineRoot);
             SteamBypass.Ensure(_settings);
+            PhotonRegions.Ensure(_settings);
             _ensureTcpTimestamps();
 
             var args = BuildArgs(strategy, gameFilter);
@@ -968,6 +969,7 @@ namespace ZapretGui.Core
 
             StrategyParser.EnsureUserLists(EngineRoot);
             SteamBypass.Ensure(_settings);
+            PhotonRegions.Ensure(_settings);
             _ensureTcpTimestamps();
 
             var args = BuildArgs(strategy, gameFilter);
