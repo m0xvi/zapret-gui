@@ -304,16 +304,53 @@ namespace ZapretGui.ViewModels
         /// исключение адресов Photon из ipset и перезапуск обхода.</summary>
         private async Task FixPhotonAsync()
         {
+            if (IsRestartingBypass) return;
             IsRestartingBypass = true;
             try
             {
+                // Служба winws может держать hostlist открытым без разрешения на запись.
+                // Сначала останавливаем её, иначе PhotonRegions.Ensure не сможет обновить
+                // list-general-user/list-exclude-user и «настройка» завершится частично.
+                var before = _main.Bypass.GetStatus();
+                var wasRunning = before.IsRunning;
+                var wasService = before.ServiceState == ServiceState.Running;
+                if (wasRunning)
+                {
+                    var stopped = await _main.Bypass.StopAsync();
+                    if (!stopped.Ok || _main.Bypass.GetStatus().IsRunning)
+                    {
+                        Message = "Не удалось остановить обход для безопасного обновления списков Photon. " + stopped.Message;
+                        MessageKey = "Danger";
+                        return;
+                    }
+                }
+
                 var setup = await ApplyRepoSetupAsync();
-                Message = $"R.E.P.O. настроен: профиль портов «R.E.P.O.»{setup.ModeNote}. {setup.PhotonNote}";
-                MessageKey = setup.Ok ? "Success" : "Warning";
                 RefreshProfiles();
-                if (!setup.Ok) return;
-                if (_main.Bypass.GetStatus().IsRunning) await RestartAfterChangeAsync("R.E.P.O. настроен");
+                OperationResult? restart = null;
+                if (wasRunning)
+                {
+                    var strategy = _main.Strategies.Find(Settings.SelectedStrategy) ?? _main.Strategies.Recommended;
+                    if (strategy != null)
+                    {
+                        var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
+                        restart = wasService
+                            ? await _main.Bypass.InstallServiceAsync(strategy, mode)
+                            : await _main.Bypass.StartAsync(strategy, mode, Settings.ShowWinwsConsole);
+                    }
+                    else restart = OperationResult.Fail("Стратегия не выбрана — обход оставлен остановленным.");
+                }
+
+                Message = $"R.E.P.O.: профиль портов «R.E.P.O.»{setup.ModeNote}. {setup.PhotonNote}";
+                if (restart != null) Message += " " + restart.Message;
                 else Message += " Обход выключен — настройки применятся при запуске.";
+                MessageKey = setup.Ok && (restart == null || restart.Ok) ? "Success" : "Warning";
+                _main.Home.RefreshStatus();
+            }
+            catch (Exception ex)
+            {
+                Message = "Не удалось настроить R.E.P.O.: " + ex.Message;
+                MessageKey = "Danger";
             }
             finally
             {
@@ -663,6 +700,16 @@ namespace ZapretGui.ViewModels
                 if (!enabled && list.Contains(opt.Id)) list.Remove(opt.Id);
                 SettingsStore.Save(Settings);
 
+                // У R.E.P.O. не требуется запись игровых доменов. Запускаем общий сценарий
+                // до любых открытий hostlist-файлов, которые служба winws может блокировать.
+                if (enabled && opt.Id == "repo")
+                {
+                    opt.Status = "✅ профиль R.E.P.O.";
+                    await FixPhotonAsync();
+                    Raise(nameof(GameOptions));
+                    return;
+                }
+
                 if (enabled)
                 {
                     // включаем — добавляем домены этой игры в списки
@@ -823,7 +870,14 @@ namespace ZapretGui.ViewModels
         {
             // применяет все отмеченные галочками игры
             var enabled = GameOptions.Where(o => o.IsEnabled).ToList();
-            if (enabled.Count == 0) { Message = "Отметь галочками игры которые хочешь обходить"; MessageKey = "Warning"; return; }
+            if (enabled.Count == 0) { Message = "Отметьте игры, которые хотите настроить"; MessageKey = "Warning"; return; }
+            // Для R.E.P.O. действует один специализированный сценарий. Не открываем hostlist
+            // на запись до остановки службы и не даём другим галочкам перебить её профиль.
+            if (enabled.Any(o => o.Id == "repo"))
+            {
+                await FixPhotonAsync();
+                return;
+            }
             var totalAdded = 0;
             try
             {
