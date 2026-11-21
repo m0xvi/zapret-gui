@@ -42,8 +42,8 @@ namespace ZapretGui.ViewModels
         private int _consecutiveStrategyFailures;
         private string _failureTargetId = "";
         private const int RecoveryFailureThreshold = 2;
-        private const int ObservationSessionSeconds = 120;
         private const int ObservationSampleSeconds = 15;
+        private int _networkSessionDurationMinutes = 5;
         private readonly Dictionary<string, ObservedSocket> _observedSockets = new(StringComparer.OrdinalIgnoreCase);
         private CancellationTokenSource? _observationCts;
         private bool _isRecordingNetwork;
@@ -95,6 +95,19 @@ namespace ZapretGui.ViewModels
         public ObservableCollection<ResourceProbeResult> Results { get; } = new();
         public ObservableCollection<NetworkObservationRecord> RecentNetworkObservations { get; } = new();
         public ObservableCollection<NetworkProcessOption> ProcessOptions { get; } = new();
+        public ObservableCollection<int> NetworkSessionDurationOptions { get; } = new() { 2, 5, 10 };
+
+        public int NetworkSessionDurationMinutes
+        {
+            get => _networkSessionDurationMinutes;
+            set
+            {
+                if (NetworkSessionDurationOptions.Contains(value) && Set(ref _networkSessionDurationMinutes, value))
+                    Raise(nameof(NetworkSessionButtonText));
+            }
+        }
+
+        public string NetworkSessionButtonText => $"Записать {NetworkSessionDurationMinutes} мин";
 
         public bool IsRecordingNetwork
         {
@@ -646,7 +659,7 @@ namespace ZapretGui.ViewModels
                 BypassRunning = bypassOverride ?? status.IsRunning,
                 StrategyName = strategyOverride ?? status.StrategyName,
                 ServiceState = status.ServiceState.ToString(),
-                Details = LimitDetails(string.Join(" · ", new[] { probe.DnsDetails, probe.Details }.Where(part => !string.IsNullOrWhiteSpace(part))))
+                Details = LimitDetails(NetworkObservationRecord.CombineDetails(probe.DnsDetails, probe.Details))
             };
 
             NetworkDiagnosticsStore.Add(record);
@@ -736,26 +749,27 @@ namespace ZapretGui.ViewModels
             }
 
             _observationCts?.Dispose();
-            _observationCts = new CancellationTokenSource(TimeSpan.FromSeconds(ObservationSessionSeconds));
+            _observationCts = new CancellationTokenSource(TimeSpan.FromMinutes(NetworkSessionDurationMinutes));
             _networkSessionStoppedByUser = false;
             var ct = _observationCts.Token;
             _observedSockets.Clear();
             IsBusy = true;
             IsRecordingNetwork = true;
-            NetworkSessionStatus = "Подготовка 2-минутного сеанса наблюдения…";
+            var sessionDurationMinutes = NetworkSessionDurationMinutes;
+            NetworkSessionStatus = $"Подготовка {sessionDurationMinutes}-минутного сеанса наблюдения…";
             var started = DateTime.UtcNow;
             var observationsBeforeSession = NetworkDiagnosticsStore.CountRecent;
-            var endsAt = started.AddSeconds(ObservationSessionSeconds);
+            var endsAt = started.AddMinutes(sessionDurationMinutes);
             var sessionStart = new NetworkObservationRecord
             {
                 TimeUtc = started,
                 EventType = "Сеанс",
                 Source = "ручной сеанс",
-                Details = $"Начат 2-минутный сеанс; выбрано сайтов: {targets.Count}; приложений: {processNames.Length}"
+                Details = $"Начат {sessionDurationMinutes}-минутный сеанс; выбрано сайтов: {targets.Count}; приложений: {processNames.Length}"
             };
             NetworkDiagnosticsStore.Add(sessionStart);
             AddRecentNetworkObservation(sessionStart);
-            AppLog.Info("[Сеть] Запущен двухминутный сеанс наблюдения (без захвата содержимого пакетов)");
+            AppLog.Info($"[Сеть] Запущен {sessionDurationMinutes}-минутный сеанс наблюдения (без захвата содержимого пакетов)");
 
             var nextProbeAt = DateTime.MinValue;
             var socketCaptureAvailable = processNames.Length > 0;
@@ -881,7 +895,9 @@ namespace ZapretGui.ViewModels
             }
 
             foreach (var old in _observedSockets.Where(pair => !current.ContainsKey(pair.Key)).Select(pair => pair.Value).ToArray())
-                AddSocketObservation(old, old.Protocol == "TCP" ? "Соединение исчезло из таблицы" : "UDP-сокет закрыт");
+                AddSocketObservation(old, old.Protocol == "TCP"
+                    ? "Не обнаружено в следующем снимке (закрытие не подтверждено)"
+                    : "UDP-сокет больше не обнаружен в следующем снимке");
 
             _observedSockets.Clear();
             foreach (var pair in current) _observedSockets[pair.Key] = pair.Value;

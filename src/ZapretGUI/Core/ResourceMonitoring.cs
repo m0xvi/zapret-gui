@@ -145,10 +145,25 @@ namespace ZapretGui.Core
         /// а блокировка на уровне TLS/HTTP (часто браузер в этот момент работает через QUIC).</summary>
         public bool TcpOk { get; init; }
 
-        public string StatusKey => Ok ? "Success" : "Danger";
-        public string StatusText => Ok
-            ? (Target.IsGame ? $"Пинг · {Milliseconds} мс" : $"Доступен · {Milliseconds} мс")
-            : "Недоступен · " + Details;
+        public string StatusKey => !Ok ? "Danger" :
+            HttpStatusCode is >= 400 ? "Warning" : "Success";
+
+        public string StatusText
+        {
+            get
+            {
+                if (!Ok) return "Недоступен · " + Details;
+                if (Target.IsGame) return $"Пинг · {Milliseconds} мс";
+                if (HttpStatusCode is int status)
+                {
+                    if (status == 401) return $"Сеть доступна · сервер требует авторизацию (HTTP 401) · {Milliseconds} мс";
+                    if (status == 403) return $"Сеть доступна · сервер отклонил запрос (HTTP 403) · {Milliseconds} мс";
+                    if (status >= 400) return $"Сеть доступна · сервер вернул HTTP {status}; содержимое не подтверждено · {Milliseconds} мс";
+                    if (status >= 300) return $"Сеть доступна · перенаправление HTTP {status} · {Milliseconds} мс";
+                }
+                return $"Доступен · {Milliseconds} мс";
+            }
+        }
     }
 
     public sealed class ResourceDiagnosisResult

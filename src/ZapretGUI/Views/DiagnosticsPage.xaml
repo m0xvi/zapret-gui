@@ -196,8 +196,14 @@
                         <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0"
                                    Text="Снимки соединений раз в 2 с могут пропустить короткие подключения; для UDP Windows обычно не раскрывает удалённый адрес. Сайты проверяются каждые 15 с."
                                    TextWrapping="Wrap" />
-                        <WrapPanel Margin="0,10,0,0">
-                            <Button Style="{StaticResource PageActionPrimary}" Content="Записать 2 минуты"
+                        <WrapPanel Margin="0,10,0,0" VerticalAlignment="Center">
+                            <ComboBox Style="{StaticResource AppComboBox}" Width="78"
+                                      ItemsSource="{Binding Monitoring.NetworkSessionDurationOptions}"
+                                      SelectedItem="{Binding Monitoring.NetworkSessionDurationMinutes, Mode=TwoWay}"
+                                      IsEnabled="{Binding Monitoring.IsRecordingNetwork, Converter={StaticResource InverseBool}}"
+                                      ToolTip="Длительность записи: 2, 5 или 10 минут" />
+                            <TextBlock Style="{StaticResource DimText}" Text="мин" Margin="4,0,10,0" VerticalAlignment="Center" />
+                            <Button Style="{StaticResource PageActionPrimary}" Content="{Binding Monitoring.NetworkSessionButtonText}"
                                     Command="{Binding Monitoring.StartNetworkSessionCommand}"
                                     ToolTip="Проверять отмеченные сайты и отслеживать соединения выбранных приложений; обход не переключается" />
                             <Button Style="{StaticResource PageAction}" Content="Остановить" Margin="8,0,0,0"

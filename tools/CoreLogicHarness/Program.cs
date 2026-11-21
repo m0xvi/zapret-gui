@@ -69,7 +69,10 @@ namespace ZapretGui.CoreLogicHarness
                 ("Игровой режим: порты в обходе и Photon учитывают режим фильтра", GameModePortChecks),
                 ("Выбранные приложения сохраняются, имена EXE нормализуются", NetworkObservedProcessesRoundTrip),
                 ("Экспорт сетевой диагностики обезличивает хосты, IP и процессы", NetworkExportRedactsSensitiveFields),
-                ("История сетевой диагностики ограничена окном 24 часа", NetworkHistoryRetentionIsBounded)
+                ("История сетевой диагностики ограничена окном 24 часа", NetworkHistoryRetentionIsBounded),
+                ("HTTP 403 не выдаётся за загруженную страницу", HttpResponseStatusIsNotMisreported),
+                ("События сокетов показывают причину и последнее состояние", SocketTimelineTextIsInformative),
+                ("Детали DNS не дублируются в истории", ProbeDetailsAreDeduplicated)
             };
 
             foreach (var check in checks)
@@ -1649,6 +1652,61 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
             Assert(retained.Count == 2, "остались записи вне 24-часового окна");
             Assert(retained[0].Details == "в пределах окна" && retained[1].Details == "небольшое расхождение часов",
                 "сохранены неверные записи или нарушен порядок");
+        }
+
+        private static void HttpResponseStatusIsNotMisreported()
+        {
+            var target = MonitorTarget.CreateBuiltIn("site", "https://example.com");
+            var forbidden = new ResourceProbeResult
+            {
+                Target = target,
+                Ok = true,
+                TcpOk = true,
+                DnsOk = true,
+                HttpStatusCode = 403,
+                Milliseconds = 25
+            };
+            Assert(forbidden.StatusKey == "Warning", "HTTP 403 должен быть предупреждением, а не зелёной доступностью");
+            Assert(forbidden.StatusText.Contains("HTTP 403", StringComparison.Ordinal) &&
+                   forbidden.StatusText.Contains("отклонил запрос", StringComparison.Ordinal) &&
+                   !forbidden.StatusText.StartsWith("Доступен", StringComparison.Ordinal),
+                "HTTP 403 ошибочно представлен как загруженная страница");
+
+            var redirect = new ResourceProbeResult
+            {
+                Target = target,
+                Ok = true,
+                TcpOk = true,
+                DnsOk = true,
+                HttpStatusCode = 301,
+                Milliseconds = 25
+            };
+            Assert(redirect.StatusText.Contains("перенаправление HTTP 301", StringComparison.Ordinal),
+                "неотслеживаемое перенаправление не объяснено пользователю");
+        }
+
+        private static void SocketTimelineTextIsInformative()
+        {
+            var record = new NetworkObservationRecord
+            {
+                TimeUtc = DateTime.UtcNow,
+                EventType = "Сокет",
+                ProcessName = "firefox",
+                Protocol = "TCP",
+                ConnectionState = "ESTABLISHED",
+                Details = "Не обнаружено в следующем снимке (закрытие не подтверждено)",
+                LocalEndpoint = "127.0.0.1:50000",
+                RemoteEndpoint = "192.0.2.1:443"
+            };
+            Assert(record.LineText.Contains("закрытие не подтверждено", StringComparison.Ordinal) &&
+                   record.LineText.Contains("последнее состояние: ESTABLISHED", StringComparison.Ordinal),
+                "строка сокета должна пояснять, что это последний увиденный статус, а не доказанное закрытие");
+        }
+
+        private static void ProbeDetailsAreDeduplicated()
+        {
+            var combined = NetworkObservationRecord.CombineDetails("DNS: host unknown", "DNS: host unknown", "TLS failed");
+            Assert(combined == "DNS: host unknown · TLS failed", "одинаковая ошибка DNS продублирована");
         }
 
         private static void Assert(bool value, string message)

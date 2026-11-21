@@ -36,6 +36,10 @@ namespace ZapretGui.Core
         public string ServiceState { get; init; } = "";
         public string Details { get; init; } = "";
 
+        public static string CombineDetails(params string?[] parts)
+            => string.Join(" · ", parts.Where(part => !string.IsNullOrWhiteSpace(part))
+                .Distinct(StringComparer.OrdinalIgnoreCase));
+
         public string LineText
         {
             get
@@ -43,7 +47,12 @@ namespace ZapretGui.Core
                 var time = TimeUtc.ToLocalTime().ToString("HH:mm:ss");
                 if (EventType == "Проверка")
                 {
-                    var result = Ok == true ? "доступен" : "ОШИБКА";
+                    var result = Ok != true ? "ОШИБКА" : HttpStatusCode switch
+                    {
+                        >= 400 => $"сеть отвечает, HTTP {HttpStatusCode} (содержимое не подтверждено)",
+                        >= 300 => $"перенаправление HTTP {HttpStatusCode}",
+                        _ => "доступен"
+                    };
                     var latency = Milliseconds is long ms ? $" · {ms} мс" : "";
                     var status = HttpStatusCode is int http ? $" · HTTP {http}" : "";
                     var route = BypassRunning ? "обход" + (string.IsNullOrWhiteSpace(StrategyName) ? " включён" : $" · {StrategyName}") : "напрямую";
@@ -55,7 +64,9 @@ namespace ZapretGui.Core
                     var remote = string.IsNullOrWhiteSpace(RemoteEndpoint) || RemoteEndpoint == "—" ? "" : $" → {RemoteEndpoint}";
                     var process = string.IsNullOrWhiteSpace(ProcessName) ? "процесс" : ProcessName + ".exe";
                     var route = BypassRunning ? "обход включён" : "напрямую";
-                    return $"{time} · {process} · {Protocol} {ConnectionState} · {LocalEndpoint}{remote} · {route}";
+                    var state = string.IsNullOrWhiteSpace(ConnectionState) ? "" : $" (последнее состояние: {ConnectionState})";
+                    var eventText = string.IsNullOrWhiteSpace(Details) ? "событие" : Details;
+                    return $"{time} · {process} · {Protocol} · {eventText}{state} · {LocalEndpoint}{remote} · {route}";
                 }
                 return $"{time} · {Details}";
             }
