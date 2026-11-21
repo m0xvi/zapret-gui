@@ -22,10 +22,10 @@
     <Company>Zapret GUI community</Company>
     <Copyright>MIT License</Copyright>
     <!-- Единственный источник версии: CI берёт первое значение <Version> и публикует релиз с этим номером. -->
-    <Version>2.2.11</Version>
-    <AssemblyVersion>2.2.11.0</AssemblyVersion>
-    <FileVersion>2.2.11.0</FileVersion>
-    <InformationalVersion>2.2.11</InformationalVersion>
+    <Version>2.2.12</Version>
+    <AssemblyVersion>2.2.12.0</AssemblyVersion>
+    <FileVersion>2.2.12.0</FileVersion>
+    <InformationalVersion>2.2.12</InformationalVersion>
 
     <!-- Позволяет собирать проект не только на Windows (например, в CI на Linux) -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
@@ -39,6 +39,7 @@
   <ItemGroup>
     <!-- Нужен для чтения вывода консольных утилит (sc.exe, netsh) в кодировке CP866 -->
     <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.2.8" />
   </ItemGroup>
 
 </Project>

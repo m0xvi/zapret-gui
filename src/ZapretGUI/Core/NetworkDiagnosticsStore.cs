@@ -25,6 +25,10 @@ namespace ZapretGui.Core
         public string LocalEndpoint { get; init; } = "";
         public string RemoteEndpoint { get; init; } = "";
         public string ConnectionState { get; init; } = "";
+        public long? BytesReceived { get; init; }
+        public long? BytesSent { get; init; }
+        public int? SampleMilliseconds { get; init; }
+        public int? ActiveConnectionCount { get; init; }
         public bool? Ok { get; init; }
         public ResourceResultKind? FailureKind { get; init; }
         public long? Milliseconds { get; init; }
@@ -36,6 +40,18 @@ namespace ZapretGui.Core
         public string ServiceState { get; init; } = "";
         public string Details { get; init; } = "";
 
+        public static string CombineDetails(params string?[] parts)
+            => string.Join(" · ", parts.Where(part => !string.IsNullOrWhiteSpace(part))
+                .Distinct(StringComparer.OrdinalIgnoreCase));
+
+        private static string FormatBytes(long bytes)
+            => bytes >= 1_000_000 ? $"{bytes / 1_000_000.0:0.##} MB" :
+                bytes >= 1_000 ? $"{bytes / 1_000.0:0.##} kB" : $"{bytes} B";
+
+        private static string FormatRate(double bytesPerSecond)
+            => bytesPerSecond >= 1_000_000 ? $"{bytesPerSecond / 1_000_000.0:0.##} MB/s" :
+                bytesPerSecond >= 1_000 ? $"{bytesPerSecond / 1_000.0:0.##} kB/s" : $"{bytesPerSecond:0} B/s";
+
         public string LineText
         {
             get
@@ -43,7 +59,12 @@ namespace ZapretGui.Core
                 var time = TimeUtc.ToLocalTime().ToString("HH:mm:ss");
                 if (EventType == "Проверка")
                 {
-                    var result = Ok == true ? "доступен" : "ОШИБКА";
+                    var result = Ok != true ? "ОШИБКА" : HttpStatusCode switch
+                    {
+                        >= 400 => $"сеть отвечает, HTTP {HttpStatusCode} (содержимое не подтверждено)",
+                        >= 300 => $"перенаправление HTTP {HttpStatusCode}",
+                        _ => "доступен"
+                    };
                     var latency = Milliseconds is long ms ? $" · {ms} мс" : "";
                     var status = HttpStatusCode is int http ? $" · HTTP {http}" : "";
                     var route = BypassRunning ? "обход" + (string.IsNullOrWhiteSpace(StrategyName) ? " включён" : $" · {StrategyName}") : "напрямую";
@@ -55,7 +76,22 @@ namespace ZapretGui.Core
                     var remote = string.IsNullOrWhiteSpace(RemoteEndpoint) || RemoteEndpoint == "—" ? "" : $" → {RemoteEndpoint}";
                     var process = string.IsNullOrWhiteSpace(ProcessName) ? "процесс" : ProcessName + ".exe";
                     var route = BypassRunning ? "обход включён" : "напрямую";
-                    return $"{time} · {process} · {Protocol} {ConnectionState} · {LocalEndpoint}{remote} · {route}";
+                    var state = string.IsNullOrWhiteSpace(ConnectionState) ? "" : $" (последнее состояние: {ConnectionState})";
+                    var eventText = string.IsNullOrWhiteSpace(Details) ? "событие" : Details;
+                    return $"{time} · {process} · {Protocol} · {eventText}{state} · {LocalEndpoint}{remote} · {route}";
+                }
+                if (EventType is "Трафик" or "Сводка трафика")
+                {
+                    var process = string.IsNullOrWhiteSpace(ProcessName) ? "процесс" : ProcessName + ".exe";
+                    var endpoint = string.IsNullOrWhiteSpace(RemoteEndpoint) ? "" : $" → {RemoteEndpoint}";
+                    var span = SampleMilliseconds is int ms && ms > 0 ? ms / 1000.0 : 0;
+                    var received = BytesReceived ?? 0;
+                    var sent = BytesSent ?? 0;
+                    var rxRate = span > 0 ? $" ({FormatRate(received / span)})" : "";
+                    var txRate = span > 0 ? $" ({FormatRate(sent / span)})" : "";
+                    var active = ActiveConnectionCount is int count ? $" · открытых сокетов: {count}" : "";
+                    var route = BypassRunning ? " · обход" + (string.IsNullOrWhiteSpace(StrategyName) ? " включён" : $" · {StrategyName}") : " · напрямую";
+                    return $"{time} · {process} · {Protocol}{endpoint} · ↓ {FormatBytes(received)}{rxRate} / ↑ {FormatBytes(sent)}{txRate}{active}{route} · {Details}";
                 }
                 return $"{time} · {Details}";
             }
@@ -168,6 +204,10 @@ namespace ZapretGui.Core
                     LocalEndpoint = HideEndpoint(record.LocalEndpoint),
                     RemoteEndpoint = HideEndpoint(record.RemoteEndpoint),
                     ConnectionState = record.ConnectionState,
+                    BytesReceived = record.BytesReceived,
+                    BytesSent = record.BytesSent,
+                    SampleMilliseconds = record.SampleMilliseconds,
+                    ActiveConnectionCount = record.ActiveConnectionCount,
                     Ok = record.Ok,
                     FailureKind = record.FailureKind,
                     Milliseconds = record.Milliseconds,

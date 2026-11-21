@@ -42,8 +42,8 @@ namespace ZapretGui.ViewModels
         private int _consecutiveStrategyFailures;
         private string _failureTargetId = "";
         private const int RecoveryFailureThreshold = 2;
-        private const int ObservationSessionSeconds = 120;
         private const int ObservationSampleSeconds = 15;
+        private int _networkSessionDurationMinutes = 5;
         private readonly Dictionary<string, ObservedSocket> _observedSockets = new(StringComparer.OrdinalIgnoreCase);
         private CancellationTokenSource? _observationCts;
         private bool _isRecordingNetwork;
@@ -95,6 +95,19 @@ namespace ZapretGui.ViewModels
         public ObservableCollection<ResourceProbeResult> Results { get; } = new();
         public ObservableCollection<NetworkObservationRecord> RecentNetworkObservations { get; } = new();
         public ObservableCollection<NetworkProcessOption> ProcessOptions { get; } = new();
+        public ObservableCollection<int> NetworkSessionDurationOptions { get; } = new() { 2, 5, 10 };
+
+        public int NetworkSessionDurationMinutes
+        {
+            get => _networkSessionDurationMinutes;
+            set
+            {
+                if (NetworkSessionDurationOptions.Contains(value) && Set(ref _networkSessionDurationMinutes, value))
+                    Raise(nameof(NetworkSessionButtonText));
+            }
+        }
+
+        public string NetworkSessionButtonText => $"Записать {NetworkSessionDurationMinutes} мин";
 
         public bool IsRecordingNetwork
         {
@@ -646,7 +659,7 @@ namespace ZapretGui.ViewModels
                 BypassRunning = bypassOverride ?? status.IsRunning,
                 StrategyName = strategyOverride ?? status.StrategyName,
                 ServiceState = status.ServiceState.ToString(),
-                Details = LimitDetails(string.Join(" · ", new[] { probe.DnsDetails, probe.Details }.Where(part => !string.IsNullOrWhiteSpace(part))))
+                Details = LimitDetails(NetworkObservationRecord.CombineDetails(probe.DnsDetails, probe.Details))
             };
 
             NetworkDiagnosticsStore.Add(record);
@@ -736,26 +749,34 @@ namespace ZapretGui.ViewModels
             }
 
             _observationCts?.Dispose();
-            _observationCts = new CancellationTokenSource(TimeSpan.FromSeconds(ObservationSessionSeconds));
+            _observationCts = new CancellationTokenSource(TimeSpan.FromMinutes(NetworkSessionDurationMinutes));
             _networkSessionStoppedByUser = false;
             var ct = _observationCts.Token;
             _observedSockets.Clear();
             IsBusy = true;
             IsRecordingNetwork = true;
-            NetworkSessionStatus = "Подготовка 2-минутного сеанса наблюдения…";
+            var sessionDurationMinutes = NetworkSessionDurationMinutes;
+            NetworkSessionStatus = $"Подготовка {sessionDurationMinutes}-минутного сеанса наблюдения…";
             var started = DateTime.UtcNow;
             var observationsBeforeSession = NetworkDiagnosticsStore.CountRecent;
-            var endsAt = started.AddSeconds(ObservationSessionSeconds);
+            var endsAt = started.AddMinutes(sessionDurationMinutes);
+            var selectedProcessMap = WindowsNetworkActivity.GetSelectedProcesses(processNames)
+                .ToDictionary(pair => pair.Key, pair => pair.Value);
+            ProcessNetworkEtwCapture? trafficCapture = null;
+            var trafficCaptureUnavailableLogged = false;
+            var processWaitLogged = false;
+            var lastTrafficSampleAt = DateTime.UtcNow;
+            var nextTrafficSampleAt = lastTrafficSampleAt.AddSeconds(5);
             var sessionStart = new NetworkObservationRecord
             {
                 TimeUtc = started,
                 EventType = "Сеанс",
                 Source = "ручной сеанс",
-                Details = $"Начат 2-минутный сеанс; выбрано сайтов: {targets.Count}; приложений: {processNames.Length}"
+                Details = $"Начат {sessionDurationMinutes}-минутный сеанс; выбрано сайтов: {targets.Count}; приложений: {processNames.Length}"
             };
             NetworkDiagnosticsStore.Add(sessionStart);
             AddRecentNetworkObservation(sessionStart);
-            AppLog.Info("[Сеть] Запущен двухминутный сеанс наблюдения (без захвата содержимого пакетов)");
+            AppLog.Info($"[Сеть] Запущен {sessionDurationMinutes}-минутный сеанс наблюдения (без захвата содержимого пакетов)");
 
             var nextProbeAt = DateTime.MinValue;
             var socketCaptureAvailable = processNames.Length > 0;
@@ -786,12 +807,13 @@ namespace ZapretGui.ViewModels
                         nextProbeAt = DateTime.UtcNow.AddSeconds(ObservationSampleSeconds);
                     }
 
+                    var currentSockets = new Dictionary<string, ObservedSocket>(StringComparer.OrdinalIgnoreCase);
                     if (socketCaptureAvailable && !ct.IsCancellationRequested)
                     {
                         try
                         {
-                            var current = WindowsNetworkActivity.Capture(processNames).ToDictionary(socket => socket.Key, StringComparer.OrdinalIgnoreCase);
-                            RecordSocketChanges(current);
+                            currentSockets = WindowsNetworkActivity.Capture(processNames).ToDictionary(socket => socket.Key, StringComparer.OrdinalIgnoreCase);
+                            RecordSocketChanges(currentSockets);
                         }
                         catch (Exception ex)
                         {
@@ -813,8 +835,138 @@ namespace ZapretGui.ViewModels
                         }
                     }
 
+                    if (processNames.Length > 0 && !ct.IsCancellationRequested)
+                    {
+                        selectedProcessMap = WindowsNetworkActivity.GetSelectedProcesses(processNames)
+                            .ToDictionary(pair => pair.Key, pair => pair.Value);
+                        if (selectedProcessMap.Count > 0)
+                        {
+                            processWaitLogged = false;
+                            if (trafficCapture == null && !trafficCaptureUnavailableLogged)
+                            {
+                                try
+                                {
+                                    trafficCapture = new ProcessNetworkEtwCapture(selectedProcessMap);
+                                    trafficCapture.Start();
+                                    lastTrafficSampleAt = DateTime.UtcNow;
+                                    nextTrafficSampleAt = lastTrafficSampleAt.AddSeconds(5);
+                                    var startedRecord = new NetworkObservationRecord
+                                    {
+                                        TimeUtc = lastTrafficSampleAt,
+                                        EventType = "Сеанс",
+                                        Source = "ETW выбранных процессов",
+                                        Details = "ETW включён: для выбранных процессов учитываются TCP/UDP адреса, порты, байты отправки и приёма; содержимое не читается"
+                                    };
+                                    NetworkDiagnosticsStore.Add(startedRecord);
+                                    AddRecentNetworkObservation(startedRecord);
+                                }
+                                catch (Exception ex)
+                                {
+                                    trafficCapture?.Dispose();
+                                    trafficCapture = null;
+                                    trafficCaptureUnavailableLogged = true;
+                                    var unavailable = new NetworkObservationRecord
+                                    {
+                                        TimeUtc = DateTime.UtcNow,
+                                        EventType = "Сеанс",
+                                        Source = "ETW выбранных процессов",
+                                        Details = "ETW-счётчики недоступны: " + LimitDetails(ex.Message)
+                                    };
+                                    NetworkDiagnosticsStore.Add(unavailable);
+                                    AddRecentNetworkObservation(unavailable);
+                                    AppLog.Warn("[Сеть] ETW-счётчики выбранных процессов недоступны; продолжаются снимки сокетов.");
+                                }
+                            }
+                            else trafficCapture?.UpdateSelectedProcesses(selectedProcessMap);
+                        }
+                        else if (!processWaitLogged)
+                        {
+                            processWaitLogged = true;
+                            NetworkSessionStatus = "Ожидание запуска выбранного приложения; ETW начнёт счётчики после его запуска";
+                        }
+                    }
+
+                    var readerError = trafficCapture?.ReaderError;
+                    if (!string.IsNullOrWhiteSpace(readerError) && !trafficCaptureUnavailableLogged)
+                    {
+                        trafficCaptureUnavailableLogged = true;
+                        trafficCapture?.Dispose();
+                        trafficCapture = null;
+                        var errorRecord = new NetworkObservationRecord
+                        {
+                            TimeUtc = DateTime.UtcNow,
+                            EventType = "Сеанс",
+                            Source = "ETW выбранных процессов",
+                            Details = "ETW-поток завершился: " + LimitDetails(readerError)
+                        };
+                        NetworkDiagnosticsStore.Add(errorRecord);
+                        AddRecentNetworkObservation(errorRecord);
+                    }
+
+                    if (trafficCapture != null && DateTime.UtcNow >= nextTrafficSampleAt)
+                    {
+                        var sampleAt = DateTime.UtcNow;
+                        var sampleMilliseconds = Math.Max(1, (int)(sampleAt - lastTrafficSampleAt).TotalMilliseconds);
+                        var traffic = trafficCapture.DrainDeltas();
+                        var bypassSnapshot = _main.Bypass.GetStatus();
+                        var processNamesByPid = selectedProcessMap.ToDictionary(pair => pair.Key, pair => pair.Value);
+                        foreach (var delta in traffic)
+                            processNamesByPid[delta.ProcessId] = delta.ProcessName;
+
+                        foreach (var process in processNamesByPid)
+                        {
+                            var flows = traffic.Where(delta => delta.ProcessId == process.Key).ToList();
+                            var sockets = currentSockets.Values.Count(socket => socket.ProcessId == process.Key);
+                            var summary = new NetworkObservationRecord
+                            {
+                                TimeUtc = sampleAt,
+                                EventType = "Сводка трафика",
+                                Source = "ETW выбранных процессов",
+                                ProcessName = process.Value,
+                                ProcessId = process.Key,
+                                Protocol = "TCP/UDP",
+                                BytesReceived = flows.Sum(flow => flow.BytesReceived),
+                                BytesSent = flows.Sum(flow => flow.BytesSent),
+                                SampleMilliseconds = sampleMilliseconds,
+                                ActiveConnectionCount = sockets,
+                                BypassRunning = bypassSnapshot.IsRunning,
+                                StrategyName = bypassSnapshot.StrategyName,
+                                Details = flows.Count == 0 ? "За интервал данных не обнаружено" : $"Потоков с данными за интервал: {flows.Count}"
+                            };
+                            NetworkDiagnosticsStore.Add(summary);
+                            AddRecentNetworkObservation(summary);
+                        }
+
+                        foreach (var flow in traffic)
+                        {
+                            var flowRecord = new NetworkObservationRecord
+                            {
+                                TimeUtc = sampleAt,
+                                EventType = "Трафик",
+                                Source = "ETW выбранных процессов",
+                                ProcessName = flow.ProcessName,
+                                ProcessId = flow.ProcessId,
+                                Protocol = flow.Protocol,
+                                LocalEndpoint = flow.LocalEndpoint,
+                                RemoteEndpoint = flow.RemoteEndpoint,
+                                BytesReceived = flow.BytesReceived,
+                                BytesSent = flow.BytesSent,
+                                SampleMilliseconds = sampleMilliseconds,
+                                BypassRunning = bypassSnapshot.IsRunning,
+                                StrategyName = bypassSnapshot.StrategyName,
+                                Details = "Байтовая дельта сетевого потока за интервал"
+                            };
+                            NetworkDiagnosticsStore.Add(flowRecord);
+                            AddRecentNetworkObservation(flowRecord);
+                        }
+                        lastTrafficSampleAt = sampleAt;
+                        nextTrafficSampleAt = sampleAt.AddSeconds(5);
+                    }
+
                     var remaining = Math.Max(0, (int)Math.Ceiling((endsAt - DateTime.UtcNow).TotalSeconds));
-                    NetworkSessionStatus = $"Идёт запись · осталось {remaining} с · сайты: {targets.Count} · процессы: {processNames.Length}";
+                    var trafficStatus = processNames.Length == 0 ? "" : trafficCapture != null ? " · ETW байтов активен" :
+                        trafficCaptureUnavailableLogged ? " · ETW недоступен" : selectedProcessMap.Count == 0 ? " · ожидание процесса" : " · запуск ETW";
+                    NetworkSessionStatus = $"Идёт запись · осталось {remaining} с · сайты: {targets.Count} · процессы: {processNames.Length}{trafficStatus}";
                     await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(true);
                 }
             }
@@ -822,7 +974,7 @@ namespace ZapretGui.ViewModels
             {
                 NetworkSessionStatus = _networkSessionStoppedByUser
                     ? "Сеанс остановлен пользователем"
-                    : "Отведённые две минуты истекли";
+                    : $"Отведённые {sessionDurationMinutes} минут истекли";
             }
             catch (Exception ex)
             {
@@ -841,6 +993,7 @@ namespace ZapretGui.ViewModels
             }
             finally
             {
+                try { trafficCapture?.Dispose(); } catch { }
                 var duration = DateTime.UtcNow - started;
                 var completed = new NetworkObservationRecord
                 {
@@ -881,7 +1034,9 @@ namespace ZapretGui.ViewModels
             }
 
             foreach (var old in _observedSockets.Where(pair => !current.ContainsKey(pair.Key)).Select(pair => pair.Value).ToArray())
-                AddSocketObservation(old, old.Protocol == "TCP" ? "Соединение исчезло из таблицы" : "UDP-сокет закрыт");
+                AddSocketObservation(old, old.Protocol == "TCP"
+                    ? "Не обнаружено в следующем снимке (закрытие не подтверждено)"
+                    : "UDP-сокет больше не обнаружен в следующем снимке");
 
             _observedSockets.Clear();
             foreach (var pair in current) _observedSockets[pair.Key] = pair.Value;
@@ -930,15 +1085,20 @@ namespace ZapretGui.ViewModels
                     FileName = $"zapret-network-{DateTime.Now:yyyyMMdd-HHmmss}.json",
                     InitialDirectory = AppPaths.LogDir
                 };
-                var preview = NetworkDiagnosticsStore.CreateSanitizedExportPreview();
+                var mode = System.Windows.MessageBox.Show(
+                    "Выберите уровень детализации экспорта.\n\nДа — полный журнал: домены, IP-адреса, имена процессов и PID останутся видны; используйте только если готовы передать эти данные для диагностики.\n\nНет — обезличенный журнал: эти значения будут заменены псевдонимами. Содержимое пакетов не собирается в обоих режимах.",
+                    "Детализация экспорта", System.Windows.MessageBoxButton.YesNoCancel, System.Windows.MessageBoxImage.Warning);
+                if (mode == System.Windows.MessageBoxResult.Cancel) return;
+                var sanitize = mode == System.Windows.MessageBoxResult.No;
+                var preview = sanitize ? NetworkDiagnosticsStore.CreateSanitizedExportPreview() : NetworkDiagnosticsStore.GetRecent();
                 var sample = string.Join(Environment.NewLine, preview.Take(8).Select(item => item.LineText));
                 var confirmation = System.Windows.MessageBox.Show(
-                    $"Предварительный просмотр (первые {Math.Min(8, preview.Count)} из {preview.Count} записей):\n\n{sample}\n\nЭкспорт скроет адреса сайтов и IP, имена процессов и PID. Содержимое пакетов не собиралось. Продолжить к выбору файла?",
-                    "Проверка и очистка экспорта", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Information);
+                    $"Предварительный просмотр {(sanitize ? "обезличенного" : "полного") } экспорта (первые {Math.Min(8, preview.Count)} из {preview.Count} записей):\n\n{sample}\n\nПродолжить к выбору файла?",
+                    "Предварительный просмотр сетевого журнала", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Information);
                 if (confirmation != System.Windows.MessageBoxResult.Yes) return;
                 if (dialog.ShowDialog() != true) return;
-                NetworkDiagnosticsStore.ExportTo(dialog.FileName, sanitize: true);
-                SetMessage("Очищенный журнал сетевой диагностики сохранён.", "Success");
+                NetworkDiagnosticsStore.ExportTo(dialog.FileName, sanitize);
+                SetMessage(sanitize ? "Обезличенный журнал сетевой диагностики сохранён." : "Полный журнал сетевой диагностики сохранён.", "Success");
             }
             catch (Exception ex)
             {
