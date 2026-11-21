@@ -39,6 +39,7 @@
   <ItemGroup>
     <!-- Нужен для чтения вывода консольных утилит (sc.exe, netsh) в кодировке CP866 -->
     <PackageReference Include="System.Text.Encoding.CodePages" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Diagnostics.Tracing.TraceEvent" Version="3.2.8" />
   </ItemGroup>
 
 </Project>

@@ -72,7 +72,8 @@ namespace ZapretGui.CoreLogicHarness
                 ("История сетевой диагностики ограничена окном 24 часа", NetworkHistoryRetentionIsBounded),
                 ("HTTP 403 не выдаётся за загруженную страницу", HttpResponseStatusIsNotMisreported),
                 ("События сокетов показывают причину и последнее состояние", SocketTimelineTextIsInformative),
-                ("Детали DNS не дублируются в истории", ProbeDetailsAreDeduplicated)
+                ("Детали DNS не дублируются в истории", ProbeDetailsAreDeduplicated),
+                ("Счётчики потока показывают байты и скорость", TrafficTimelineShowsByteRates)
             };
 
             foreach (var check in checks)
@@ -1707,6 +1708,28 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
         {
             var combined = NetworkObservationRecord.CombineDetails("DNS: host unknown", "DNS: host unknown", "TLS failed");
             Assert(combined == "DNS: host unknown · TLS failed", "одинаковая ошибка DNS продублирована");
+        }
+
+        private static void TrafficTimelineShowsByteRates()
+        {
+            var record = new NetworkObservationRecord
+            {
+                TimeUtc = DateTime.UtcNow,
+                EventType = "Трафик",
+                ProcessName = "firefox",
+                ProcessId = 1234,
+                Protocol = "UDP",
+                RemoteEndpoint = "203.0.113.9:443",
+                BytesReceived = 5_000_000,
+                BytesSent = 25_000,
+                SampleMilliseconds = 5000,
+                Details = "Байтовая дельта сетевого потока за интервал"
+            };
+            Assert(record.LineText.Contains("↓ 5 MB", StringComparison.Ordinal) &&
+                   record.LineText.Contains("1 MB/s", StringComparison.Ordinal) &&
+                   record.LineText.Contains("↑ 25 kB", StringComparison.Ordinal) &&
+                   record.LineText.Contains("203.0.113.9:443", StringComparison.Ordinal),
+                "строка трафика должна показывать байты, скорость и удалённую точку");
         }
 
         private static void Assert(bool value, string message)

@@ -162,7 +162,7 @@
                     <StackPanel>
                         <TextBlock Style="{StaticResource SectionText}" Text="НАБЛЮДЕНИЕ СЕТИ" />
                         <TextBlock Style="{StaticResource MutedText}"
-                                   Text="Проверяет выбранные сайты и изменения TCP/UDP-соединений выбранных приложений; содержимое пакетов не сохраняется."
+                                   Text="Проверяет выбранные сайты и во время сеанса измеряет TCP/UDP-байты и адреса потоков выбранных приложений. Содержимое пакетов не читается и не сохраняется."
                                    TextWrapping="Wrap" />
                         <WrapPanel Margin="0,10,0,0" VerticalAlignment="Center">
                             <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Фоновая проверка сайтов"
@@ -194,7 +194,7 @@
                             </ListBox.ItemTemplate>
                         </ListBox>
                         <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0"
-                                   Text="Снимки соединений раз в 2 с могут пропустить короткие подключения; для UDP Windows обычно не раскрывает удалённый адрес. Сайты проверяются каждые 15 с."
+                                   Text="Снимки сокетов раз в 2 с могут пропустить короткие соединения; ETW считает байты TCP/UDP по потокам раз в 5 с. Записываются только выбранные PID, без payload. Сайты проверяются каждые 15 с."
                                    TextWrapping="Wrap" />
                         <WrapPanel Margin="0,10,0,0" VerticalAlignment="Center">
                             <ComboBox Style="{StaticResource AppComboBox}" Width="78"
@@ -211,7 +211,7 @@
                                     ToolTip="Остановить текущую запись" />
                             <Button Style="{StaticResource PageActionGhost}" Content="Экспорт JSON" Margin="8,0,0,0"
                                     Command="{Binding Monitoring.ExportNetworkObservationsCommand}"
-                                    ToolTip="Сохранить локальные записи за последние 24 часа в JSON" />
+                                    ToolTip="Перед сохранением выберите полный экспорт с доменами/IP/процессами или обезличенный экспорт; сначала показывается предпросмотр" />
                             <Button Style="{StaticResource PageActionGhost}" Content="Очистить" Margin="8,0,0,0"
                                     Command="{Binding Monitoring.ClearNetworkObservationsCommand}"
                                     ToolTip="Удалить локальный журнал сетевой диагностики" />

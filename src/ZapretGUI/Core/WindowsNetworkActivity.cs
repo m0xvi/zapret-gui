@@ -94,6 +94,31 @@ namespace ZapretGui.Core
         }
 
         /// <summary>Кандидаты для выбора в интерфейсе: процессы с окном или активным TCP/UDP сокетом.</summary>
+        public static IReadOnlyDictionary<int, string> GetSelectedProcesses(IEnumerable<string> selectedProcessNames)
+        {
+            var selected = (selectedProcessNames ?? Array.Empty<string>())
+                .Select(NormalizeProcessName).Where(name => name.Length > 0)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var result = new Dictionary<int, string>();
+            if (selected.Count == 0) return result;
+
+            try
+            {
+                foreach (var process in Process.GetProcesses())
+                {
+                    try
+                    {
+                        if (selected.Contains(NormalizeProcessName(process.ProcessName)))
+                            result[process.Id] = process.ProcessName;
+                    }
+                    catch { }
+                    finally { process.Dispose(); }
+                }
+            }
+            catch { }
+            return result;
+        }
+
         public static IReadOnlyList<string> GetCandidateProcessNames()
         {
             var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
