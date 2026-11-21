@@ -35,6 +35,8 @@
     <Compile Include="..\..\src\ZapretGUI\Core\DiagnosticsExportReport.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\EngineService.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\ResourceMonitoring.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\NetworkDiagnosticsStore.cs" />
+    <Compile Include="..\..\src\ZapretGUI\Core\WindowsNetworkActivity.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\RecoveryJournal.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\Readiness.cs" />
     <Compile Include="..\..\src\ZapretGUI\Core\Settings.cs" />

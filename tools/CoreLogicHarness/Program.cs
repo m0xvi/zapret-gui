@@ -66,7 +66,10 @@ namespace ZapretGui.CoreLogicHarness
                 ("Списки Steam создаются и чистятся вместе с исключениями", SteamBypassListsAreManaged),
                 ("Профиль R.E.P.O. исключает Photon и Steam P2P из обхода", RepoProfileExcludesPhotonPorts),
                 ("Photon: список регионов и маршрут через обход переключаются", PhotonRegionsAndRouting),
-                ("Игровой режим: порты в обходе и Photon учитывают режим фильтра", GameModePortChecks)
+                ("Игровой режим: порты в обходе и Photon учитывают режим фильтра", GameModePortChecks),
+                ("Выбранные приложения сохраняются, имена EXE нормализуются", NetworkObservedProcessesRoundTrip),
+                ("Экспорт сетевой диагностики обезличивает хосты, IP и процессы", NetworkExportRedactsSensitiveFields),
+                ("История сетевой диагностики ограничена окном 24 часа", NetworkHistoryRetentionIsBounded)
             };
 
             foreach (var check in checks)
@@ -1588,6 +1591,64 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
             var settings = new AppSettings { UpdateListsOnStartup = true, AutoSwitchStrategyMasterEnabled = true };
             settings.DisableAutoStrategySwitching();
             Assert(settings.UpdateListsOnStartup, "сброс автосмены выключил автообновление списков");
+        }
+
+        private static void NetworkObservedProcessesRoundTrip()
+        {
+            var settings = new AppSettings { NetworkObservedProcessNames = new List<string> { "chrome", "game-client" } };
+            var json = JsonSerializer.Serialize(settings);
+            var restored = JsonSerializer.Deserialize<AppSettings>(json) ?? throw new InvalidOperationException("настройки не читаются");
+            Assert(restored.NetworkObservedProcessNames.SequenceEqual(new[] { "chrome", "game-client" }),
+                "список выбранных приложений потерялся при сериализации");
+            Assert(WindowsNetworkActivity.NormalizeProcessName("Chrome.EXE") == "chrome",
+                "расширение EXE должно нормализоваться");
+        }
+
+        private static void NetworkExportRedactsSensitiveFields()
+        {
+            var raw = new NetworkObservationRecord
+            {
+                TimeUtc = DateTime.UtcNow,
+                EventType = "Проверка",
+                TargetName = "My private site",
+                Host = "private.example",
+                ProcessName = "private-browser",
+                ProcessId = 4321,
+                LocalEndpoint = "192.0.2.10:443",
+                RemoteEndpoint = "[2001:db8::1]:443",
+                Details = "Ошибка private.example / private-browser: 198.51.100.25",
+                StrategyName = "strategy-A"
+            };
+            var sanitized = NetworkDiagnosticsStore.SanitizeForExport(new[] { raw }).Single();
+            var json = JsonSerializer.Serialize(sanitized);
+
+            Assert(sanitized.Host.StartsWith("site-", StringComparison.Ordinal), "хост не заменён псевдонимом");
+            Assert(sanitized.TargetName == sanitized.Host, "имя сайта не заменено псевдонимом хоста");
+            Assert(sanitized.ProcessName.StartsWith("app-", StringComparison.Ordinal), "имя процесса не заменено псевдонимом");
+            Assert(sanitized.ProcessId == null, "PID не удалён из экспорта");
+            Assert(!json.Contains("private.example", StringComparison.OrdinalIgnoreCase) &&
+                   !json.Contains("private-browser", StringComparison.OrdinalIgnoreCase) &&
+                   !json.Contains("192.0.2.10", StringComparison.Ordinal) &&
+                   !json.Contains("2001:db8::1", StringComparison.Ordinal) &&
+                   !json.Contains("198.51.100.25", StringComparison.Ordinal),
+                "в экспортируемом JSON остались чувствительные значения");
+            Assert(sanitized.StrategyName == "strategy-A", "диагностическая стратегия должна остаться видимой");
+        }
+
+        private static void NetworkHistoryRetentionIsBounded()
+        {
+            var now = DateTime.UtcNow;
+            var input = new[]
+            {
+                new NetworkObservationRecord { TimeUtc = now.AddHours(-25), Details = "старое" },
+                new NetworkObservationRecord { TimeUtc = now.AddHours(-23), Details = "в пределах окна" },
+                new NetworkObservationRecord { TimeUtc = now.AddMinutes(2), Details = "небольшое расхождение часов" },
+                new NetworkObservationRecord { TimeUtc = now.AddMinutes(6), Details = "из будущего" }
+            };
+            var retained = NetworkDiagnosticsStore.KeepWithinRetention(input, now);
+            Assert(retained.Count == 2, "остались записи вне 24-часового окна");
+            Assert(retained[0].Details == "в пределах окна" && retained[1].Details == "небольшое расхождение часов",
+                "сохранены неверные записи или нарушен порядок");
         }
 
         private static void Assert(bool value, string message)

@@ -158,6 +158,75 @@
                     </Grid>
                 </Border>
 
+                <Border Style="{StaticResource Card}" Margin="0,12,0,0">
+                    <StackPanel>
+                        <TextBlock Style="{StaticResource SectionText}" Text="НАБЛЮДЕНИЕ СЕТИ" />
+                        <TextBlock Style="{StaticResource MutedText}"
+                                   Text="Проверяет выбранные сайты и изменения TCP/UDP-соединений выбранных приложений; содержимое пакетов не сохраняется."
+                                   TextWrapping="Wrap" />
+                        <WrapPanel Margin="0,10,0,0" VerticalAlignment="Center">
+                            <CheckBox Style="{StaticResource SwitchCheckBox}" Content="Фоновая проверка сайтов"
+                                      IsChecked="{Binding Monitoring.ResourceMonitoringEnabled, Mode=TwoWay}"
+                                      ToolTip="Периодически проверять отмеченные ресурсы и записывать результат локально" />
+                            <Button Style="{StaticResource PageActionGhost}" Content="Обновить приложения" Margin="14,0,0,0"
+                                    Command="{Binding Monitoring.RefreshProcessOptionsCommand}"
+                                    ToolTip="Найти открытые приложения и процессы с активными сетевыми сокетами" />
+                            <TextBlock Style="{StaticResource DimText}" Text="{Binding Monitoring.SelectedProcessNamesText}"
+                                       Margin="10,0,0,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                        </WrapPanel>
+                        <WrapPanel Margin="0,8,0,0" VerticalAlignment="Center">
+                            <TextBox Style="{StaticResource InputBox}" Width="230" Height="32"
+                                     Text="{Binding Monitoring.NewProcessName, UpdateSourceTrigger=PropertyChanged}"
+                                     ToolTip="Имя EXE или полный путь, например C:\Games\game.exe" />
+                            <Button Style="{StaticResource PageActionGhost}" Content="Добавить EXE" Margin="8,0,0,0"
+                                    Command="{Binding Monitoring.AddObservedProcessCommand}"
+                                    ToolTip="Добавить процесс, даже если приложение сейчас не запущено" />
+                        </WrapPanel>
+                        <ListBox Margin="0,8,0,0" MaxHeight="150" Style="{StaticResource PlainListBox}"
+                                 ItemsSource="{Binding Monitoring.ProcessOptions}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto" Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <CheckBox Style="{StaticResource CheckBoxApp}" Content="{Binding DisplayName}"
+                                              IsChecked="{Binding IsSelected, Mode=TwoWay}"
+                                              ToolTip="Снимать только метаданные TCP/UDP-соединений этого процесса во время сеанса" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0"
+                                   Text="Снимки соединений раз в 2 с могут пропустить короткие подключения; для UDP Windows обычно не раскрывает удалённый адрес. Сайты проверяются каждые 15 с."
+                                   TextWrapping="Wrap" />
+                        <WrapPanel Margin="0,10,0,0">
+                            <Button Style="{StaticResource PageActionPrimary}" Content="Записать 2 минуты"
+                                    Command="{Binding Monitoring.StartNetworkSessionCommand}"
+                                    ToolTip="Проверять отмеченные сайты и отслеживать соединения выбранных приложений; обход не переключается" />
+                            <Button Style="{StaticResource PageAction}" Content="Остановить" Margin="8,0,0,0"
+                                    Command="{Binding Monitoring.StopNetworkSessionCommand}"
+                                    ToolTip="Остановить текущую запись" />
+                            <Button Style="{StaticResource PageActionGhost}" Content="Экспорт JSON" Margin="8,0,0,0"
+                                    Command="{Binding Monitoring.ExportNetworkObservationsCommand}"
+                                    ToolTip="Сохранить локальные записи за последние 24 часа в JSON" />
+                            <Button Style="{StaticResource PageActionGhost}" Content="Очистить" Margin="8,0,0,0"
+                                    Command="{Binding Monitoring.ClearNetworkObservationsCommand}"
+                                    ToolTip="Удалить локальный журнал сетевой диагностики" />
+                        </WrapPanel>
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,8,0,0"
+                                   Text="{Binding Monitoring.NetworkSessionStatus}" />
+                        <TextBlock Style="{StaticResource DimText}" Margin="0,4,0,0"
+                                   Text="{Binding Monitoring.NetworkObservationCountText}" />
+                        <ListBox Margin="0,6,0,0" MaxHeight="190" Style="{StaticResource PlainListBox}"
+                                 ItemsSource="{Binding Monitoring.RecentNetworkObservations}"
+                                 ScrollViewer.VerticalScrollBarVisibility="Auto" Background="Transparent">
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <TextBlock Style="{StaticResource MonoText}" Text="{Binding LineText}"
+                                               TextWrapping="Wrap" Foreground="{DynamicResource TextMutedBrush}" />
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </StackPanel>
+                </Border>
+
             </StackPanel>
 
             <!-- ==================== ВКЛАДКА 3: АУДИТ СИСТЕМЫ ==================== -->
