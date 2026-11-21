@@ -129,12 +129,18 @@ namespace ZapretGui.Core
             IPAddress[] addresses;
             try
             {
-                addresses = await Dns.GetHostAddressesAsync(host).WaitAsync(TimeSpan.FromSeconds(3), ct).ConfigureAwait(false);
+                using var dnsCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                dnsCts.CancelAfter(TimeSpan.FromSeconds(3));
+                addresses = await Dns.GetHostAddressesAsync(host, dnsCts.Token).ConfigureAwait(false);
                 if (addresses.Length == 0)
                 {
                     check.StatusDetails = "DNS не разрешил адрес";
                     return check;
                 }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch (Exception ex)
             {
@@ -148,9 +154,14 @@ namespace ZapretGui.Core
             try
             {
                 using var tcp = new TcpClient();
-                var connectTask = tcp.ConnectAsync(targetIp, 443);
-                var done = await Task.WhenAny(connectTask, Task.Delay(2500, ct)).ConfigureAwait(false);
-                check.SignalingOk = done == connectTask && tcp.Connected;
+                using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                connectCts.CancelAfter(TimeSpan.FromMilliseconds(2500));
+                await tcp.ConnectAsync(targetIp, 443, connectCts.Token).ConfigureAwait(false);
+                check.SignalingOk = tcp.Connected;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch
             {
@@ -226,20 +237,20 @@ namespace ZapretGui.Core
                 var endPoint = new IPEndPoint(ip, port);
                 await udp.SendAsync(packet, packet.Length, endPoint).ConfigureAwait(false);
 
-                var receiveTask = udp.ReceiveAsync();
-                var completed = await Task.WhenAny(receiveTask, Task.Delay(2000, ct)).ConfigureAwait(false);
-
-                if (completed == receiveTask)
+                using var receiveCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                receiveCts.CancelAfter(TimeSpan.FromSeconds(2));
+                var result = await udp.ReceiveAsync(receiveCts.Token).ConfigureAwait(false);
+                sw.Stop();
+                // Ответ получен (STUN Binding Response 0x0101 или любые медиа-байты)
+                if (result.Buffer != null && result.Buffer.Length >= 4)
                 {
-                    var result = await receiveTask.ConfigureAwait(false);
-                    sw.Stop();
-                    // Ответ получен (STUN Binding Response 0x0101 или любые медиа-байты)
-                    if (result.Buffer != null && result.Buffer.Length >= 4)
-                    {
-                        return sw.ElapsedMilliseconds;
-                    }
                     return sw.ElapsedMilliseconds;
                 }
+                return sw.ElapsedMilliseconds;
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
             }
             catch { }
 

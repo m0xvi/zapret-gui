@@ -297,9 +297,9 @@ namespace ZapretGui.Core
                 Title = "Системный DNS и подмена",
                 Status = dnsHijacked ? DiagStatus.Warning : dnsOk ? DiagStatus.Ok : DiagStatus.Warning,
                 Details = dnsDetails2,
-                FixHint = dnsHijacked ? "Провайдер подменяет DNS — включите Безопасный DNS (DoH) Cloudflare/Google" : dnsOk ? "" : "DNS не настроен",
+                FixHint = dnsHijacked ? "Подмена DNS обнаружена — «Исправить» назначит Cloudflare DNS на активном адаптере (это не DoH)." : dnsOk ? "" : "DNS не настроен",
                 FixId = dnsHijacked ? "dns" : "",
-                FixLabel = "Защитить DNS"
+                FixLabel = "Сменить DNS"
             });
 
             return items;

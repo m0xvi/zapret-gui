@@ -196,18 +196,18 @@ namespace ZapretGui.Core
                 var timedOut = false;
                 for (var attempt = 0; attempt < 2 && addresses.Length == 0; attempt++)
                 {
-                    var lookup = Dns.GetHostAddressesAsync(host);
                     var wait = attempt == 0 ? 5000 : 3000;
-                    var completed = await Task.WhenAny(lookup, Task.Delay(wait, ct)).ConfigureAwait(false);
-                    if (completed != lookup)
+                    using var lookupCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    lookupCts.CancelAfter(wait);
+                    try
                     {
-                        ct.ThrowIfCancellationRequested();
-                        timedOut = true;
-                        continue;
+                        addresses = await Dns.GetHostAddressesAsync(host, lookupCts.Token).ConfigureAwait(false);
+                        timedOut = false;
                     }
-
-                    timedOut = false;
-                    addresses = await lookup.ConfigureAwait(false);
+                    catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                    {
+                        timedOut = true;
+                    }
                 }
 
                 if (addresses.Length == 0 && timedOut)
@@ -229,7 +229,11 @@ namespace ZapretGui.Core
                         : "DNS не вернул адреса"
                 };
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException)
             {
                 return new DnsProbeResult { Milliseconds = Elapsed(started), Details = "тайм-аут DNS" };
             }
@@ -259,14 +263,16 @@ namespace ZapretGui.Core
 
                 using var tcp = new TcpClient();
                 var defaultPort = new Uri(target.Url).Scheme == Uri.UriSchemeHttp ? 80 : 443;
-                var connect = tcp.ConnectAsync(host, target.Port <= 0 ? defaultPort : target.Port);
-                var completed = await Task.WhenAny(connect, Task.Delay(5000, ct)).ConfigureAwait(false);
-                if (completed != connect)
+                using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                connectCts.CancelAfter(TimeSpan.FromSeconds(5));
+                try
                 {
-                    ct.ThrowIfCancellationRequested();
+                    await tcp.ConnectAsync(host, target.Port <= 0 ? defaultPort : target.Port, connectCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
                     return Failure(target, started, ResourceResultKind.Timeout, "тайм-аут TCP", dns);
                 }
-                await connect.ConfigureAwait(false);
                 tcpOk = true;
                 tcpMilliseconds = Elapsed(started);
 
@@ -323,7 +329,11 @@ namespace ZapretGui.Core
                 var details = string.IsNullOrWhiteSpace(attempt.Error) ? reason : reason + ": " + attempt.Error;
                 return Failure(target, started, attempt.Kind, details, dns, tcpOk: true);
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException)
             {
                 return Failure(target, started, ResourceResultKind.Timeout, "тайм-аут", dns, tcpOk);
             }
@@ -368,7 +378,11 @@ namespace ZapretGui.Core
                 var ok = status > 0 && status < 500;
                 return (ok, status, ok ? "" : "HTTP " + status, ResourceResultKind.HttpError);
             }
-            catch (TaskCanceledException) when (!ct.IsCancellationRequested)
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                throw;
+            }
+            catch (OperationCanceledException)
             {
                 return (false, 0, "тайм-аут HTTPS", ResourceResultKind.Timeout);
             }

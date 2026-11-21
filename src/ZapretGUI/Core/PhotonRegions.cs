@@ -64,61 +64,62 @@ namespace ZapretGui.Core
 
         public const string IpsetExcludeFileName = "ipset-exclude-user.txt";
         private const string Marker = "# zapret-gui: Photon (R.E.P.O.) — управляется автоматически";
+        private static readonly object EnsureLock = new();
 
         /// <summary>Создаёт/обновляет исключения Photon и (опционально) маршрут доменов Photon.</summary>
         public static (bool Ok, string Message) Ensure(AppSettings? settings)
         {
-            if (settings == null) return (false, "Настройки недоступны");
-            if (string.IsNullOrWhiteSpace(settings.EnginePath))
-                return (false, "Движок не установлен — списки пока некуда записать.");
-
-            try
+            lock (EnsureLock)
             {
-                var lists = Path.Combine(settings.EnginePath, "lists");
-                AppPaths.EnsureDir(lists);
-                StrategyParser.EnsureUserLists(settings.EnginePath);
+                if (settings == null) return (false, "Настройки недоступны");
+                if (string.IsNullOrWhiteSpace(settings.EnginePath))
+                    return (false, "Движок не установлен — списки пока некуда записать.");
 
-                var ipsetExclude = Path.Combine(lists, IpsetExcludeFileName);
-                EnsureIpsetExclusions(ipsetExclude);
-
-                var generalUser = Path.Combine(lists, "list-general-user.txt");
-                var excludeUser = Path.Combine(lists, "list-exclude-user.txt");
-                if (settings.PhotonThroughBypass)
+                try
                 {
-                    AddHosts(generalUser, BypassHosts, "# Пользовательские домены");
-                    RemoveHosts(excludeUser, BypassHosts);
-                }
-                else
-                {
-                    RemoveHosts(generalUser, BypassHosts);
-                    AddHosts(excludeUser, BypassHosts, "# Домены-исключения (не обрабатывать)");
-                }
+                    var lists = Path.Combine(settings.EnginePath, "lists");
+                    AppPaths.EnsureDir(lists);
+                    StrategyParser.EnsureUserLists(settings.EnginePath);
 
-                var state = DescribeCoverage(settings);
-                return (true, state);
-            }
-            catch (Exception ex)
-            {
-                AppLog.Warn("[Photon] Не удалось обновить списки: " + ex.Message);
-                return (false, "Не удалось обновить списки Photon: " + ex.Message);
+                    var ipsetExclude = Path.Combine(lists, IpsetExcludeFileName);
+                    EnsureIpsetExclusions(ipsetExclude);
+
+                    var generalUser = Path.Combine(lists, "list-general-user.txt");
+                    var excludeUser = Path.Combine(lists, "list-exclude-user.txt");
+                    if (settings.PhotonThroughBypass)
+                    {
+                        AddHosts(generalUser, BypassHosts, "# Пользовательские домены");
+                        RemoveHosts(excludeUser, BypassHosts);
+                    }
+                    else
+                    {
+                        RemoveHosts(generalUser, BypassHosts);
+                        AddHosts(excludeUser, BypassHosts, "# Домены-исключения (не обрабатывать)");
+                    }
+
+                    var state = DescribeCoverage(settings);
+                    return (true, state);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("[Photon] Не удалось обновить списки: " + ex.Message);
+                    return (false, "Не удалось обновить списки Photon: " + ex.Message);
+                }
             }
         }
 
         /// <summary>Добавляет диапазоны Photon в ipset-exclude-user.txt (идемпотентно).</summary>
         private static void EnsureIpsetExclusions(string path)
         {
-            var existing = File.Exists(path)
-                ? File.ReadAllLines(path).Select(l => l.Trim().ToLowerInvariant()).ToHashSet()
-                : new HashSet<string>();
-            var missing = IpRanges.Where(r => !existing.Contains(r.ToLowerInvariant())).ToList();
+            var lines = File.Exists(path) ? File.ReadAllLines(path).ToList() : new List<string>();
+            var existing = lines.Select(line => line.Trim().ToLowerInvariant()).ToHashSet();
+            var missing = IpRanges.Where(range => !existing.Contains(range.ToLowerInvariant())).ToList();
             if (missing.Count == 0) return;
 
-            if (!File.Exists(path))
-                File.WriteAllText(path, Marker + Environment.NewLine, new System.Text.UTF8Encoding(false));
-            else
-                File.AppendAllText(path, Environment.NewLine + Marker + Environment.NewLine, new System.Text.UTF8Encoding(false));
-
-            File.AppendAllLines(path, missing, new System.Text.UTF8Encoding(false));
+            if (!lines.Any(line => line.Trim().Equals(Marker, StringComparison.OrdinalIgnoreCase)))
+                lines.Add(Marker);
+            lines.AddRange(missing);
+            WriteAtomically(path, lines);
             AppLog.Info($"[Photon] Диапазоны Photon исключены из ipset-фильтра: {string.Join(", ", missing)}");
         }
 
@@ -247,16 +248,15 @@ namespace ZapretGui.Core
                 try
                 {
                     using var client = new TcpClient();
-                    var connect = client.ConnectAsync(host, 443);
-                    var completed = await Task.WhenAny(connect, Task.Delay(4000, ct)).ConfigureAwait(false);
-                    if (completed != connect)
-                    {
-                        ct.ThrowIfCancellationRequested();
-                        continue;
-                    }
-                    await connect.ConfigureAwait(false);
+                    using var attemptCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                    attemptCts.CancelAfter(TimeSpan.FromSeconds(4));
+                    await client.ConnectAsync(host, 443, attemptCts.Token).ConfigureAwait(false);
                     var ms = (long)(DateTime.UtcNow - started).TotalMilliseconds;
                     if (ms < best) best = ms;
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
+                    // Тайм-аут этой попытки: внутренний ConnectAsync отменён и будет наблюдён.
                 }
                 catch (SocketException ex) when (ex.SocketErrorCode is SocketError.HostNotFound or SocketError.NoData)
                 {
@@ -285,6 +285,20 @@ namespace ZapretGui.Core
             };
         }
 
+        private static void WriteAtomically(string path, IEnumerable<string> lines)
+        {
+            var tempPath = path + ".tmp-" + Guid.NewGuid().ToString("N");
+            try
+            {
+                File.WriteAllLines(tempPath, lines, new System.Text.UTF8Encoding(false));
+                File.Move(tempPath, path, true);
+            }
+            finally
+            {
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            }
+        }
+
         private static void RemoveHosts(string path, IEnumerable<string> hosts)
         {
             if (!File.Exists(path)) return;
@@ -296,20 +310,19 @@ namespace ZapretGui.Core
                 return value.Length == 0 || value.StartsWith("#", StringComparison.Ordinal) || !drop.Contains(value);
             }).ToList();
             if (kept.Count == lines.Length) return;
-            File.WriteAllLines(path, kept, new System.Text.UTF8Encoding(false));
+            WriteAtomically(path, kept);
             AppLog.Info($"[Photon] Убраны домены Photon из {Path.GetFileName(path)}");
         }
 
         private static void AddHosts(string path, IEnumerable<string> hosts, string header)
         {
-            var existing = File.Exists(path)
-                ? File.ReadAllLines(path).Select(l => l.Trim().ToLowerInvariant()).ToHashSet()
-                : new HashSet<string>();
-            var missing = hosts.Where(h => !existing.Contains(h.ToLowerInvariant())).ToList();
+            var lines = File.Exists(path) ? File.ReadAllLines(path).ToList() : new List<string>();
+            var existing = lines.Select(line => line.Trim().ToLowerInvariant()).ToHashSet();
+            var missing = hosts.Where(host => !existing.Contains(host.ToLowerInvariant())).ToList();
             if (missing.Count == 0) return;
-            if (!File.Exists(path))
-                File.AppendAllText(path, header + Environment.NewLine, new System.Text.UTF8Encoding(false));
-            File.AppendAllLines(path, missing, new System.Text.UTF8Encoding(false));
+            if (lines.Count == 0) lines.Add(header);
+            lines.AddRange(missing);
+            WriteAtomically(path, lines);
             AppLog.Info($"[Photon] Добавлены домены Photon: {string.Join(", ", missing)}");
         }
 

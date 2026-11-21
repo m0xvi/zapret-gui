@@ -920,6 +920,7 @@ namespace ZapretGui.ViewModels
                     "divert" => DiagnosticsService.RemoveDivertLeftovers(),
                     "zapretstuck" => await FixZapretStuckAsync(),
                     "hosts" => await FixHostsAsync(),
+                    "dns" => await FixDnsAsync(),
                     "cache" => EngineService.ClearDiscordCache(),
                     _ => (false, "Неизвестное исправление: " + item.FixId)
                 };
@@ -947,6 +948,20 @@ namespace ZapretGui.ViewModels
                 return (true, "Перезапускаю от администратора…");
             }
             return (false, "Не удалось запросить права администратора");
+        }
+
+        private async Task<(bool Ok, string Message)> FixDnsAsync()
+        {
+            if (!Shell.IsAdmin())
+                return (false, "Для смены системного DNS нужны права администратора. Перезапустите GUI от имени администратора.");
+
+            var profile = DnsManagementService.PredefinedProfiles.FirstOrDefault(item => item.Id == "cloudflare");
+            if (profile == null)
+                return (false, "Профиль Cloudflare DNS не найден.");
+
+            var result = await DnsManagementService.ApplyDnsProfileAsync(profile).ConfigureAwait(true);
+            if (!result.Ok) return (false, "DNS не изменён: " + result.Message);
+            return (true, result.Message + " Это меняет DNS-адреса адаптера, но не включает DoH в браузере.");
         }
 
         private async Task<(bool Ok, string Message)> FixEngineAsync()

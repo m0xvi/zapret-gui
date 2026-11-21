@@ -28,7 +28,6 @@ namespace ZapretGui.Core
             var listsDir = Path.Combine(enginePath ?? "", "lists");
             var binDir = Path.Combine(enginePath ?? "", "bin");
             var ipsetAll = Path.Combine(listsDir, "ipset-all.txt");
-            var ipsetDiscord = Path.Combine(listsDir, "ipset-discord.txt");
             var tlsFakeGoogle = Path.Combine(binDir, "tls_clienthello_www_google_com.bin");
             var quicFakeGoogle = Path.Combine(binDir, "quic_initial_www_google_com.bin");
 
@@ -161,11 +160,10 @@ namespace ZapretGui.Core
                 args.Add("--filter-udp=50000-65535");
                 if (useIpSet)
                 {
-                    if (File.Exists(ipsetDiscord))
-                    {
-                        args.Add($"--ipset={ipsetDiscord}");
-                    }
-                    else if (File.Exists(ipsetAll))
+                    // Upstream не публикует отдельный Discord IPset. В созданной раньше
+                    // заглушке ipset-discord.txt находится sentinel, который молча отключает
+                    // фильтрацию UDP; используем актуальный общий IPset Flowseal.
+                    if (File.Exists(ipsetAll))
                     {
                         args.Add($"--ipset={ipsetAll}");
                     }

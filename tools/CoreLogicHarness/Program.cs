@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text.Json;
+using System.Threading.Tasks;
 using ZapretGui.Core;
 
 namespace ZapretGui.CoreLogicHarness
@@ -55,6 +56,8 @@ namespace ZapretGui.CoreLogicHarness
                 ("Score кандидата приоритизирует эмпирические результаты проверок", EmpiricalCandidateEvaluationScoreOrdering),
                 ("Диагностический отчёт сериализуется вместе с журналом восстановления", DiagnosticsReportRoundTrips),
                 ("Списки доменов автоматически наполняются эталонными записями", DomainListsAutoSeedingWorks),
+                ("Updater отклоняет HTML вместо списков и восстанавливает повреждённый IPset", ListUpdaterRejectsHtmlAndRepairsIpSet),
+                ("Визуальная стратегия не выбирает удалённый Discord IPset", VisualStrategyUsesCurrentIpset),
                 ("Менеджер фейковых бинарных нагрузок и Voice RTC эндпоинты работают", VoiceRtcProberAndFakeBinManagerWork),
                 ("Очистка кэша Discord и сетевой стек работают корректно", DiscordNetworkCleanerWorks),
                 ("Тонкая настройка портов GameFilter и профили исключений работают", GameFilterPortConfigWorks),
@@ -403,6 +406,10 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
             try
             {
                 var settings = new AppSettings { EnginePath = engine, PhotonThroughBypass = true };
+                var concurrentEnsures = Enumerable.Range(0, 8)
+                    .Select(_ => Task.Run(() => PhotonRegions.Ensure(settings))).ToArray();
+                Task.WaitAll(concurrentEnsures);
+                Assert(concurrentEnsures.All(task => task.Result.Ok), "параллельные Ensure Photon должны завершаться без конфликтов файлов");
                 var (ok, message) = PhotonRegions.Ensure(settings);
                 Assert(ok, "маршрут через обход не применился: " + message);
                 var generalUser = System.IO.Path.Combine(engine, "lists", "list-general-user.txt");
@@ -1290,6 +1297,58 @@ start ""zapret"" /min ""%BIN%winws.exe"" --wf-tcp=443 ^
                 "журнал восстановления не попал в отчёт");
             Assert(restored.Readiness.Key == "Success" && restored.ReportType.Contains("диагностический", StringComparison.OrdinalIgnoreCase),
                 "метаданные отчёта потеряны");
+        }
+
+        private static void ListUpdaterRejectsHtmlAndRepairsIpSet()
+        {
+            const string html = "<!doctype html><html><body>GitHub Proxy</body></html>";
+            Assert(!DomainListUpdater.IsValidListContent("ipset-all.txt", html), "HTML ошибочно признан IPset-ом");
+            Assert(!DomainListUpdater.IsValidListContent("list-general.txt", html), "HTML ошибочно признан hostlist-ом");
+            Assert(DomainListUpdater.IsValidListContent("ipset-all.txt", "1.2.3.0/24\n203.0.113.113/32\n"), "валидные CIDR отклонены");
+            Assert(!DomainListUpdater.IsValidListContent("ipset-all.txt", "1.2.3.0/24\nnot-an-ip\n"), "IPset с мусорной строкой принят");
+            Assert(DomainListUpdater.IsValidListContent("list-general.txt", "^dns.google\ngooglevideo.com\n"), "валидные hostlist записи отклонены");
+
+            var tempDir = Path.Combine(Path.GetTempPath(), "ZapretGUI-invalid-list-test-" + Guid.NewGuid().ToString("N"));
+            var lists = Path.Combine(tempDir, "lists");
+            try
+            {
+                Directory.CreateDirectory(lists);
+                File.WriteAllText(Path.Combine(lists, "ipset-all.txt"), html);
+                File.WriteAllText(Path.Combine(lists, "ipset-all.txt.backup"), "1.2.3.0/24\n");
+                File.WriteAllText(Path.Combine(lists, "list-google.txt"), html);
+                DomainListUpdater.EnsureSeeded(tempDir);
+
+                var restoredIpset = File.ReadAllText(Path.Combine(lists, "ipset-all.txt"));
+                var repairedGoogle = File.ReadAllText(Path.Combine(lists, "list-google.txt"));
+                Assert(restoredIpset.Contains("1.2.3.0/24", StringComparison.Ordinal), "валидный IPset backup не восстановлен");
+                Assert(DomainListUpdater.IsValidListContent("ipset-all.txt", restoredIpset), "восстановленный IPset невалиден");
+                Assert(DomainListUpdater.IsValidListContent("list-google.txt", repairedGoogle), "повреждённый hostlist не заменён fallback-ом");
+                Assert(!repairedGoogle.Contains("<html", StringComparison.OrdinalIgnoreCase), "HTML остался в hostlist после ремонта");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true);
+            }
+        }
+
+        private static void VisualStrategyUsesCurrentIpset()
+        {
+            var tempDir = Path.Combine(Path.GetTempPath(), "ZapretGUI-visual-ipset-test-" + Guid.NewGuid().ToString("N"));
+            var lists = Path.Combine(tempDir, "lists");
+            try
+            {
+                Directory.CreateDirectory(lists);
+                File.WriteAllText(Path.Combine(lists, "ipset-all.txt"), "1.2.3.0/24\n");
+                File.WriteAllText(Path.Combine(lists, "ipset-discord.txt"), "203.0.113.113/32\n");
+                var args = VisualStrategyBuilder.BuildArgs(tempDir, "fake", "1", "example.com", "auto", "none",
+                    useMultisplit: false, useGameUdp: true, useHostlist: false, useIpSet: true);
+                Assert(args.Contains("--ipset=" + Path.Combine(lists, "ipset-all.txt")), "стратегия не использует актуальный общий IPset");
+                Assert(!args.Any(arg => arg.Contains("ipset-discord.txt", StringComparison.OrdinalIgnoreCase)), "стратегия использует устаревший Discord IPset");
+            }
+            finally
+            {
+                if (Directory.Exists(tempDir)) Directory.Delete(tempDir, recursive: true);
+            }
         }
 
         private static void DomainListsAutoSeedingWorks()

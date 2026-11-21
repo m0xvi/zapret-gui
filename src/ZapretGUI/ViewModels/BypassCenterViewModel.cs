@@ -398,7 +398,7 @@ namespace ZapretGui.ViewModels
                 var mode = EngineService.GetIpsetMode(Settings.EnginePath);
                 var all = Path.Combine(Settings.EnginePath, "lists", "ipset-all.txt");
                 var cnt = File.Exists(all) ? File.ReadAllLines(all).Count(l => !string.IsNullOrWhiteSpace(l) && !l.TrimStart().StartsWith("#")) : 0;
-                return $"ipset: {mode} · {cnt} сетей · discord {File.Exists(Path.Combine(Settings.EnginePath, "lists", "ipset-discord.txt"))}";
+                return $"ipset: {mode} · {cnt} сетей · для UDP игр используется общий список";
             }
             catch { return "ipset: ошибка"; }
         }

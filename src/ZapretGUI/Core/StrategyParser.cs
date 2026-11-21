@@ -135,6 +135,8 @@ namespace ZapretGui.Core
     /// </summary>
     public static class StrategyParser
     {
+        private static readonly object UserListsLock = new();
+
         public const string GameFilterTcpToken = "{GameFilterTCP}";
         public const string GameFilterUdpToken = "{GameFilterUDP}";
 
@@ -402,53 +404,56 @@ namespace ZapretGui.Core
         /// <summary>Создаёт пользовательские списки и гарантирует наполнение базовых списков доменов.</summary>
         public static void EnsureUserLists(string engineRoot)
         {
-            try
+            lock (UserListsLock)
             {
-                var lists = Path.Combine(engineRoot, "lists");
-                AppPaths.EnsureDir(lists);
+                try
+                {
+                    var lists = Path.Combine(engineRoot, "lists");
+                    AppPaths.EnsureDir(lists);
 
-                DomainListUpdater.EnsureSeeded(engineRoot);
+                    DomainListUpdater.EnsureSeeded(engineRoot);
 
-                var ipsetExcludeUser = Path.Combine(lists, "ipset-exclude-user.txt");
-                if (!File.Exists(ipsetExcludeUser)) File.WriteAllText(ipsetExcludeUser, "203.0.113.113/32" + Environment.NewLine);
+                    var ipsetExcludeUser = Path.Combine(lists, "ipset-exclude-user.txt");
+                    if (!File.Exists(ipsetExcludeUser)) File.WriteAllText(ipsetExcludeUser, "203.0.113.113/32" + Environment.NewLine);
 
-                var listGeneralUser = Path.Combine(lists, "list-general-user.txt");
-                if (!File.Exists(listGeneralUser))
-                    File.WriteAllText(listGeneralUser,
-                        "# Никогда не оставляйте этот файл пустым" + Environment.NewLine +
-                        "# Добавляйте сюда свои домены (по одному в строке)" + Environment.NewLine +
-                        "domain.example.abc" + Environment.NewLine);
+                    var listGeneralUser = Path.Combine(lists, "list-general-user.txt");
+                    if (!File.Exists(listGeneralUser))
+                        File.WriteAllText(listGeneralUser,
+                            "# Никогда не оставляйте этот файл пустым" + Environment.NewLine +
+                            "# Добавляйте сюда свои домены (по одному в строке)" + Environment.NewLine +
+                            "domain.example.abc" + Environment.NewLine);
 
-                var listYoutubeUser = Path.Combine(lists, "list-youtube-user.txt");
-                if (!File.Exists(listYoutubeUser))
-                    File.WriteAllText(listYoutubeUser,
-                        "# Пользовательские домены YouTube" + Environment.NewLine +
-                        "googlevideo.com" + Environment.NewLine +
-                        "i.ytimg.com" + Environment.NewLine);
+                    var listYoutubeUser = Path.Combine(lists, "list-youtube-user.txt");
+                    if (!File.Exists(listYoutubeUser))
+                        File.WriteAllText(listYoutubeUser,
+                            "# Пользовательские домены YouTube" + Environment.NewLine +
+                            "googlevideo.com" + Environment.NewLine +
+                            "i.ytimg.com" + Environment.NewLine);
 
-                var listDiscordUser = Path.Combine(lists, "list-discord-user.txt");
-                if (!File.Exists(listDiscordUser))
-                    File.WriteAllText(listDiscordUser,
-                        "# Пользовательские домены Discord" + Environment.NewLine +
-                        "cdn.discordapp.com" + Environment.NewLine +
-                        "gateway.discord.gg" + Environment.NewLine);
+                    var listDiscordUser = Path.Combine(lists, "list-discord-user.txt");
+                    if (!File.Exists(listDiscordUser))
+                        File.WriteAllText(listDiscordUser,
+                            "# Пользовательские домены Discord" + Environment.NewLine +
+                            "cdn.discordapp.com" + Environment.NewLine +
+                            "gateway.discord.gg" + Environment.NewLine);
 
-                var listGoogleUser = Path.Combine(lists, "list-google-user.txt");
-                if (!File.Exists(listGoogleUser))
-                    File.WriteAllText(listGoogleUser,
-                        "# Пользовательские домены Google" + Environment.NewLine +
-                        "googlevideo.com" + Environment.NewLine +
-                        "googleapis.com" + Environment.NewLine);
+                    var listGoogleUser = Path.Combine(lists, "list-google-user.txt");
+                    if (!File.Exists(listGoogleUser))
+                        File.WriteAllText(listGoogleUser,
+                            "# Пользовательские домены Google" + Environment.NewLine +
+                            "googlevideo.com" + Environment.NewLine +
+                            "googleapis.com" + Environment.NewLine);
 
-                var listExcludeUser = Path.Combine(lists, "list-exclude-user.txt");
-                if (!File.Exists(listExcludeUser))
-                    File.WriteAllText(listExcludeUser,
-                        "# Домены-исключения (не обрабатывать)" + Environment.NewLine +
-                        "domain.example.abc" + Environment.NewLine);
-            }
-            catch (Exception ex)
-            {
-                AppLog.Warn("Не удалось создать пользовательские списки: " + ex.Message);
+                    var listExcludeUser = Path.Combine(lists, "list-exclude-user.txt");
+                    if (!File.Exists(listExcludeUser))
+                        File.WriteAllText(listExcludeUser,
+                            "# Домены-исключения (не обрабатывать)" + Environment.NewLine +
+                            "domain.example.abc" + Environment.NewLine);
+                }
+                catch (Exception ex)
+                {
+                    AppLog.Warn("Не удалось создать пользовательские списки: " + ex.Message);
+                }
             }
         }
     }
