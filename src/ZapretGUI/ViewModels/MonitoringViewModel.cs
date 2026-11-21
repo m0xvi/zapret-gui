@@ -1,8 +1,11 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
+using System.IO;
 using System.Linq;
 using System.Threading;
+using Microsoft.Win32;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -18,6 +21,7 @@ namespace ZapretGui.ViewModels
     {
         private readonly MainViewModel _main;
         private readonly DispatcherTimer _timer;
+        private readonly DispatcherTimer _networkHistoryCleanupTimer;
         private bool _isBusy;
         private double _progressValue;
         private double _progressMaximum = 1;
@@ -28,6 +32,7 @@ namespace ZapretGui.ViewModels
         private ResourceDiagnosisResult? _diagnosis;
         private string _newResourceUrl = "";
         private string _newResourceName = "";
+        private string _newProcessName = "";
         private bool _newResourceIsGame;
         private string _message = "";
         private string _messageKey = "Info";
@@ -37,6 +42,13 @@ namespace ZapretGui.ViewModels
         private int _consecutiveStrategyFailures;
         private string _failureTargetId = "";
         private const int RecoveryFailureThreshold = 2;
+        private const int ObservationSessionSeconds = 120;
+        private const int ObservationSampleSeconds = 15;
+        private readonly Dictionary<string, ObservedSocket> _observedSockets = new(StringComparer.OrdinalIgnoreCase);
+        private CancellationTokenSource? _observationCts;
+        private bool _isRecordingNetwork;
+        private bool _networkSessionStoppedByUser;
+        private string _networkSessionStatus = "Сеанс не выполнялся";
 
         public MonitoringViewModel(MainViewModel main)
         {
@@ -45,13 +57,24 @@ namespace ZapretGui.ViewModels
             SettingsStore.Save(main.Settings);
             Targets = new ObservableCollection<MonitorTarget>(main.Settings.MonitorTargets);
 
-            CheckAllCommand = new AsyncRelayCommand(CheckAllAsync, () => !IsBusy && Targets.Any(t => t.Enabled));
+            CheckAllCommand = new AsyncRelayCommand(() => CheckAllAsync(), () => !IsBusy && Targets.Any(t => t.Enabled));
             DiagnoseCommand = new AsyncRelayCommand(DiagnoseSelectedAsync, () => !IsBusy && SelectedTarget != null);
             AddResourceCommand = new RelayCommand(AddResource);
             RemoveResourceCommand = new RelayCommand(RemoveResource, p => p is MonitorTarget target && !target.IsBuiltIn);
             AddToBypassListCommand = new RelayCommand(AddSelectedToBypassList, () => SelectedTarget != null);
             OpenUnifiedCheckCommand = new RelayCommand(() => _main.Navigate("diagnostics"));
+            StartNetworkSessionCommand = new AsyncRelayCommand(RunNetworkSessionAsync, () => !IsBusy && !IsRecordingNetwork);
+            StopNetworkSessionCommand = new RelayCommand(StopNetworkSession, () => IsRecordingNetwork);
+            RefreshProcessOptionsCommand = new RelayCommand(RefreshProcessOptions);
+            AddObservedProcessCommand = new RelayCommand(AddObservedProcess);
+            ExportNetworkObservationsCommand = new RelayCommand(ExportNetworkObservations, () => NetworkObservationCount > 0 && !IsRecordingNetwork);
+            ClearNetworkObservationsCommand = new RelayCommand(ClearNetworkObservations, () => NetworkObservationCount > 0 && !IsRecordingNetwork);
             SelectedTarget = Targets.FirstOrDefault();
+
+            foreach (var item in NetworkDiagnosticsStore.GetRecent().Take(12).Reverse())
+                RecentNetworkObservations.Add(item);
+            NetworkObservationCount = NetworkDiagnosticsStore.GetRecent().Count;
+            RefreshProcessOptions();
 
             _timer = new DispatcherTimer(DispatcherPriority.Background, System.Windows.Application.Current.Dispatcher)
             {
@@ -59,11 +82,78 @@ namespace ZapretGui.ViewModels
             };
             _timer.Tick += async (_, _) => await BackgroundCheckAsync();
             if (Settings.ResourceMonitoringEnabled) _timer.Start();
+            _networkHistoryCleanupTimer = new DispatcherTimer(DispatcherPriority.Background, System.Windows.Application.Current.Dispatcher)
+            {
+                Interval = TimeSpan.FromMinutes(15)
+            };
+            _networkHistoryCleanupTimer.Tick += (_, _) => NetworkObservationCount = NetworkDiagnosticsStore.CountRecent;
+            _networkHistoryCleanupTimer.Start();
         }
 
         public AppSettings Settings => _main.Settings;
         public ObservableCollection<MonitorTarget> Targets { get; }
         public ObservableCollection<ResourceProbeResult> Results { get; } = new();
+        public ObservableCollection<NetworkObservationRecord> RecentNetworkObservations { get; } = new();
+        public ObservableCollection<NetworkProcessOption> ProcessOptions { get; } = new();
+
+        public bool IsRecordingNetwork
+        {
+            get => _isRecordingNetwork;
+            private set
+            {
+                if (Set(ref _isRecordingNetwork, value))
+                {
+                    (StartNetworkSessionCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (StopNetworkSessionCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ExportNetworkObservationsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ClearNetworkObservationsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    Raise(nameof(NetworkCaptureStatusKey));
+                }
+            }
+        }
+
+        public string NetworkSessionStatus
+        {
+            get => _networkSessionStatus;
+            private set
+            {
+                if (Set(ref _networkSessionStatus, value)) Raise(nameof(NetworkCaptureStatusKey));
+            }
+        }
+
+        public string NetworkCaptureStatusKey => IsRecordingNetwork ? "Warning" : "Info";
+
+        private int _networkObservationCount;
+        public int NetworkObservationCount
+        {
+            get => _networkObservationCount;
+            private set
+            {
+                if (Set(ref _networkObservationCount, value))
+                {
+                    (ExportNetworkObservationsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    (ClearNetworkObservationsCommand as RelayCommand)?.RaiseCanExecuteChanged();
+                    Raise(nameof(NetworkObservationCountText));
+                }
+            }
+        }
+
+        public string NetworkObservationCountText => $"Локально за 24 часа: {NetworkObservationCount} записей";
+
+        public string NewProcessName
+        {
+            get => _newProcessName;
+            set => Set(ref _newProcessName, value);
+        }
+
+        public string SelectedProcessNamesText
+        {
+            get
+            {
+                var selected = ProcessOptions.Where(option => option.IsSelected).Select(option => option.ProcessName).ToArray();
+                return selected.Length == 0 ? "Не выбраны" : string.Join(", ", selected.Select(name => name + ".exe"));
+            }
+        }
 
         public MonitorTarget? SelectedTarget
         {
@@ -110,6 +200,7 @@ namespace ZapretGui.ViewModels
                 {
                     (CheckAllCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                     (DiagnoseCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
+                    (StartNetworkSessionCommand as AsyncRelayCommand)?.RaiseCanExecuteChanged();
                 }
             }
         }
@@ -234,8 +325,14 @@ namespace ZapretGui.ViewModels
         public ICommand AddResourceCommand { get; }
         public ICommand RemoveResourceCommand { get; }
         public ICommand AddToBypassListCommand { get; }
+        public ICommand StartNetworkSessionCommand { get; }
+        public ICommand StopNetworkSessionCommand { get; }
+        public ICommand RefreshProcessOptionsCommand { get; }
+        public ICommand AddObservedProcessCommand { get; }
+        public ICommand ExportNetworkObservationsCommand { get; }
+        public ICommand ClearNetworkObservationsCommand { get; }
 
-        public async Task CheckAllAsync()
+        public async Task CheckAllAsync(bool isBackground = false)
         {
             if (IsBusy) return;
             IsBusy = true;
@@ -256,6 +353,7 @@ namespace ZapretGui.ViewModels
                     ProgressText = $"Проверяю {i + 1} из {enabled.Count}: {target.Name}…";
                     var probe = await ResourceProbe.CheckAsync(target);
                     Results.Add(probe);
+                    RecordProbe(target, probe, isBackground ? "фон" : "ручная проверка");
                     target.LastStatusText = probe.StatusText;
                     target.LastStatusKey = probe.StatusKey;
                     target.LastDetails = probe.Details;
@@ -300,6 +398,7 @@ namespace ZapretGui.ViewModels
             try
             {
                 Diagnosis = await _main.Bypass.DiagnoseResourceAsync(SelectedTarget);
+                RecordDiagnosis(Diagnosis);
                 SetMessage(Diagnosis.Summary, Diagnosis.StatusKey);
             }
             finally
@@ -312,6 +411,7 @@ namespace ZapretGui.ViewModels
         {
             if (!Settings.StrategyAutoSwitchAllowed) return;
             Diagnosis = await _main.Bypass.DiagnoseResourceAsync(target);
+            RecordDiagnosis(Diagnosis);
             if (Diagnosis.Kind != ResourceDiagnosisKind.StrategyBreaks)
             {
                 _consecutiveStrategyFailures = 0;
@@ -516,10 +616,355 @@ namespace ZapretGui.ViewModels
             SetMessage(result.Message, result.Ok ? "Success" : "Danger");
         }
 
+        private void RecordDiagnosis(ResourceDiagnosisResult diagnosis)
+        {
+            var status = _main.Bypass.GetStatus();
+            RecordProbe(diagnosis.Target, diagnosis.Direct, "сравнение — напрямую", bypassOverride: false,
+                strategyOverride: status.StrategyName);
+            if (!ReferenceEquals(diagnosis.Direct, diagnosis.WithBypass))
+                RecordProbe(diagnosis.Target, diagnosis.WithBypass, "сравнение — обход", bypassOverride: true,
+                    strategyOverride: status.StrategyName);
+        }
+
+        private void RecordProbe(MonitorTarget target, ResourceProbeResult probe, string source,
+            bool? bypassOverride = null, string? strategyOverride = null)
+        {
+            var status = _main.Bypass.GetStatus();
+            var record = new NetworkObservationRecord
+            {
+                TimeUtc = DateTime.UtcNow,
+                EventType = "Проверка",
+                Source = source,
+                TargetName = target.Name,
+                Host = target.Host,
+                Ok = probe.Ok,
+                FailureKind = probe.Ok ? null : probe.Kind,
+                Milliseconds = probe.Milliseconds,
+                HttpStatusCode = probe.HttpStatusCode,
+                DnsOk = probe.DnsOk,
+                TcpOk = probe.TcpOk,
+                BypassRunning = bypassOverride ?? status.IsRunning,
+                StrategyName = strategyOverride ?? status.StrategyName,
+                ServiceState = status.ServiceState.ToString(),
+                Details = LimitDetails(string.Join(" · ", new[] { probe.DnsDetails, probe.Details }.Where(part => !string.IsNullOrWhiteSpace(part))))
+            };
+
+            NetworkDiagnosticsStore.Add(record);
+            AddRecentNetworkObservation(record);
+        }
+
+        private void AddRecentNetworkObservation(NetworkObservationRecord record)
+        {
+            RecentNetworkObservations.Insert(0, record);
+            while (RecentNetworkObservations.Count > 12) RecentNetworkObservations.RemoveAt(RecentNetworkObservations.Count - 1);
+            NetworkObservationCount = NetworkDiagnosticsStore.CountRecent;
+        }
+
+        private void RefreshProcessOptions()
+        {
+            var selected = (Settings.NetworkObservedProcessNames ?? new List<string>())
+                .Select(WindowsNetworkActivity.NormalizeProcessName)
+                .Where(name => name.Length > 0)
+                .ToHashSet(StringComparer.OrdinalIgnoreCase);
+            try
+            {
+                var running = WindowsNetworkActivity.GetCandidateProcessNames()
+                    .Select(WindowsNetworkActivity.NormalizeProcessName)
+                    .Where(name => name.Length > 0)
+                    .ToHashSet(StringComparer.OrdinalIgnoreCase);
+                ProcessOptions.Clear();
+                foreach (var name in running.Union(selected).OrderBy(name => name, StringComparer.OrdinalIgnoreCase))
+                {
+                    var option = new NetworkProcessOption(name, running.Contains(name), selected.Contains(name));
+                    option.PropertyChanged += OnProcessOptionChanged;
+                    ProcessOptions.Add(option);
+                }
+                Raise(nameof(SelectedProcessNamesText));
+            }
+            catch (Exception ex)
+            {
+                SetMessage("Не удалось прочитать список приложений: " + ex.Message, "Warning");
+            }
+        }
+
+        private void OnProcessOptionChanged(object? sender, PropertyChangedEventArgs e)
+        {
+            if (e.PropertyName != nameof(NetworkProcessOption.IsSelected)) return;
+            Settings.NetworkObservedProcessNames = ProcessOptions.Where(option => option.IsSelected)
+                .Select(option => option.ProcessName).Distinct(StringComparer.OrdinalIgnoreCase).ToList();
+            SettingsStore.Save(Settings);
+            Raise(nameof(SelectedProcessNamesText));
+        }
+
+        private void AddObservedProcess()
+        {
+            var value = (NewProcessName ?? "").Trim().Trim('"');
+            if (value.Length == 0)
+            {
+                SetMessage("Укажите имя EXE или путь к приложению, например chrome.exe.", "Warning");
+                return;
+            }
+            var name = WindowsNetworkActivity.NormalizeProcessName(Path.GetFileName(value));
+            if (name.Length == 0 || name.IndexOfAny(System.IO.Path.GetInvalidFileNameChars()) >= 0)
+            {
+                SetMessage("Не удалось определить имя процесса. Укажите имя EXE, например game.exe.", "Warning");
+                return;
+            }
+
+            var option = ProcessOptions.FirstOrDefault(item => item.ProcessName.Equals(name, StringComparison.OrdinalIgnoreCase));
+            if (option == null)
+            {
+                option = new NetworkProcessOption(name, false, true);
+                option.PropertyChanged += OnProcessOptionChanged;
+                ProcessOptions.Add(option);
+            }
+            else option.IsSelected = true;
+            NewProcessName = "";
+            SetMessage($"Приложение {name}.exe добавлено для будущих сеансов.", "Success");
+        }
+
+        private async Task RunNetworkSessionAsync()
+        {
+            if (IsBusy || IsRecordingNetwork) return;
+            var targets = Targets.Where(target => target.Enabled).ToList();
+            var processNames = Settings.NetworkObservedProcessNames?.Select(WindowsNetworkActivity.NormalizeProcessName)
+                .Where(name => name.Length > 0).Distinct(StringComparer.OrdinalIgnoreCase).ToArray() ?? Array.Empty<string>();
+            if (targets.Count == 0 && processNames.Length == 0)
+            {
+                SetMessage("Выберите хотя бы один сайт или приложение для сеанса наблюдения.", "Warning");
+                return;
+            }
+
+            _observationCts?.Dispose();
+            _observationCts = new CancellationTokenSource(TimeSpan.FromSeconds(ObservationSessionSeconds));
+            _networkSessionStoppedByUser = false;
+            var ct = _observationCts.Token;
+            _observedSockets.Clear();
+            IsBusy = true;
+            IsRecordingNetwork = true;
+            NetworkSessionStatus = "Подготовка 2-минутного сеанса наблюдения…";
+            var started = DateTime.UtcNow;
+            var observationsBeforeSession = NetworkDiagnosticsStore.CountRecent;
+            var endsAt = started.AddSeconds(ObservationSessionSeconds);
+            var sessionStart = new NetworkObservationRecord
+            {
+                TimeUtc = started,
+                EventType = "Сеанс",
+                Source = "ручной сеанс",
+                Details = $"Начат 2-минутный сеанс; выбрано сайтов: {targets.Count}; приложений: {processNames.Length}"
+            };
+            NetworkDiagnosticsStore.Add(sessionStart);
+            AddRecentNetworkObservation(sessionStart);
+            AppLog.Info("[Сеть] Запущен двухминутный сеанс наблюдения (без захвата содержимого пакетов)");
+
+            var nextProbeAt = DateTime.MinValue;
+            var socketCaptureAvailable = processNames.Length > 0;
+            var socketCaptureErrorLogged = false;
+            string? sessionError = null;
+            try
+            {
+                while (DateTime.UtcNow < endsAt && !ct.IsCancellationRequested)
+                {
+                    if (targets.Count > 0 && DateTime.UtcNow >= nextProbeAt)
+                    {
+                        var semaphore = new SemaphoreSlim(4, 4);
+                        try
+                        {
+                            var probes = targets.Select(async target =>
+                            {
+                                await semaphore.WaitAsync(ct).ConfigureAwait(true);
+                                try
+                                {
+                                    var probe = await ResourceProbe.CheckAsync(target, ct).ConfigureAwait(true);
+                                    RecordProbe(target, probe, "сеанс");
+                                }
+                                finally { semaphore.Release(); }
+                            });
+                            await Task.WhenAll(probes);
+                        }
+                        finally { semaphore.Dispose(); }
+                        nextProbeAt = DateTime.UtcNow.AddSeconds(ObservationSampleSeconds);
+                    }
+
+                    if (socketCaptureAvailable && !ct.IsCancellationRequested)
+                    {
+                        try
+                        {
+                            var current = WindowsNetworkActivity.Capture(processNames).ToDictionary(socket => socket.Key, StringComparer.OrdinalIgnoreCase);
+                            RecordSocketChanges(current);
+                        }
+                        catch (Exception ex)
+                        {
+                            socketCaptureAvailable = false;
+                            if (!socketCaptureErrorLogged)
+                            {
+                                socketCaptureErrorLogged = true;
+                                var errorRecord = new NetworkObservationRecord
+                                {
+                                    TimeUtc = DateTime.UtcNow,
+                                    EventType = "Сеанс",
+                                    Source = "ручной сеанс",
+                                    Details = "Снимок соединений приложений недоступен: " + LimitDetails(ex.Message)
+                                };
+                                NetworkDiagnosticsStore.Add(errorRecord);
+                                AddRecentNetworkObservation(errorRecord);
+                                AppLog.Warn("[Сеть] Снимок соединений приложений временно недоступен; подробности сохранены в локальной истории диагностики.");
+                            }
+                        }
+                    }
+
+                    var remaining = Math.Max(0, (int)Math.Ceiling((endsAt - DateTime.UtcNow).TotalSeconds));
+                    NetworkSessionStatus = $"Идёт запись · осталось {remaining} с · сайты: {targets.Count} · процессы: {processNames.Length}";
+                    await Task.Delay(TimeSpan.FromSeconds(2), ct).ConfigureAwait(true);
+                }
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                NetworkSessionStatus = _networkSessionStoppedByUser
+                    ? "Сеанс остановлен пользователем"
+                    : "Отведённые две минуты истекли";
+            }
+            catch (Exception ex)
+            {
+                sessionError = LimitDetails(ex.Message);
+                NetworkSessionStatus = "Ошибка сеанса: " + sessionError;
+                var errorRecord = new NetworkObservationRecord
+                {
+                    TimeUtc = DateTime.UtcNow,
+                    EventType = "Сеанс",
+                    Source = "ручной сеанс",
+                    Details = "Ошибка сеанса: " + sessionError
+                };
+                NetworkDiagnosticsStore.Add(errorRecord);
+                AddRecentNetworkObservation(errorRecord);
+                AppLog.Warn("[Сеть] Сеанс наблюдения завершился с ошибкой.");
+            }
+            finally
+            {
+                var duration = DateTime.UtcNow - started;
+                var completed = new NetworkObservationRecord
+                {
+                    TimeUtc = DateTime.UtcNow,
+                    EventType = "Сеанс",
+                    Source = "ручной сеанс",
+                    Details = $"Сеанс завершён через {(int)duration.TotalSeconds} с; собрано записей: {Math.Max(0, NetworkDiagnosticsStore.CountRecent - observationsBeforeSession)}"
+                };
+                NetworkDiagnosticsStore.Add(completed);
+                AddRecentNetworkObservation(completed);
+                _observedSockets.Clear();
+                IsRecordingNetwork = false;
+                IsBusy = false;
+                NetworkSessionStatus = sessionError != null
+                    ? "Сеанс завершился с ошибкой; предыдущие события сохранены"
+                    : _networkSessionStoppedByUser
+                        ? "Сеанс остановлен; события сохранены локально"
+                        : "Сеанс завершён; события сохранены локально";
+                _observationCts?.Dispose();
+                _observationCts = null;
+                AppLog.Info("[Сеть] " + NetworkSessionStatus);
+            }
+        }
+
+        private void RecordSocketChanges(Dictionary<string, ObservedSocket> current)
+        {
+            foreach (var socket in current.Values)
+            {
+                if (_observedSockets.TryGetValue(socket.Key, out var previous))
+                {
+                    if (previous.State.Equals(socket.State, StringComparison.OrdinalIgnoreCase)) continue;
+                    AddSocketObservation(socket, "Состояние изменилось");
+                }
+                else
+                {
+                    AddSocketObservation(socket, socket.Protocol == "TCP" ? "Соединение замечено" : "UDP-сокет открыт");
+                }
+            }
+
+            foreach (var old in _observedSockets.Where(pair => !current.ContainsKey(pair.Key)).Select(pair => pair.Value).ToArray())
+                AddSocketObservation(old, old.Protocol == "TCP" ? "Соединение исчезло из таблицы" : "UDP-сокет закрыт");
+
+            _observedSockets.Clear();
+            foreach (var pair in current) _observedSockets[pair.Key] = pair.Value;
+        }
+
+        private void AddSocketObservation(ObservedSocket socket, string eventText)
+        {
+            var bypassStatus = _main.Bypass.GetStatus();
+            var record = new NetworkObservationRecord
+            {
+                TimeUtc = DateTime.UtcNow,
+                EventType = "Сокет",
+                Source = "ручной сеанс",
+                ProcessName = socket.ProcessName,
+                ProcessId = socket.ProcessId,
+                Protocol = socket.Protocol,
+                LocalEndpoint = socket.LocalEndpoint,
+                RemoteEndpoint = socket.RemoteEndpoint,
+                ConnectionState = socket.State,
+                BypassRunning = bypassStatus.IsRunning,
+                StrategyName = bypassStatus.StrategyName,
+                Details = eventText
+            };
+            NetworkDiagnosticsStore.Add(record);
+            AddRecentNetworkObservation(record);
+        }
+
+        private static string LimitDetails(string text)
+            => string.IsNullOrWhiteSpace(text) ? "" : text.Length > 240 ? text.Substring(0, 240) : text;
+
+        private void StopNetworkSession()
+        {
+            if (!IsRecordingNetwork) return;
+            _networkSessionStoppedByUser = true;
+            _observationCts?.Cancel();
+        }
+
+        private void ExportNetworkObservations()
+        {
+            try
+            {
+                var dialog = new SaveFileDialog
+                {
+                    Title = "Сохранить журнал сетевой диагностики",
+                    Filter = "JSON (*.json)|*.json|Все файлы (*.*)|*.*",
+                    FileName = $"zapret-network-{DateTime.Now:yyyyMMdd-HHmmss}.json",
+                    InitialDirectory = AppPaths.LogDir
+                };
+                var preview = NetworkDiagnosticsStore.CreateSanitizedExportPreview();
+                var sample = string.Join(Environment.NewLine, preview.Take(8).Select(item => item.LineText));
+                var confirmation = System.Windows.MessageBox.Show(
+                    $"Предварительный просмотр (первые {Math.Min(8, preview.Count)} из {preview.Count} записей):\n\n{sample}\n\nЭкспорт скроет адреса сайтов и IP, имена процессов и PID. Содержимое пакетов не собиралось. Продолжить к выбору файла?",
+                    "Проверка и очистка экспорта", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Information);
+                if (confirmation != System.Windows.MessageBoxResult.Yes) return;
+                if (dialog.ShowDialog() != true) return;
+                NetworkDiagnosticsStore.ExportTo(dialog.FileName, sanitize: true);
+                SetMessage("Очищенный журнал сетевой диагностики сохранён.", "Success");
+            }
+            catch (Exception ex)
+            {
+                SetMessage("Не удалось экспортировать сетевую диагностику: " + ex.Message, "Danger");
+            }
+        }
+
+        private void ClearNetworkObservations()
+        {
+            var answer = System.Windows.MessageBox.Show(
+                "Удалить локальный журнал сетевой диагностики за последние 24 часа?",
+                "Очистить журнал сети", System.Windows.MessageBoxButton.YesNo, System.Windows.MessageBoxImage.Warning);
+            if (answer != System.Windows.MessageBoxResult.Yes) return;
+            NetworkDiagnosticsStore.Clear();
+            RecentNetworkObservations.Clear();
+            NetworkObservationCount = 0;
+            NetworkSessionStatus = "Локальный журнал очищен";
+        }
+
         private async Task BackgroundCheckAsync()
         {
             if (!Settings.ResourceMonitoringEnabled || IsBusy) return;
-            await CheckAllAsync();
+            await CheckAllAsync(isBackground: true);
+            // Во время сеанса наблюдения не меняем стратегию: иначе нельзя будет сравнить
+            // состояние сети до и после какого-либо вмешательства.
+            if (IsRecordingNetwork) return;
             // Фоновая проверка лучшей стратегии, если включено в Настройках → Сеть
             if (Settings.AutoSwitchToBestStrategy && Settings.StrategyAutoSwitchAllowed && _main.Bypass.GetStatus().IsRunning)
             {
@@ -640,6 +1085,8 @@ namespace ZapretGui.ViewModels
         public void Stop()
         {
             _timer.Stop();
+            _networkHistoryCleanupTimer.Stop();
+            StopNetworkSession();
         }
     }
 }

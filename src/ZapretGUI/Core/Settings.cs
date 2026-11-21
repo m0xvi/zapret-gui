@@ -125,6 +125,9 @@ namespace ZapretGui.Core
         /// <summary>Включить фоновую проверку избранных ресурсов.</summary>
         public bool ResourceMonitoringEnabled { get; set; }
 
+        /// <summary>Имена процессов для коротких сеансов наблюдения за сетевыми соединениями.</summary>
+        public List<string> NetworkObservedProcessNames { get; set; } = new();
+
         /// <summary>Включить сторожевой таймер (Watchdog) для автоматического контроля winws.exe.</summary>
         public bool WatchdogEnabled { get; set; } = true;
 
