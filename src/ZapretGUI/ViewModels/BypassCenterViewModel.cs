@@ -770,6 +770,12 @@ namespace ZapretGui.ViewModels
             Message = $"Применяю лучшее: {best.Strategy} × {best.Dns}…"; MessageKey = "Info";
             var (dnsOk, dnsMsg) = await DnsManagementService.ApplyDnsProfileAsync(dns);
             AppLog.Info($"[Центр] Применяю DNS {dns.Name}: {dnsMsg}");
+            if (!dnsOk)
+            {
+                Message = $"DNS {dns.Name} не применён: {dnsMsg}. Стратегию не переключал, чтобы не оставить непроверенную связку.";
+                MessageKey = "Danger";
+                return;
+            }
             var mode = EngineService.GetGameFilterMode(Settings.EnginePath);
             var res = await _main.Bypass.SwitchToStrategyAsync(strat, mode, Settings.ShowWinwsConsole);
             // Если была служба — переустановим

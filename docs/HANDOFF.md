@@ -1659,3 +1659,22 @@ Photon плох у провайдера (приложение его не соз
   записью `utils/game_filter.enabled`.
 
 **Версия:** 2.2.8.
+
+---
+
+## R.E.P.O. hostlist lock + YouTube DNS diagnostic (v2.2.9, 2026-10-25)
+
+User sent screenshots after the first troubleshooting reply. Findings:
+
+- «Проверка → Ресурсы» reports `YouTube: Недоступен · DNS: Этот хост неизвестен`; this is DNS resolution failure, not evidence that the selected DPI strategy is wrong.
+- Strategy × DNS matrix shows `general (SIMPLE FAKE) × Quad9 DNS` at 16/16 (226 ms) as best, while the currently selected DNS in the summary is `NegWork: 1.1.1.1, 1.0.0.1`. The matrix only tests combinations and restores the prior system DNS; user must click «Применить лучшее» to apply the winning DNS + strategy.
+- The R.E.P.O. card shows profile `repo`, exclusion status green, but the status tail reports `The process cannot access ... lists\\list-general-user.txt because it is being used by another process.` The running Windows service holds the hostlist when `PhotonRegions.Ensure` tries to update it, so the advertised setup can be partial.
+
+v2.2.9 changes `FixPhotonAsync`: capture service/process mode, stop winws before changing hostlists, apply Photon exclusions and profile, then restore the bypass using the same mode (reinstall service if it had been running as a service; otherwise start standalone). Repo checkbox and «Сохранить и перезапустить обход» route through this path before opening hostlist files, preventing the same lock.
+
+**User steps from the screenshots:**
+
+1. For YouTube, go to «Стратегии → Матрица DNS×стратегии» and click «Применить лучшее» for `general (SIMPLE FAKE) × Quad9 DNS (16/16)`. This changes system DNS as well as the strategy; then run «Проверка → Проверить сейчас» again. The «Списки успешно обновлены» result is not proof that the current DNS resolves `www.youtube.com`.
+2. For R.E.P.O., after installing v2.2.9, click «Настроить R.E.P.O.» once and verify the error about `list-general-user.txt` is gone; verify the card says the Photon addresses are excluded and the profile is active.
+
+**Version:** 2.2.9.
