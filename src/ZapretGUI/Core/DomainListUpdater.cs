@@ -340,7 +340,7 @@ namespace ZapretGui.Core
                                 File.Copy(targetPath, backupPath, true);
                             }
 
-                            WriteAtomically(targetPath, content, ct);
+                            WriteAtomically(targetPath, content);
 
                             updated++;
                             totalRecords += content.Split('\n', StringSplitOptions.RemoveEmptyEntries)
