@@ -152,7 +152,8 @@ namespace ZapretGui.Core
                 static string HideEndpoint(string endpoint)
                 {
                     var match = Regex.Match(endpoint ?? "", @"(?<port>:\d+)$");
-                    return match.Success ? "[адрес скрыт]" + match.Groups["port"].Value : string.IsNullOrWhiteSpace(endpoint) || endpoint == "—" ? endpoint : "[адрес скрыт]";
+                    return match.Success ? "[адрес скрыт]" + match.Groups["port"].Value :
+                        string.IsNullOrWhiteSpace(endpoint) || endpoint == "—" ? endpoint ?? "" : "[адрес скрыт]";
                 }
                 return new NetworkObservationRecord
                 {
