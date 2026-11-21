@@ -487,16 +487,17 @@ namespace ZapretGui.Core
             var started = DateTime.UtcNow;
             try
             {
-                var lookup = Dns.GetHostAddressesAsync(host);
-                var completed = await Task.WhenAny(lookup, Task.Delay(TimeSpan.FromSeconds(TimeoutSeconds), ct))
-                    .ConfigureAwait(false);
-                if (completed != lookup)
+                using var lookupCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                lookupCts.CancelAfter(TimeSpan.FromSeconds(TimeoutSeconds));
+                IPAddress[] addresses;
+                try
                 {
-                    ct.ThrowIfCancellationRequested();
+                    addresses = await Dns.GetHostAddressesAsync(host, lookupCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
                     return ProbeFailure("DNS", "Тайм-аут DNS", started, possibleBlock: false);
                 }
-
-                var addresses = await lookup.ConfigureAwait(false);
                 var suspicious = addresses.Any(IsSuspiciousAddress);
                 return new DpiProbeResult
                 {
@@ -532,16 +533,16 @@ namespace ZapretGui.Core
             try
             {
                 using var tcp = new TcpClient();
-                var connect = tcp.ConnectAsync(host, 443);
-                var completed = await Task.WhenAny(connect, Task.Delay(TimeSpan.FromSeconds(TimeoutSeconds), ct))
-                    .ConfigureAwait(false);
-                if (completed != connect)
+                using var connectCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                connectCts.CancelAfter(TimeSpan.FromSeconds(TimeoutSeconds));
+                try
                 {
-                    ct.ThrowIfCancellationRequested();
+                    await tcp.ConnectAsync(host, 443, connectCts.Token).ConfigureAwait(false);
+                }
+                catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+                {
                     return ProbeFailure("TCP", "Тайм-аут TCP-подключения к порту 443", started, possibleBlock: false);
                 }
-
-                await connect.ConfigureAwait(false);
                 return new DpiProbeResult
                 {
                     TestName = "TCP 443",

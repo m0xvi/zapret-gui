@@ -23,6 +23,8 @@ namespace ZapretGui.Core
         private int _recentCrashCount;
         private DateTime _lastCrashTime = DateTime.MinValue;
         private bool _isRecovering;
+        private bool _restartSuppressedUntilManualStart;
+        private bool? _expectedServiceMode;
 
         public event Action<string>? EventLogged;
         public event Action<string>? AlertRaised;
@@ -43,6 +45,19 @@ namespace ZapretGui.Core
         public void Start()
         {
             if (!_settings.WatchdogEnabled || _settings.SafeMode) return;
+            // Не считать установленную, но остановленную службу аварией при запуске GUI.
+            // Автовосстанавливаем только режим, который уже работал или запущен пользователем.
+            try
+            {
+                var status = _bypass.GetStatus();
+                if (status.IsRunning)
+                    _expectedServiceMode = status.State == BypassState.RunningService;
+                else if (status.ServiceState == ServiceState.Running)
+                    _expectedServiceMode = true;
+                else
+                    _expectedServiceMode = null;
+            }
+            catch { _expectedServiceMode = null; }
             IsRunning = true;
             var interval = Math.Clamp(_settings.WatchdogIntervalSeconds, 5, 120);
             _timer.Change(TimeSpan.FromSeconds(interval), TimeSpan.FromSeconds(interval));
@@ -59,13 +74,16 @@ namespace ZapretGui.Core
         /// <summary>Пользователь вручную выключил — не трогаем (фикс v1.32.1: «сам включается»).</summary>
         public void NotifyManualStop()
         {
+            _expectedServiceMode = null;
             AppLog.Info("[Watchdog] Ручное выключение — подавляю автозапуск до ручного включения");
         }
-        public void NotifyManualStart()
+        public void NotifyManualStart(bool serviceMode = false)
         {
             _recentCrashCount = 0;
             _lastCrashTime = DateTime.MinValue;
-            AppLog.Info("[Watchdog] Ручное включение — сбрасываю подавление");
+            _restartSuppressedUntilManualStart = false;
+            _expectedServiceMode = serviceMode;
+            AppLog.Info($"[Watchdog] Ручное включение ({(serviceMode ? "служба" : "процесс")}) — сбрасываю подавление");
         }
 
         private async void OnTimerTick(object? state)
@@ -80,20 +98,30 @@ namespace ZapretGui.Core
             try
             {
                 var status = _bypass.GetStatus();
-
-                // 1) Если служба установлена, но не Running — это аварийное состояние (пользователь видит «Служба установлена, но остановлена»)
-                //    Раньше обрабатывался только RunningService с ServiceState!=Running, теперь также Stopped с установленным сервисом.
-                var serviceInstalled = status.ServiceState != ServiceState.NotInstalled;
-                if (serviceInstalled && status.ServiceState != ServiceState.Running)
+                if (_expectedServiceMode == null)
                 {
-                    // Служба есть, но остановлена / зависла — пытаемся восстановить бесшовно
-                    // Отличаем от Stopped когда обход выключен намеренно: если служба установлена, но не запущена — считаем что должна работать
-                    // (пользователь включил автозапуск). Исключение — SafeMode.
-                    await HandleCrashAsync(status.ServiceStrategy.Length > 0 ? status.ServiceStrategy : status.StrategyName, isService: true);
+                    // Обнаружить ручной/внешний запуск можно, но остановленная служба сама по
+                    // себе не означает, что пользователь хочет включить обход.
+                    if (!status.IsRunning) return;
+                    _expectedServiceMode = status.State == BypassState.RunningService;
+                }
+
+                if (_expectedServiceMode.Value)
+                {
+                    // StartPending/StopPending и Unknown — переходные/неопределённые состояния,
+                    // а не подтверждённое падение. Остановленную/удалённую службу восстанавливаем
+                    // только если именно служебный режим ранее был запущен.
+                    if (status.ServiceState is ServiceState.StartPending or ServiceState.StopPending or ServiceState.Unknown)
+                        return;
+                    if (status.ServiceState != ServiceState.Running || status.State != BypassState.RunningService)
+                    {
+                        await HandleCrashAsync(status.ServiceStrategy.Length > 0 ? status.ServiceStrategy : _settings.SelectedStrategy, isService: true);
+                    }
                     return;
                 }
 
-                // 2) Standalone процесс упал по PID
+                // Отдельный winws.exe: штатно установленная, но остановленная служба не должна
+                // перехватывать и перезапускать процесс в service-mode.
                 if (status.State == BypassState.RunningStandalone)
                 {
                     if (status.Pid is int pid && pid > 0)
@@ -110,24 +138,18 @@ namespace ZapretGui.Core
                         }
 
                         if (dead)
-                        {
                             await HandleCrashAsync(status.StrategyName, isService: false);
-                        }
                     }
-                    else
+                    else if (!Shell.IsProcessRunning("winws"))
                     {
-                        // PID не определён, но состояние RunningStandalone без процесса — тоже падение
-                        // Проверяем наличие winws процесса напрямую
-                        if (!Shell.IsProcessRunning("winws"))
-                            await HandleCrashAsync(status.StrategyName, isService: false);
+                        await HandleCrashAsync(status.StrategyName, isService: false);
                     }
                 }
-                else if (status.State == BypassState.RunningService)
+                else if (status.State == BypassState.Stopped)
                 {
-                    if (status.ServiceState != ServiceState.Running)
-                    {
-                        await HandleCrashAsync(status.ServiceStrategy, isService: true);
-                    }
+                    // Процесс исчез полностью после ручного запуска standalone; восстановить
+                    // именно процесс, не устанавливая неожиданно службу.
+                    await HandleCrashAsync(_settings.SelectedStrategy, isService: false);
                 }
             }
             catch (Exception ex)
@@ -138,7 +160,7 @@ namespace ZapretGui.Core
 
         private async Task HandleCrashAsync(string strategyName, bool isService)
         {
-            if (_isRecovering || !_settings.WatchdogAutoRestart) return;
+            if (_isRecovering || !_settings.WatchdogAutoRestart || _restartSuppressedUntilManualStart) return;
             if (_settings.BypassManuallyStopped) return;
 
             _isRecovering = true;
@@ -163,9 +185,11 @@ namespace ZapretGui.Core
                     if (fallbackOk)
                     {
                         _recentCrashCount = 0;
+                        _restartSuppressedUntilManualStart = false;
                         return;
                     }
-                    var alert = $"[Watchdog] Превышен лимит перезапусков ({_recentCrashCount} за минуту). Автоперезапуск приостановлен — попробуйте другую стратегию в Центре обхода.";
+                    _restartSuppressedUntilManualStart = true;
+                    var alert = $"[Watchdog] Превышен лимит перезапусков ({_recentCrashCount} за минуту). Автоперезапуск приостановлен до ручного включения — проверьте списки и стратегию.";
                     AppLog.Warn(alert);
                     LastEventText = alert;
                     AlertRaised?.Invoke(alert);

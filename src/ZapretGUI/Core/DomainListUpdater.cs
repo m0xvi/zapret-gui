@@ -2,8 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Text;
+using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -19,69 +22,205 @@ namespace ZapretGui.Core
     }
 
     /// <summary>
-    /// Автоматическое и ручное обновление списков доменов и IP из официального репозитория Flowseal,
-    /// а также автоматическое первичное наполнение (auto-seeding) при пустых списках.
-    /// Поддерживает форматы и структуру Flowseal 1.10.2, 1.10.3 и новее.
+    /// Обновляет поддерживаемые списки Flowseal, проверяя формат до записи.
+    /// Запрещено сохранять HTML-страницы прокси/ошибок в списки winws.
     /// </summary>
     public static class DomainListUpdater
     {
-        private static readonly (string FileName, string Url, string[] FallbackDomains)[] ListFiles = new[]
+        private const string Repository = "Flowseal/zapret-discord-youtube";
+        private static readonly Encoding Utf8NoBom = new UTF8Encoding(false);
+        private static readonly object SeedLock = new();
+        private static readonly SemaphoreSlim UpdateLock = new(1, 1);
+        private static readonly string[] SafeIpSetExclusions =
         {
-            ("list-general.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/list-general.txt", DefaultDomainLists.GeneralDomains),
-            ("list-discord.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/list-discord.txt", DefaultDomainLists.DiscordDomains),
-            ("list-youtube.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/list-youtube.txt", DefaultDomainLists.YoutubeDomains),
-            ("list-google.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/list-google.txt", DefaultDomainLists.GoogleDomains),
-            ("ipset-all.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/ipset-all.txt", Array.Empty<string>()),
-            ("ipset-discord.txt", "https://raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/lists/ipset-discord.txt", Array.Empty<string>())
+            "0.0.0.0/8", "10.0.0.0/8", "127.0.0.0/8", "172.16.0.0/12",
+            "192.168.0.0/16", "169.254.0.0/16", "224.0.0.0/4", "100.64.0.0/10",
+            "::1", "fc00::/7", "fe80::/10"
+        };
+
+        // Flowseal удалил отдельные списки YouTube/Discord и ipset-discord. Их поддерживаем
+        // локальными безопасными наборами; основной IPset теперь находится в .service/ipset-service.txt.
+        private static readonly (string FileName, string Url, string[] Fallback)[] ListFiles =
+        {
+            ("list-general.txt", $"https://raw.githubusercontent.com/{Repository}/main/lists/list-general.txt", DefaultDomainLists.GeneralDomains),
+            ("list-discord.txt", "", DefaultDomainLists.DiscordDomains),
+            ("list-youtube.txt", "", DefaultDomainLists.YoutubeDomains),
+            ("list-google.txt", $"https://raw.githubusercontent.com/{Repository}/main/lists/list-google.txt", DefaultDomainLists.GoogleDomains),
+            ("list-exclude.txt", $"https://raw.githubusercontent.com/{Repository}/main/lists/list-exclude.txt", Array.Empty<string>()),
+            ("ipset-all.txt", $"https://raw.githubusercontent.com/{Repository}/main/.service/ipset-service.txt", Array.Empty<string>()),
+            ("ipset-discord.txt", "", Array.Empty<string>()),
+            ("ipset-exclude.txt", $"https://raw.githubusercontent.com/{Repository}/main/lists/ipset-exclude.txt", Array.Empty<string>())
         };
 
         private static IEnumerable<string> GetMirrors(string primaryUrl)
         {
             yield return primaryUrl;
-            if (primaryUrl.Contains("raw.githubusercontent.com/Flowseal/zapret-discord-youtube/main/"))
+            if (!Uri.TryCreate(primaryUrl, UriKind.Absolute, out var uri) ||
+                !uri.Host.Equals("raw.githubusercontent.com", StringComparison.OrdinalIgnoreCase))
+                yield break;
+
+            var segments = uri.AbsolutePath.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            if (segments.Length >= 4)
             {
-                var tail = primaryUrl.Split("zapret-discord-youtube/main/")[1];
-                yield return "https://cdn.jsdelivr.net/gh/Flowseal/zapret-discord-youtube@main/" + tail;
-                yield return "https://raw.fastgit.org/Flowseal/zapret-discord-youtube/main/" + tail;
-                yield return "https://ghproxy.com/" + primaryUrl;
+                var owner = segments[0];
+                var repository = segments[1];
+                var reference = segments[2];
+                var path = string.Join("/", segments.Skip(3));
+                yield return $"https://cdn.jsdelivr.net/gh/{owner}/{repository}@{reference}/{path}";
+                yield return $"https://api.github.com/repos/{owner}/{repository}/contents/{path}?ref={Uri.EscapeDataString(reference)}";
             }
         }
 
+        /// <summary>Проверяет текстовый формат списка до записи на диск.</summary>
+        public static bool IsValidListContent(string fileName, string? content)
+        {
+            if (string.IsNullOrWhiteSpace(content)) return false;
+            var trimmed = content.TrimStart('\uFEFF', ' ', '\t', '\r', '\n');
+            if (trimmed.StartsWith("<", StringComparison.Ordinal) ||
+                trimmed.Contains("<html", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Contains("<!doctype", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.Contains("GitHub Proxy", StringComparison.OrdinalIgnoreCase) ||
+                trimmed.StartsWith("{", StringComparison.Ordinal))
+                return false;
+
+            var records = content.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                .Select(line => line.Trim().TrimStart('\uFEFF'))
+                .Where(line => line.Length > 0 && !line.StartsWith('#') && !line.StartsWith(';'))
+                .ToArray();
+
+            if (fileName.StartsWith("ipset-", StringComparison.OrdinalIgnoreCase))
+                return records.Length > 0 && records.All(IsIpNetwork);
+
+            if (records.Length == 0)
+                return string.Equals(fileName, "list-exclude.txt", StringComparison.OrdinalIgnoreCase);
+            return records.All(IsDomainEntry);
+        }
+
+        private static bool IsIpNetwork(string line)
+        {
+            var value = line.Trim();
+            var slash = value.IndexOf('/');
+            var addressPart = slash >= 0 ? value.Substring(0, slash) : value;
+            if (addressPart.Length == 0 || !addressPart.All(ch => char.IsAsciiHexDigit(ch) || ch is ':' or '.')) return false;
+            if (!IPAddress.TryParse(addressPart, out var address)) return false;
+            if (slash < 0) return true;
+            var prefixText = value.Substring(slash + 1);
+            if (value.IndexOf('/', slash + 1) >= 0 || prefixText.Length == 0 ||
+                !prefixText.All(char.IsAsciiDigit) || !int.TryParse(prefixText, out var prefix)) return false;
+            var maxPrefix = address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork ? 32 : 128;
+            return prefix >= 0 && prefix <= maxPrefix;
+        }
+
+        private static bool IsDomainEntry(string line)
+        {
+            var value = line.Trim();
+            if (value.StartsWith('^')) value = value.Substring(1);
+            if (value.StartsWith("*.", StringComparison.Ordinal)) value = value.Substring(2);
+            if (value.EndsWith('$')) value = value.Substring(0, value.Length - 1);
+            if (value.Length is 0 or > 253 || !value.Contains('.')) return false;
+            return value.All(ch => char.IsLetterOrDigit(ch) || ch is '.' or '-' or '_' or '*');
+        }
+
+        private static bool TryRestoreBackup(string enginePath, string fileName, out string content)
+        {
+            var candidates = new[]
+            {
+                Path.Combine(enginePath, "lists", fileName + ".backup"),
+                Path.Combine(enginePath, "lists", fileName + ".bak"),
+                Path.Combine(AppPaths.BackupDir, fileName + ".bak")
+            };
+            foreach (var candidate in candidates.Distinct(StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    if (!File.Exists(candidate)) continue;
+                    var saved = File.ReadAllText(candidate, Encoding.UTF8);
+                    if (!IsValidListContent(fileName, saved)) continue;
+                    content = saved;
+                    return true;
+                }
+                catch { }
+            }
+            content = "";
+            return false;
+        }
+
+        private static void WriteAtomically(string targetPath, string content)
+        {
+            var tempPath = targetPath + ".download-" + Guid.NewGuid().ToString("N");
+            try
+            {
+                File.WriteAllText(tempPath, content, Utf8NoBom);
+                File.Move(tempPath, targetPath, true);
+            }
+            finally
+            {
+                try { if (File.Exists(tempPath)) File.Delete(tempPath); } catch { }
+            }
+        }
+
+        private static string SafeFallback(string fileName)
+        {
+            if (string.Equals(fileName, "ipset-exclude.txt", StringComparison.OrdinalIgnoreCase))
+                return string.Join(Environment.NewLine, SafeIpSetExclusions) + Environment.NewLine;
+            if (fileName.StartsWith("ipset-", StringComparison.OrdinalIgnoreCase))
+                return "203.0.113.113/32" + Environment.NewLine;
+            return "# No valid upstream list available; this file is intentionally empty." + Environment.NewLine;
+        }
+
         /// <summary>
-        /// Проверяет наличие и наполненность списков. Если какой-либо файл пуст или отсутствует,
-        /// автоматически заполняет его эталонным набором доменов.
+        /// Проверяет кэшированные файлы при старте. Повреждённый HTML восстанавливает из
+        /// резервной копии, затем из встроенного списка, а для IPset — в безопасный режим.
         /// </summary>
         public static void EnsureSeeded(string enginePath)
         {
-            try
-            {
-                if (string.IsNullOrWhiteSpace(enginePath)) return;
-                var listsDir = Path.Combine(enginePath, "lists");
-                AppPaths.EnsureDir(listsDir);
+            lock (SeedLock) EnsureSeededCore(enginePath);
+        }
 
-                foreach (var (fileName, _, fallback) in ListFiles)
+        private static void EnsureSeededCore(string enginePath)
+        {
+            if (string.IsNullOrWhiteSpace(enginePath)) return;
+            var listsDir = Path.Combine(enginePath, "lists");
+            try { AppPaths.EnsureDir(listsDir); }
+            catch (Exception ex) { AppLog.Warn("[ListUpdater] Не удалось открыть каталог списков: " + ex.Message); return; }
+
+            foreach (var (fileName, _, fallback) in ListFiles)
+            {
+                var filePath = Path.Combine(listsDir, fileName);
+                try
                 {
-                    if (fallback.Length == 0) continue;
-                    var filePath = Path.Combine(listsDir, fileName);
-                    var needsSeed = !File.Exists(filePath) ||
-                                    File.ReadAllLines(filePath).Count(l => !string.IsNullOrWhiteSpace(l) && !l.TrimStart().StartsWith("#")) < 5;
+                    var current = File.Exists(filePath) ? File.ReadAllText(filePath, Encoding.UTF8) : "";
+                    var valid = IsValidListContent(fileName, current);
+                    var recordCount = current.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                        .Count(line => !line.TrimStart().StartsWith('#') && !line.TrimStart().StartsWith(';'));
+                    if (valid && (fallback.Length == 0 || recordCount >= 5)) continue;
 
-                    if (needsSeed)
+                    string replacement;
+                    if (fallback.Length > 0)
                     {
-                        var content = string.Join(Environment.NewLine, fallback) + Environment.NewLine;
-                        File.WriteAllText(filePath, content, Encoding.UTF8);
-                        AppLog.Info($"[ListUpdater] Файл {fileName} автоматически наполнен эталонным набором ({fallback.Length} доменов)");
+                        replacement = string.Join(Environment.NewLine, fallback) + Environment.NewLine;
+                        AppLog.Warn($"[ListUpdater] {fileName} пуст или повреждён; восстановлен встроенный список ({fallback.Length} доменов)");
                     }
+                    else if (TryRestoreBackup(enginePath, fileName, out var backup))
+                    {
+                        replacement = backup;
+                        AppLog.Warn($"[ListUpdater] {fileName} повреждён; восстановлен из резервной копии");
+                    }
+                    else
+                    {
+                        replacement = SafeFallback(fileName);
+                        AppLog.Warn($"[ListUpdater] {fileName} пуст или повреждён; включён безопасный резервный список");
+                    }
+                    WriteAtomically(filePath, replacement);
                 }
+                catch (Exception ex)
+                {
+                    AppLog.Warn($"[ListUpdater] Не удалось проверить/восстановить {fileName}: {ex.Message}");
+                }
+            }
 
-                // Миграция для превью YouTube за рубежом ( issue: не грузятся превью с любой стратегией в другой стране)
-                // Добавляем критичные хосты превью, если их нет в существующих списках — иначе у пользователя из другой точки мира превью ytimg/lh3/ggpht не попадут под --hostlist
-                try { EnsureCriticalPreviewDomains(listsDir); } catch (Exception ex) { AppLog.Warn("[ListUpdater] Миграция превью: " + ex.Message); }
-            }
-            catch (Exception ex)
-            {
-                AppLog.Warn("[ListUpdater] Ошибка начального наполнения списков: " + ex.Message);
-            }
+            try { EnsureCriticalPreviewDomains(listsDir); }
+            catch (Exception ex) { AppLog.Warn("[ListUpdater] Миграция превью: " + ex.Message); }
         }
 
         private static void EnsureCriticalPreviewDomains(string listsDir)
@@ -92,112 +231,169 @@ namespace ZapretGui.Core
             {
                 var path = Path.Combine(listsDir, fileName);
                 if (!File.Exists(path)) continue;
-                var lines = File.ReadAllLines(path).Select(l => l.Trim()).Where(l => !string.IsNullOrWhiteSpace(l)).ToHashSet(StringComparer.OrdinalIgnoreCase);
-                var missing = critical.Where(d => !lines.Contains(d)).ToArray();
-                if (missing.Length > 0)
-                {
-                    File.AppendAllLines(path, missing, Encoding.UTF8);
-                    AppLog.Info($"[ListUpdater] Миграция превью: добавлено {missing.Length} доменов в {fileName}: {string.Join(", ", missing)}");
-                }
+                var content = File.ReadAllText(path, Encoding.UTF8);
+                if (!IsValidListContent(fileName, content)) continue;
+                var lines = content.Split('\n').Select(line => line.Trim().TrimStart('\uFEFF'))
+                    .Where(line => line.Length > 0).ToHashSet(StringComparer.OrdinalIgnoreCase);
+                var missing = critical.Where(domain => !lines.Contains(domain)).ToArray();
+                if (missing.Length == 0) continue;
+                WriteAtomically(path, content.TrimEnd('\r', '\n') + Environment.NewLine +
+                    string.Join(Environment.NewLine, missing) + Environment.NewLine);
+                AppLog.Info($"[ListUpdater] Миграция превью: добавлено {missing.Length} доменов в {fileName}: {string.Join(", ", missing)}");
             }
+        }
+
+        private static async Task<string> ReadMirrorContentAsync(HttpClient http, string url, CancellationToken ct)
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Get, url);
+            request.Headers.UserAgent.ParseAdd("ZapretGUI");
+            if (Uri.TryCreate(url, UriKind.Absolute, out var uri) && uri.Host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase))
+            {
+                request.Headers.Accept.Add(new MediaTypeWithQualityHeaderValue("application/vnd.github+json"));
+                request.Headers.TryAddWithoutValidation("X-GitHub-Api-Version", "2022-11-28");
+            }
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseContentRead, ct).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+                throw new HttpRequestException($"HTTP {(int)response.StatusCode}");
+
+            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
+            if (Uri.TryCreate(url, UriKind.Absolute, out var apiUri) && apiUri.Host.Equals("api.github.com", StringComparison.OrdinalIgnoreCase) && content.TrimStart().StartsWith("{", StringComparison.Ordinal))
+            {
+                using var doc = JsonDocument.Parse(content);
+                if (!doc.RootElement.TryGetProperty("content", out var encoded) || encoded.ValueKind != JsonValueKind.String)
+                    throw new InvalidDataException("GitHub API не вернул поле content");
+                var base64 = string.Concat((encoded.GetString() ?? "").Where(ch => !char.IsWhiteSpace(ch)));
+                return Encoding.UTF8.GetString(Convert.FromBase64String(base64));
+            }
+            return content;
         }
 
         public static async Task<DomainListUpdateResult> UpdateAllAsync(string enginePath, IProgress<string>? progress = null, CancellationToken ct = default)
         {
-            var startedAt = DateTime.UtcNow;
-            var listsDir = Path.Combine(enginePath ?? "", "lists");
-            AppPaths.EnsureDir(listsDir);
-
-            // Сначала гарантируем базовую наполненность
-            EnsureSeeded(enginePath ?? "");
-
-            using var handler = new HttpClientHandler { UseProxy = false };
-            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(20) };
-
-            var updated = 0;
-            var totalDomains = 0;
+            try
+            {
+                await UpdateLock.WaitAsync(ct).ConfigureAwait(false);
+            }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return new DomainListUpdateResult { Ok = false, Message = "Обновление списков отменено.", Elapsed = TimeSpan.Zero };
+            }
 
             try
             {
-                foreach (var (fileName, url, fallback) in ListFiles)
+                return await UpdateAllCoreAsync(enginePath, progress, ct).ConfigureAwait(false);
+            }
+            finally
+            {
+                UpdateLock.Release();
+            }
+        }
+
+        private static async Task<DomainListUpdateResult> UpdateAllCoreAsync(string enginePath, IProgress<string>? progress, CancellationToken ct)
+        {
+            var startedAt = DateTime.UtcNow;
+            if (string.IsNullOrWhiteSpace(enginePath))
+                return new DomainListUpdateResult { Ok = false, Message = "Путь к движку не задан.", Elapsed = DateTime.UtcNow - startedAt };
+
+            var listsDir = Path.Combine(enginePath, "lists");
+            try { AppPaths.EnsureDir(listsDir); }
+            catch (Exception ex)
+            {
+                return new DomainListUpdateResult { Ok = false, Message = "Не удалось открыть каталог списков: " + ex.Message, Elapsed = DateTime.UtcNow - startedAt };
+            }
+
+            EnsureSeeded(enginePath);
+            using var handler = new HttpClientHandler { UseProxy = false };
+            using var http = new HttpClient(handler) { Timeout = TimeSpan.FromSeconds(15) };
+            var updated = 0;
+            var totalRecords = 0;
+            var failed = new List<string>();
+
+            try
+            {
+                foreach (var (fileName, url, _) in ListFiles)
                 {
                     ct.ThrowIfCancellationRequested();
+                    if (string.IsNullOrWhiteSpace(url)) continue; // встроенные/удалённые upstream-списки не запрашиваем
                     progress?.Report($"Загружаю {fileName}…");
+                    var downloaded = false;
 
-                    bool downloaded = false;
                     foreach (var mirror in GetMirrors(url))
                     {
-                    try
-                    {
-                        using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
-                        cts.CancelAfter(TimeSpan.FromSeconds(12));
-                        var response = await http.GetAsync(mirror, cts.Token).ConfigureAwait(false);
-                        if (response.IsSuccessStatusCode)
+                        try
                         {
-                            var content = await response.Content.ReadAsStringAsync(ct).ConfigureAwait(false);
-                            if (!string.IsNullOrWhiteSpace(content) && content.Length > 20)
+                            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+                            cts.CancelAfter(TimeSpan.FromSeconds(12));
+                            var content = await ReadMirrorContentAsync(http, mirror, cts.Token).ConfigureAwait(false);
+                            if (!IsValidListContent(fileName, content))
                             {
-                                var targetPath = Path.Combine(listsDir, fileName);
-
-                                if (File.Exists(targetPath))
-                                {
-                                    var bakPath = Path.Combine(AppPaths.BackupDir, $"{fileName}.bak");
-                                    AppPaths.EnsureDir(AppPaths.BackupDir);
-                                    File.Copy(targetPath, bakPath, true);
-                                }
-
-                                await File.WriteAllTextAsync(targetPath, content, Encoding.UTF8, ct).ConfigureAwait(false);
-                                updated++;
-
-                                var linesCount = content.Split('\n', StringSplitOptions.RemoveEmptyEntries).Length;
-                                totalDomains += linesCount;
-                                if (!mirror.Equals(url, StringComparison.OrdinalIgnoreCase)) AppLog.Info($"[ListUpdater] {fileName} получен через зеркало {mirror}");
-                                downloaded = true;
-                                break;
+                                AppLog.Warn($"[ListUpdater] {mirror} вернул не список {fileName}; ответ отброшен, существующий файл не меняю");
+                                continue;
                             }
-                        }
-                        else { AppLog.Warn($"[ListUpdater] {mirror} вернул {(int)response.StatusCode}"); }
-                    }
-                    catch (OperationCanceledException) when (!ct.IsCancellationRequested) { AppLog.Warn($"[ListUpdater] Таймаут {mirror} для {fileName}"); continue; }
-                    catch (Exception ex)
-                    {
-                        AppLog.Warn($"[ListUpdater] Сетевая ошибка {mirror} для {fileName}: {ex.Message}");
-                    }
-                    }
-                    if (downloaded) continue;
 
-                    // Если файл отсутствует или пуст, а сеть не ответила — используем fallback
-                    var currentPath = Path.Combine(listsDir, fileName);
-                    if ((!File.Exists(currentPath) || File.ReadAllLines(currentPath).Length < 2) && fallback.Length > 0)
+                            var targetPath = Path.Combine(listsDir, fileName);
+                            var oldContent = File.Exists(targetPath) ? File.ReadAllText(targetPath, Encoding.UTF8) : "";
+                            if (IsValidListContent(fileName, oldContent))
+                            {
+                                var backupPath = Path.Combine(AppPaths.BackupDir, fileName + ".bak");
+                                AppPaths.EnsureDir(AppPaths.BackupDir);
+                                File.Copy(targetPath, backupPath, true);
+                            }
+
+                            WriteAtomically(targetPath, content, ct);
+
+                            updated++;
+                            totalRecords += content.Split('\n', StringSplitOptions.RemoveEmptyEntries)
+                                .Count(line => !line.TrimStart().StartsWith('#') && !line.TrimStart().StartsWith(';'));
+                            if (!mirror.Equals(url, StringComparison.OrdinalIgnoreCase))
+                                AppLog.Info($"[ListUpdater] {fileName} получен через зеркало {mirror}");
+                            downloaded = true;
+                            break;
+                        }
+                        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+                        {
+                            throw;
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            AppLog.Warn($"[ListUpdater] Таймаут {mirror} для {fileName}");
+                        }
+                        catch (Exception ex)
+                        {
+                            AppLog.Warn($"[ListUpdater] Не удалось получить {fileName} с {mirror}: {ex.Message}");
+                        }
+                    }
+
+                    if (!downloaded)
                     {
-                        File.WriteAllText(currentPath, string.Join(Environment.NewLine, fallback) + Environment.NewLine, Encoding.UTF8);
-                        updated++;
-                        totalDomains += fallback.Length;
+                        failed.Add(fileName);
+                        AppLog.Warn($"[ListUpdater] {fileName} не обновлён; сохранён последний проверенный вариант");
                     }
                 }
 
-                var elapsed = DateTime.UtcNow - startedAt;
-                var msg = updated > 0
-                    ? $"Списки успешно обновлены: актуализировано {updated} файлов, всего {totalDomains} записей за {elapsed.TotalSeconds:0.0} с."
-                    : "Списки уже актуальны.";
+                try { EnsureCriticalPreviewDomains(listsDir); }
+                catch (Exception ex) { AppLog.Warn("[ListUpdater] Не удалось применить миграцию доменов YouTube: " + ex.Message); }
 
+                var elapsed = DateTime.UtcNow - startedAt;
+                var message = failed.Count == 0
+                    ? $"Списки обновлены: {updated} файлов, {totalRecords} записей за {elapsed.TotalSeconds:0.0} с."
+                    : $"Обновлено {updated} файлов ({totalRecords} записей), не удалось обновить: {string.Join(", ", failed)}. Проверенные локальные копии сохранены.";
                 return new DomainListUpdateResult
                 {
-                    Ok = updated > 0,
+                    Ok = failed.Count == 0 && updated > 0,
                     UpdatedFilesCount = updated,
-                    TotalDomainsCount = totalDomains,
-                    Message = msg,
+                    TotalDomainsCount = totalRecords,
+                    Message = message,
                     Elapsed = elapsed
                 };
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                return new DomainListUpdateResult { Ok = false, Message = "Обновление списков отменено.", Elapsed = DateTime.UtcNow - startedAt };
+            }
             catch (Exception ex)
             {
-                return new DomainListUpdateResult
-                {
-                    Ok = false,
-                    Message = "Ошибка обновления списков: " + ex.Message,
-                    Elapsed = DateTime.UtcNow - startedAt
-                };
+                return new DomainListUpdateResult { Ok = false, Message = "Ошибка обновления списков: " + ex.Message, Elapsed = DateTime.UtcNow - startedAt };
             }
         }
     }

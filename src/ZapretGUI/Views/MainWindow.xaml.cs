@@ -225,7 +225,7 @@ namespace ZapretGui.Views
                     }
                     else
                     {
-                        _vm.Settings.BypassManuallyStopped = false; SettingsStore.Save(_vm.Settings); _vm.Watchdog.NotifyManualStart();
+                        _vm.Settings.BypassManuallyStopped = false; SettingsStore.Save(_vm.Settings); _vm.Watchdog.NotifyManualStart(serviceMode: false);
                         // v2.2.2: не подменяем выбранную стратегию «рекомендованной» молча.
                         var strategy = _vm.Strategies.Find(_vm.Settings.SelectedStrategy);
                         if (strategy == null)
